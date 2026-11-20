@@ -1,0 +1,196 @@
+{
+  "state": "CPU and currentWindows package qualified; GPU/original/hosted pending",
+  "source_manifest": "source.json",
+  "production_projection": "production-projection.json",
+  "full_workspace_baseline": "../native-roundtrip-pass38/summary.json",
+  "qualification_method": "Full current production CPU pass followed by all five failed targets after fixture repairs; engine production hashes unchanged",
+  "cpu": {
+    "passed": 757,
+    "failed": 0,
+    "completed_full_target_summaries": 65,
+    "baseline_passed": 746,
+    "baseline_failed": 10,
+    "repair_targets": 5,
+    "repair_passed": 351,
+    "repair_failed": 0,
+    "unaffected_passes_retained": 406,
+    "additional_regressions": 1,
+    "physical_gpu_and_switch_tests_excluded": true,
+    "repair_summaries": [
+      {
+        "result": "ok",
+        "passed": 287,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 7,
+        "seconds": 13.62
+      },
+      {
+        "result": "ok",
+        "passed": 14,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0.03
+      },
+      {
+        "result": "ok",
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0.02
+      },
+      {
+        "result": "ok",
+        "passed": 25,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0.02
+      },
+      {
+        "result": "ok",
+        "passed": 21,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0.13
+      }
+    ]
+  },
+  "core": {
+    "passed": 181,
+    "failed": 0,
+    "skipped": 0,
+    "receipt": "../native-roundtrip-pass38/core.trx",
+    "source_unchanged": true
+  },
+  "desktop": {
+    "passed": 133,
+    "failed": 0,
+    "skipped": 0,
+    "receipt": "desktop.trx",
+    "exact_packaged_native_dll": true
+  },
+  "package": {
+    "backend": "CPU",
+    "ticks": 13,
+    "movement": true,
+    "save_resume": true,
+    "bots": 48,
+    "asset_mismatches": 0,
+    "native_dll_sha256": "FA628214A4D9324F5127445F6247BCC95169FC11D94A7D1F553B35F7F654FA44",
+    "identity_receipt": "native-dll-identity.json"
+  },
+  "strict_clippy": {
+    "state": "passed",
+    "seconds": 105.1327207,
+    "log": "strict-clippy.log"
+  },
+  "retained_current_engine_gates": {
+    "corpus": {
+      "bots": 48,
+      "cycles_each": 1000,
+      "passed_targets": 2,
+      "failed": 0
+    },
+    "long_cpu": {
+      "ecology_ticks": [
+        20000,
+        10000
+      ],
+      "state": "both passed; see runtime targets",
+      "continuation_checkpoints": [
+        {
+          "mutation_enabled": false,
+          "cycle": 781,
+          "robots": 671,
+          "shots": 106,
+          "births": 724,
+          "mutations": 0,
+          "save_bytes": 13266754
+        },
+        {
+          "mutation_enabled": false,
+          "cycle": 1281,
+          "robots": 1019,
+          "shots": 192,
+          "births": 1149,
+          "mutations": 0,
+          "save_bytes": 17606570
+        },
+        {
+          "mutation_enabled": false,
+          "cycle": 1781,
+          "robots": 1309,
+          "shots": 286,
+          "births": 1541,
+          "mutations": 0,
+          "save_bytes": 21258505
+        },
+        {
+          "mutation_enabled": false,
+          "cycle": 2281,
+          "robots": 1514,
+          "shots": 331,
+          "births": 1920,
+          "mutations": 0,
+          "save_bytes": 23818292
+        },
+        {
+          "mutation_enabled": true,
+          "cycle": 531,
+          "robots": 437,
+          "shots": null,
+          "births": 494,
+          "mutations": 1146,
+          "save_bytes": 10419906
+        },
+        {
+          "mutation_enabled": true,
+          "cycle": 781,
+          "robots": 588,
+          "shots": null,
+          "births": 781,
+          "mutations": 2432,
+          "save_bytes": 12488855
+        },
+        {
+          "mutation_enabled": true,
+          "cycle": 1031,
+          "robots": 687,
+          "shots": null,
+          "births": 1143,
+          "mutations": 4196,
+          "save_bytes": 13915018
+        },
+        {
+          "mutation_enabled": true,
+          "cycle": 1281,
+          "robots": 772,
+          "shots": null,
+          "births": 1694,
+          "mutations": 6523,
+          "save_bytes": 15316230
+        }
+      ],
+      "comparison": "complete DB3S bytes across repeated Rust continuations; separate from original executable"
+    },
+    "exact_interchange": {
+      "compared_fields": 393316,
+      "differences": 0,
+      "absolute_tolerance": 0,
+      "relative_tolerance": 0,
+      "receipt": "original-zero-cycle-compare.log"
+    }
+  },
+  "not_proven": [
+    "physicalGPU",
+    "genuineoriginalexecutabletrajectories",
+    "currenthostedplatformmatrix",
+    "sustainedcapacity",
+    "visiblefinalwalkthrough"
+  ],
+  "parity_complete": false
+}

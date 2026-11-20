@@ -19,5 +19,5 @@ fn explicit_or_reduces_conditions_before_implicit_and() {
 
     engine.tick().unwrap();
 
-    assert!(engine.organism(id).unwrap().position[1] > 500.0);
+    assert!(engine.organism(id).unwrap().position[0] > 500.0);
 }

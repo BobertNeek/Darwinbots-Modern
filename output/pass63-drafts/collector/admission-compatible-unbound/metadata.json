@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "batch": 63,
+  "state": "admission_compatible_unbound_candidate_authored_unexecuted",
+  "prepared_utc": "2026-10-17T14:12:13.256Z",
+  "source_head": "61509e4c8424f751d20c5f34a83c35fc6d8be424",
+  "source_manifest": {
+    "file": "output/native-roundtrip-pass63-source.json",
+    "sha256": "6E6A0F44695062B4B453EDBA28E7E3A03224D10AE0D27F9ADF99071F80506860",
+    "bytes": 117714
+  },
+  "reviewed_helper": {
+    "file": "output/native-qualification-admission53.ps1",
+    "sha256": "B3E9D15B0BD1B6EC6E3FAFCC789FFC6E4546F3C0863882F8A3A34E0E0F39145B",
+    "bytes": 39477,
+    "matching_frozen686_pin": "B3E9D15B0BD1B6EC6E3FAFCC789FFC6E4546F3C0863882F8A3A34E0E0F39145B",
+    "source_lines": {
+      "origin_schema_state": 409,
+      "successful_invocation_and_command": 413,
+      "target_counts_and_identity": 421,
+      "target_status": 435,
+      "aggregate_counts": 443
+    }
+  },
+  "preserved_original_unbound": {
+    "file": "output/pass63-drafts/collector/unbound/collect-native-roundtrip-pass63.mjs",
+    "sha256": "FBFA7052314187174E414D06C310393A8B48C1826FBE147548D6CD6122E9B3CE",
+    "bytes": 49856
+  },
+  "preserved_original_metadata": {
+    "file": "output/pass63-drafts/collector/unbound/metadata.json",
+    "sha256": "2F0C8DE95435FD1607546C4E6BF8ECB964479B1EE9B2969CC0709FE05D9E303F",
+    "bytes": 3363
+  },
+  "preserved_intermediate_variant": {
+    "file": "output/pass63-drafts/collector/admission-compatible-unbound/collect-native-roundtrip-pass63.mjs",
+    "sha256": "6FE50DC565546F8F5F36A2F878C30BF4FBE3E2F8934F04735DE964472DC61F31",
+    "bytes": 49992
+  },
+  "candidate": {
+    "file": "output/pass63-drafts/collector/admission-compatible-unbound/strict-pass/collect-native-roundtrip-pass63.mjs",
+    "sha256": "A28D6BEE5BE0FD8BE075D10A3036147D74674984FB018A3D97E3CD2E6F481945",
+    "bytes": 50076
+  },
+  "preferred_candidate": "strict-pass/collect-native-roundtrip-pass63.mjs",
+  "receipt_compatibility": {
+    "rust_schema_version": 1,
+    "rust_state": "passed or failed from the actual complete invocation",
+    "detailed_prior_state_retained_as": "completion_state",
+    "command": "actual Cargo arguments array validated against the full workspace invocation",
+    "structured_executable_and_arguments_retained_as": "command_details",
+    "target_status": "summary[1] from each actual emitted terminal Rust summary; result remains unchanged",
+    "passing_gate": "all68 distinct targets complete, positive aggregate passes, zero failures/ignored, Cargo exit0, every actual target status ok, running/summary and failure-row counts agree",
+    "no_rows_or_diagnostics_dropped": true,
+    "expected_command": [
+      "test",
+      "--release",
+      "--workspace",
+      "--no-fail-fast",
+      "--",
+      "--skip",
+      "gpu",
+      "--skip",
+      "switch",
+      "--nocapture",
+      "--test-threads=1"
+    ]
+  },
+  "unchanged_guards": {
+    "source_pins": 686,
+    "ordinary_outcomes": 94,
+    "distinct_rust_targets": 68,
+    "core_tests": 314,
+    "desktop_tests": 214,
+    "genuine_controls": 25,
+    "expected_original_only_fields": 55849,
+    "contained_source_and_proof_paths": true,
+    "exact_two_current_artifact_junction_exception_model": true,
+    "unbound_guard_and_empty_bindings": true,
+    "actual_compiler_vs_executed_test_boundary": true,
+    "terminal_run_process_absence_and_same_byte_proof_checks": true
+  },
+  "static_review": {
+    "only_declared_edits_inverse_reconstruct_entire_original_unbound": true,
+    "helper_unchanged": true,
+    "source_or_tests_unchanged": true,
+    "original_and_intermediate_variants_preserved": true
+  },
+  "scope": "Rust target receipt compatibility only. Existing qualification-summary.json remains the detailed evidence receipt; root separately owns any canonical schema1 summary.json/CPU-ready admission creation after all outcomes. No helper weakening, marker creation or execution is performed.",
+  "binding_gate": "Future bound variant must use actual63 CLI/DLL before-and-after receipts and current artifact bytes; no62 artifact hashes are retained or accepted merely because bytes may later match.",
+  "execution_gate": "Root alone reviews and executes after all94local and all7hosted outcomes are terminal/collected and the actual runner session is closed.",
+  "execution": {
+    "collector": false,
+    "parser": false,
+    "formatter": false,
+    "build": false,
+    "tests": false,
+    "product": false,
+    "UI": false,
+    "GPU": false,
+    "git": false,
+    "active_source_or_receipt_writes": false
+  }
+}

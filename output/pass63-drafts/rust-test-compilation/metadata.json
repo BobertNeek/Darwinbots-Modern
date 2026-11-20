@@ -1,0 +1,275 @@
+{
+  "schema_version": 1,
+  "batch": 63,
+  "state": "complete_authored_unapplied_unexecuted",
+  "created_utc": "2026-10-17T13:49:21.754Z",
+  "base_source_head": "9d9321e4b86d76d18ef5e2c10f6c873ce0446089",
+  "base_source_manifest": {
+    "file": "output/native-roundtrip-pass62-source.json",
+    "sha256": "5F5E901F1B2461D2C9B0A67CC3CDDD45BEE3DC2061120CF12FC33FADF16B72ED",
+    "pinned_files": 661
+  },
+  "trigger_receipt": {
+    "file": "docs/parity/evidence/batch-2026-10-14/hosted-main-9d9321e.json",
+    "sha256": "985F7C5F6CF91669DEBD566F71BF1545F9C91D92056BF433237F1569F52AA463",
+    "diagnostics_count_per_platform": 13,
+    "platforms": 4,
+    "test_execution_before_compile_block": 0
+  },
+  "scope": {
+    "existing_paths": 3,
+    "new_source_paths": 0,
+    "production_changes": 0,
+    "new_test_rows": 0,
+    "removed_test_rows": 0,
+    "expected_distinct_rust_targets": 68,
+    "expected_core": 314,
+    "expected_desktop": 214
+  },
+  "files": [
+    {
+      "target": "modern/engine/src/world/native_reproduction.rs",
+      "kind": "existing_test_only",
+      "base": {
+        "source_head": "9d9321e4b86d76d18ef5e2c10f6c873ce0446089",
+        "sha256": "8222394DB4AB5A1D9EF262DB590987EFA0A3717388FEB6D483FA6EF59647EAEE",
+        "bytes": 11893,
+        "manifest_pin_verified": true
+      },
+      "candidate": {
+        "file": "output/pass63-drafts/rust-test-compilation/candidate/modern/engine/src/world/native_reproduction.rs",
+        "sha256": "14845A1F19EE2BA2B0C8C18C501673537FC467015A9477943F1D6D9B5286E5B7",
+        "bytes": 11957
+      },
+      "production_equivalence": {
+        "byte_exact_before_single_cfg_test_module": true,
+        "bytes": 1182,
+        "sha256": "B3402B927C17FD99DB8061DC0CEC7523F31C872ADFC508A9CE07CBAC8E472243"
+      },
+      "test_census": {
+        "base": 7,
+        "candidate": 7,
+        "added": 0,
+        "removed": 0,
+        "names_unchanged": true,
+        "names": [
+          "native_load_repopulation_waits_until_c21_and_preserves_negative_db3s_delay_and_caller_draws",
+          "loaded_first_frame_retains_the_request_and_checkpoint_until_next_birth_attempt",
+          "bare_typed_modern_and_new_native_starts_keep_immediate_reproduction",
+          "loaded_guard_keeps_eager_animal_and_mixed_command_random_draws",
+          "loaded_guard_skips_first_repopulation_cooldown_but_refreshes_chloroplast_census",
+          "loaded_stage_rolls_back_and_ordinary_starts_clear_it",
+          "absent_stage_keeps_older_checkpoints_and_invalid_stages_reject"
+        ],
+        "assertion_calls_base": 41,
+        "assertion_calls_candidate": 41
+      }
+    },
+    {
+      "target": "modern/engine/src/world/native_energy.rs",
+      "kind": "existing_test_only",
+      "base": {
+        "source_head": "9d9321e4b86d76d18ef5e2c10f6c873ce0446089",
+        "sha256": "E036F27BCB4EEC8F8019C083762F303C6FD70F2AF51C48289CBDB573046822EE",
+        "bytes": 23605,
+        "manifest_pin_verified": true
+      },
+      "candidate": {
+        "file": "output/pass63-drafts/rust-test-compilation/candidate/modern/engine/src/world/native_energy.rs",
+        "sha256": "845F0C1CFD6F1697A9EE729E18025E1831AF0C03914B510D97C0C9EF312FE5A0",
+        "bytes": 24019
+      },
+      "production_equivalence": {
+        "byte_exact_before_single_cfg_test_module": true,
+        "bytes": 7553,
+        "sha256": "1568E4B3642108D2879D2286C8B3942A52CA07A2813A205664F6AC1D80B8A6BD"
+      },
+      "test_census": {
+        "base": 8,
+        "candidate": 8,
+        "added": 0,
+        "removed": 0,
+        "names_unchanged": true,
+        "names": [
+          "native_long_assignments_round_each_add_and_preserve_long_precision",
+          "ring_reads_previous_cursor_before_clear_and_keeps_exact_hundred_cycle_wrap",
+          "invalid_context_rejects_process_cache_parts_without_mutation_or_randomness",
+          "native_sun_thresholds_read_delayed_energy_before_current_feed",
+          "total_energy_phase_counts_hidden_and_queued_death_before_removal",
+          "cache_survives_db3s_and_cycle_checkpoint_and_same_process_starts_only",
+          "absent_old_checkpoint_cache_defaults_zero_but_malformed_saved_ring_is_rejected",
+          "legacy_route_keeps_energy_totals_and_omits_native_status_projections"
+        ],
+        "assertion_calls_base": 69,
+        "assertion_calls_candidate": 69
+      }
+    },
+    {
+      "target": "modern/engine/src/world/native_shots.rs",
+      "kind": "existing_test_only",
+      "base": {
+        "source_head": "9d9321e4b86d76d18ef5e2c10f6c873ce0446089",
+        "sha256": "34A19C48BCBB1330B6BB3F70E54223A7B06D89295F9B50C167A800202390ADB1",
+        "bytes": 55420,
+        "manifest_pin_verified": true
+      },
+      "candidate": {
+        "file": "output/pass63-drafts/rust-test-compilation/candidate/modern/engine/src/world/native_shots.rs",
+        "sha256": "8A3AD26A3443C18888980E53FB708BC019FABEB01D3979803B85A227335BC0D2",
+        "bytes": 55877
+      },
+      "production_equivalence": {
+        "byte_exact_before_single_cfg_test_module": true,
+        "bytes": 17955,
+        "sha256": "C1FBA6DEF11D55F26A516634F63F9C083FC8B9B8171B513774F5B931A9845DB0"
+      },
+      "test_census": {
+        "base": 19,
+        "candidate": 19,
+        "added": 0,
+        "removed": 0,
+        "names_unchanged": true,
+        "names": [
+          "native_flash_cleanup_also_clears_dead_slots_and_continues_exactly_after_db3s",
+          "native_return_into_later_free_slot_moves_this_cycle_and_flash_clears_next_visit",
+          "native_new_slot_beyond_the_entry_capacity_waits_until_the_next_cycle",
+          "native_reused_earlier_slot_waits_and_is_not_counted_a_second_time",
+          "native_visited_count_includes_expiry_and_persists_some_zero_and_legacy_none",
+          "native_collision_retains_original_later_target_earlier_position_quirk",
+          "native_primary_newborn_immunity_still_moves_from_the_collision_point",
+          "native_takenrg_uses_one_single_assignment_after_double_body_overflow_terms",
+          "native_stored_orphan_survives_without_compaction_and_no_decay_freezes_age",
+          "native_zero_shadow_full_save_survives_and_original_sim_load_resets_it",
+          "native_packet_conversion_error_restores_cursor_payload_and_stats_with_cycle_checkpoint",
+          "native_visited_energy_carrier_contributes_before_its_expiry_and_survives_checkpoint",
+          "native_parent_immunity_compares_literal_slot_to_absolute_parent_id_at_ages_zero_one_two",
+          "native_unowned_parent_zero_immunity_is_literal_at_ages_zero_one_two",
+          "native_owner_exclusion_uses_recycled_numeric_slot_without_generation_identity",
+          "native_effect_credit_resolves_recycled_owner_slot_and_dead_owner_shots_survive_checkpoint",
+          "native_compaction_rebinds_last_stored_virus_to_reused_owner_generation_only_when_compacting",
+          "native_shape_policies_use_current_points_without_flash_and_continue_across_db3s",
+          "portable_shape_policies_keep_swept_absorb_and_point_reflect_timing"
+        ],
+        "assertion_calls_base": 180,
+        "assertion_calls_candidate": 180
+      }
+    }
+  ],
+  "compile_error_map": [
+    {
+      "code": "E0433",
+      "source_location": "modern/engine/src/world/native_reproduction.rs:43:32",
+      "message": "cannot find `NativeRecordFile` in the crate root",
+      "repair": "Inside cfg(test), import the actual crate::native_binary type and use the imported name."
+    },
+    {
+      "code": "E0433",
+      "source_location": "modern/engine/src/world/native_reproduction.rs:45:31",
+      "message": "cannot find `NativeSimulationTail` in the crate root",
+      "repair": "Inside cfg(test), import the actual crate::native_binary type and use the imported name."
+    },
+    {
+      "code": "E0433",
+      "source_location": "modern/engine/src/world/native_reproduction.rs:51:42",
+      "message": "cannot find `NativeValue` in the crate root",
+      "repair": "Inside cfg(test), import the actual crate::native_binary type and use the imported name."
+    },
+    {
+      "code": "E0616",
+      "source_location": "modern/engine/src/world/native_shots.rs:491:48",
+      "message": "field `free_slots` of struct `projectile::ProjectilePool` is private",
+      "repair": "Replace private-field observation with typed serialized free_slots readback in the same test; no production getter, visibility expansion or allocator change."
+    },
+    {
+      "code": "E0616",
+      "source_location": "modern/engine/src/world/native_shots.rs:516:46",
+      "message": "field `free_slots` of struct `projectile::ProjectilePool` is private",
+      "repair": "Replace private-field observation with typed serialized free_slots readback in the same test; no production getter, visibility expansion or allocator change."
+    },
+    {
+      "code": "E0616",
+      "source_location": "modern/engine/src/world/native_shots.rs:524:52",
+      "message": "field `free_slots` of struct `projectile::ProjectilePool` is private",
+      "repair": "Replace private-field observation with typed serialized free_slots readback in the same test; no production getter, visibility expansion or allocator change."
+    },
+    {
+      "code": "E0616",
+      "source_location": "modern/engine/src/world/native_shots.rs:526:46",
+      "message": "field `free_slots` of struct `projectile::ProjectilePool` is private",
+      "repair": "Replace private-field observation with typed serialized free_slots readback in the same test; no production getter, visibility expansion or allocator change."
+    },
+    {
+      "code": "E0063",
+      "source_location": "modern/engine/src/world/native_energy.rs:257:13",
+      "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+      "repair": "Give the invalid-context test literal the current original.repopulation_counter; retain its original invalid field and every nonmutation assertion."
+    },
+    {
+      "code": "E0063",
+      "source_location": "modern/engine/src/world/native_energy.rs:263:13",
+      "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+      "repair": "Give the invalid-context test literal the current original.repopulation_counter; retain its original invalid field and every nonmutation assertion."
+    },
+    {
+      "code": "E0063",
+      "source_location": "modern/engine/src/world/native_energy.rs:269:13",
+      "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+      "repair": "Give the invalid-context test literal the current original.repopulation_counter; retain its original invalid field and every nonmutation assertion."
+    },
+    {
+      "code": "E0063",
+      "source_location": "modern/engine/src/world/native_energy.rs:275:13",
+      "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+      "repair": "Give the invalid-context test literal the current original.repopulation_counter; retain its original invalid field and every nonmutation assertion."
+    },
+    {
+      "code": "E0063",
+      "source_location": "modern/engine/src/world/native_energy.rs:284:13",
+      "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+      "repair": "Give the invalid-context test literal the current original.repopulation_counter; retain its original invalid field and every nonmutation assertion."
+    },
+    {
+      "code": "E0063",
+      "source_location": "modern/engine/src/world/native_energy.rs:293:13",
+      "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+      "repair": "Give the invalid-context test literal the current original.repopulation_counter; retain its original invalid field and every nonmutation assertion."
+    }
+  ],
+  "contracts": {
+    "native_binary_import": "Only the test module gains use crate::native_binary::{NativeRecordFile, NativeSimulationTail, NativeValue}; all fixture construction, exact C21/C31 random/counter assertions and Save bytes remain unchanged.",
+    "invalid_cache_literals": "Exactly six invalid-context literals gain original.repopulation_counter (Option<i32>, Copy). NaN, negative and excessive light; wrong ring length; invalid cursor; and overflowing shots controls remain otherwise byte-exact.",
+    "persisted_free_list": "A cfg(test)-local helper serializes the existing ProjectilePool through serde_json::to_value, requires the free_slots field to exist, and deserializes it as Vec<u32>. Missing, null, nonarray, negative or out-of-range slot data fails instead of defaulting. All four original ordered free-list observations remain exact.",
+    "flash_cleanup": "Alive/dead flash cases, DNA/payload clearing, visited0, exact positions/previous positions/ages/RNG, stored/gene metadata, empty publications, expected one-time append, repeated no-op cleanup and full continuous/restored DB3S equality remain asserted.",
+    "production_and_original_controls": "Production code before each sole cfg(test) module is byte-exact. No ShotSnapshot/allocator/deactivation/cache algorithm was changed. The 25 strict genuine original comparisons, original fixture bytes, tolerances, saved-image goldens and dormant20 particle Fact are untouched."
+  },
+  "static_review": {
+    "frozen_base_pins_checked": true,
+    "candidates_read_back_byte_exact": true,
+    "single_cfg_test_module_per_file": true,
+    "only_intended_edit_inverse_reconstructs_full_base": {
+      "reproduction": true,
+      "energy": true,
+      "shots": true
+    },
+    "all_test_names_and_order_unchanged": true,
+    "assertion_call_counts_unchanged": true,
+    "full_test_rows": 34,
+    "private_free_slot_accesses_removed": 4,
+    "invalid_cache_literals_completed": 6,
+    "bad_crate_root_type_references_removed": 3
+  },
+  "verification": {
+    "static_only": true,
+    "active_apply": false,
+    "formatter": false,
+    "parser": false,
+    "build": false,
+    "tests": false,
+    "product": false,
+    "ui": false,
+    "gpu": false,
+    "git": false,
+    "subagents_spawned": false
+  },
+  "ownership": "Three candidates released to root for independent static review. Root alone applies after the complete batch63 authoring gate. No runtime or passing-compilation claim is made."
+}

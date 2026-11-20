@@ -1,0 +1,45 @@
+   Compiling darwinbots-engine v0.1.0 (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\engine)
+    Finished `release` profile [optimized] target(s) in 5.71s
+     Running tests\db2_mutation_248.rs (target\release\deps\db2_mutation_248-d81b836e7525fc2f.exe)
+
+running 18 tests
+test detailed_profile_serializes_all_db24832_classes_and_category_distributions ... ok
+test multiplier_divides_the_robots_one_in_rate ... ok
+test invalid_delta_one_in_is_rejected_atomically ... ok
+test mutation_payloads_reject_embedded_end_without_truncating_dna ... ok
+test point_schedule_uses_coding_length_and_excludes_master_end ... ok
+test scripted_delta_changes_only_the_selected_robot_rate ... ok
+test scripted_major_deletion_removes_exactly_three_blocks ... ok
+test scripted_one_block_reproduction_mutations_are_exact ... ok
+test scripted_point_changes_three_blocks_without_touching_master_end ... ok
+test scripted_reversal_reverses_an_odd_three_block_run ... ok
+test stale_generation_profile_access_cannot_touch_reused_slot ... ok
+test engine_rejects_every_malformed_profile_field_atomically ... ok
+test robots_of_one_species_own_isolated_mutation_profiles ... ok
+test standard_profile_defaults_match_db24832 ... ok
+test structural_mutations_reject_zero_and_out_of_range_locations_atomically ... ok
+test value_preference_uses_80_as_the_first_type_change_roll ... ok
+test insertion_rejects_insufficient_capacity_without_truncating_payload ... ok
+test changing_a_robot_point_rate_reschedules_its_next_mutation ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests\history_records.rs (target\release\deps\history_records-7b80164e0149827e.exe)
+
+running 1 test
+test bounded_historical_records_are_sampled_and_preserved_by_saves ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests\visual_phenotypes.rs (target\release\deps\visual_phenotypes-137d1a5385da1bba.exe)
+
+running 7 tests
+test autotroph_mutations_remain_green ... ok
+test generated_skin_is_stable_and_inside_the_bot ... ok
+test real_mutation_drifts_color_but_zero_changes_do_not ... ok
+test speciation_changes_one_skin_point_and_resets_distance ... ok
+test crossing_speciation_threshold_changes_skin_once ... ok
+test child_inherits_phenotype_then_mutation_drifts_only_the_child ... ok
+test phenotype_round_trips_through_version_three_save ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s

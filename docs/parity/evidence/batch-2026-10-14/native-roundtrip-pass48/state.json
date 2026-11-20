@@ -1,0 +1,10 @@
+{
+  "status": "stopped",
+  "step": "qualification",
+  "pid": 45284,
+  "utc": "2026-10-16T15:56:07.3413565Z",
+  "source_parent": "dbffdc58787f369e7490461836df7ef677c01e8f",
+  "details": {
+    "error": "Retained qualification input changed: target/release/darwinbots-cli.exe"
+  }
+}

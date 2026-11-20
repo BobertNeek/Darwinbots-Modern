@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "batch": 58,
+  "observed_utc": "2026-10-17T06:07:17.8720695Z",
+  "source_head": "8018c200690ea20d07c2d243138eb7d8f8fc0e7d",
+  "source_pushed": true,
+  "manifest": "output/native-roundtrip-pass58-source.json",
+  "manifest_sha256": "102DC7BE8C4E3676015012F593CEB92A95DB598196661BAF80F817C6A4B8566C",
+  "source_files": 540,
+  "local_runner_pid": 10304,
+  "local_exec_session": 94758,
+  "observed_local_state": {
+    "status": "running",
+    "step": "cpu-rust-workspace",
+    "pid": 10304,
+    "utc": "2026-10-17T06:06:48.6046124Z",
+    "source_parent": "8018c200690ea20d07c2d243138eb7d8f8fc0e7d",
+    "comparison_base": "f2a42877fdc15ad8a332dd041c0ce8c6a9bd0d69",
+    "source_manifest_sha256": "102DC7BE8C4E3676015012F593CEB92A95DB598196661BAF80F817C6A4B8566C",
+    "expected_managed_test_counts": {
+      "core": 307,
+      "desktop": 197
+    },
+    "details": {
+      "log": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\docs\\parity\\evidence\\batch-2026-10-14\\native-roundtrip-pass58\\cpu-rust-workspace.log"
+    }
+  },
+  "main": {
+    "run_id": 39008576353,
+    "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39008576353",
+    "observed_status": "in_progress"
+  },
+  "diagnostics": {
+    "run_id": 39008656161,
+    "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39008656161",
+    "observed_status": "queued",
+    "trigger": "workflow_dispatch",
+    "reason": "Actual managed/editor changes need independent platform checks; push pathfilter excludes touched paths",
+    "dispatched_once": true
+  },
+  "all_initial_code_and_tests_authored_before_checks": true,
+  "no_final_outcomes_or_admission_claimed": true,
+  "desktop_and_gpu_deferred": true
+}

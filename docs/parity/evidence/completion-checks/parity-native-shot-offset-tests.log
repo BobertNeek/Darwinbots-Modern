@@ -1,0 +1,17 @@
+   Compiling darwinbots-engine v0.1.0 (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\engine)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 45.87s
+     Running unittests src\lib.rs (target\debug\deps\darwinbots_engine-d5cc0d4745fb374f.exe)
+
+running 3 tests
+test shot::projectile::tests::feeding_power_uses_fixed_or_proportional_original_settings_without_changing_toxins ... ok
+test shot::projectile::tests::db24832_impact_decay_uses_age_before_the_current_tick_increment ... ok
+test shot::projectile::tests::db2_pool_grows_by_ten_percent_and_compacts_below_seventy_percent ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 56 filtered out; finished in 0.00s
+
+     Running tests\db2_projectiles.rs (target\debug\deps\db2_projectiles-9d8dce0d56cfd0b6.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 23 filtered out; finished in 0.00s
+

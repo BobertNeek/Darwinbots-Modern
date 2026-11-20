@@ -1,0 +1,58 @@
+{
+  "date": "2026-10-13",
+  "code_revision": "9446ce19654a3375f989b546665ef229fa8fb952",
+  "source_basis": [
+    "Darwinbots2/main.frm:2278-2379 custom query stack operators",
+    "Darwinbots2/main.frm:2603-2916 CalcStats species graphs",
+    "Darwinbots2/main.frm:3041-3056 extant descendant score",
+    "Darwinbots2/NeoMutations.bas:219-225 LastMut and GenMut",
+    "Darwinbots2/HDRoutines.bas:1680,1861-1862,2188 native mutation counts and graph cache",
+    "Darwinbots2/SimOptions.bas:29-36 cost field indices"
+  ],
+  "repairs": [
+    "Selective graph uses GenMut/OldGD, later eligible same-filename pairs, and the existing VB6 DNA alignment primitive.",
+    "Slow graph reports the maximum aligned DNA distance inside each species, excluding corpse pair participants.",
+    "Generational graph follows parent absolute numbers through robots still present, with the native 500-level limit.",
+    "Regular species graph values use native units, mutation counters, offspring counts, body energy and subspecies diversity.",
+    "Desktop graphs separate species and overlay their colored traces. Dynamic-cost graphs expose six named series.",
+    "Custom graph queries accept the original stack tokens and bounded operators.",
+    "Graph windows request expensive genetic/lineage calculations and stop requesting them on close.",
+    "LastMut is a mutation count; native OldGD survives save and reload.",
+    "Native cost slots 52, 57 and 58 map to the zero level and separate percentage ranges.",
+    "Species forks update the native filename used for graph grouping."
+  ],
+  "checks": {
+    "rust_focused": {
+      "passed": 198,
+      "failed": 0,
+      "log": "completion-checks/parity-native-graphs-source-final.log"
+    },
+    "strict_clippy": {
+      "status": "passed",
+      "log": "completion-checks/parity-native-graphs-clippy.log"
+    },
+    "desktop_core_release": {
+      "passed": 143,
+      "failed": 0,
+      "log": "completion-checks/parity-native-graphs-core-current.log"
+    },
+    "desktop_release": {
+      "passed": 105,
+      "failed": 0,
+      "log": "completion-checks/parity-native-graphs-desktop-release-final.log",
+      "native_dll_sha256": "97b74c6d462f8eba06b5adfff621b8516603e4a6bedaeca6852a74c8e74de23b"
+    },
+    "rendered_species_graph": {
+      "image": "native-species-graph.png",
+      "status": "passed and visually inspected"
+    }
+  },
+  "limits": [
+    "The most recent complete Rust workspace Release remains 562/0 at 0206429; this revision has focused Rust checks, full Release desktop checks and strict Clippy.",
+    "The two CPU ecology soaks passed on different preceding source states; see native-long-ecology-receipt.json.",
+    "Original-runtime graph differential, immediate original sampling cadence, extinct-series behavior and population-scale query cost remain unqualified.",
+    "The adaptive dynamic-cost controller still needs original-source conformance; graph formulas and native cost mappings do not establish controller parity.",
+    "Cached radii, older complete-corpse migration, phase order/global RNG, remaining evolution and league behavior, original trajectories and platform package smoke remain open.",
+    "Internet Mode is excluded."
+  ]
+}

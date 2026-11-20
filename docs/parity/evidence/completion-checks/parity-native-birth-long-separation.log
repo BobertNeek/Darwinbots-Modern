@@ -1,0 +1,11 @@
+   Compiling darwinbots-engine v0.1.0 (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\engine)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 6.52s
+     Running tests\spawn_placement.rs (target\debug\deps\spawn_placement-e8f7ff5d039881b5.exe)
+
+running 3 tests
+test reproduction_places_children_forward_at_native_fixed_radius_separation ... ok
+test newborn_separation_rounds_the_native_sum_to_a_long_before_placement ... ok
+test newborn_placement_follows_native_forward_bearings_in_all_four_quadrants ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+

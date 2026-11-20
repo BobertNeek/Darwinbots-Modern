@@ -1,0 +1,234 @@
+{
+  "schema_version": 1,
+  "batch": 63,
+  "sealed_utc": "2026-10-17T23:31:05.476Z",
+  "source_head": "61509e4c8424f751d20c5f34a83c35fc6d8be424",
+  "source_manifest": {
+    "file": "output/native-roundtrip-pass63-source.json",
+    "sha256": "6E6A0F44695062B4B453EDBA28E7E3A03224D10AE0D27F9ADF99071F80506860"
+  },
+  "run": {
+    "id": 39039047969,
+    "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39039047969",
+    "conclusion": "success"
+  },
+  "all_four_jobs_terminal": true,
+  "all_four_outcomes_collected": true,
+  "qualification_passed": true,
+  "platforms": [
+    {
+      "platform": "linux-x64",
+      "log": "output/hosted-main-61509e4-agent/logs/linux-x64-completed.log",
+      "rust": {
+        "targets": 68,
+        "passed": 1063,
+        "failed": 0,
+        "ignored": 12,
+        "filtered_out": 0
+      },
+      "core": {
+        "passed": 314,
+        "failed": 0,
+        "skipped": 0
+      },
+      "desktop": {
+        "passed": 214,
+        "failed": 0,
+        "skipped": 0,
+        "trx": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-linux-x64/test-results/linux-x64/rendered-controls.trx"
+      },
+      "smoke": {
+        "status": "passed",
+        "backend": "CPU",
+        "ticks": 13,
+        "population": 1,
+        "movement": true,
+        "save_resume": true,
+        "bundled_bots": 48
+      },
+      "assets": {
+        "verified": 48,
+        "mismatches": 0
+      },
+      "native_library": {
+        "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/libdarwinbots_engine.so",
+        "sha256": "F7C5932E8C929BD3A3E6B6BE02F0D0BFD83FA6F3E4E23927ED2125DE90EB723C"
+      }
+    },
+    {
+      "platform": "osx-x64",
+      "log": "output/hosted-main-61509e4-agent/logs/osx-x64-completed.log",
+      "rust": {
+        "targets": 68,
+        "passed": 1063,
+        "failed": 0,
+        "ignored": 12,
+        "filtered_out": 0
+      },
+      "core": {
+        "passed": 314,
+        "failed": 0,
+        "skipped": 0
+      },
+      "desktop": {
+        "passed": 214,
+        "failed": 0,
+        "skipped": 0,
+        "trx": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-x64/test-results/osx-x64/rendered-controls.trx"
+      },
+      "smoke": {
+        "status": "passed",
+        "backend": "CPU",
+        "ticks": 13,
+        "population": 1,
+        "movement": true,
+        "save_resume": true,
+        "bundled_bots": 48
+      },
+      "assets": {
+        "verified": 48,
+        "mismatches": 0
+      },
+      "native_library": {
+        "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/libdarwinbots_engine.dylib",
+        "sha256": "AC7C86D5C8FE25E1AE73CB56E7F43CC5542527A8C3B0CB252ADB899F1F71818E"
+      }
+    },
+    {
+      "platform": "osx-arm64",
+      "log": "output/hosted-main-61509e4-agent/logs/osx-arm64-completed.log",
+      "rust": {
+        "targets": 68,
+        "passed": 1063,
+        "failed": 0,
+        "ignored": 12,
+        "filtered_out": 0
+      },
+      "core": {
+        "passed": 314,
+        "failed": 0,
+        "skipped": 0
+      },
+      "desktop": {
+        "passed": 214,
+        "failed": 0,
+        "skipped": 0,
+        "trx": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-arm64/test-results/osx-arm64/rendered-controls.trx"
+      },
+      "smoke": {
+        "status": "passed",
+        "backend": "CPU",
+        "ticks": 13,
+        "population": 1,
+        "movement": true,
+        "save_resume": true,
+        "bundled_bots": 48
+      },
+      "assets": {
+        "verified": 48,
+        "mismatches": 0
+      },
+      "native_library": {
+        "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/libdarwinbots_engine.dylib",
+        "sha256": "AA0B35BE06515112C074827B84A3EA7EAC93ADF37DAB0B0BB2CC36AF96AD4A2F"
+      }
+    },
+    {
+      "platform": "win-x64",
+      "log": "output/hosted-main-61509e4-agent/logs/win-x64-completed.log",
+      "rust": {
+        "targets": 68,
+        "passed": 1063,
+        "failed": 0,
+        "ignored": 12,
+        "filtered_out": 0
+      },
+      "core": {
+        "passed": 314,
+        "failed": 0,
+        "skipped": 0
+      },
+      "desktop": {
+        "passed": 214,
+        "failed": 0,
+        "skipped": 0,
+        "trx": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-win-x64/test-results/win-x64/rendered-controls.trx"
+      },
+      "smoke": {
+        "status": "passed",
+        "backend": "CPU",
+        "ticks": 13,
+        "population": 1,
+        "movement": true,
+        "save_resume": true,
+        "bundled_bots": 48
+      },
+      "assets": {
+        "verified": 48,
+        "mismatches": 0
+      },
+      "native_library": {
+        "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/darwinbots_engine.dll",
+        "sha256": "F9AEEAE49F0CC441C76CE4C312AF356566206CFA9E296D891061EAFBAA8DE060"
+      }
+    }
+  ],
+  "artifact_index": {
+    "file": "output/hosted-main-61509e4-agent/artifact-file-hashes.json",
+    "sha256": "463791408B9D6DAF0CB16DF43E7550482B188EDB39DE001226745F5E687145E2",
+    "files": 497
+  },
+  "evidence": [
+    {
+      "file": "output/hosted-main-61509e4-agent/artifact-file-hashes.json",
+      "sha256": "463791408B9D6DAF0CB16DF43E7550482B188EDB39DE001226745F5E687145E2",
+      "bytes": 121252
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/api/final-run.json",
+      "sha256": "5119C72BCC2E11F6D0B34C5DC5D3D9DEF1AB305F378D59CF2664AF41FC90CDA4",
+      "bytes": 13136
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/api/final-jobs.json",
+      "sha256": "413C297E3CF348125BD88BC908C188A2F68073D98BC040A27E286C90912DA5F9",
+      "bytes": 13309
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/api/final-artifacts.json",
+      "sha256": "6FF8AC2B2F55446DCF90D70B173E3DF76270E3003D1CA1B0730004B7465C6218",
+      "bytes": 5876
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/rust-target-results.json",
+      "sha256": "B6D87C0299740B81DB2C4B4F85B9AD6E991C7F9D216AECF40EA0D65B8DC58888",
+      "bytes": 247040
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/trx-analysis.json",
+      "sha256": "255A3607DE41EF1C6AA68DDF6C670CD1620C35AB7E5D320BD8F123F6812334E5",
+      "bytes": 258232
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/logs/linux-x64-completed.log",
+      "sha256": "94661E9D29EF15C0B6F4099510D06E6C1BE57E0C4A993F8DA366F086D1C150D4",
+      "bytes": 237797
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/logs/osx-x64-completed.log",
+      "sha256": "9C684AC30DFCDC3CB165658CD236D8A73BEDCA6E1E3AC12E371C28627C95CAD4",
+      "bytes": 243136
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/logs/osx-arm64-completed.log",
+      "sha256": "B84C141E2699D96338CEAAE0DB6131E6B3BE55BF288427008B8D4B6B4E561526",
+      "bytes": 238599
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/logs/win-x64-completed.log",
+      "sha256": "EF9100259F8CCE20C5AFCAFEC0DD45544C00E9808E3A54368E91EED2F91271AA",
+      "bytes": 239194
+    }
+  ],
+  "boundary": "Hosted CPU/package/UI qualification only. The12ignored hardware tests per platform are not physical GPU proof. No complete-port claim."
+}

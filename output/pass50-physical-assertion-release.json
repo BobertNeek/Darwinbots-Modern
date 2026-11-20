@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "status": "Authoring50 complete; ownership released to root for review, formatting, freeze and qualification. No checks executed.",
+  "released_utc": "2026-10-16T16:51:22.384Z",
+  "workspace": "C:/Users/PC/.codex/worktrees/db24832-completion/Darwinbots 2",
+  "source_release_basis": {
+    "batch49_summary": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass49/summary.json",
+    "sha256": "8B0E1F822E060C4C891554B688A044567502C1D568A94213FE2813BC9A289D42",
+    "root_reported_normal_outcomes": "39/39 green; owned workers absent",
+    "all3_before_hashes_match239_retained_baseline": true,
+    "raw_snapshots_created_before_any_source_edit": true
+  },
+  "files": [
+    {
+      "file": "modern/engine/src/world/cached_radius.rs",
+      "before_sha256": "B4ECFF40D0747B71A72E2D41E61D3C0E138D05C2D912244EE27F3AC770D6AECE",
+      "snapshot": "output/pass50-source-before/modern/engine/src/world/cached_radius.rs",
+      "snapshot_sha256": "B4ECFF40D0747B71A72E2D41E61D3C0E138D05C2D912244EE27F3AC770D6AECE",
+      "after_sha256": "21E1FF741E3C15FA33B25834DDA0FB56F3BF90E77E36EAC54774E69A8D91BA4C",
+      "before_bytes": 6301,
+      "after_bytes": 6957,
+      "eol": "CRLF",
+      "exact_single_replacement_static_review": true
+    },
+    {
+      "file": "modern/engine/tests/db24832_starter_movement.rs",
+      "before_sha256": "5FA1B1844CD03F410CE66C8565DB03F23DF8F0D8A6F02D71AE72FF8ABC7A769B",
+      "snapshot": "output/pass50-source-before/modern/engine/tests/db24832_starter_movement.rs",
+      "snapshot_sha256": "5FA1B1844CD03F410CE66C8565DB03F23DF8F0D8A6F02D71AE72FF8ABC7A769B",
+      "after_sha256": "957CFAFCAEBF5CBF8F62ED831F17FBD246AA519B08AD34A2A67DE9C64E435F98",
+      "before_bytes": 3401,
+      "after_bytes": 3550,
+      "eol": "LF",
+      "exact_single_replacement_static_review": true
+    },
+    {
+      "file": "modern/engine/tests/w4_evolution_gpu.rs",
+      "before_sha256": "EA19870DCE03C09DB68CF00A8B7A6BF7499AE6EA5EFF0FE180559EBCE6DD270F",
+      "snapshot": "output/pass50-source-before/modern/engine/tests/w4_evolution_gpu.rs",
+      "snapshot_sha256": "EA19870DCE03C09DB68CF00A8B7A6BF7499AE6EA5EFF0FE180559EBCE6DD270F",
+      "after_sha256": "3CACAB4F43B49312C19D5F373E960AFCE02AAF9A5C329E0E3CB00D776067C497",
+      "before_bytes": 9140,
+      "after_bytes": 9280,
+      "eol": "LF",
+      "exact_single_replacement_static_review": true
+    }
+  ],
+  "delta": [
+    {
+      "file": "modern/engine/src/world/cached_radius.rs",
+      "scope": "Entire module is #[cfg(test)]. Only shared cached-radius assertion helper changes; new receipt/class checks and debug print are inside backend==Gpu branch.",
+      "behavior": "Physical cached-radius case requires named nonempty adapter backend and DiscreteGpu|IntegratedGpu. CPU helper branch unchanged."
+    },
+    {
+      "file": "modern/engine/tests/db24832_starter_movement.rs",
+      "scope": "Only existing backend==Gpu branch in shared starter test helper.",
+      "behavior": "Preserves existing backend/name/backend assertions; adds DiscreteGpu|IntegratedGpu assertion and replaces selected-field print with full Debug receipt. CPU case unchanged."
+    },
+    {
+      "file": "modern/engine/tests/w4_evolution_gpu.rs",
+      "scope": "Only existing ignored physical_gpu_phase2_ecological_differential_has_adapter_receipt test.",
+      "behavior": "Preserves existing backend/name/backend assertions; adds DiscreteGpu|IntegratedGpu assertion and replaces selected-field print with full Debug receipt."
+    }
+  ],
+  "production_delta": "None. No production adapter selection/rejection policy, portable fallback behavior, CPU branch, fixture configuration, selector or test count changes.",
+  "static_review": {
+    "only_expected_single_replacement_per_file": true,
+    "raw_eol_preserved": true,
+    "immutable_receipt_borrow_ends_before_mutating_cached_world": true,
+    "uses_existing_GpuAdapterReceipt_Debug_and_device_type": true,
+    "new_tests": 0,
+    "remaining_physical_ignored_case_count": 12
+  },
+  "activity": {
+    "source_edits": [
+      "modern/engine/src/world/cached_radius.rs",
+      "modern/engine/tests/db24832_starter_movement.rs",
+      "modern/engine/tests/w4_evolution_gpu.rs"
+    ],
+    "new_output": "output/pass50-physical-assertion-release.json",
+    "new_raw_backups": [
+      "output/pass50-source-before/modern/engine/src/world/cached_radius.rs",
+      "output/pass50-source-before/modern/engine/tests/db24832_starter_movement.rs",
+      "output/pass50-source-before/modern/engine/tests/w4_evolution_gpu.rs"
+    ],
+    "other_existing_files_or49_receipts_or_pins_modified": false,
+    "formatter_build_test_clippy_benchmark_parser_Git_apps_UI_executed": false
+  },
+  "verification_remaining": "Root formatting and qualification; actual physical adapter cases have not run during this authoring step."
+}

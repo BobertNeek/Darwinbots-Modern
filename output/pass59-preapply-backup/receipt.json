@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "batch": 59,
+  "created_utc": "2026-10-17T07:23:50.658Z",
+  "base_source_head": "8018c200690ea20d07c2d243138eb7d8f8fc0e7d",
+  "existing_backups": 5,
+  "recorded_absent": 1,
+  "files": [
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/LegacySettingsNativeTests.cs",
+      "base_sha256": "2AD7DB4610A014FEC94B6DA7BEDEFADFCCC0FC09AB7836089A2E149307684080",
+      "base_bytes": 16828,
+      "backup": "output/pass59-preapply-backup/modern/desktop/tests/Darwinbots.Desktop.Tests/LegacySettingsNativeTests.cs"
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml.cs",
+      "base_sha256": "32310F808C1B313A696D0895E455E5B263142702F1904FF327AF4F3616722B51",
+      "base_bytes": 139997,
+      "backup": "output/pass59-preapply-backup/modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml.cs"
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop/Views/GraphSuiteWindow.axaml.cs",
+      "base_sha256": "B3233613BC5D26AA272607D14BED0AC49E6159EB4FD9DF2C2F4064D8097D7930",
+      "base_bytes": 2447,
+      "backup": "output/pass59-preapply-backup/modern/desktop/src/Darwinbots.Desktop/Views/GraphSuiteWindow.axaml.cs"
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/GraphContestRenderedTests.cs",
+      "base_sha256": "BB317DB484F4908EB5F7B5C6E94FD3ADBB3C1F9C4B0CB9437A1FC90E7D0F7C97",
+      "base_bytes": 19752,
+      "backup": "output/pass59-preapply-backup/modern/desktop/tests/Darwinbots.Desktop.Tests/GraphContestRenderedTests.cs"
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs",
+      "base_sha256": "D1CA26C38D13B06FD1D0C97363E78D75DE282E3D00E50F6D408AAB030D605E6F",
+      "base_bytes": 134808,
+      "backup": "output/pass59-preapply-backup/modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs"
+    },
+    {
+      "target": "output/qualify-native-roundtrip-pass59.ps1",
+      "base_sha256": null,
+      "original_absent": true
+    }
+  ],
+  "preserved_unrelated_png_sha256": "44B7419EC76B825F1C307A284BD14A607DC975C1C410857F41A6A66C1E57FAE9"
+}

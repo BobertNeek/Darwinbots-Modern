@@ -1,0 +1,152 @@
+{
+  "schema_version": 1,
+  "batch": 58,
+  "status": "authored_unapplied_released",
+  "base_source_head": "f2a42877fdc15ad8a332dd041c0ce8c6a9bd0d69",
+  "classification": "two fixture contracts contradict the original serial updateshots boundary/return semantics; no production algorithm changes",
+  "sources": [
+    {
+      "file": "Darwinbots2/Shots.bas",
+      "sha256": "5091B7196149EC219A66AC75EE0ED704B68D34F1DB763EDEC77C406ED226D408",
+      "lines": {
+        "serial_visit_and_integrate": "305-410",
+        "current_point_wrap_once_strict_bounds": "948-980",
+        "release_energy": "505-595",
+        "returned_packet_and_allocation": "205-244,265-285",
+        "receive_energy": "721-754"
+      }
+    }
+  ],
+  "failures": [
+    {
+      "target": "modern/engine/tests/toroidal_world.rs",
+      "test": "projectile_wrap_preserves_its_travel_segment",
+      "line": 137,
+      "cause": "Old test requires the newly integrated endpoint inside the world. Original wraps current point once before collision/Euler, allowing post-integration endpoints outside until the next visit."
+    },
+    {
+      "target": "modern/engine/tests/world_systems.rs",
+      "test": "negative_shot_damages_nearest_target_and_records_event",
+      "line": 173,
+      "actual": 2,
+      "expected": 1,
+      "cause": "Original serial array loop visits later-slot return energy packet during the same update and it legitimately hits the attacker. Old fixture counted only incoming feeding impact."
+    }
+  ],
+  "files": [
+    {
+      "target": "modern/engine/tests/toroidal_world.rs",
+      "draft": "output/pass58-drafts/source-shot-boundary-fixtures/modern/engine/tests/toroidal_world.rs",
+      "raw_before": "output/pass58-drafts/source-shot-boundary-fixtures/before/modern/engine/tests/toroidal_world.rs",
+      "base_raw_sha256": "49C24198AD37B669A53D1E08DBB8104D0778007D8F48101D3CFD5BD87C2BF5F4",
+      "base_bytes": 6537,
+      "candidate_raw_sha256": "51A58738322A54EC9ED47A27081165DDBF33262CE829A475CD3018334F811F18",
+      "candidate_bytes": 9006,
+      "rows_before": 7,
+      "rows_after": 7,
+      "other_function_bodies_byte_exact": true,
+      "new_test_rows": 0
+    },
+    {
+      "target": "modern/engine/tests/world_systems.rs",
+      "draft": "output/pass58-drafts/source-shot-boundary-fixtures/modern/engine/tests/world_systems.rs",
+      "raw_before": "output/pass58-drafts/source-shot-boundary-fixtures/before/modern/engine/tests/world_systems.rs",
+      "base_raw_sha256": "82264E4D8C8668DFA2C746121577241ECC94BD2D3F351DC01112C2C6117CCBFD",
+      "base_bytes": 15498,
+      "candidate_raw_sha256": "62900991EE7FDA73424A6302B6DF785094858734CCA0104A1AE5B192DC5D9F6A",
+      "candidate_bytes": 17837,
+      "rows_before": 12,
+      "rows_after": 12,
+      "other_function_bodies_byte_exact": true,
+      "new_test_rows": 0
+    }
+  ],
+  "changes": {
+    "toroidal": [
+      "Keeps valid native pool/owner and initializes exact40-unit shot geometry; launch scatter cannot obscure boundary phase",
+      "Four literal initial/current-start/next-start cases95→95→35,100→100→40,−5→95→35,205→105→45 pin strict inequalities and one-extent correction, not modulo wrapping",
+      "Exact start/end/velocity and age1/2 verify segment length and deferred wrapping across DB3S continuation",
+      "No impact/collision weakening or Legacy profile switch"
+    ],
+    "world_systems": [
+      "Pins source fixed feeding power100 while preserving native serial/default decay route",
+      "Keeps target damaged and shots_fired1 assertions; adds ordered ReleaseEnergy attacker→target then DonateEnergy target→attacker events",
+      "Asserts2impacts/2effects/2nativevisits, target910energy999body0waste and attacker1095energy1000.4body1waste",
+      "Both flashed shot kinds/owners/ages, returned100energy, source range equation and CInt reversed velocity are exact",
+      "DB3S restores exact shot snapshots and actor materials; no tolerance widening or Legacy switch"
+    ]
+  },
+  "source_derived_expectations": {
+    "world_wrap": {
+      "world_extent": 100,
+      "velocity": [
+        40,
+        0
+      ],
+      "cases": [
+        {
+          "position": 95,
+          "start": 95,
+          "end": 135,
+          "next_start": 35,
+          "next_end": 75
+        },
+        {
+          "position": 100,
+          "start": 100,
+          "end": 140,
+          "next_start": 40,
+          "next_end": 80
+        },
+        {
+          "position": -5,
+          "start": 95,
+          "end": 135,
+          "next_start": 35,
+          "next_end": 75
+        },
+        {
+          "position": 205,
+          "start": 105,
+          "end": 145,
+          "next_start": 45,
+          "next_end": 85
+        }
+      ]
+    },
+    "feeding": {
+      "power": 100,
+      "target_initial_energy": 1000,
+      "target_initial_body": 1000,
+      "target_energy_loss": 90,
+      "target_body_loss": 1,
+      "return_energy": 100,
+      "attacker_energy_gain": 95,
+      "attacker_body_gain": 0.4,
+      "attacker_waste_gain": 1,
+      "return_decay_at_age0": "atan(-40)/atan(-40)=1",
+      "return_range": "2*incomingRange+1 from createshot (Range+41)\\40",
+      "return_owner": "target literal robot slot, excluding target but allowing attacker"
+    }
+  },
+  "test_census": {
+    "new_rust_rows": 0,
+    "distinct_rust_targets": 68,
+    "current_union_net_new_rust_rows_vs55": 65,
+    "core": 307,
+    "desktop": 197
+  },
+  "performed": {
+    "static_source_review": true,
+    "active_source_edits": false,
+    "formatter": false,
+    "parser": false,
+    "build": false,
+    "tests": false,
+    "product": false,
+    "git": false,
+    "ui": false,
+    "gpu": false
+  },
+  "original_runtime_observation": "None performed for these fixture edges; expectations are source-derived and require batch58 execution"
+}

@@ -1,0 +1,111 @@
+{
+  "schema_version": 1,
+  "batch": 63,
+  "state": "complete_authored_unapplied_unexecuted_readiness_candidates",
+  "created_utc": "2026-10-17T13:49:49.105Z",
+  "owner": "/root/recover_46_inventory",
+  "base_source_head": "9d9321e4b86d76d18ef5e2c10f6c873ce0446089",
+  "base_source_manifest": {
+    "file": "output/native-roundtrip-pass62-source.json",
+    "sha256": "5F5E901F1B2461D2C9B0A67CC3CDDD45BEE3DC2061120CF12FC33FADF16B72ED",
+    "pins": 661
+  },
+  "files": [
+    {
+      "target_path": "modern/desktop/tests/Darwinbots.Desktop.Tests/FindBestRenderedTests.cs",
+      "new_file": false,
+      "base_sha256": "8A558C6E8CD35CC77DCB9EEB18E7D88CEE62C9333B29AB9F9ED3F9CC8A4CDB9A",
+      "base_bytes": 6559,
+      "candidate_path": "output/pass63-drafts/managed-readiness/candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/FindBestRenderedTests.cs",
+      "candidate_sha256": "7547532BE5530DBB62A78DE27428B6937209768CC8A2F63FF0F101482F15C687",
+      "candidate_bytes": 7709
+    },
+    {
+      "target_path": "modern/desktop/tests/Darwinbots.Desktop.Tests/RuntimeControlSurfaceTests.cs",
+      "new_file": false,
+      "base_sha256": "B9FD23B5202315A5948C2875625803707B158AB126D8D9707BDDA1735042E0A4",
+      "base_bytes": 110291,
+      "candidate_path": "output/pass63-drafts/managed-readiness/candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/RuntimeControlSurfaceTests.cs",
+      "candidate_sha256": "64BC2084001A6FC68C8A8347073A2AF9748A70AA6F81C4E7D4132443D30C1FD7",
+      "candidate_bytes": 111659
+    }
+  ],
+  "scope": {
+    "existing_test_files": 2,
+    "production_files": 0,
+    "new_test_rows": 0,
+    "expected_core": 314,
+    "expected_desktop": 214,
+    "all_original_Fact_Theory_InlineData_attributes_unchanged": true
+  },
+  "failure_evidence": {
+    "file": "docs/parity/evidence/batch-2026-10-14/hosted-diagnostics-9d9321e.json",
+    "sha256": "1FF0545FF6DA856F9121341EE78E0ACA6EC280C74F2BB10D61EC97AC8A3BCFA1",
+    "arm": "FindBest first post-GlobalCancel BEST FAMILY wait failed; actual UI status was not captured.",
+    "intel": "Native196-actor startup LOADED wait exhausted five-second helper; actual status/session/error was not captured. Slow/cold load remains a hypothesis, not a proven product cause."
+  },
+  "contract": {
+    "find_best": "Before Cancel, assert status is not CANCELED. After actual Cancel click, require both OwnedWindowsabsence and fresh actual CANCELED before issuing another command. Exact BEST FAMILY/selected3:2/Zerobot restarted-selection assertions retained. Existing500attempt/20ms/Flush budget unchanged.",
+    "find_best_diagnostics": "Actual Status,SelectedKey,tick,population and GlobalSettings window count are emitted for opening/cancel/selection/startup timeout predicates.",
+    "native_load": "Only LoadedNativeWorldHydratesControlsAndChangingTopologyPreservesItsRules startup invocation supplies30seconds. WaitForoptional timeout leaves all other existing commands at the same five-second default. Loaded281tick/196population/config/species/topology assertions are retained.",
+    "native_errors": "Each load readiness poll immediately fails on OfflineDiagnosticRecovery.LastErrorMessage instead of silently waiting or treating recovery as success. Timeout details include actual Status/session presence/tick/population/last-error tick/message/recovery visibility.",
+    "no_production_change": "No MainWindow or engine/session/router production edits and no new provider/API/fixture data."
+  },
+  "static_readback": {
+    "modern/desktop/tests/Darwinbots.Desktop.Tests/FindBestRenderedTests.cs": {
+      "discovery_attributes_unchanged": true,
+      "original_behavior_assertion_lines_retained": true
+    },
+    "modern/desktop/tests/Darwinbots.Desktop.Tests/RuntimeControlSurfaceTests.cs": {
+      "discovery_attributes_unchanged": true,
+      "original_behavior_assertion_lines_retained": true
+    }
+  },
+  "source_anchors": [
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml.cs",
+      "lines": [
+        890,
+        894,
+        1485,
+        1493,
+        1702,
+        1714
+      ]
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/LegacyMenus/LegacyCommandRouter.cs",
+      "lines": [
+        32,
+        43
+      ]
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/GraphContestRenderedTests.cs",
+      "lines": [
+        169,
+        176
+      ]
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/OfflineDiagnosticRecovery.cs",
+      "lines": [
+        29,
+        31,
+        59,
+        60
+      ]
+    }
+  ],
+  "execution": {
+    "active_apply": false,
+    "powershell_or_CSharp_parser": false,
+    "formatter": false,
+    "builds": false,
+    "tests": false,
+    "product_or_UI": false,
+    "GPU": false,
+    "Git": false
+  },
+  "ownership": "Both candidates released for root/peer review before all63application; root owns combined checks and promotion."
+}

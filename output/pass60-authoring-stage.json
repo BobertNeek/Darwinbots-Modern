@@ -1,0 +1,138 @@
+{
+  "schema_version": 1,
+  "batch": 60,
+  "authored_utc": "2026-10-17T08:00:59.2987273Z",
+  "state": "all_currently_known_code_and_tests_authored_static_reviewed_UNAPPLIED_wait_all59_outcomes",
+  "base_head": "ff50b1a735ef61c6d5d282358da76f2734f64099",
+  "base_source_manifest": "output/native-roundtrip-pass59-source.json",
+  "base_source_manifest_sha256": "583D1DE4880EEE9D312B7B41B2E471CC3A06DEC145EEAE310315136E48DC80DA",
+  "implementation_release": "output/pass60-drafts/manual-find-best/running-boundary/metadata.json",
+  "implementation_release_sha256": "969D2129A72F9DF6AC33D53B1EEFFDFE4CC9A25BCD8EA81277721B13C4885EC0",
+  "qualifier_release": "output/pass60-drafts/qualification/metadata.json",
+  "qualifier_release_sha256": "99190493F1F2303DA1C1592335E2C35D62EFC49743FF96A54FA24FAF68B155D3",
+  "source_files": 15,
+  "existing_targets": 13,
+  "new_targets": 2,
+  "root_static_review": "All14implementation candidates and15target closure reviewed. Source7/8loaded-search-vs9test mapping, Running boundary, failed/no-progress seed preservation, tuple-stale-selection handling, atomic mixed commands, pure query behavior, nullable snapshot compatibility, native/provider/rendered coverage reviewed; no tests/parser/formatter executed.",
+  "expected_distinct_rust_targets": 68,
+  "expected_managed_test_counts": {
+    "core": 309,
+    "desktop": 209
+  },
+  "authored_test_delta": {
+    "rust": 4,
+    "core": 2,
+    "desktop": 3
+  },
+  "files": [
+    {
+      "target": "modern/engine/src/world/staged_evolution.rs",
+      "candidate": "output/pass60-drafts/manual-find-best/running-boundary/candidate/modern/engine/src/world/staged_evolution.rs",
+      "base_sha256": "D41646AD1AFACD9B8C8E5F4BA1E76C88A11B1E30ADEB488E4C9D8D5A8DE6C714",
+      "candidate_sha256": "D02DFBDADAC65E56F0447AF40A80FDDA611956FA60D81661E65BA5371AF6F48F",
+      "new_file": false
+    },
+    {
+      "target": "modern/engine/src/ffi.rs",
+      "candidate": "output/pass60-drafts/manual-find-best/running-boundary/candidate/modern/engine/src/ffi.rs",
+      "base_sha256": "1AB1AD12E3BBAC79E4CB6FC0E89B1CCD9CAD099AE50964750384E489A1C24C66",
+      "candidate_sha256": "80BEF85CB5F99486BAE7BEC2A1571232746C22BC4468D0248F8A22D00200089E",
+      "new_file": false
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop.Core/LocalMode.cs",
+      "candidate": "output/pass60-drafts/manual-find-best/running-boundary/candidate/modern/desktop/src/Darwinbots.Desktop.Core/LocalMode.cs",
+      "base_sha256": "4623BFA212A895CCA24061DDDCF5089E49E7C605042B4CE3ABD710B74E04E2A9",
+      "candidate_sha256": "9EC8342387AB8F72B932D5418C63D99DEE180B6429EBB6467F5239FDE48E655F",
+      "new_file": false
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop.Core/IEngineClient.cs",
+      "candidate": "output/pass60-drafts/manual-find-best/running-boundary/candidate/modern/desktop/src/Darwinbots.Desktop.Core/IEngineClient.cs",
+      "base_sha256": "3CBB7EB300245787CF4F69DBFECE399BFC1AA71F7C35D50871BA0CED49A6449E",
+      "candidate_sha256": "DE26C232704EE8398F1E72662492FAF305706BC9AE7B452C5C2EB0F1B9F46C07",
+      "new_file": false
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop.Core/SimulationSession.cs",
+      "candidate": "output/pass60-drafts/manual-find-best/running-boundary/candidate/modern/desktop/src/Darwinbots.Desktop.Core/SimulationSession.cs",
+      "base_sha256": "1C2BA3E71A069FC0850978DFB94957262F8DBC4AB7F0894535D3E537655F78E2",
+      "candidate_sha256": "086C20DB57C8FD00DDC17DF688982CBD8E06AA3CD9E60C526987F646990B7D73",
+      "new_file": false
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop.Core/NativeSnapshotParser.cs",
+      "candidate": "output/pass60-drafts/manual-find-best/running-boundary/candidate/modern/desktop/src/Darwinbots.Desktop.Core/NativeSnapshotParser.cs",
+      "base_sha256": "1B5D13B9F8CF945AD31DF7C51EC8F75C4D73CA0FF8C15F6424C7B10C6CC0028B",
+      "candidate_sha256": "D4CA5A717DA1240F78B2E0C927E072E1B51FF98BFAC93359C8A727B99F893076",
+      "new_file": false
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop.Core/NativeEngineClient.cs",
+      "candidate": "output/pass60-drafts/manual-find-best/running-boundary/candidate/modern/desktop/src/Darwinbots.Desktop.Core/NativeEngineClient.cs",
+      "base_sha256": "BC9A4ACFC7F84D891FA603B93AD0165E8C577CD299CAC8350BACDDAA2F5B981E",
+      "candidate_sha256": "E2D27190B2165631BA158DF08EE0AB6FB338209D125BC4B76CCEC760D3428A43",
+      "new_file": false
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml.cs",
+      "candidate": "output/pass60-drafts/manual-find-best/running-boundary/candidate/modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml.cs",
+      "base_sha256": "91C05D457EF91E4668CEA84DB6115FFB4C195916E6E80A4CFCF8E04E83FE9FC0",
+      "candidate_sha256": "AAFC0115476B2D750B0D79D1CA707060E0C948DA9031873E7439874D11CFE788",
+      "new_file": false
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/StagedEvolutionTests.cs",
+      "candidate": "output/pass60-drafts/manual-find-best/running-boundary/candidate/modern/desktop/tests/Darwinbots.Desktop.Core.Tests/StagedEvolutionTests.cs",
+      "base_sha256": "3ECE78356C7D8925A2FC68FEB75B325D28E1F274FF901EC6E569107B6FD7AD54",
+      "candidate_sha256": "400223C79262FB215116BE97599E4A1F127B257E2E22014E0EE95E06652B76A4",
+      "new_file": false
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/SimulationSessionTests.cs",
+      "candidate": "output/pass60-drafts/manual-find-best/running-boundary/candidate/modern/desktop/tests/Darwinbots.Desktop.Core.Tests/SimulationSessionTests.cs",
+      "base_sha256": "17651D34D069686ECDAD94524ADAD51E90B3ECA0F44B49632D65A4050C9CD5D0",
+      "candidate_sha256": "65A27AE865E29CC875A49BA89A7C9262766FE23FECCB93062A7508C8878B6952",
+      "new_file": false
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/CommunityLeagueNativeTests.cs",
+      "candidate": "output/pass60-drafts/manual-find-best/running-boundary/candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/CommunityLeagueNativeTests.cs",
+      "base_sha256": "A637955B25785A38FD23FAD7FC0130E0B20763FAE69AFC26DAD58A74C61911BA",
+      "candidate_sha256": "7D69BDB02B6DE1762BCB88655263AD81DE3862DD24BD3F45FF694A4B7D119416",
+      "new_file": false
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs",
+      "candidate": "output/pass60-drafts/manual-find-best/running-boundary/candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs",
+      "base_sha256": "9D696B47A5B5E556DCE77FE5065E03050DE6FBE73F44D6C3184FD86ACA53AA9C",
+      "candidate_sha256": "BA9367A954232B4AC355C463F2043182C87C312E49094465857BB13030BB4BD3",
+      "new_file": false
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/FindBestRenderedTests.cs",
+      "candidate": "output/pass60-drafts/manual-find-best/running-boundary/candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/FindBestRenderedTests.cs",
+      "base_sha256": null,
+      "candidate_sha256": "34154B207147B3B87BA67461F210F42790275D4E26C8E393E01E143F1B6D1E0F",
+      "new_file": true
+    },
+    {
+      "target": "modern/engine/src/world.rs",
+      "candidate": "output/pass60-drafts/manual-find-best/running-boundary/candidate/modern/engine/src/world.rs",
+      "base_sha256": "625FACF1EC60551A1E225340B6BB16FFA6B16348573BA534ED37EB945FF8A3F9",
+      "candidate_sha256": "E58C761BAF4215B264C986360660E852B9686723410EC36612B454F391FAFCED",
+      "new_file": false
+    },
+    {
+      "target": "output/qualify-native-roundtrip-pass60.ps1",
+      "candidate": "output\\pass60-drafts\\qualification\\qualify-native-roundtrip-pass60.ps1",
+      "base_sha256": null,
+      "candidate_sha256": "ECEF31FC682B296C55BC2C2EA94B4F10B0BC03430B71920E99E66044B4286412",
+      "new_file": true
+    }
+  ],
+  "product_tests_or_builds_executed": false,
+  "format_or_parser_executed": false,
+  "application": false,
+  "requires_all59_ordinary_local_and_hosted_terminal_before_application": true
+}

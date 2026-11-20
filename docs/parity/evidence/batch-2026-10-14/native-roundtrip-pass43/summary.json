@@ -1,0 +1,199 @@
+{
+  "state": "Focused physical-continuation target format, lint and link qualified; no new runtime qualification",
+  "source_parent": "655d4a4b16579b63e38ea43f7321b6d10ecef3a2",
+  "source_manifest": "source.json",
+  "source_files": [
+    {
+      "file": "modern/cli/src/probe.rs",
+      "sha256": "759DC5636AA0AE55252FCE18F9B35B6698B571967F872E24F1CF0BC002077E92"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/DnaExportRenderedTests.cs",
+      "sha256": "7A736B76B5018CF411AED897A67A4F948DFB32485C6A3978EF7278E2C128448A"
+    },
+    {
+      "file": "modern/engine/src/world.rs",
+      "sha256": "D60FF1B4004C5D1203B27F82EB75D867C5B675397C2422239BFDDDF4811347A7"
+    },
+    {
+      "file": "modern/engine/tests/gpu_ffi.rs",
+      "sha256": "FAA4EB1541F5AFF913160C95BB125A0A1A8458DEBB540E9E04E9D8492DB25E05"
+    },
+    {
+      "file": "modern/engine/tests/native_continuation_qualification.rs",
+      "sha256": "452548B699D0B9564B8FCCBA38CD3486EEE1A6D179537622B44941827D39CD9C"
+    }
+  ],
+  "completed_utc": "2026-10-15T22:35:00.7638850Z",
+  "qualification_state_receipt": "state.json",
+  "qualification_results_receipt": "results.json",
+  "scope": "Physical continuation assertions and GPU runner admission only; all ordinary CPU functions and engine/Core/desktop/CLI production unchanged",
+  "steps": [
+    {
+      "step": "format-check",
+      "exit_code": 0,
+      "seconds": 2.7866466,
+      "log": "format-check.log",
+      "command": [
+        "cargo.exe",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "log_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "step": "physical-target-clippy",
+      "exit_code": 0,
+      "seconds": 28.1081026,
+      "log": "physical-target-clippy.log",
+      "command": [
+        "cargo.exe",
+        "clippy",
+        "--release",
+        "-p",
+        "darwinbots-engine",
+        "--test",
+        "native_continuation_qualification",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "log_sha256": "A2C65F26C28EDF99FEE7027BD6ECF874FC1FEA9A883F86C6541E6BC83248A201"
+    },
+    {
+      "step": "physical-target-link",
+      "exit_code": 0,
+      "seconds": 257.8174907,
+      "log": "physical-target-link.log",
+      "command": [
+        "cargo.exe",
+        "test",
+        "--release",
+        "-p",
+        "darwinbots-engine",
+        "--test",
+        "native_continuation_qualification",
+        "--no-run"
+      ],
+      "log_sha256": "96CF305D86877D509BD96B69D45D4258EC6F77C544A3E2EAF910D5E86DAFBBC8"
+    }
+  ],
+  "physical_runtime_executed": false,
+  "physical_tests_executed": 0,
+  "ordinary_cpu_tests_executed_in_pass43": 0,
+  "ordinary_cpu_source_projection": {
+    "baseline": "output/pass43-before-native-continuation.rs",
+    "candidate": "modern/engine/tests/native_continuation_qualification.rs",
+    "normalization": "CRLF to LF; trim trailing whitespace at the excluded section boundary only; retain one final newline",
+    "excluded_baseline": "Existing ignored physical test section through end of file",
+    "excluded_candidate": "assert_physical_gpu helper plus modified ignored physical test section through end of file",
+    "baseline_prefix_sha256": "180547D3E6DFCC3AF738B3BC16C36CE1B4542F3F8FD27F680C81E91CA5513D48",
+    "candidate_prefix_sha256": "180547D3E6DFCC3AF738B3BC16C36CE1B4542F3F8FD27F680C81E91CA5513D48",
+    "identical": true,
+    "unchanged_tests": [
+      "modern_save_preserves_double_precision_cost_values_without_a_tick",
+      "original_world_cpu_continuation_preserves_complete_state_across_repeated_saves"
+    ]
+  },
+  "inherited_source": {
+    "baseline": "../native-roundtrip-pass42/source.json",
+    "all_four_previous_pins_unchanged": true,
+    "additional_change": "Integration-test-only helper/assertions; ordinary CPU prefix unchanged",
+    "engine_production_unchanged": true,
+    "core_sources_unchanged": true,
+    "desktop_production_unchanged": true,
+    "cli_production_unchanged": true
+  },
+  "cpu": {
+    "passed": 764,
+    "failed": 0,
+    "inherited": true,
+    "fresh_full_workspace_invocation": false,
+    "newly_run": 0,
+    "retained": 764,
+    "baseline": "../native-roundtrip-pass42/summary.json",
+    "method": "Retain the composed pass42 CPU aggregate through unchanged prior source pins and byte-identical ordinary CPU prefix; pass43 only typechecked/linted/linked the modified test target"
+  },
+  "core": {
+    "passed": 181,
+    "failed": 0,
+    "inherited": true,
+    "baseline": "../native-roundtrip-pass42/summary.json"
+  },
+  "desktop": {
+    "passed": 133,
+    "failed": 0,
+    "inherited": true,
+    "receipt": "../native-roundtrip-pass41/desktop.trx"
+  },
+  "package": {
+    "inherited": true,
+    "receipt": "../native-roundtrip-pass41/summary.json",
+    "native_dll_sha256": "A5B07BF2715B418710FF16BD8AD77D48B63E7D096A4D72197AB5B4379CEC11E8",
+    "baseline": "../native-roundtrip-pass42/summary.json"
+  },
+  "cli": {
+    "production_unchanged": true,
+    "binary_unchanged": true,
+    "binary_sha256": "B112ABF030FB200604453F2101F40B06429AE64F0816811842F1317FE599E4B5",
+    "binary_receipt": "../native-roundtrip-pass42/cli-build-identity.json",
+    "baseline": "../native-roundtrip-pass42/summary.json",
+    "inherited_cpu_cases": 9,
+    "failed": 0,
+    "physical_cli_case_ignored_not_executed": true
+  },
+  "static_runner_review": {
+    "scope": "Independent PowerShell syntax parsing and current file hashes only; no runner execution or runtime behavior qualification",
+    "receipts": [
+      {
+        "file": "output/qualify-gpu-native-repair.ps1",
+        "sha256": "19C467C09A086835BD5CC73145481B86AB84E7929A332A46304946EFFECCF5EF",
+        "parser": "System.Management.Automation.Language.Parser.ParseFile",
+        "parse_errors": 0,
+        "errors": [],
+        "runner_executed": false,
+        "observed_utc": "2026-10-15T22:31:14.8780882Z"
+      },
+      {
+        "file": "output/qualify-capacity-pass42.ps1",
+        "sha256": "7A8DB67935627857D2C8FE78A197804D3DA5888AC4F65389088E26EC19E7286B",
+        "parser": "System.Management.Automation.Language.Parser.ParseFile",
+        "parse_errors": 0,
+        "errors": [],
+        "runner_executed": false,
+        "observed_utc": "2026-10-15T22:31:14.8936881Z"
+      }
+    ],
+    "functional_runtime_verified": false
+  },
+  "physical_continuation_assertions": {
+    "written_and_compiled": true,
+    "runtime_proven": false,
+    "roles_checked": [
+      "continuous initialization",
+      "resumed initialization",
+      "continuous checkpoint",
+      "resumed checkpoint",
+      "every resumed reload including final reload"
+    ],
+    "requires": [
+      "actual Gpu backend",
+      "gpu_available",
+      "no fallback reason",
+      "same-engine adapter receipt",
+      "nonempty adapter name/backend",
+      "DiscreteGpu or IntegratedGpu"
+    ],
+    "retains": "All 10x1000-cycle plan, invariant validation, CPU/GPU snapshots and complete-save equality assertions"
+  },
+  "not_proven": [
+    "physical GPU",
+    "genuine original executable trajectories",
+    "current hosted matrix",
+    "sustained capacity",
+    "visible final walkthrough"
+  ],
+  "parity_complete": false
+}

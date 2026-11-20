@@ -1,0 +1,113 @@
+   Compiling darwinbots-engine v0.1.0 (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\engine)
+   Compiling darwinbots-cli v0.1.0 (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\cli)
+error[E0433]: cannot find `NativeRecordFile` in `crate`
+  --> modern\engine\src\world\native_reproduction.rs:43:32
+   |
+43 |         let mut input = crate::NativeRecordFile::decode(REPRODUCTION_START).unwrap();
+   |                                ^^^^^^^^^^^^^^^^ could not find `NativeRecordFile` in the crate root
+   |
+help: consider importing this struct
+   |
+36 +     use crate::native_binary::NativeRecordFile;
+   |
+help: if you import `NativeRecordFile`, refer to it directly
+   |
+43 -         let mut input = crate::NativeRecordFile::decode(REPRODUCTION_START).unwrap();
+43 +         let mut input = NativeRecordFile::decode(REPRODUCTION_START).unwrap();
+   |
+
+error[E0433]: cannot find `NativeSimulationTail` in `crate`
+  --> modern\engine\src\world\native_reproduction.rs:45:31
+   |
+45 |         let mut tail = crate::NativeSimulationTail::decode(&input.tail).unwrap();
+   |                               ^^^^^^^^^^^^^^^^^^^^ could not find `NativeSimulationTail` in the crate root
+   |
+help: consider importing this struct
+   |
+36 +     use crate::native_binary::NativeSimulationTail;
+   |
+help: if you import `NativeSimulationTail`, refer to it directly
+   |
+45 -         let mut tail = crate::NativeSimulationTail::decode(&input.tail).unwrap();
+45 +         let mut tail = NativeSimulationTail::decode(&input.tail).unwrap();
+   |
+
+error[E0433]: cannot find `NativeValue` in `crate`
+  --> modern\engine\src\world\native_reproduction.rs:51:42
+   |
+51 |             tail.set_value(field, crate::NativeValue::Word(value))
+   |                                          ^^^^^^^^^^^ could not find `NativeValue` in the crate root
+   |
+help: consider importing this enum
+   |
+36 +     use crate::native_binary::NativeValue;
+   |
+help: if you import `NativeValue`, refer to it directly
+   |
+51 -             tail.set_value(field, crate::NativeValue::Word(value))
+51 +             tail.set_value(field, NativeValue::Word(value))
+   |
+
+error[E0616]: field `free_slots` of struct `projectile::ProjectilePool` is private
+   --> modern\engine\src\world\native_shots.rs:491:48
+    |
+491 |             let free_slots = world.projectiles.free_slots.clone();
+    |                                                ^^^^^^^^^^ private field
+
+error[E0616]: field `free_slots` of struct `projectile::ProjectilePool` is private
+   --> modern\engine\src\world\native_shots.rs:516:46
+    |
+516 |                 assert_eq!(state.projectiles.free_slots, expected_free);
+    |                                              ^^^^^^^^^^ private field
+
+error[E0616]: field `free_slots` of struct `projectile::ProjectilePool` is private
+   --> modern\engine\src\world\native_shots.rs:524:52
+    |
+524 |                 let free_slots = state.projectiles.free_slots.clone();
+    |                                                    ^^^^^^^^^^ private field
+
+error[E0616]: field `free_slots` of struct `projectile::ProjectilePool` is private
+   --> modern\engine\src\world\native_shots.rs:526:46
+    |
+526 |                 assert_eq!(state.projectiles.free_slots, free_slots);
+    |                                              ^^^^^^^^^^ private field
+
+error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`
+   --> modern\engine\src\world\native_energy.rs:257:13
+    |
+257 |             NativeProcessCaches {
+    |             ^^^^^^^^^^^^^^^^^^^ missing `repopulation_counter`
+
+error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`
+   --> modern\engine\src\world\native_energy.rs:263:13
+    |
+263 |             NativeProcessCaches {
+    |             ^^^^^^^^^^^^^^^^^^^ missing `repopulation_counter`
+
+error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`
+   --> modern\engine\src\world\native_energy.rs:269:13
+    |
+269 |             NativeProcessCaches {
+    |             ^^^^^^^^^^^^^^^^^^^ missing `repopulation_counter`
+
+error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`
+   --> modern\engine\src\world\native_energy.rs:275:13
+    |
+275 |             NativeProcessCaches {
+    |             ^^^^^^^^^^^^^^^^^^^ missing `repopulation_counter`
+
+error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`
+   --> modern\engine\src\world\native_energy.rs:284:13
+    |
+284 |             NativeProcessCaches {
+    |             ^^^^^^^^^^^^^^^^^^^ missing `repopulation_counter`
+
+error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`
+   --> modern\engine\src\world\native_energy.rs:293:13
+    |
+293 |             NativeProcessCaches {
+    |             ^^^^^^^^^^^^^^^^^^^ missing `repopulation_counter`
+
+Some errors have detailed explanations: E0063, E0433, E0616.
+For more information about an error, try `rustc --explain E0063`.
+error: could not compile `darwinbots-engine` (lib test) due to 13 previous errors

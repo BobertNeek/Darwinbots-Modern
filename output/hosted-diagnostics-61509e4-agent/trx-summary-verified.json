@@ -1,0 +1,683 @@
+{
+  "schema_version": 1,
+  "source_head": "61509e4c8424f751d20c5f34a83c35fc6d8be424",
+  "run_id": 39039127580,
+  "expected_per_platform": 214,
+  "platforms": [
+    {
+      "platform": "linux-x64",
+      "trx": {
+        "file": "output/hosted-diagnostics-61509e4-agent/artifacts/desktop-diagnostics-linux-x64/test-results/rendered-controls.trx",
+        "sha256": "39F87222C7B481BC939ED9653748CBDDE9803286EB9FCF1AFFD493CE2CD15AD2",
+        "bytes": 334194
+      },
+      "counters": {
+        "total": 214,
+        "executed": 214,
+        "passed": 214,
+        "failed": 0,
+        "error": 0,
+        "timeout": 0,
+        "aborted": 0,
+        "inconclusive": 0,
+        "passedButRunAborted": 0,
+        "notRunnable": 0,
+        "notExecuted": 0,
+        "disconnected": 0,
+        "warning": 0,
+        "completed": 0,
+        "inProgress": 0,
+        "pending": 0
+      },
+      "actual_result_rows": 214,
+      "unique_execution_ids": 214,
+      "result_rows_match_counters": true,
+      "full_expected_suite_completed": true,
+      "failed_tests": [],
+      "selected_cases": [
+        {
+          "name": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: True)",
+          "outcome": "Passed",
+          "execution_id": "3ac34ddd-400d-454d-bdd7-d7d53b4b3f59",
+          "duration": "00:00:00.3443923",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.PickedSidecarProfileReachesOnlyItsActualNativeSpeciesAndSelectedExport",
+          "outcome": "Passed",
+          "execution_id": "70f88213-55a7-432c-befb-fc31a825cd72",
+          "duration": "00:00:00.4255080",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.LegacySettingsNativeTests.OriginalExecutableContinuationOfThePortExportLoadsAndSteps",
+          "outcome": "Passed",
+          "execution_id": "50f1ae50-2648-46d2-ac09-36fd6236aec6",
+          "duration": "00:00:07.3123645",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.DnaExportRenderedTests.MainWindowSelectedOrganismExportsExactDnaAndKeepsCanceledRouteInert",
+          "outcome": "Passed",
+          "execution_id": "7f35e87f-e27d-4d90-9788-ae6e6a199cab",
+          "duration": "00:00:01.0070121",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.PopulationSeedingScoresExtinctionThenAutomaticallyRunsTheClassicTournamentAndExportsStartupDna",
+          "outcome": "Passed",
+          "execution_id": "b5501e5a-cc43-44c6-9b38-5b1f6f83edc7",
+          "duration": "00:00:00.0737592",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.UnknownShotUsesOwnerColourAndWritesRenderedReceipt",
+          "outcome": "Passed",
+          "execution_id": "39394b32-9b9c-4292-8ad8-9a8de6eb8cbe",
+          "duration": "00:00:00.0171759",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.InvalidNativeSnapshotTextIsRejectedBeforeTheStorageDestinationIsOpened",
+          "outcome": "Passed",
+          "execution_id": "0dac40bd-c73e-4eea-a8af-15a1e06940fe",
+          "duration": "00:00:00.0601301",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.ExistingDeathParticlesUseArgbPointsWhileCreationIsDisabledAndCorpsesRemainVisible",
+          "outcome": "Passed",
+          "execution_id": "565f4c9b-8ff0-4743-b3d0-932039e421e8",
+          "duration": "00:00:00.0266649",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.NativeLoadRetainsTheProcessHandoffButModernLoadRestoresItsOwnGaussianState(savedHasSpare: False)",
+          "outcome": "Passed",
+          "execution_id": "f233caa9-ab71-49ca-9985-63e5ff435d13",
+          "duration": "00:00:00.1360731",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.OriginalSettingsProfileRemainsAuthoritativeOverAnAdjacentSidecar",
+          "outcome": "Passed",
+          "execution_id": "7a000e02-8cde-45a1-b56f-b5069dd5ad0d",
+          "duration": "00:00:00.1322172",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.SetupKeepsPickedProfileAndOriginalSourcePathOnTheSpeciesDefinition",
+          "outcome": "Passed",
+          "execution_id": "8762ef5a-be39-4155-9901-e002030c327e",
+          "duration": "00:00:00.3683909",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.ResetCapturesTheCurrentSpareOnceAndDoesNotReplayTheOriginalHandoffAfterItClears",
+          "outcome": "Passed",
+          "execution_id": "6671e7e0-0fd6-45a3-8796-3ea7588eb29c",
+          "duration": "00:00:00.3558285",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.NewSimulationRoutesCaptureCurrentSpareAndWireTheReplacementWithTheInjectedServices(useMenu: True)",
+          "outcome": "Passed",
+          "execution_id": "da4abb83-fde2-4d48-a377-1be5e4aee13d",
+          "duration": "00:00:00.4396452",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.NewSimulationRoutesCaptureCurrentSpareAndWireTheReplacementWithTheInjectedServices(useMenu: False)",
+          "outcome": "Passed",
+          "execution_id": "db01bf10-f8a6-4e0c-9625-e1021524bea3",
+          "duration": "00:00:00.3111717",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.CompletedClassicDnaExportUsesTheFolderPickerAndPreservesOriginalFiles",
+          "outcome": "Passed",
+          "execution_id": "4f0bdd93-a1b5-4edf-835b-6cda0f0e99f0",
+          "duration": "00:00:00.9692759",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: False)",
+          "outcome": "Passed",
+          "execution_id": "333248bf-eea9-4d8a-be23-b6fb96b45c92",
+          "duration": "00:00:00.3056559",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.ExplicitEvolutionFileCarriesItsSidecarThroughTheNativeConfigAndSavedSnapshot",
+          "outcome": "Passed",
+          "execution_id": "cf6398b5-7861-4555-ac42-3aed010f7149",
+          "duration": "00:00:00.2901019",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.NativeLoadRetainsTheProcessHandoffButModernLoadRestoresItsOwnGaussianState(savedHasSpare: True)",
+          "outcome": "Passed",
+          "execution_id": "2ea46068-a720-4e21-87e8-c927eb3ab297",
+          "duration": "00:00:00.2038968",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.StartupWithoutASidecarKeepsTheOriginalDefaultSpeciesAndInsertionRoute",
+          "outcome": "Passed",
+          "execution_id": "c990decf-9108-4dc4-b766-7d96be864c8a",
+          "duration": "00:00:00.1307792",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.ShotExistenceAndStorageGateNormalPaintWhileFlashesRemainVisible",
+          "outcome": "Passed",
+          "execution_id": "b130d5b9-0b6c-4cdc-93fc-8f503b2dc918",
+          "duration": "00:00:00.0397262",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.RuntimeControlSurfaceTests.LoadedNativeWorldHydratesControlsAndChangingTopologyPreservesItsRules",
+          "outcome": "Passed",
+          "execution_id": "340cdc17-0504-4029-ad45-7e84c143290e",
+          "duration": "00:00:01.1519535",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.NativeFlashPaletteUsesPreviousPositionAndDisablingImpactsStillDrawsLiveShots",
+          "outcome": "Passed",
+          "execution_id": "60af3bf2-da23-4530-a88c-d89f50cd4460",
+          "duration": "00:00:00.0363040",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.StartupSidecarReachesItsNativeRobotAtTheExactCenterAndSurvivesExportAndSaveResume",
+          "outcome": "Passed",
+          "execution_id": "fce18b60-cb3d-4909-a50f-d8c2436355e3",
+          "duration": "00:00:00.1559864",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.MalformedStartupSidecarFailsBeforeItsDnaImportAndPreservesTheSetupSpecies",
+          "outcome": "Passed",
+          "execution_id": "c7393da1-49ec-4726-b992-c91c834ea492",
+          "duration": "00:00:00.1512244",
+          "message": null,
+          "stack_trace": null
+        }
+      ]
+    },
+    {
+      "platform": "osx-arm64",
+      "trx": {
+        "file": "output/hosted-diagnostics-61509e4-agent/artifacts/desktop-diagnostics-osx-arm64/test-results/rendered-controls.trx",
+        "sha256": "9617A4F0BB083987E3BFA5CB27DE8A3085DF22E6B36D9E7A6BEA29E2A52A9BEE",
+        "bytes": 345038
+      },
+      "counters": {
+        "total": 214,
+        "executed": 214,
+        "passed": 214,
+        "failed": 0,
+        "error": 0,
+        "timeout": 0,
+        "aborted": 0,
+        "inconclusive": 0,
+        "passedButRunAborted": 0,
+        "notRunnable": 0,
+        "notExecuted": 0,
+        "disconnected": 0,
+        "warning": 0,
+        "completed": 0,
+        "inProgress": 0,
+        "pending": 0
+      },
+      "actual_result_rows": 214,
+      "unique_execution_ids": 214,
+      "result_rows_match_counters": true,
+      "full_expected_suite_completed": true,
+      "failed_tests": [],
+      "selected_cases": [
+        {
+          "name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.MalformedStartupSidecarFailsBeforeItsDnaImportAndPreservesTheSetupSpecies",
+          "outcome": "Passed",
+          "execution_id": "12277795-ca0e-431e-899a-d30a5d73939e",
+          "duration": "00:00:00.2747610",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.RuntimeControlSurfaceTests.LoadedNativeWorldHydratesControlsAndChangingTopologyPreservesItsRules",
+          "outcome": "Passed",
+          "execution_id": "4bb47479-6e26-47fe-b9fa-1a7bd7cb193b",
+          "duration": "00:00:01.3955302",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.SetupKeepsPickedProfileAndOriginalSourcePathOnTheSpeciesDefinition",
+          "outcome": "Passed",
+          "execution_id": "e3609b1c-b94f-4a34-8fbe-12560681fbe8",
+          "duration": "00:00:00.1807159",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.UnknownShotUsesOwnerColourAndWritesRenderedReceipt",
+          "outcome": "Passed",
+          "execution_id": "6bba5c4f-7480-41d5-8e9c-a069376c78a2",
+          "duration": "00:00:00.0122797",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.NativeFlashPaletteUsesPreviousPositionAndDisablingImpactsStillDrawsLiveShots",
+          "outcome": "Passed",
+          "execution_id": "90222290-2332-46a0-a9d9-b74a832e3500",
+          "duration": "00:00:00.0226782",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.StartupWithoutASidecarKeepsTheOriginalDefaultSpeciesAndInsertionRoute",
+          "outcome": "Passed",
+          "execution_id": "1df5c55b-2052-4599-bfa7-0492eebd2e79",
+          "duration": "00:00:00.2756300",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.ExplicitEvolutionFileCarriesItsSidecarThroughTheNativeConfigAndSavedSnapshot",
+          "outcome": "Passed",
+          "execution_id": "57070125-85e6-4108-bee1-95b62e23e76a",
+          "duration": "00:00:00.0659071",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.LegacySettingsNativeTests.OriginalExecutableContinuationOfThePortExportLoadsAndSteps",
+          "outcome": "Passed",
+          "execution_id": "96e76eb1-3ccc-49b8-8959-ed9840f49d94",
+          "duration": "00:00:04.9776377",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.ShotExistenceAndStorageGateNormalPaintWhileFlashesRemainVisible",
+          "outcome": "Passed",
+          "execution_id": "c264fe20-c820-4c18-997d-7e52329efdec",
+          "duration": "00:00:00.0280245",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.OriginalSettingsProfileRemainsAuthoritativeOverAnAdjacentSidecar",
+          "outcome": "Passed",
+          "execution_id": "4945e2a5-a084-4679-b3b8-8c6c508a7723",
+          "duration": "00:00:00.0026427",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.NativeLoadRetainsTheProcessHandoffButModernLoadRestoresItsOwnGaussianState(savedHasSpare: False)",
+          "outcome": "Passed",
+          "execution_id": "f5919ba2-872e-49c9-ab13-220f55787036",
+          "duration": "00:00:00.0493389",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.ResetCapturesTheCurrentSpareOnceAndDoesNotReplayTheOriginalHandoffAfterItClears",
+          "outcome": "Passed",
+          "execution_id": "52f7b683-3cc8-4cc6-9fc3-b736737f1caf",
+          "duration": "00:00:00.6320386",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: True)",
+          "outcome": "Passed",
+          "execution_id": "ed00af8e-c288-480a-b202-cf04647aea86",
+          "duration": "00:00:00.5278427",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.DnaExportRenderedTests.MainWindowSelectedOrganismExportsExactDnaAndKeepsCanceledRouteInert",
+          "outcome": "Passed",
+          "execution_id": "bd685081-c79a-4bec-b6b4-b0077f3e8749",
+          "duration": "00:00:00.4888146",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.PopulationSeedingScoresExtinctionThenAutomaticallyRunsTheClassicTournamentAndExportsStartupDna",
+          "outcome": "Passed",
+          "execution_id": "b16f60f5-f800-4dae-9a60-7495423ae328",
+          "duration": "00:00:00.0454100",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.NewSimulationRoutesCaptureCurrentSpareAndWireTheReplacementWithTheInjectedServices(useMenu: False)",
+          "outcome": "Passed",
+          "execution_id": "5b01515f-2103-4416-a919-8741be33013c",
+          "duration": "00:00:00.3537357",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: False)",
+          "outcome": "Passed",
+          "execution_id": "1d1682d0-db71-4f69-8362-291d3a725270",
+          "duration": "00:00:00.8281569",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.NativeLoadRetainsTheProcessHandoffButModernLoadRestoresItsOwnGaussianState(savedHasSpare: True)",
+          "outcome": "Passed",
+          "execution_id": "1ee51bf4-9541-44b3-b3ec-413d13dd8d02",
+          "duration": "00:00:00.0843508",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.ExistingDeathParticlesUseArgbPointsWhileCreationIsDisabledAndCorpsesRemainVisible",
+          "outcome": "Passed",
+          "execution_id": "a926bdf6-fc9e-473a-b029-bc5cdc253a8f",
+          "duration": "00:00:00.0327277",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.InvalidNativeSnapshotTextIsRejectedBeforeTheStorageDestinationIsOpened",
+          "outcome": "Passed",
+          "execution_id": "c6292f7c-14c7-4050-b212-da571bdea73a",
+          "duration": "00:00:00.0448305",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.StartupSidecarReachesItsNativeRobotAtTheExactCenterAndSurvivesExportAndSaveResume",
+          "outcome": "Passed",
+          "execution_id": "65ebbf95-21ce-4d4f-bc73-7647bd349488",
+          "duration": "00:00:00.2161825",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.CompletedClassicDnaExportUsesTheFolderPickerAndPreservesOriginalFiles",
+          "outcome": "Passed",
+          "execution_id": "b35e7402-dfa6-4633-a34f-659b734f6ab0",
+          "duration": "00:00:00.8620653",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.NewSimulationRoutesCaptureCurrentSpareAndWireTheReplacementWithTheInjectedServices(useMenu: True)",
+          "outcome": "Passed",
+          "execution_id": "1af4b704-c49c-4b2e-8e6f-ca7643ee00ff",
+          "duration": "00:00:00.5036427",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.PickedSidecarProfileReachesOnlyItsActualNativeSpeciesAndSelectedExport",
+          "outcome": "Passed",
+          "execution_id": "3c7c8ebf-5c77-48c7-85a7-8b9d96eda7ee",
+          "duration": "00:00:00.3367847",
+          "message": null,
+          "stack_trace": null
+        }
+      ]
+    },
+    {
+      "platform": "osx-x64",
+      "trx": {
+        "file": "output/hosted-diagnostics-61509e4-agent/artifacts/desktop-diagnostics-osx-x64/test-results/rendered-controls.trx",
+        "sha256": "338FDBCA2E73CD844A1E5F4A0C98B6E3F1021A7A104C13AF0E0EB1F9545310F0",
+        "bytes": 345038
+      },
+      "counters": {
+        "total": 214,
+        "executed": 214,
+        "passed": 214,
+        "failed": 0,
+        "error": 0,
+        "timeout": 0,
+        "aborted": 0,
+        "inconclusive": 0,
+        "passedButRunAborted": 0,
+        "notRunnable": 0,
+        "notExecuted": 0,
+        "disconnected": 0,
+        "warning": 0,
+        "completed": 0,
+        "inProgress": 0,
+        "pending": 0
+      },
+      "actual_result_rows": 214,
+      "unique_execution_ids": 214,
+      "result_rows_match_counters": true,
+      "full_expected_suite_completed": true,
+      "failed_tests": [],
+      "selected_cases": [
+        {
+          "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.OriginalSettingsProfileRemainsAuthoritativeOverAnAdjacentSidecar",
+          "outcome": "Passed",
+          "execution_id": "4b23b9a5-e54d-4ce0-b8a0-1d111e49a149",
+          "duration": "00:00:00.1094166",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.UnknownShotUsesOwnerColourAndWritesRenderedReceipt",
+          "outcome": "Passed",
+          "execution_id": "a728c976-f1e2-4450-83be-5877247a73ec",
+          "duration": "00:00:00.0159245",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.PopulationSeedingScoresExtinctionThenAutomaticallyRunsTheClassicTournamentAndExportsStartupDna",
+          "outcome": "Passed",
+          "execution_id": "12c8324f-8196-4509-95d2-90bd056974a9",
+          "duration": "00:00:00.0786342",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.RuntimeControlSurfaceTests.LoadedNativeWorldHydratesControlsAndChangingTopologyPreservesItsRules",
+          "outcome": "Passed",
+          "execution_id": "9c301fbb-09d8-4972-9020-7462f30dff1b",
+          "duration": "00:00:02.3865248",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.DnaExportRenderedTests.MainWindowSelectedOrganismExportsExactDnaAndKeepsCanceledRouteInert",
+          "outcome": "Passed",
+          "execution_id": "e8760c85-7079-4e37-a418-c105582b9aa0",
+          "duration": "00:00:00.1539889",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: True)",
+          "outcome": "Passed",
+          "execution_id": "f92aae11-ab90-4b0c-b06a-109169a6ce0d",
+          "duration": "00:00:00.6783164",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.StartupSidecarReachesItsNativeRobotAtTheExactCenterAndSurvivesExportAndSaveResume",
+          "outcome": "Passed",
+          "execution_id": "c9f72159-3cab-442c-9634-2d76d08959cc",
+          "duration": "00:00:02.7376470",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.NativeFlashPaletteUsesPreviousPositionAndDisablingImpactsStillDrawsLiveShots",
+          "outcome": "Passed",
+          "execution_id": "3c9ed487-b07b-47e4-a35e-9748deda450a",
+          "duration": "00:00:00.0320747",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.InvalidNativeSnapshotTextIsRejectedBeforeTheStorageDestinationIsOpened",
+          "outcome": "Passed",
+          "execution_id": "62164e1c-32b8-40f8-aecb-b8b51b9a428e",
+          "duration": "00:00:00.0849813",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.NativeLoadRetainsTheProcessHandoffButModernLoadRestoresItsOwnGaussianState(savedHasSpare: True)",
+          "outcome": "Passed",
+          "execution_id": "3d9e4cff-ec1e-4e51-a135-3ffca9791b31",
+          "duration": "00:00:00.0999042",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.ExistingDeathParticlesUseArgbPointsWhileCreationIsDisabledAndCorpsesRemainVisible",
+          "outcome": "Passed",
+          "execution_id": "0e5271ca-7f71-4aee-b0b4-d647f5c4fdc1",
+          "duration": "00:00:00.0256106",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.SetupKeepsPickedProfileAndOriginalSourcePathOnTheSpeciesDefinition",
+          "outcome": "Passed",
+          "execution_id": "8c701438-56d5-4475-a778-d1c821e43074",
+          "duration": "00:00:00.3801113",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.ShotExistenceAndStorageGateNormalPaintWhileFlashesRemainVisible",
+          "outcome": "Passed",
+          "execution_id": "1e1b70bc-289a-494c-a639-d070c6d64ece",
+          "duration": "00:00:00.0489134",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.NativeLoadRetainsTheProcessHandoffButModernLoadRestoresItsOwnGaussianState(savedHasSpare: False)",
+          "outcome": "Passed",
+          "execution_id": "d648d961-73e4-435d-add6-93fa2f4299fe",
+          "duration": "00:00:00.1045637",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.ExplicitEvolutionFileCarriesItsSidecarThroughTheNativeConfigAndSavedSnapshot",
+          "outcome": "Passed",
+          "execution_id": "287376ef-5171-4e5e-9235-6a234fe1142d",
+          "duration": "00:00:00.1563971",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.StartupWithoutASidecarKeepsTheOriginalDefaultSpeciesAndInsertionRoute",
+          "outcome": "Passed",
+          "execution_id": "8489f7e9-c675-47ac-8959-c6add85c795c",
+          "duration": "00:00:00.5920754",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.MalformedStartupSidecarFailsBeforeItsDnaImportAndPreservesTheSetupSpecies",
+          "outcome": "Passed",
+          "execution_id": "cc4a2601-3e86-4c89-aece-c73c7d150d3a",
+          "duration": "00:00:00.7416024",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.LegacySettingsNativeTests.OriginalExecutableContinuationOfThePortExportLoadsAndSteps",
+          "outcome": "Passed",
+          "execution_id": "f1f6a3f8-d6a7-47b8-95d0-f376180fb8c4",
+          "duration": "00:00:13.2481864",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.PickedSidecarProfileReachesOnlyItsActualNativeSpeciesAndSelectedExport",
+          "outcome": "Passed",
+          "execution_id": "cf0b97db-7060-45af-8319-248946b06dbb",
+          "duration": "00:00:00.4555904",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.NewSimulationRoutesCaptureCurrentSpareAndWireTheReplacementWithTheInjectedServices(useMenu: True)",
+          "outcome": "Passed",
+          "execution_id": "3f643681-7a7a-4b33-9610-0c7793f03aa8",
+          "duration": "00:00:00.5654697",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: False)",
+          "outcome": "Passed",
+          "execution_id": "3498ba16-2520-46fd-a683-9b653e103bef",
+          "duration": "00:00:00.7647756",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.ResetCapturesTheCurrentSpareOnceAndDoesNotReplayTheOriginalHandoffAfterItClears",
+          "outcome": "Passed",
+          "execution_id": "801b55d5-444a-420a-8303-7c6005a8abcd",
+          "duration": "00:00:00.5757915",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.CompletedClassicDnaExportUsesTheFolderPickerAndPreservesOriginalFiles",
+          "outcome": "Passed",
+          "execution_id": "191d28c9-4207-4495-8d96-e468341e9cc2",
+          "duration": "00:00:01.0973856",
+          "message": null,
+          "stack_trace": null
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.NewSimulationRoutesCaptureCurrentSpareAndWireTheReplacementWithTheInjectedServices(useMenu: False)",
+          "outcome": "Passed",
+          "execution_id": "c0f51c84-de90-4963-9e65-45eed29521b1",
+          "duration": "00:00:00.5007528",
+          "message": null,
+          "stack_trace": null
+        }
+      ]
+    }
+  ]
+}

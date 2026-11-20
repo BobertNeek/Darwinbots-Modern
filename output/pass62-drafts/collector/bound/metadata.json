@@ -1,0 +1,111 @@
+{
+  "schema_version": 1,
+  "batch": 62,
+  "state": "authored_bound_candidate_released_for_root_review_and_execution",
+  "prepared_utc": "2026-10-17T13:45:08.377Z",
+  "operator": "root_only",
+  "source_head": "9d9321e4b86d76d18ef5e2c10f6c873ce0446089",
+  "source_manifest": {
+    "file": "output/native-roundtrip-pass62-source.json",
+    "sha256": "5F5E901F1B2461D2C9B0A67CC3CDDD45BEE3DC2061120CF12FC33FADF16B72ED",
+    "bytes": 113644
+  },
+  "expected_source_pins": 661,
+  "expected_ordinary_outcomes": 94,
+  "expected_distinct_rust_targets": 68,
+  "expected_managed_test_counts": {
+    "core": 314,
+    "desktop": 214
+  },
+  "reviewed_model": {
+    "file": "output/pass61-drafts/collector/artifact-junction-amendment/collect-native-roundtrip-pass61.mjs",
+    "sha256": "D50EC31975DC5977272AA33D6D13C0F97D5A34B4D486475559B1F64D9961F443",
+    "bytes": 48226
+  },
+  "approved_unbound_candidate": {
+    "file": "output/pass62-drafts/collector/unbound/collect-native-roundtrip-pass62.mjs",
+    "sha256": "AB4ED5779365A237D2D196BD3FDEF71567886E47EB2466B2696631F9AA66BA27",
+    "bytes": 49856
+  },
+  "approved_unbound_metadata": {
+    "file": "output/pass62-drafts/collector/unbound/metadata.json",
+    "sha256": "E4E96268ED1EC9BA37012CD6DBB3DB69409FF513D5E3609E9DEA2FBD07664689",
+    "bytes": 3275
+  },
+  "candidate": {
+    "file": "output/pass62-drafts/collector/bound/collect-native-roundtrip-pass62.mjs",
+    "sha256": "83D2BD1F282F1587C4DF97A8D61A385EB2859683BB07D0738983B6ACDA1F1B37",
+    "bytes": 50582
+  },
+  "artifact_junction_realpath": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-audit-20261011-cc16cb4\\target",
+  "literal_build_artifact_bindings": [
+    {
+      "file": "target/release/darwinbots-cli.exe",
+      "realpath": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-audit-20261011-cc16cb4\\target\\release\\darwinbots-cli.exe",
+      "sha256": "73E1B5E7DB4C486B243D4E3597C47502C4F1925C614A657A9C65C04A7D7EA425",
+      "bytes": 12406272
+    },
+    {
+      "file": "target/release/darwinbots_engine.dll",
+      "realpath": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-audit-20261011-cc16cb4\\target\\release\\darwinbots_engine.dll",
+      "sha256": "8F8489A078FF11E801890D581160B17F5B93BD001A871197935A4AF14FEC3988",
+      "bytes": 12479488
+    }
+  ],
+  "identity_receipts": [
+    {
+      "name": "cli-build-identity.json",
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass62/cli-build-identity.json",
+      "sha256": "15EBC714DDEDA96195125AD19F3BDAEF5F0C495049C06868B594349BB563575E",
+      "bytes": 143,
+      "value": {
+        "cli_sha256": "73E1B5E7DB4C486B243D4E3597C47502C4F1925C614A657A9C65C04A7D7EA425",
+        "source": "source.json",
+        "build_exit_code": 0
+      }
+    },
+    {
+      "name": "native-dll-identity-before.json",
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass62/native-dll-identity-before.json",
+      "sha256": "07010644914DB82910BC1CFB17CD988E368604A9D838AEB0EBD84CD3A3993341",
+      "bytes": 258,
+      "value": {
+        "target_release": "8F8489A078FF11E801890D581160B17F5B93BD001A871197935A4AF14FEC3988",
+        "package": "8F8489A078FF11E801890D581160B17F5B93BD001A871197935A4AF14FEC3988",
+        "desktop": "8F8489A078FF11E801890D581160B17F5B93BD001A871197935A4AF14FEC3988"
+      }
+    },
+    {
+      "name": "native-dll-identity.json",
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass62/native-dll-identity.json",
+      "sha256": "07010644914DB82910BC1CFB17CD988E368604A9D838AEB0EBD84CD3A3993341",
+      "bytes": 258,
+      "value": {
+        "target_release": "8F8489A078FF11E801890D581160B17F5B93BD001A871197935A4AF14FEC3988",
+        "package": "8F8489A078FF11E801890D581160B17F5B93BD001A871197935A4AF14FEC3988",
+        "desktop": "8F8489A078FF11E801890D581160B17F5B93BD001A871197935A4AF14FEC3988"
+      }
+    }
+  ],
+  "changes_from_approved_unbound": [
+    "Removed only the explicit unbound-draft throw/comment.",
+    "Replaced the empty artifact allowlist with exactly two actual62 CLI/DLL literals and three raw identity-receipt literals.",
+    "All source/proof/containment, terminal94, runner absence, exact step, protected PNG, and same-byte proof guards remain unchanged.",
+    "Pre-test compiler failure remains separate from executed test counts; actual0emitted targets is not replaced with expected68."
+  ],
+  "future_outputs": [
+    "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass62/rust-target-results.json",
+    "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass62/qualification-summary.json"
+  ],
+  "invocation": "node.exe output/pass62-drafts/collector/bound/collect-native-roundtrip-pass62.mjs --repo \"C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\" --runner-exit-code 1",
+  "execution": {
+    "collector_executed": false,
+    "javascript_parser_executed": false,
+    "formatter_executed": false,
+    "build_or_tests_executed": false,
+    "product_or_ui_or_gpu_executed": false,
+    "git_invoked": false,
+    "current_evidence_sealed": false
+  },
+  "scope": "Authored only. Root must review and execute after its independently collected closed-session exit. No canonical summary.json, CPU-ready marker, hardware admission, or qualification-pass claim is created by this preparation."
+}

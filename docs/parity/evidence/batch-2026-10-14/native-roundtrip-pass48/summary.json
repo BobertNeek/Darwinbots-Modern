@@ -1,0 +1,164 @@
+{
+  "schema_version": 1,
+  "batch": 48,
+  "sealed_utc": "2026-10-16T16:05:35.856Z",
+  "state": "all_normal_outcomes_collected_needs_repair",
+  "local_qualification_passed": false,
+  "source_parent": "dbffdc58787f369e7490461836df7ef677c01e8f",
+  "source_manifest": "source.json",
+  "source_manifest_sha256": "72A065BED92B93569502E75742DE73B211531EA13BBDB65112F280058BF40D9D",
+  "source_files": 76,
+  "source_pins_match_at_release": true,
+  "owned_workers_verified_absent": true,
+  "runner_exit_codes": {
+    "original": null,
+    "recovery": null
+  },
+  "original_runner_preserved_stop": {
+    "state": "stopped_after_complete_Rust_before_Desktop",
+    "artifact": {
+      "file": "target/release/darwinbots-cli.exe",
+      "expected": "0564DE163159269571DAC392DB4966E44A6589E08103E6E407AA23E9635040CA",
+      "actual": "1857F4641F924FB78C378F0A00AD6C9E13EAAAF13D842342751CF41E8DFD9A54"
+    },
+    "other_retained_inputs_unchanged": 108,
+    "source_changed": false
+  },
+  "normal_steps": [
+    {
+      "step": "format-check",
+      "exit_code": 0,
+      "seconds": 3.7478933,
+      "log": "format-check.log"
+    },
+    {
+      "step": "strict-clippy",
+      "exit_code": 101,
+      "seconds": 35.499351,
+      "log": "strict-clippy.log"
+    },
+    {
+      "step": "cpu-workspace",
+      "exit_code": 101,
+      "seconds": 4706.2926941,
+      "log": "cpu-workspace.log"
+    },
+    {
+      "step": "recovery-desktop-test-build",
+      "exit_code": 0,
+      "seconds": 277.8151196,
+      "log": "recovery-desktop-test-build.log"
+    },
+    {
+      "step": "recovery-packaged-native-desktop",
+      "exit_code": 0,
+      "seconds": 118.8121783,
+      "log": "recovery-packaged-native-desktop.log"
+    },
+    {
+      "step": "retained-production-equivalence",
+      "exit_code": 0,
+      "baseline_batch": 47,
+      "recovery_only": true,
+      "byte_identical_source_files": 74,
+      "changed_test_only_files": 2,
+      "core_passed": 234,
+      "assets": 48,
+      "package_smoke_ticks": 13,
+      "strict_zero_fields": 393316
+    }
+  ],
+  "rust_cpu": {
+    "fresh_full_workspace_invocation": true,
+    "targets": 66,
+    "passed": 897,
+    "failed": 3,
+    "ignored": 0,
+    "measured": 0,
+    "filtered_out": 27,
+    "exit_code": 101,
+    "log": "cpu-workspace.log",
+    "log_sha256": "4C854516E7591748F37031D872138408D630CB27719ACD550824E29F600CF5A7",
+    "target_receipt": "rust-target-results.json",
+    "target_receipt_sha256": "8B428FCAB86361603A3F783CD77A50950D69F993047EC6D581FC6945499514C6",
+    "failed_tests": [
+      "test dna_source::tests::actual_file_loader_uses_engine_native_boundary_and_retains_exact_ansi_input ... FAILED",
+      "test ffi::tests::native_text_import_insert_replace_keep_source_coding_and_private_context_across_ffi_clones ... FAILED",
+      "test world::classic_tournament_tests::classic_community_eligibility_checks_actual_native_coding_before_configuration_mutates ... FAILED"
+    ]
+  },
+  "strict_clippy": {
+    "exit_code": 101,
+    "diagnostics": 1,
+    "scope": "test-only LeagueSeries field_reassign_with_default"
+  },
+  "desktop": {
+    "passed": 176,
+    "failed": 0,
+    "skipped": 0,
+    "total": 176,
+    "trx": "desktop.trx",
+    "trx_sha256": "998190E61833BCB1D4230E480BA63EDE15BC5AD6952C43CCE9FEA3A7CE57A076",
+    "exact_native_dll_sha256": "E8211F5EC68D9D33A9348FC30DAC0AFA7A267C2629288F340E16C7A643F958BC"
+  },
+  "long_cpu_targets": [
+    {
+      "name": "db2_starter_ecology",
+      "status": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filtered_out": 0,
+      "duration_seconds": 1552.02
+    },
+    {
+      "name": "native_continuation_qualification",
+      "status": "ok",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filtered_out": 1,
+      "duration_seconds": 262
+    },
+    {
+      "name": "native_mutation_continuation_qualification",
+      "status": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filtered_out": 0,
+      "duration_seconds": 83.14
+    },
+    {
+      "name": "starter_ecology",
+      "status": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filtered_out": 0,
+      "duration_seconds": 626.22
+    }
+  ],
+  "retained47": {
+    "core": {
+      "passed": 234,
+      "failed": 0
+    },
+    "smoke_ticks": 13,
+    "assets": 48,
+    "strict_zero_fields": 393316,
+    "strict_zero_differences": 0,
+    "rust_candidates": 21,
+    "source_projection": "recovery-retained-pass47-equivalence.json",
+    "old_cli_sha256": "0564DE163159269571DAC392DB4966E44A6589E08103E6E407AA23E9635040CA",
+    "current_test_generated_cli_sha256": "1857F4641F924FB78C378F0A00AD6C9E13EAAAF13D842342751CF41E8DFD9A54"
+  },
+  "unrelated_wip_png_sha256": "44B7419EC76B825F1C307A284BD14A607DC975C1C410857F41A6A66C1E57FAE9",
+  "genuine_original_trajectories": 0,
+  "physical_gpu_cases": 0,
+  "followup_batch": 49
+}

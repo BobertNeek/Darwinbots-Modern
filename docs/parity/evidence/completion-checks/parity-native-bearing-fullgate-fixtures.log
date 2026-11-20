@@ -1,0 +1,108 @@
+   Compiling darwinbots-engine v0.1.0 (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\engine)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 26.78s
+     Running tests\contracts.rs (target\debug\deps\contracts-6df69a17db903529.exe)
+
+running 33 tests
+test db2_defaults_are_exposed_by_engine_config ... ok
+test batch_spawn_publishes_one_complete_population_snapshot ... ok
+test db3s_v2_migrates_every_existing_robot_field ... ok
+test db3s_v3_old_save_defaults_standard_mutation_profile ... ok
+test db3s_v3_older_save_defaults_asexual_heredity_and_identity_fields ... ok
+test db3s_v2_accepts_parent_defaulted_field_omissions ... ok
+test db3s_v3_rejects_malformed_standard_mutation_profile ... ok
+test db3s_v3_round_trip_preserves_complete_phase1_state ... ok
+test engine_uses_vm_flow_semantics_for_movement_intents ... ok
+test imports_legacy_dna_and_preserves_user_variables ... ok
+test db3s_v3_round_trip_preserves_nondefault_standard_mutation_profile ... ok
+test db3s_v3_round_trip_preserves_in_flight_toxin_payload ... ok
+test invariant_checker_accepts_slot_reuse_and_seeded_ticks ... ok
+test db3s_v3_missing_toxin_projectile_fields_default_to_aligned_empty_payloads ... ok
+test mutation_free_save_disables_saved_mutations_without_changing_live_engine ... ok
+test db3s_v3_round_trip_preserves_asexual_birth_state ... ok
+test later_toxin_hit_caps_fractional_duration_at_32000 ... ok
+test parser_compiles_symbolic_memory_operands_to_numeric_addresses ... ok
+test db3s_v3_round_trip_preserves_mid_effect_toxin_state ... ok
+test in_flight_toxin_uses_frozen_species_after_owner_species_change ... ok
+test newborn_and_reused_slots_start_without_toxin_effects ... ok
+test save_files_are_versioned_and_round_trip_reference_state ... ok
+test save_version_one_is_rejected_after_db2_state_upgrade ... ok
+test core_06_seeded_repeatability_save_resume_and_atomicity_contract ... ok
+test snapshot_v2_exposes_phase1_telemetry ... ok
+test save_round_trip_preserves_pre_refactor_robot_state_fields ... ok
+test unavailable_gpu_falls_back_to_cpu_when_allowed ... ok
+test unavailable_gpu_is_an_error_when_fallback_is_disabled ... ok
+test unknown_legacy_instruction_becomes_zero_with_location_warning ... ok
+test tick_many_advances_a_batch_and_publishes_the_final_state ... ok
+test review_projection_db3s_v3_resumes_exact_mid_soft_tie_lifecycle ... ok
+test seeded_cpu_ticks_are_reproducible_and_publish_snapshots ... ok
+test db3s_v3_configuration_groups_default_missing_fields_round_trip_and_reject_invalid_atomically ... ok
+
+test result: ok. 33 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.22s
+
+     Running tests\db2_projectiles.rs (target\debug\deps\db2_projectiles-9d8dce0d56cfd0b6.exe)
+
+running 23 tests
+test energy_ammunition_is_capped_to_the_senders_available_energy ... ok
+test db24832_shootval_positive_power_and_negative_range_are_applied_to_spawn ... ok
+test direct_poff_command_does_not_create_a_projectile ... ok
+test firing_creates_a_moving_projectile_instead_of_an_instant_hit_line ... ok
+test energy_packet_applies_db24832_transfer_without_a_live_packet_owner ... ok
+test direct_minus_seven_command_does_not_emit_a_virus ... ok
+test delgene_information_shot_is_inert_without_defensive_poison_return ... ok
+test energy_feeding_request_extracts_target_resources_and_returns_energy_packet ... ok
+test information_shots_cannot_bypass_sexual_reproduction_requirements ... ok
+test newborn_is_immune_to_parent_stream_for_one_tick ... ok
+test lethal_projectile_hit_cannot_be_undone_by_same_tick_photosynthesis ... ok
+test positive_memory_shot_writes_the_target_address ... ok
+test obstacle_intercepts_projectile_before_target ... ok
+test negative_and_zero_information_values_reach_the_requested_memory_address ... ok
+test shot_velocity_inherits_the_firers_actual_velocity ... ok
+test moving_robot_obstacle_edge_preserves_collision_shot_and_drift_invariants ... ok
+test pass_through_shape_allows_a_projectile_to_reach_the_target ... ok
+test shot_formation_spends_the_original_flat_boost_and_ammunition_costs ... ok
+test sperm_shot_fertilizes_without_forcing_reproduction ... ok
+test projectile_moves_once_per_tick_and_expires_after_range ... ok
+test reproductive_projectiles_use_staged_virus_and_sperm_gates ... ok
+test swept_collision_hits_a_bot_between_projectile_endpoints ... ok
+test shot_01_projectile_corpus_covers_moving_target_edges_and_range_decay_boundaries ... ok
+
+test result: ok. 23 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running tests\toroidal_world.rs (target\debug\deps\toroidal_world-7ecdfa3d3beec35b.exe)
+
+running 7 tests
+test shot_inherits_shortest_toroidal_firer_displacement ... ok
+test an_interior_robot_is_not_moved_into_the_border_smudge_band ... ok
+test topology_wraps_x_but_bounds_y_inside_robot_radius_and_smudge ... ok
+test organism_motion_wraps_across_the_world_edge ... ok
+test wrapped_axis_applies_border_smudge_before_integration ... ok
+test projectile_wrap_preserves_its_travel_segment ... ok
+test wrapped_motion_overshoots_then_respawns_on_the_next_cycle_after_save_restore ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests\vm_implicit_conditions.rs (target\debug\deps\vm_implicit_conditions-ce700c98e116c889.exe)
+
+running 2 tests
+test explicit_or_reduces_conditions_before_implicit_and ... ok
+test adjacent_conditions_are_implicitly_anded ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests\world_systems.rs (target\debug\deps\world_systems-e9539efac8326530.exe)
+
+running 12 tests
+test reproduction_creates_child_with_stable_id_and_birth_statistics ... ok
+test sensing_projects_tie_occurrence_reference ... ok
+test sensing_projects_direction_and_aim_occurrence_references ... ok
+test sensing_projects_shoot_occurrence_reference ... ok
+test sensing_writes_nearest_organism_reference_sysvars ... ok
+test late_internal_senses_publish_full_velocity_body_change_daytime_fixed_and_max_velocity ... ok
+test uniform_spatial_index_returns_sorted_nearby_slots ... ok
+test negative_shot_damages_nearest_target_and_records_event ... ok
+test tie_readback_publishes_the_selected_partner_reference_state ... ok
+test reproduction_cluster_defers_mode_blocked_birth_then_rolls_back_greedy_descendant ... ok
+test sensing_projects_focus_reference_occurrences_materials_and_addressed_memory ... ok
+test tie_commands_create_multibot_link_and_share_energy ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s

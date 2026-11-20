@@ -1,0 +1,701 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Darwinbots Modern - Live Settings Prototype</title>
+  <style>
+    :root {
+      --paper: #f5f3ec;
+      --paper-2: #eeece4;
+      --paper-3: #e4e2da;
+      --ink: #111713;
+      --muted: #667069;
+      --line: #c8c8bf;
+      --line-strong: #9fa39b;
+      --green: #3f913c;
+      --green-dark: #27742f;
+      --green-wash: #e1ead8;
+      --cyan: #159fc5;
+      --cyan-dark: #087c9c;
+      --amber: #bc6b18;
+      --amber-wash: #f4e6d3;
+      --red: #b5432d;
+      --panel-width: min(720px, 44vw);
+      --font-ui: "Bahnschrift Condensed", "Arial Narrow", sans-serif;
+      --font-body: "Bahnschrift", "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+
+    body {
+      color: var(--ink);
+      background: var(--paper);
+      font-family: var(--font-body);
+      font-size: 13px;
+    }
+
+    button, input, select { font: inherit; }
+    button { color: inherit; }
+
+    .app {
+      min-width: 760px;
+      height: 100vh;
+      background: var(--paper);
+    }
+
+    .topbar {
+      position: relative;
+      z-index: 50;
+      height: 58px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 0 18px;
+      border-bottom: 1px solid var(--line);
+      background: #faf9f4;
+    }
+
+    .brand {
+      min-width: 204px;
+      font-family: var(--font-ui);
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: .02em;
+    }
+
+    .toolbar { display: flex; align-items: center; gap: 6px; }
+
+    .button {
+      min-height: 31px;
+      padding: 0 12px;
+      border: 1px solid #c3c4bd;
+      border-radius: 2px;
+      background: #d8d7d1;
+      font-family: var(--font-ui);
+      font-weight: 650;
+      letter-spacing: .02em;
+      cursor: pointer;
+    }
+
+    .button:hover { background: #c9cac4; }
+    .button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+    .button.primary { border-color: var(--green-dark); color: white; background: var(--green); }
+    .button.primary:hover { background: var(--green-dark); }
+    .button.ghost { background: transparent; }
+    .button.active { border-color: #6f766d; background: #bfc3ba; }
+
+    .topbar-spacer { flex: 1; }
+
+    .speed-select {
+      height: 31px;
+      min-width: 68px;
+      padding: 0 8px;
+      border: 1px solid var(--line-strong);
+      border-radius: 2px;
+      background: white;
+    }
+
+    .tick-block {
+      min-width: 82px;
+      font-family: var(--font-ui);
+      line-height: 1.05;
+    }
+
+    .eyebrow {
+      display: block;
+      margin-bottom: 4px;
+      color: #313a33;
+      font-family: var(--font-ui);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+    }
+
+    .tick-value { font-size: 18px; font-weight: 800; }
+    .tick-rate { color: var(--muted); font-size: 10px; }
+
+    .runtime-shell {
+      height: calc(100vh - 58px);
+      display: grid;
+      grid-template-columns: 220px minmax(340px, 1fr) 266px;
+      grid-template-rows: minmax(320px, 1fr) 164px 24px;
+      transition: margin-right 260ms cubic-bezier(.2,.8,.2,1);
+    }
+
+    .settings-open .runtime-shell { margin-right: var(--panel-width); }
+
+    .rail, .inspector, .evidence-card, .world {
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      background: #faf9f4;
+    }
+
+    .rail { grid-row: 1; min-width: 0; overflow: hidden; }
+    .section-title {
+      padding: 14px 16px 11px;
+      border-bottom: 1px solid var(--line);
+      font-family: var(--font-ui);
+      font-weight: 800;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+    }
+
+    .species-count {
+      display: flex;
+      justify-content: space-between;
+      padding: 11px 16px;
+      background: var(--green-wash);
+      font-size: 15px;
+    }
+
+    .rail-content { padding: 14px 16px; }
+    .rail-label { margin-bottom: 9px; font-family: var(--font-ui); font-weight: 800; letter-spacing: .12em; }
+    .rail-group { margin-bottom: 9px; border: 1px solid var(--line); background: white; }
+    .rail-group > strong { display: block; padding: 12px; font-family: var(--font-ui); font-size: 15px; }
+    .rail-sub { padding: 10px 12px; border-top: 1px solid var(--line); background: #f4f4ef; }
+    .rail-check { display: flex; gap: 8px; align-items: center; margin: 8px 0; font-family: var(--font-ui); }
+    .rail .button { width: 100%; margin-top: 7px; text-align: left; }
+
+    .world {
+      position: relative;
+      grid-column: 2;
+      grid-row: 1;
+      overflow: hidden;
+      background: #f9f8f3;
+    }
+
+    .world::after {
+      content: "LIVE WORLD  /  DRAG TO PAN  /  SCROLL TO ZOOM";
+      position: absolute;
+      right: 11px;
+      bottom: 9px;
+      padding: 4px 7px;
+      color: #566259;
+      background: rgba(249,248,243,.88);
+      font-family: var(--font-ui);
+      font-size: 10px;
+      letter-spacing: .08em;
+    }
+
+    #world-svg { display: block; width: 100%; height: 100%; }
+
+    .inspector { grid-column: 3; grid-row: 1; overflow: hidden; }
+    .inspector-block { padding: 15px; border-bottom: 1px solid var(--line); }
+    .identity { display: grid; grid-template-columns: 72px 1fr; gap: 14px; align-items: center; }
+    .bot-portrait { width: 66px; height: 66px; border: 2px solid var(--ink); border-radius: 50%; background: #62ad45; }
+    .stable-id { font-family: var(--font-ui); font-size: 21px; font-weight: 800; }
+    .small { color: var(--muted); font-size: 11px; line-height: 1.4; }
+    .energy-bar { height: 4px; margin: 10px 0 9px; background: #ced0c9; }
+    .energy-bar span { display: block; width: 74%; height: 100%; background: var(--green); }
+    .metric-row { display: flex; justify-content: space-between; margin: 9px 0; }
+    .metric-row strong { font-variant-numeric: tabular-nums; }
+    .dna-strip { height: 38px; margin: 8px 0; background: var(--green-wash); overflow: hidden; }
+    .dna-strip::before {
+      content: "";
+      display: block;
+      width: 68%;
+      height: 22px;
+      margin: 8px auto;
+      background: repeating-linear-gradient(90deg, #2f7631 0 8px, #50913c 8px 10px, #387f37 10px 17px);
+    }
+
+    .evidence-strip {
+      grid-column: 1 / 4;
+      grid-row: 2;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1.4fr;
+      min-width: 0;
+    }
+
+    .evidence-card { min-width: 0; padding: 12px 16px; overflow: hidden; }
+    .evidence-card:last-child { border-right: 0; }
+    .sparkline { width: 100%; height: 55px; margin-top: 6px; }
+    .evidence-summary { display: flex; gap: 15px; align-items: baseline; white-space: nowrap; }
+    .evidence-summary strong { font-size: 15px; }
+    .event-list { display: grid; grid-template-columns: 52px 68px 1fr; gap: 4px 8px; font-family: var(--font-ui); font-size: 11px; }
+    .event-list .birth { color: var(--cyan-dark); }
+    .event-list .plant { color: var(--green-dark); }
+    .event-list .impact { color: var(--amber); }
+
+    .statusbar {
+      grid-column: 1 / 4;
+      grid-row: 3;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 10px;
+      border-top: 1px solid #aaa;
+      background: #e5e3db;
+      font-family: var(--font-ui);
+      font-size: 10px;
+      letter-spacing: .05em;
+    }
+
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
+
+    .settings-panel {
+      position: fixed;
+      z-index: 40;
+      top: 58px;
+      right: 0;
+      bottom: 0;
+      width: var(--panel-width);
+      min-width: 590px;
+      display: grid;
+      grid-template-rows: 80px 1fr 58px;
+      border-left: 1px solid var(--line-strong);
+      background: #faf9f4;
+      box-shadow: -12px 0 30px rgba(37,43,38,.08);
+      transform: translateX(101%);
+      transition: transform 260ms cubic-bezier(.2,.8,.2,1);
+    }
+
+    .settings-open .settings-panel { transform: translateX(0); }
+
+    .settings-header {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 18px;
+      align-items: start;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .settings-title { margin: 0 0 5px; font-family: var(--font-ui); font-size: 22px; letter-spacing: .04em; }
+    .settings-subtitle { color: var(--muted); font-size: 11px; }
+    .settings-tick { padding-top: 4px; font-family: var(--font-ui); font-weight: 700; }
+    .close-button { width: 30px; height: 30px; border: 0; background: transparent; cursor: pointer; font-size: 18px; }
+
+    .settings-body {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 140px minmax(0, 1fr);
+    }
+
+    .settings-nav { border-right: 1px solid var(--line); background: #f3f1ea; }
+    .settings-nav button {
+      position: relative;
+      width: 100%;
+      min-height: 62px;
+      padding: 11px 12px 10px 17px;
+      border: 0;
+      border-bottom: 1px solid var(--line);
+      background: transparent;
+      text-align: left;
+      font-family: var(--font-ui);
+      font-weight: 750;
+      line-height: 1.13;
+      letter-spacing: .02em;
+      cursor: pointer;
+    }
+
+    .settings-nav button:hover { background: #ebeae3; }
+    .settings-nav button.active { background: #faf9f4; }
+    .settings-nav button.active::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--green); }
+
+    .settings-content { min-width: 0; min-height: 0; overflow: auto; }
+    .settings-section { display: none; min-height: 100%; padding: 18px 20px 28px; }
+    .settings-section.active { display: block; animation: section-in 180ms ease-out; }
+
+    @keyframes section-in { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+
+    .section-heading { margin: 0 0 15px; font-family: var(--font-ui); font-size: 16px; letter-spacing: .05em; }
+    .section-intro { margin: -7px 0 16px; color: var(--muted); font-size: 11px; line-height: 1.45; }
+
+    .species-table { width: 100%; border-collapse: collapse; border: 1px solid var(--line); background: white; }
+    .species-table th {
+      padding: 8px 7px;
+      border-bottom: 1px solid var(--line);
+      color: #596159;
+      font-family: var(--font-ui);
+      font-size: 9px;
+      letter-spacing: .06em;
+      text-align: left;
+      text-transform: uppercase;
+    }
+    .species-table td { position: relative; padding: 12px 7px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+    .species-table tr:last-child td { border-bottom: 0; }
+    .species-table tr.dirty td:first-child::before { content: ""; position: absolute; left: -1px; top: 0; bottom: 0; width: 3px; background: var(--amber); }
+    .lineage { display: flex; align-items: center; gap: 8px; min-width: 118px; }
+    .lineage-swatch { width: 13px; height: 13px; background: var(--green); }
+    .lineage-swatch.animal { background: var(--cyan); }
+    .changed-label { display: none; margin-top: 5px; color: var(--amber); font-family: var(--font-ui); font-size: 9px; font-weight: 800; letter-spacing: .08em; }
+    tr.dirty .changed-label { display: block; }
+
+    input[type="checkbox"] { width: 17px; height: 17px; accent-color: var(--green); }
+    input[type="range"] { width: 92px; accent-color: var(--green); }
+    input[type="number"], .control-select {
+      height: 30px;
+      border: 1px solid var(--line-strong);
+      border-radius: 2px;
+      background: white;
+      padding: 0 7px;
+    }
+    input[type="number"] { width: 72px; }
+    .range-line { display: flex; align-items: center; gap: 7px; }
+    .range-value { min-width: 36px; font-family: var(--font-ui); font-variant-numeric: tabular-nums; }
+    .event-count { font-family: var(--font-ui); font-variant-numeric: tabular-nums; }
+
+    .switch { position: relative; display: inline-block; width: 35px; height: 19px; }
+    .switch input { position: absolute; opacity: 0; pointer-events: none; }
+    .switch span { position: absolute; inset: 0; border-radius: 12px; background: #9ea39d; cursor: pointer; transition: background 120ms; }
+    .switch span::after { content: ""; position: absolute; top: 3px; left: 3px; width: 13px; height: 13px; border-radius: 50%; background: white; transition: transform 120ms; }
+    .switch input:checked + span { background: var(--green); }
+    .switch input:checked + span::after { transform: translateX(16px); }
+
+    .explanation { margin: 12px 0 18px; color: #565f57; font-size: 11px; line-height: 1.45; }
+    .settings-grid { display: grid; grid-template-columns: minmax(0, 1fr) 145px; gap: 22px; }
+    .rule-heading { margin: 0 0 10px; padding-bottom: 9px; border-bottom: 1px solid var(--line); font-family: var(--font-ui); font-weight: 800; letter-spacing: .06em; }
+    .setting-row { min-height: 44px; display: grid; grid-template-columns: 1fr auto; gap: 14px; align-items: center; border-bottom: 1px solid #deddd6; }
+    .setting-row label:first-child { line-height: 1.25; }
+    .context-column { padding-left: 17px; border-left: 1px solid var(--line); }
+    .context-metric { padding: 9px 0 12px; border-bottom: 1px solid var(--line); }
+    .context-metric strong { display: block; margin-top: 4px; font-family: var(--font-ui); font-size: 16px; }
+    .cyan-text { color: var(--cyan-dark); }
+
+    .form-section { margin-bottom: 24px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 120px; border-top: 1px solid var(--line); }
+    .form-grid .setting-row { display: contents; }
+    .form-grid .setting-row > * { min-height: 45px; display: flex; align-items: center; border-bottom: 1px solid #deddd6; }
+    .form-grid .setting-row > :last-child { justify-content: flex-end; }
+    .wide-range { width: 180px !important; }
+
+    .settings-footer {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 18px;
+      border-top: 1px solid var(--line-strong);
+      background: #f3f1ea;
+      overflow: hidden;
+    }
+    .dirty-summary { display: flex; align-items: center; gap: 9px; margin-right: auto; color: var(--muted); font-size: 11px; }
+    .dirty-dot { width: 8px; height: 8px; border-radius: 50%; background: #858c85; }
+    .dirty-summary.has-changes { color: var(--ink); }
+    .dirty-summary.has-changes .dirty-dot { background: var(--amber); }
+    .apply-sweep { position: absolute; top: 0; bottom: 0; right: 0; width: 6px; background: #8fe486; opacity: 0; }
+    .settings-footer.acknowledge .apply-sweep { animation: acknowledge 650ms ease-out; }
+    @keyframes acknowledge { 0% { opacity: 0; transform: translateX(20px); width: 4px; } 35% { opacity: .9; width: 22px; } 100% { opacity: 0; transform: translateX(-110px); width: 3px; } }
+
+    @media (max-width: 1180px) {
+      :root { --panel-width: min(680px, 62vw); }
+      .settings-open .runtime-shell { margin-right: 0; }
+      .settings-panel { box-shadow: -18px 0 46px rgba(18,24,19,.2); }
+      .brand { min-width: 168px; font-size: 20px; }
+      .toolbar .optional { display: none; }
+    }
+
+    @media (max-width: 760px) {
+      .app { min-width: 0; }
+      .topbar { padding: 0 10px; gap: 7px; }
+      .brand { min-width: 0; font-size: 18px; }
+      .toolbar .hide-small, .speed-select, .tick-block { display: none; }
+      .button { padding: 0 9px; }
+      .runtime-shell { grid-template-columns: 1fr; grid-template-rows: 1fr 135px 24px; }
+      .rail, .inspector { display: none; }
+      .world { grid-column: 1; }
+      .evidence-strip { grid-column: 1; grid-template-columns: 1fr 1fr; }
+      .evidence-card:last-child { display: none; }
+      .statusbar { grid-column: 1; }
+      .settings-panel { width: 100%; min-width: 0; }
+      .settings-body { grid-template-columns: 104px minmax(0,1fr); }
+      .settings-nav button { padding-left: 12px; font-size: 11px; }
+      .settings-section { padding: 15px 12px 24px; }
+      .settings-grid { grid-template-columns: 1fr; }
+      .context-column { padding: 14px 0 0; border-left: 0; border-top: 1px solid var(--line); }
+      .species-table th:nth-child(4), .species-table td:nth-child(4), .species-table th:nth-child(5), .species-table td:nth-child(5) { display: none; }
+      .settings-header { grid-template-columns: 1fr auto; }
+      .settings-tick { display: none; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; }
+    }
+  </style>
+</head>
+<body class="settings-open">
+  <main class="app" aria-label="Darwinbots Modern Live Settings prototype">
+    <header class="topbar">
+      <div class="brand">DARWINBOTS MODERN</div>
+      <div class="toolbar" aria-label="Simulation controls">
+        <button class="button primary" type="button">RUN</button>
+        <button class="button hide-small" type="button">PAUSE</button>
+        <button class="button hide-small" type="button">STEP</button>
+        <button class="button optional" type="button">TURBO</button>
+        <button class="button optional" type="button">IMPORT BOT</button>
+        <button class="button optional" type="button">RESET</button>
+        <button class="button active" id="settings-button" data-testid="settings-button" type="button">SETTINGS</button>
+      </div>
+      <div class="topbar-spacer"></div>
+      <select class="speed-select" aria-label="Simulation speed"><option>1x</option><option>20x</option><option>MAX</option></select>
+      <div class="toolbar"><button class="button optional" type="button">GPU</button><button class="button optional" type="button">SAVE</button><button class="button optional" type="button">LOAD</button></div>
+      <div class="tick-block"><span class="eyebrow">Tick</span><span class="tick-value">14,280</span><div class="tick-rate">388.3 t/s</div></div>
+    </header>
+
+    <div class="runtime-shell">
+      <aside class="rail">
+        <div class="section-title">Species</div>
+        <div class="species-count"><span>Active species</span><strong>2</strong></div>
+        <div class="rail-content">
+          <div class="rail-label">SIMULATION</div>
+          <div class="rail-group"><strong>World</strong><div class="rail-sub">
+            <label class="rail-check"><input type="checkbox" checked> TOROIDAL WORLD</label>
+            <label class="rail-check"><input type="checkbox"> RENDER WASTE</label>
+            <button class="button" type="button">+ OBSTACLE</button>
+            <button class="button" type="button">+ TELEPORTER</button>
+            <button class="button" type="button">REMOVE FEATURE</button>
+          </div></div>
+          <div class="rail-group"><strong>Physics</strong></div>
+          <div class="rail-group"><strong>Senses</strong></div>
+          <div class="rail-group"><strong>Energy</strong></div>
+        </div>
+      </aside>
+
+      <section class="world" aria-label="Simulation world">
+        <svg id="world-svg" viewBox="0 0 900 620" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Darwinbots organisms in a gridded world">
+          <defs>
+            <pattern id="grid" width="58" height="58" patternUnits="userSpaceOnUse"><path d="M 58 0 L 0 0 0 58" fill="none" stroke="#dedfd9" stroke-width="1"/></pattern>
+          </defs>
+          <rect width="900" height="620" fill="#faf9f5"/>
+          <rect width="900" height="620" fill="url(#grid)"/>
+          <g id="bots-layer"></g>
+          <rect x="46" y="50" width="58" height="58" fill="#b8bbb5" stroke="#6f766f" stroke-width="2"/>
+          <rect x="770" y="485" width="48" height="48" fill="#b8bbb5" stroke="#6f766f" stroke-width="2"/>
+        </svg>
+      </section>
+
+      <aside class="inspector">
+        <div class="section-title">Organism</div>
+        <div class="inspector-block identity"><div class="bot-portrait"></div><div><span class="eyebrow">Stable ID</span><div class="stable-id">3:27</div><div class="small">Selected organism follows stable slot:generation identity</div></div></div>
+        <div class="inspector-block"><span class="eyebrow">Energy</span><div class="energy-bar"><span></span></div><div class="metric-row"><span>Current reserve</span><strong>742</strong></div></div>
+        <div class="inspector-block"><span class="eyebrow">DNA</span><div class="dna-strip"></div><button class="button" style="width:100%" type="button">EDIT / EXPORT DNA</button></div>
+        <div class="inspector-block"><span class="eyebrow">State</span><div class="metric-row"><span>Age</span><strong>24</strong></div><div class="metric-row"><span>Species</span><strong>Alga Minimalis</strong></div><div class="metric-row"><span>Body</span><strong>108</strong></div><div class="metric-row"><span>Waste</span><strong>3</strong></div><div class="metric-row"><span>Generation</span><strong>182</strong></div></div>
+      </aside>
+
+      <section class="evidence-strip">
+        <div class="evidence-card"><span class="eyebrow">Population</span><svg class="sparkline" viewBox="0 0 300 55" preserveAspectRatio="none"><polyline fill="none" stroke="#439442" stroke-width="2" points="0,39 18,33 35,35 54,25 71,29 88,18 105,22 124,17 141,27 160,21 178,24 195,14 214,20 231,10 249,18 269,15 285,22 300,16"/><polyline fill="none" stroke="#149fc5" stroke-width="2" points="0,46 25,44 50,47 75,42 100,45 125,44 150,47 175,39 200,43 225,42 250,36 275,39 300,37"/></svg><div class="evidence-summary"><strong>392 organisms</strong><span>BIRTH 11</span><span>DEATH 7</span></div></div>
+        <div class="evidence-card"><span class="eyebrow">Energy</span><svg class="sparkline" viewBox="0 0 300 55" preserveAspectRatio="none"><polyline fill="none" stroke="#e38116" stroke-width="2" points="0,44 20,37 40,40 60,28 80,30 100,24 120,27 140,18 160,20 180,14 200,16 220,11 240,17 260,13 280,19 300,15"/></svg><div class="evidence-summary"><strong>5,842 total</strong><span>IMPACT 4</span><span>PLANT 98</span></div></div>
+        <div class="evidence-card"><span class="eyebrow">Event log</span><div class="event-list"><span>14,280</span><span class="plant">PLANT</span><span>+8 (Alga Minimalis)</span><span>14,279</span><span class="birth">BIRTH</span><span>(Animal Minimalis)</span><span>14,278</span><span class="impact">IMPACT</span><span>-12 (Animal Minimalis)</span><span>14,276</span><span class="plant">HARVEST</span><span>+6 (Alga Minimalis)</span></div></div>
+      </section>
+      <footer class="statusbar"><span>WORLD READY - 2 SPECIES</span><span class="status-dot"></span></footer>
+    </div>
+
+    <aside class="settings-panel" id="settings-panel" data-testid="settings-panel" aria-label="Live Settings">
+      <header class="settings-header">
+        <div><h1 class="settings-title">LIVE SETTINGS</h1><div class="settings-subtitle">Changes apply without restarting the world.</div></div>
+        <div class="settings-tick">TICK&nbsp;&nbsp;14,280</div>
+        <button class="close-button" id="close-settings" data-testid="close-settings" type="button" aria-label="Close settings">X</button>
+      </header>
+
+      <div class="settings-body">
+        <nav class="settings-nav" aria-label="Live Settings sections">
+          <button class="active" type="button" data-section="species" data-testid="nav-species">SPECIES<br>+ MUTATION</button>
+          <button type="button" data-section="environment" data-testid="nav-environment">ENVIRONMENT<br>+ ENERGY</button>
+          <button type="button" data-section="physics" data-testid="nav-physics">PHYSICS +<br>INTERACTIONS</button>
+          <button type="button" data-section="world" data-testid="nav-world">WORLD</button>
+          <button type="button" data-section="runtime" data-testid="nav-runtime">RUNTIME<br>+ DISPLAY</button>
+        </nav>
+
+        <div class="settings-content">
+          <section class="settings-section active" data-panel="species">
+            <h2 class="section-heading">SPECIES + MUTATION</h2>
+            <p class="section-intro">Tune each lineage while the simulation continues. Mutation changes affect future cycles immediately after Apply.</p>
+            <table class="species-table">
+              <thead><tr><th>Species / lineage</th><th>Enabled</th><th>Mutation rate</th><th>Events</th><th>Reseed</th><th>Min pop</th></tr></thead>
+              <tbody>
+                <tr data-species-row="alga"><td><div class="lineage"><span class="lineage-swatch"></span><span>Alga Minimalis</span></div><span class="changed-label">CHANGED</span></td><td><input id="enabled-alga" data-setting type="checkbox" checked aria-label="Enable Alga Minimalis"></td><td><div class="range-line"><input id="mutation-alga" data-testid="mutation-alga" data-setting type="range" min="0" max="10" step="0.1" value="0.5"><span class="range-value" data-output="mutation-alga">0.5%</span></div></td><td class="event-count">12,342</td><td><label class="switch"><input id="reseed-alga" data-setting type="checkbox"><span></span></label></td><td><input id="minpop-alga" data-setting type="number" min="0" value="10" aria-label="Alga minimum population"></td></tr>
+                <tr data-species-row="animal"><td><div class="lineage"><span class="lineage-swatch animal"></span><span>Animal Minimalis</span></div><span class="changed-label">CHANGED</span></td><td><input id="enabled-animal" data-setting type="checkbox" checked aria-label="Enable Animal Minimalis"></td><td><div class="range-line"><input id="mutation-animal" data-testid="mutation-animal" data-setting type="range" min="0" max="10" step="0.1" value="1"><span class="range-value" data-output="mutation-animal">1.0%</span></div></td><td class="event-count">8,791</td><td><label class="switch"><input id="reseed-animal" data-setting type="checkbox" checked><span></span></label></td><td><input id="minpop-animal" data-setting type="number" min="0" value="20" aria-label="Animal minimum population"></td></tr>
+              </tbody>
+            </table>
+            <p class="explanation">1.0% approximates one point-mutation chance per 5,000 bases per cycle. Continuous events are independent of reproduction.</p>
+            <div class="settings-grid">
+              <div><div class="rule-heading">MUTATION BEHAVIOR</div>
+                <div class="setting-row"><label for="continuous-mutation">Continuous lifetime mutation</label><label class="switch"><input id="continuous-mutation" data-setting type="checkbox" checked><span></span></label></div>
+                <div class="setting-row"><label for="reproduction-mutation">Reproduction mutation</label><label class="switch"><input id="reproduction-mutation" data-setting type="checkbox" checked><span></span></label></div>
+                <div class="setting-row"><label for="automatic-speciation">Automatic speciation</label><label class="switch"><input id="automatic-speciation" data-setting type="checkbox" checked><span></span></label></div>
+                <div class="setting-row"><label for="genetic-threshold">Genetic distance threshold (%)</label><input id="genetic-threshold" data-setting type="number" min="1" max="100" step="0.5" value="20"></div>
+              </div>
+              <aside class="context-column"><div class="rule-heading">LIVE EFFECT</div><div class="context-metric"><span class="small">Estimated event rate</span><strong id="estimated-rate">~8.79 / tick</strong><span class="small">at current population</span></div><div class="context-metric"><span class="small">Selected lineage</span><strong class="cyan-text">Animal Minimalis</strong></div><div class="context-metric"><span class="small">Mutation events</span><strong>8,791</strong></div></aside>
+            </div>
+          </section>
+
+          <section class="settings-section" data-panel="environment">
+            <h2 class="section-heading">ENVIRONMENT + ENERGY</h2><p class="section-intro">Balance energy sources, metabolism, waste, and vegetable carrying capacity while the world runs.</p>
+            <div class="form-section"><div class="rule-heading">ENERGY ECONOMY</div><div class="form-grid">
+              <div class="setting-row"><label for="sunlight">Sunlight intensity</label><div><input class="wide-range" id="sunlight" data-setting type="range" min="0" max="200" value="100"></div></div>
+              <div class="setting-row"><label for="metabolism">Metabolism per tick</label><div><input id="metabolism" data-setting type="number" step="0.01" value="0"></div></div>
+              <div class="setting-row"><label for="veg-bonus">Vegetable compatibility bonus</label><div><input id="veg-bonus" data-setting type="number" value="0"></div></div>
+              <div class="setting-row"><label for="waste-enabled">Waste simulation</label><div><label class="switch"><input id="waste-enabled" data-setting type="checkbox" checked><span></span></label></div></div>
+            </div></div>
+            <div class="form-section"><div class="rule-heading">POPULATION PRESSURE</div><div class="form-grid">
+              <div class="setting-row"><label for="veg-cap">Vegetable cap</label><div><input id="veg-cap" data-setting type="number" value="500"></div></div>
+              <div class="setting-row"><label for="reseed-threshold">Automatic reseed below</label><div><input id="reseed-threshold" data-setting type="number" value="10"></div></div>
+            </div></div>
+          </section>
+
+          <section class="settings-section" data-panel="physics">
+            <h2 class="section-heading">PHYSICS + INTERACTIONS</h2><p class="section-intro">Physical forces and interaction costs update at the next safe phase boundary.</p>
+            <div class="form-section"><div class="rule-heading">MOTION</div><div class="form-grid">
+              <div class="setting-row"><label for="brownian">Brownian motion</label><div><input class="wide-range" id="brownian" data-setting type="range" min="0" max="100" value="0"></div></div>
+              <div class="setting-row"><label for="max-velocity">Maximum velocity</label><div><input id="max-velocity" data-setting type="number" value="180"></div></div>
+              <div class="setting-row"><label for="movement-efficiency">Movement efficiency</label><div><input id="movement-efficiency" data-setting type="number" step="0.01" value="0.66"></div></div>
+              <div class="setting-row"><label for="gravity-y">Gravity Y</label><div><input id="gravity-y" data-setting type="number" value="0"></div></div>
+              <div class="setting-row"><label for="friction">Kinetic friction</label><div><input id="friction" data-setting type="number" step="0.1" value="0.4"></div></div>
+            </div></div>
+          </section>
+
+          <section class="settings-section" data-panel="world">
+            <h2 class="section-heading">WORLD</h2><p class="section-intro">World topology and capacity settings. Capacity can grow only within the engine reserve allocated at world creation.</p>
+            <div class="form-section"><div class="rule-heading">TOPOLOGY</div><div class="form-grid">
+              <div class="setting-row"><label for="toroidal">Toroidal world</label><div><label class="switch"><input id="toroidal" data-setting type="checkbox" checked><span></span></label></div></div>
+              <div class="setting-row"><label for="population-cap">Population ceiling</label><div><input id="population-cap" data-setting type="number" value="25000"></div></div>
+              <div class="setting-row"><label>World size</label><div><span>16000 x 12000</span></div></div>
+            </div></div>
+          </section>
+
+          <section class="settings-section" data-panel="runtime">
+            <h2 class="section-heading">RUNTIME + DISPLAY</h2><p class="section-intro">Throttle simulation, control snapshot cadence, and tune diagnostic rendering independently from simulation speed.</p>
+            <div class="form-section"><div class="rule-heading">EXECUTION</div><div class="form-grid">
+              <div class="setting-row"><label for="runtime-speed">Simulation speed</label><div><select id="runtime-speed" data-setting class="control-select"><option>Maximum</option><option>20x</option><option>1x</option></select></div></div>
+              <div class="setting-row"><label for="snapshot-rate">Viewport snapshot rate</label><div><select id="snapshot-rate" data-setting class="control-select"><option>60 FPS</option><option>30 FPS</option><option>15 FPS</option></select></div></div>
+              <div class="setting-row"><label for="render-vision">Render vision cones</label><div><label class="switch"><input id="render-vision" data-setting type="checkbox" checked><span></span></label></div></div>
+              <div class="setting-row"><label for="render-shots">Render shots</label><div><label class="switch"><input id="render-shots" data-setting type="checkbox" checked><span></span></label></div></div>
+              <div class="setting-row"><label for="render-waste">Render waste particles</label><div><label class="switch"><input id="render-waste" data-setting type="checkbox"><span></span></label></div></div>
+            </div></div>
+          </section>
+        </div>
+      </div>
+
+      <footer class="settings-footer" data-testid="settings-footer">
+        <div class="dirty-summary" id="dirty-summary" data-testid="dirty-summary"><span class="dirty-dot"></span><span id="dirty-text">No unapplied changes</span></div>
+        <button class="button ghost" id="cancel-settings" data-testid="cancel-settings" type="button">CANCEL</button>
+        <button class="button primary" id="apply-settings" data-testid="apply-settings" type="button" disabled>APPLY CHANGES</button>
+        <span class="apply-sweep" aria-hidden="true"></span>
+      </footer>
+    </aside>
+  </main>
+
+  <script>
+    (() => {
+      const body = document.body;
+      const settingsButton = document.getElementById('settings-button');
+      const closeButton = document.getElementById('close-settings');
+      const panel = document.getElementById('settings-panel');
+      const navButtons = [...document.querySelectorAll('.settings-nav button')];
+      const panels = [...document.querySelectorAll('.settings-section')];
+      const settings = [...document.querySelectorAll('[data-setting]')];
+      const applyButton = document.getElementById('apply-settings');
+      const cancelButton = document.getElementById('cancel-settings');
+      const dirtySummary = document.getElementById('dirty-summary');
+      const dirtyText = document.getElementById('dirty-text');
+      const footer = document.querySelector('.settings-footer');
+      const baseline = new Map();
+
+      const valueOf = input => input.type === 'checkbox' ? input.checked : input.value;
+      const captureBaseline = () => settings.forEach(input => baseline.set(input.id, valueOf(input)));
+
+      const updateRangeOutput = input => {
+        const output = document.querySelector(`[data-output="${input.id}"]`);
+        if (output) output.textContent = Number(input.value).toFixed(1) + '%';
+        if (input.id === 'mutation-animal') {
+          document.getElementById('estimated-rate').textContent = '~' + (8.79 * Number(input.value)).toFixed(2) + ' / tick';
+        }
+      };
+
+      const refreshDirtyState = () => {
+        const dirty = settings.filter(input => String(valueOf(input)) !== String(baseline.get(input.id)));
+        document.querySelectorAll('[data-species-row]').forEach(row => {
+          const key = row.dataset.speciesRow;
+          row.classList.toggle('dirty', dirty.some(input => input.id.endsWith('-' + key)));
+        });
+        dirtySummary.classList.toggle('has-changes', dirty.length > 0);
+        dirtyText.textContent = dirty.length ? `${dirty.length} unapplied ${dirty.length === 1 ? 'change' : 'changes'}` : 'No unapplied changes';
+        applyButton.disabled = dirty.length === 0;
+      };
+
+      settings.forEach(input => {
+        input.addEventListener('input', () => { updateRangeOutput(input); refreshDirtyState(); });
+        input.addEventListener('change', () => { updateRangeOutput(input); refreshDirtyState(); });
+      });
+
+      navButtons.forEach(button => button.addEventListener('click', () => {
+        navButtons.forEach(item => item.classList.toggle('active', item === button));
+        panels.forEach(item => item.classList.toggle('active', item.dataset.panel === button.dataset.section));
+      }));
+
+      const setPanelOpen = open => {
+        body.classList.toggle('settings-open', open);
+        settingsButton.classList.toggle('active', open);
+        settingsButton.setAttribute('aria-expanded', String(open));
+        panel.setAttribute('aria-hidden', String(!open));
+      };
+
+      settingsButton.addEventListener('click', () => setPanelOpen(!body.classList.contains('settings-open')));
+      closeButton.addEventListener('click', () => setPanelOpen(false));
+
+      cancelButton.addEventListener('click', () => {
+        settings.forEach(input => {
+          if (input.type === 'checkbox') input.checked = baseline.get(input.id);
+          else input.value = baseline.get(input.id);
+          updateRangeOutput(input);
+        });
+        refreshDirtyState();
+      });
+
+      applyButton.addEventListener('click', () => {
+        if (applyButton.disabled) return;
+        captureBaseline();
+        refreshDirtyState();
+        footer.classList.remove('acknowledge');
+        void footer.offsetWidth;
+        footer.classList.add('acknowledge');
+        dirtyText.textContent = 'Applied at tick 14,280';
+        window.setTimeout(() => { if (!dirtySummary.classList.contains('has-changes')) dirtyText.textContent = 'No unapplied changes'; }, 1800);
+      });
+
+      const botsLayer = document.getElementById('bots-layer');
+      const ns = 'http://www.w3.org/2000/svg';
+      const random = (() => { let seed = 918273; return () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296); })();
+      const colors = ['#5fae45','#58a842','#64b24b','#159fc5','#1ba7c8','#168fb0','#727873'];
+      for (let i = 0; i < 88; i++) {
+        const x = 24 + random() * 850;
+        const y = 24 + random() * 570;
+        const animal = i % 5 === 0;
+        const r = animal ? 5 + random() * 5 : 4 + random() * 8;
+        if (animal && i % 2 === 0) {
+          const cone = document.createElementNS(ns, 'path');
+          const angle = random() * Math.PI * 2;
+          const spread = .45;
+          const length = 34 + random() * 30;
+          const ax = x + Math.cos(angle - spread) * length;
+          const ay = y + Math.sin(angle - spread) * length;
+          const bx = x + Math.cos(angle + spread) * length;
+          const by = y + Math.sin(angle + spread) * length;
+          cone.setAttribute('d', `M ${x} ${y} L ${ax} ${ay} A ${length} ${length} 0 0 1 ${bx} ${by} Z`);
+          cone.setAttribute('fill', i % 4 ? '#c9edf5' : '#dfeacd');
+          cone.setAttribute('fill-opacity', '.55');
+          cone.setAttribute('stroke', animal ? '#54bad2' : '#8db983');
+          cone.setAttribute('stroke-width', '1');
+          botsLayer.appendChild(cone);
+        }
+        const circle = document.createElementNS(ns, 'circle');
+        circle.setAttribute('cx', x); circle.setAttribute('cy', y); circle.setAttribute('r', r);
+        circle.setAttribute('fill', colors[i % colors.length]);
+        circle.setAttribute('stroke', animal ? '#075d73' : '#275e2b');
+        circle.setAttribute('stroke-width', animal ? '2' : '1.5');
+        botsLayer.appendChild(circle);
+      }
+
+      captureBaseline();
+      settings.forEach(updateRangeOutput);
+      refreshDirtyState();
+      setPanelOpen(true);
+    })();
+  </script>
+</body>
+</html>

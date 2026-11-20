@@ -1,0 +1,43 @@
+[
+  {
+    "step": "format-check",
+    "exit_code": 0,
+    "seconds": 2.9010028,
+    "log": "format-check.log"
+  },
+  {
+    "step": "strict-clippy",
+    "exit_code": 0,
+    "seconds": 105.1327207,
+    "log": "strict-clippy.log"
+  },
+  {
+    "step": "affected-rust-cpu",
+    "exit_code": 0,
+    "seconds": 642.1354334,
+    "log": "affected-rust-cpu.log"
+  },
+  {
+    "step": "desktop-test-build",
+    "exit_code": 0,
+    "seconds": 32.9309768,
+    "log": "desktop-test-build.log"
+  },
+  {
+    "step": "windows-publish",
+    "exit_code": 0,
+    "seconds": 18.2804632,
+    "log": "windows-publish.log"
+  },
+  {
+    "step": "package-smoke",
+    "exit_code": 0,
+    "log": "package-smoke.json"
+  },
+  {
+    "step": "packaged-native-desktop",
+    "exit_code": 0,
+    "seconds": 143.0510835,
+    "log": "packaged-native-desktop.log"
+  }
+]

@@ -1,0 +1,175 @@
+{
+  "schema_version": 1,
+  "batch": 58,
+  "state": "all_code_and_tests_applied_before_checks",
+  "utc": "2026-10-17T06:00:48.5315828Z",
+  "all_code_authored_utc": "2026-10-17T06:00:32.9989115Z",
+  "source_head": "f2a42877fdc15ad8a332dd041c0ce8c6a9bd0d69",
+  "plan": "output/pass58-authoring-plan-final.json",
+  "plan_sha256": "3E595749F03421C3A8FF0F87A710550399D6F0A9F98BCD2DF3EDD57EA062993C",
+  "previous_local_outcomes_complete": true,
+  "previous_hosted_outcomes_complete": true,
+  "backup": "output/pass58-preapply-backup-final/receipt.json",
+  "backup_sha256": "C9CD97E89A276608C6E7F6EAC1FB3DCE67C16FCCFAC287D3DFB0AA966938A321",
+  "files": [
+    {
+      "target": "modern/engine/src/environment.rs",
+      "base_raw_sha256": "8A943B723C95E5B79A6321D3D99C5D124322C50088F9FE1FCF28C3916A63761A",
+      "candidate_raw_sha256": "CC209E6CD44EE462DFCD337789032D196D1DA8477D34840C7BD8441AAC612425",
+      "is_new": false
+    },
+    {
+      "target": "modern/engine/src/world.rs",
+      "base_raw_sha256": "DB85822E2E30622CA907FEA2BA80727086F6AA0C55B3D9072573A6E7552EDAC2",
+      "candidate_raw_sha256": "625FACF1EC60551A1E225340B6BB16FFA6B16348573BA534ED37EB945FF8A3F9",
+      "is_new": false
+    },
+    {
+      "target": "modern/engine/src/world/native_io.rs",
+      "base_raw_sha256": "B21F676C436C13DC3F1F396F3CFF16FCB16389B7FB36A9D6580747B2FAD84A40",
+      "candidate_raw_sha256": "BA53098AC7C7651F261F414892E82E366D65483AAE2EBD9977CD8E24D4526EBB",
+      "is_new": false
+    },
+    {
+      "target": "modern/engine/src/world/native_sim_export.rs",
+      "base_raw_sha256": "986CCF84ACC33D613FC063E37552550F51A0C1BF5F50C5D2C0213FE53AD55C63",
+      "candidate_raw_sha256": "B1EDBC1019A78D72B919969CCE81D480F1B3BCC4C99EC361E2EA6825C9EDA084",
+      "is_new": false
+    },
+    {
+      "target": "modern/engine/src/world/native_shots.rs",
+      "base_raw_sha256": "1A188728891B1B145A9524686C2113FC37A9E21474B43604C195DD47AF293ACA",
+      "candidate_raw_sha256": "45837A2442A8ADC444D392D7A5FA961984513D4A1B41C645C5C92C281899DEAD",
+      "is_new": false
+    },
+    {
+      "target": "modern/engine/tests/db2_projectiles.rs",
+      "base_raw_sha256": "275487A152ACA9BB6AA4C9B2DD61D52224E99ED5B6D8020E0A311777343604DD",
+      "candidate_raw_sha256": "D0B2CA6050798F6D09D20BD9325B21B89EA3AD67A85C3B630B8F99D99B6F8057",
+      "is_new": false
+    },
+    {
+      "target": "modern/engine/src/world/native_energy.rs",
+      "base_raw_sha256": "267AE175E70E91593FD97C4A53A8376D015292743B8048B4047E7FBD940674A0",
+      "candidate_raw_sha256": "2DEBC72890B56366913C46C266AF6CFD4FB6A9BB17B68BD253B8F45D7CEE9DC6",
+      "is_new": false
+    },
+    {
+      "target": "modern/engine/tests/contracts.rs",
+      "base_raw_sha256": "E7053ADB06233C61D23776A8EA10781AF9764E5516860BD88D7221AAB532114F",
+      "candidate_raw_sha256": "CF369243FA400EEE8B73E3C1D8EEAF90453A67633A67CF8A792E306BC6F4B800",
+      "is_new": false
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop.Core/LegacySettingsAdapter.cs",
+      "base_raw_sha256": "0096A155BCA0F07558074DCCCD11535BB58CB5251C19632FCC9D6161293B3CCD",
+      "candidate_raw_sha256": "EA6037C8D782A8F8BC48D966B982DBD8FFB3603D7BAAEBEB47CD75183D186D41",
+      "is_new": false
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop/Views/ShapeEditorWindow.axaml.cs",
+      "base_raw_sha256": "29D26866E27BCE8A86721E1C6E5B6C0A9FBC76398EDB9934378C6882BC480EB3",
+      "candidate_raw_sha256": "E2220334969C1351935AAC572632ACC45DD0F3755FB445F2E2CAE8B0373EDAAE",
+      "is_new": false
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop/Views/ShapeEditorWindow.axaml",
+      "base_raw_sha256": "5C0254B7FBDB86F3EEF54DDDE1D98E308698C7479A98D29B33193E9061E5E506",
+      "candidate_raw_sha256": "1E99772506D098B20D587F21AFD4A3ABE2711169B382017D64290806E2141741",
+      "is_new": false
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/ShapeShotPolicyCompatibilityTests.cs",
+      "base_raw_sha256": null,
+      "candidate_raw_sha256": "CBE9347849408F6D17B7168F4CFAB9EE0A606DB75B638CB709F00ACB0638BD5F",
+      "is_new": true
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/ShapeEditorReflectPolicyTests.cs",
+      "base_raw_sha256": null,
+      "candidate_raw_sha256": "6D6A551D6F572FEB11610A824FAE84C0EEF204BFAA27968BB4DDB71EC457F78A",
+      "is_new": true
+    },
+    {
+      "target": ".github/workflows/modern-cross-platform.yml",
+      "base_raw_sha256": "4B596B870FC8E38DDD9D9F658AD1ACDAAB7082ED10B161D22655025D2ABF6707",
+      "candidate_raw_sha256": "0C094489C1716CACBE70899525134169DD0027B8783BE0229A463FB2D2419F6F",
+      "is_new": false
+    },
+    {
+      "target": "output/qualify-native-roundtrip-pass58.ps1",
+      "base_raw_sha256": null,
+      "candidate_raw_sha256": "9A2570E9FB003D205F059224FC36CE71DAA49261FCE2C127C058C6957D7F0527",
+      "is_new": true
+    },
+    {
+      "target": "modern/engine/tests/native_continuation_qualification.rs",
+      "base_raw_sha256": "452548B699D0B9564B8FCCBA38CD3486EEE1A6D179537622B44941827D39CD9C",
+      "candidate_raw_sha256": "789A032ED4EB4058D038FAAC2C3EA1C00D2CD418DB6696CB24F55C93A7FC8CE7",
+      "is_new": false
+    },
+    {
+      "target": "modern/engine/tests/final_state_persistence_248.rs",
+      "base_raw_sha256": "E7B9DFFDEAA15DC9B9AA877994DF1BDE6FF1EEE86136DB9EA0516CD06B94D514",
+      "candidate_raw_sha256": "2B79C671F50A350C140A86F6A353C52A2B3C054DC29E6A6CCB2A5B0D18C39A8D",
+      "is_new": false
+    },
+    {
+      "target": "modern/engine/tests/species_ecology.rs",
+      "base_raw_sha256": "8879A93020058E60912EAB37AC19865E9697FC2298250DA6DC863D590BEC6E62",
+      "candidate_raw_sha256": "8B36B61C47A15AF1BDF3A5B7440293F45C4083490C9DF4A3430F15F57F14F0FE",
+      "is_new": false
+    },
+    {
+      "target": "modern/engine/src/world/native_waste.rs",
+      "base_raw_sha256": "04C49D40BA6E4AF90A06280AFAAD1E4204B88967C967618FA33A5FA163F81ED2",
+      "candidate_raw_sha256": "D961027F368295F9F9E4CF21B6674999EA50216FB2071534F15FF2672CEC79B9",
+      "is_new": false
+    },
+    {
+      "target": "modern/engine/tests/reproduction_heredity_248.rs",
+      "base_raw_sha256": "13D47B5ED345269B6AF3C9DC2256CB1FA4B3D56FD2E0CC4C399BB34CA81E1BF3",
+      "candidate_raw_sha256": "A1A791EBFFA98F7F1F848F7EB78B5B080EF795FB6EA92A55A99AF591874E8FC1",
+      "is_new": false
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/NativeWasteThresholdSettingsTests.cs",
+      "base_raw_sha256": null,
+      "candidate_raw_sha256": "01DEA95EE01443AF8F6FD7542F20C28EA6171676F2EA83CBDC5C1CAD8C400B2F",
+      "is_new": true
+    },
+    {
+      "target": "modern/engine/tests/touch_taste_248.rs",
+      "base_raw_sha256": "228442951DC2BECD2584071FC9A053C9E95E1BBE81D0175413404A9E1B666A5C",
+      "candidate_raw_sha256": "64F6385CCEEDD85057AB5E0B006112308E8CC24F56BCF65D0700752614D9F675",
+      "is_new": false
+    },
+    {
+      "target": "modern/engine/tests/toroidal_world.rs",
+      "base_raw_sha256": "49C24198AD37B669A53D1E08DBB8104D0778007D8F48101D3CFD5BD87C2BF5F4",
+      "candidate_raw_sha256": "51A58738322A54EC9ED47A27081165DDBF33262CE829A475CD3018334F811F18",
+      "is_new": false
+    },
+    {
+      "target": "modern/engine/tests/world_systems.rs",
+      "base_raw_sha256": "82264E4D8C8668DFA2C746121577241ECC94BD2D3F351DC01112C2C6117CCBFD",
+      "candidate_raw_sha256": "62900991EE7FDA73424A6302B6DF785094858734CCA0104A1AE5B192DC5D9F6A",
+      "is_new": false
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/LegacySettingsNativeTests.cs",
+      "base_raw_sha256": "3C226E32CB317DFE8A377D3A6B181EB1751A924232BA9B03984B065E8DAC49AA",
+      "candidate_raw_sha256": "2AD7DB4610A014FEC94B6DA7BEDEFADFCCC0FC09AB7836089A2E149307684080",
+      "is_new": false
+    }
+  ],
+  "new_rust_test_rows_in58": 6,
+  "combined_net_new_rust_tests_vs55": 65,
+  "expected_rust_targets": 68,
+  "expected_managed_test_counts": {
+    "core": 307,
+    "desktop": 197
+  },
+  "product_checks_before_application": false,
+  "desktop_or_gpu_executed": false
+}

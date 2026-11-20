@@ -1,0 +1,97 @@
+{
+  "schema_version": 1,
+  "sealed_utc": "2026-10-17T23:38:41.594Z",
+  "base_head": "61509e4c8424f751d20c5f34a83c35fc6d8be424",
+  "change": "Restore the six live tray-information readbacks through existing status-panel bindings.",
+  "source_files": [
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml.cs",
+      "sha256": "DA3E95BFA06238CCAE25D7E89FC249086BBFF881327921072F925F78CE9D9037",
+      "bytes": 143314
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/RuntimeControlSurfaceTests.cs",
+      "sha256": "261D9B72049003FC885B8E50C9E43BC9BAC8B5A669568000C18BEEB55AE165BF",
+      "bytes": 114112
+    }
+  ],
+  "desktop": {
+    "unique_cases": 215,
+    "all_cases_have_a_passing_result": true,
+    "single_all_green_invocation": false,
+    "first_invocation": {
+      "passed": 213,
+      "failed": 2,
+      "skipped": 0,
+      "reason": "Required DARWINBOTS_GUI_AUDIT_DIR was omitted by the operator.",
+      "trx": "output/tray-ui-fix-20261017/test-results/tray-ui.trx"
+    },
+    "affected_rerun": {
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0,
+      "trx": "output/tray-ui-fix-20261017/rerun/affected-rerun.trx"
+    },
+    "new_regression": {
+      "name": "Darwinbots.Desktop.Tests.RuntimeControlSurfaceTests.TrayInformationTracksLiveStatisticsAndClearsThemAfterLoadingAnEmptyWorld",
+      "outcome": "Passed"
+    }
+  },
+  "package": {
+    "publish_exit_code": 0,
+    "smoke": {
+      "status": "passed",
+      "backend": "CPU",
+      "ticks": 13,
+      "population": 1,
+      "movement": true,
+      "save_resume": true,
+      "bundled_bots": 48
+    },
+    "bots_exact_bytes": 48,
+    "native_dll_sha256": "C545402B8C6F71FE9979B67CB1806F48CEFF666380E1C61960618C17284365E9",
+    "target_test_package_native_dlls_identical": true
+  },
+  "engine_changes": false,
+  "retained_full_engine_cpu_proof": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass63/qualification-summary.json",
+  "physical_gpu_executed": false,
+  "visible_windows_walkthrough_completed": false,
+  "evidence": [
+    {
+      "file": "output/tray-ui-fix-20261017/desktop-tests.log",
+      "sha256": "C2BB6FB32ACFCE44557A593CDEE4C62E9A8509A41341BF35D4AB053DCE962508",
+      "bytes": 20562
+    },
+    {
+      "file": "output/tray-ui-fix-20261017/test-results/tray-ui.trx",
+      "sha256": "7A085FCD59667BE7314BBCC67D0B4A12252F7D5A558A71DEF6D63FFA3D8F24D2",
+      "bytes": 345745
+    },
+    {
+      "file": "output/tray-ui-fix-20261017/affected-rerun.log",
+      "sha256": "DF86843D5BAA36AA37204596E1865CF5A684DAB5FE57EFD6B12D3BC9B7D27C50",
+      "bytes": 512
+    },
+    {
+      "file": "output/tray-ui-fix-20261017/rerun/affected-rerun.trx",
+      "sha256": "EABB91D4D623EB21553C33455950601B0A7B2E96DE6E8D500B28EA78ABED306B",
+      "bytes": 4717
+    },
+    {
+      "file": "output/tray-ui-fix-20261017/publish.log",
+      "sha256": "6EE9E9982E2627C6A32E2A05541F9D5F98227B1FA32539394875E8CD49068395",
+      "bytes": 2740
+    },
+    {
+      "file": "output/tray-ui-fix-20261017/package-smoke-captured.json",
+      "sha256": "DE7F7EEE107116C1F2E5C68F942EC3C80535AE6D039F2B9FCDB2AE32CE972B79",
+      "bytes": 116
+    },
+    {
+      "file": "output/tray-ui-fix-20261017/package-smoke.stderr.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    }
+  ],
+  "scope": "Focused UI-only repair; no new full Rust invocation is claimed. Historical full source63 CPU and hosted receipts retain their original scope."
+}

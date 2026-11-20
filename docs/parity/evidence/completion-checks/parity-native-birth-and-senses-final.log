@@ -1,0 +1,38 @@
+   Compiling darwinbots-engine v0.1.0 (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\engine)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 9.76s
+     Running tests\canonical_cycle_248.rs (target\debug\deps\canonical_cycle_248-2afe620a5fe5a704.exe)
+
+running 14 tests
+test one_tick_publishes_one_completed_cycle ... ok
+test post_dna_tie_write_precedes_shot_and_reproduction_consumption ... ok
+test deleting_tie_still_applies_first_pass_spring_before_second_pass_delete ... ok
+test births_and_deaths_commit_only_after_the_final_robot_pass ... ok
+test dna_and_observable_robot_visits_use_ascending_slot_order ... ok
+test trace_matches_the_complete_24832_phase_manifest ... ok
+test shot_effect_occurs_after_dna_and_before_robot_passes ... ok
+test tie_data_can_change_a_later_tie_fire_command_in_the_same_cycle ... ok
+test three_cycle_sensor_and_command_visibility_is_canonical ... ok
+test teleporter_relocation_precedes_same_cycle_senses ... ok
+test asexual_birth_side_effects_execute_in_commit_phase ... ok
+test dna_skips_corpse_and_dna_disabled_robots ... ok
+test zero_cost_birth_does_not_emit_a_copy_charge_effect ... ok
+test a_new_tie_exchanges_resources_only_after_hardening ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests\sensing_compatibility.rs (target\debug\deps\sensing_compatibility-231f32b0f868c810.exe)
+
+running 2 tests
+test parser_reports_unknown_but_not_known_legacy_sysvars_without_rejecting_dna ... ok
+test vision_routes_nearest_target_into_directional_eye_sectors ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests\spawn_placement.rs (target\debug\deps\spawn_placement-e8f7ff5d039881b5.exe)
+
+running 2 tests
+test reproduction_places_children_forward_at_native_fixed_radius_separation ... ok
+test newborn_placement_follows_native_forward_bearings_in_all_four_quadrants ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+

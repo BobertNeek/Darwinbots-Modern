@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "batch": 59,
+  "status": "all_code_and_tests_authored_unapplied_static_reviewed",
+  "authored_utc": "2026-10-17T07:23:50.660Z",
+  "base_source_head": "8018c200690ea20d07c2d243138eb7d8f8fc0e7d",
+  "code_and_tests_authored_before_checks": true,
+  "port_product_builds_or_tests_executed": false,
+  "source_file_count": 6,
+  "existing_targets": 5,
+  "new_targets": 1,
+  "files": [
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/LegacySettingsNativeTests.cs",
+      "candidate": "output/pass59-drafts/archive-continuation/modern/desktop/tests/Darwinbots.Desktop.Tests/LegacySettingsNativeTests.cs",
+      "base_sha256": "2AD7DB4610A014FEC94B6DA7BEDEFADFCCC0FC09AB7836089A2E149307684080",
+      "candidate_sha256": "88E84C7B2B33F8874A2A08B417F4011AA97B716B00F4A5B04CBFD73A50528404",
+      "backup": "output/pass59-preapply-backup/modern/desktop/tests/Darwinbots.Desktop.Tests/LegacySettingsNativeTests.cs",
+      "base_bytes": 16828,
+      "candidate_bytes": 17778
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml.cs",
+      "candidate": "output/pass59-drafts/auto-graphs/load-boundary/candidate/modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml.cs",
+      "base_sha256": "32310F808C1B313A696D0895E455E5B263142702F1904FF327AF4F3616722B51",
+      "candidate_sha256": "91C05D457EF91E4668CEA84DB6115FFB4C195916E6E80A4CFCF8E04E83FE9FC0",
+      "backup": "output/pass59-preapply-backup/modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml.cs",
+      "base_bytes": 139997,
+      "candidate_bytes": 141332
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop/Views/GraphSuiteWindow.axaml.cs",
+      "candidate": "output/pass59-drafts/auto-graphs/load-boundary/candidate/modern/desktop/src/Darwinbots.Desktop/Views/GraphSuiteWindow.axaml.cs",
+      "base_sha256": "B3233613BC5D26AA272607D14BED0AC49E6159EB4FD9DF2C2F4064D8097D7930",
+      "candidate_sha256": "DC444FF48FDE4F6659A66FA025EC678391B1CBDB954ACE307A8E573BAA61C892",
+      "backup": "output/pass59-preapply-backup/modern/desktop/src/Darwinbots.Desktop/Views/GraphSuiteWindow.axaml.cs",
+      "base_bytes": 2447,
+      "candidate_bytes": 3205
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/GraphContestRenderedTests.cs",
+      "candidate": "output/pass59-drafts/auto-graphs/load-boundary/candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/GraphContestRenderedTests.cs",
+      "base_sha256": "BB317DB484F4908EB5F7B5C6E94FD3ADBB3C1F9C4B0CB9437A1FC90E7D0F7C97",
+      "candidate_sha256": "6EFD984357CF8FEF685A4213A5098C2781C180D9F0B733088CFBEC5476626282",
+      "backup": "output/pass59-preapply-backup/modern/desktop/tests/Darwinbots.Desktop.Tests/GraphContestRenderedTests.cs",
+      "base_bytes": 19752,
+      "candidate_bytes": 37466
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs",
+      "candidate": "output/pass59-drafts/auto-graphs/load-boundary/candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs",
+      "base_sha256": "D1CA26C38D13B06FD1D0C97363E78D75DE282E3D00E50F6D408AAB030D605E6F",
+      "candidate_sha256": "9D696B47A5B5E556DCE77FE5065E03050DE6FBE73F44D6C3184FD86ACA53AA9C",
+      "backup": "output/pass59-preapply-backup/modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs",
+      "base_bytes": 134808,
+      "candidate_bytes": 134964
+    },
+    {
+      "target": "output/qualify-native-roundtrip-pass59.ps1",
+      "candidate": "output/pass59-drafts/qualification/qualify-native-roundtrip-pass59.ps1",
+      "base_sha256": null,
+      "candidate_sha256": "8634D4615BE92606F0E1CB4C5206D6783A496EAA57A10F5BCFEC85415F9F103E",
+      "original_absent": true,
+      "candidate_bytes": 54809
+    }
+  ],
+  "releases": [
+    {
+      "file": "output/pass59-drafts/archive-continuation/metadata.json",
+      "sha256": "4B809BB7DC6A978CAF67E93F98815AC77112DEC6FAA43EA7ADD20A66BAFA8211"
+    },
+    {
+      "file": "output/pass59-drafts/auto-graphs/load-boundary/metadata.json",
+      "sha256": "E16CE5196071767EA54648AE8A51858E110532B3B269A7619A0DA198D989C89D"
+    },
+    {
+      "file": "output/pass59-drafts/qualification/metadata.json",
+      "sha256": "A4523E8AE7E44D13B252D8CF538424B24C8C9022549A3EC356D05D64450F96A0"
+    }
+  ],
+  "expected_distinct_rust_targets": 68,
+  "expected_managed_test_counts": {
+    "core": 307,
+    "desktop": 206
+  },
+  "expected_net_new_rust_tests_vs55": 65,
+  "net_new_rust_rows": 0,
+  "net_new_desktop_rows": 9,
+  "backup_receipt": "output/pass59-preapply-backup/receipt.json",
+  "backup_sha256": "2C89F5B849545B3C8AB95F15069BBB5E205667867E44E7489E825D81D7E4701B",
+  "source58_pins_verified": 540,
+  "source58_mutated": false,
+  "application_boundary": "Wait for all ordinary local and hosted58 outcomes and owned runner exit before any active source/HEAD changes."
+}

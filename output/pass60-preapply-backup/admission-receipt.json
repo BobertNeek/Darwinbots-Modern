@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "batch": 60,
+  "created_utc": "2026-10-17T09:15:05.778Z",
+  "base_head": "ff50b1a735ef61c6d5d282358da76f2734f64099",
+  "state": "backed_up_only_no_source_application",
+  "target_count": 2,
+  "files": [
+    {
+      "target": "output/native-qualification-admission53.ps1",
+      "backup": "output/pass60-preapply-backup/admission/output/native-qualification-admission53.ps1",
+      "previously_absent": false,
+      "base_sha256": "A7DCD88F30F9430116CA691F3E4DDD2F990F00465A378446EA4DA85EDDCDAC40",
+      "bytes": 39194
+    },
+    {
+      "target": "output/test-native-admission60.ps1",
+      "backup": null,
+      "previously_absent": true,
+      "base_sha256": null,
+      "bytes": 0
+    }
+  ]
+}

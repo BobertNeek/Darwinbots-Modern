@@ -1,0 +1,139 @@
+   Compiling darwinbots-engine v0.1.0 (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\engine)
+    Finished `release` profile [optimized] target(s) in 5m 50s
+     Running unittests src\lib.rs (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\target\release\deps\darwinbots_engine-01d7936031f3692d.exe)
+
+running 66 tests
+test corpse::tests::energy_decay_packet_uses_original_body_conversion_and_rejects_empty_body ... ok
+test corpse::tests::no_shot_decay_dissipates_body_and_fractional_period_survives_resume ... ok
+test ffi::tests::ffi_guard_converts_panics_to_structured_engine_errors ... ok
+test biology::native_material_tests::multibot_material_discount_changes_energy_but_keeps_full_transaction_waste ... ok
+test biology::native_material_tests::native_transactions_charge_in_make_stuff_order_and_keep_failed_commands ... ok
+test ffi::tests::legacy_save_emits_native_24832_sim_for_file_command ... ok
+test native_binary::tests::new_native_records_and_simulation_groups_have_independent_valid_framing ... ok
+test robot_state::tests::robot_arena_deref_exposes_only_slot_slice ... ok
+test physics::collision::projectile_motion_tests::original_shot_collision_accounts_for_motion_and_excludes_cycle_endpoints ... ok
+test robot_state::tests::stale_physics_batch_id_does_not_partially_mutate_earlier_robot ... ok
+test senses::tests::direction_thresholds_are_strict ... ok
+test senses::tests::relative_angle_selects_all_four_aim_relative_quadrants ... ok
+test shot::projectile::tests::db2_pool_grows_by_ten_percent_and_compacts_below_seventy_percent ... ok
+test shot::projectile::tests::db24832_impact_decay_uses_age_before_the_current_tick_increment ... ok
+test ffi::tests::invalid_find_best_weight_preserves_the_entire_command_batch ... ok
+test shot::projectile::tests::feeding_power_uses_fixed_or_proportional_original_settings_without_changing_toxins ... ok
+test vm::memory_persistence_tests::addressed_memory_restores_independently_of_serialized_order ... ok
+test vm::memory_persistence_tests::ambiguous_or_invalid_saved_memory_is_rejected ... ok
+test native_binary::tests::native_bad_counts_truncation_and_terminators_are_rejected ... ok
+test native_binary::tests::editing_one_native_single_preserves_all_other_bytes ... ok
+test native_binary::tests::genuine_native_record_stream_round_trips_every_byte ... ok
+test world::native_aim::tests::native_aim_keeps_full_turn_momentum_and_only_opposing_turns_reduce_it ... ok
+test world::native_aim::tests::dna_setaim_1256_runs_through_the_world_and_persists_the_native_zero_readbacks ... ok
+test world::native_aim::tests::native_aim_rounds_the_combined_single_before_mod_and_uses_1256 ... ok
+test world::native_aim::tests::native_turn_fee_uses_net_radians_and_absolute_cost_product ... ok
+test world::native_biology::tests::chloroplast_request_is_atomic_and_net_growth_is_charged_after_shots ... ok
+test world::native_biology::tests::chloroplast_construction_and_body_feeding_cannot_fund_an_earlier_shot ... ok
+test world::native_biology::tests::excluded_commands_remain_pending_and_negative_body_commands_are_ignored ... ok
+test world::native_biology::tests::native_age_cost_rounds_start_and_log_mode_overrides_linear ... ok
+test world::native_biology::tests::shot_uses_body_and_energy_before_body_commands ... ok
+test world::native_biology::tests::upkeep_rounds_each_fee_and_excludes_corpse_stores ... ok
+test native_binary::tests::genuine_simulation_tail_round_trips_all_options_species_and_shots ... ok
+test world::native_biology::tests::native_corpse_death_uses_fifteen_after_senses_including_older_zero_defaults ... ok
+test world::native_corpses::tests::newborn_native_parent_identity_survives_removal_and_slot_reuse ... ok
+test world::native_corpses::tests::returned_native_corpse_decays_without_becoming_another_archived_corpse ... ok
+test world::native_export::tests::genuine_robot_group_export_remaps_forward_and_back_ties_into_the_new_file ... ok
+test world::native_export::tests::native_organism_export_contains_live_memory_resource_bits_dna_and_restrictions ... ok
+test world::native_export::tests::native_export_retains_unrepresented_tie_metadata_and_type ... ok
+test native_binary::tests::native_records_keep_bits_and_opaque_bytes_through_json ... ok
+test world::native_io::tests::native_runtime_rejects_nonfinite_stores_and_truncated_tails ... ok
+test world::native_io::tests::genuine_native_save_becomes_a_live_world_with_exact_resources_and_shots ... ok
+test world::file_teleporters::tests::native_group_capacity_failure_keeps_file_and_existing_world ... ok
+test world::file_teleporters::tests::output_collision_preserves_existing_file_and_departing_robot ... ok
+test world::file_teleporters::tests::native_sim_offline_gateway_uses_its_saved_path_geometry_and_poll_state ... ok
+test world::native_organism_io::tests::invalid_later_native_member_rolls_back_all_imported_state ... ok
+test world::file_teleporters::tests::file_exchange_moves_a_native_multibot_as_one_file_with_memory_stores_and_tie_intact ... ok
+test world::native_organism_io::tests::malformed_native_tie_is_rejected_without_partial_import ... ok
+test world::native_sim_export::tests::empty_native_world_loads_through_production_save_dispatch ... ok
+test world::native_sim_export::tests::fresh_world_native_export_needs_no_reference_save ... ok
+test world::tests::all_dna_finishes_before_the_after_dna_clear_pass ... ok
+test world::tests::db24832_minus_six_body_feed_contract ... ok
+test world::tests::eco03_photosynthesis_pond_sun_conversion_population_and_bounds_contract ... ok
+test world::tests::exhausted_corpse_is_removed_when_energy_remains ... ok
+test world::native_organism_io::tests::native_group_import_preserves_memory_singles_and_ties_in_reused_slots ... ok
+test world::native_organism_io::tests::native_integer_memory_preserves_full_word_range_until_a_dna_store ... ok
+test world::native_organism_io::tests::repeated_native_imports_keep_duplicate_absolute_ids_and_separate_metadata ... ok
+test world::native_organism_io::tests::native_menu_insertion_uses_whole_twips_translates_all_cells_and_continues_after_save ... ok
+test world::tests::native_border_respawn_moves_the_whole_multibot_from_its_nearest_cell ... ok
+test world::native_sim_export::tests::live_native_sim_export_updates_resources_memory_world_and_shots ... ok
+test world::native_io::tests::native_origin_and_live_state_survive_modern_save_and_resume ... ok
+test world::tests::runtime_gpu_failure_retries_on_cpu_and_records_reason ... ok
+test world::tests::gpu_failure_does_not_partially_advance_the_cycle ... ok
+test world::tests::gpu_in_backend_failure_keeps_tick_many_iterations_atomic ... ok
+test world::tests::gpu_in_backend_failure_allows_later_tick_with_trace ... ok
+test world::tests::runtime_gpu_failure_is_fatal_when_fallback_is_disabled ... ok
+test world::native_corpses::tests::archived_native_corpse_keeps_memory_materials_and_tie_through_modern_save_and_native_export ... ok
+
+test result: ok. 66 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.93s
+
+     Running tests\final_state_persistence_248.rs (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\target\release\deps\final_state_persistence_248-c31335771ef1a3c2.exe)
+
+running 4 tests
+test per_01_loads_legacy_simulation_state_and_promotes_it_to_db3s_v3 ... ok
+test mut_02_point_and_delta_mutations_run_through_an_ordinary_cycle ... ok
+test core_02_persists_remaining_robot_flags_counters_private_diagnostics_and_occurrences ... ok
+test core_04_round_trips_mutated_shot_tie_and_environment_objects_atomically ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests\legacy_transport.rs (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\target\release\deps\legacy_transport-6aff4153a4671cee.exe)
+
+running 6 tests
+test legacy_vb6_organism_records_import_without_losing_state_or_ties ... ok
+test legacy_organism_fixture_round_trips_and_rejects_unknown_version ... ok
+test entire_organism_interchange_restores_members_state_and_ties ... ok
+test legacy_codecs_round_trip_the_authoritative_fixture_fields ... ok
+test legacy_settings_corpus_round_trips_all_shipped_assets ... ok
+test file_teleporter_cycles_through_tempfiles_with_filters_and_safe_failures ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.41s
+
+     Running tests\manual_tools.rs (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\target\release\deps\manual_tools-12e162038405183b.exe)
+
+running 6 tests
+test remove_many_rejects_the_whole_batch_before_mutating_any_slot ... ok
+test manual_two_parent_reproduction_records_parentage ... ok
+test manual_one_parent_reproduction_splits_energy_and_body_fifty_fifty ... ok
+test remove_many_publishes_one_world_without_the_validated_batch ... ok
+test move_clone_and_replace_dna_preserve_stable_world_state ... ok
+test clone_preserves_live_energy_biology_and_velocity ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\reproduction_heredity_248.rs (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\target\release\deps\reproduction_heredity_248-90d3216c0c2d5c6b.exe)
+
+running 25 tests
+test birth_tie_uses_source_asymmetric_ports_and_lifetime_100 ... ok
+test birth_tie_transfers_one_staged_cell_per_early_age_without_overwrite ... ok
+test child_generation_saturates_at_32000 ... ok
+test buoyancy_command_readback_and_birth_inheritance_round_trip ... ok
+test absolute_identity_allocator_survives_child_deletion_and_save_round_trip ... ok
+test blocked_birth_preserves_parent_pending_heredity ... ok
+test child_inherits_parent_program_profile_species_and_birth_identity ... ok
+test delayed_heredity_requires_the_surviving_birth_tie ... ok
+test newborn_clears_ordinary_memory_and_stages_only_delayed_heredity ... ok
+test blocked_birth_charges_no_five_block_dna_copy_cost ... ok
+test later_normal_tie_uses_first_free_child_record_after_birth_tie ... ok
+test body_split_uses_vb6_cint_round_to_even_without_minimums ... ok
+test collision_uses_radius_stored_before_same_cycle_body_feed ... ok
+test competing_births_commit_in_parent_slot_order_and_leave_loser_unchanged ... ok
+test repro_125_transfers_twenty_five_percent_of_db2_resources ... ok
+test non_toroidal_birth_bounds_include_parent_radius_and_smudge_50 ... ok
+test positive_energy_below_201_remains_eligible_for_reproduction ... ok
+test repro_with_zero_effective_percentage_does_not_birth_or_consume_request ... ok
+test post_birth_mass_and_previous_energy_match_source_bookkeeping ... ok
+test successful_birth_charges_parent_only_for_five_block_dna_copy ... ok
+test ties_disabled_allows_birth_but_gates_staged_transfer ... ok
+test occupied_forward_placement_is_atomic_and_keeps_repro_pending ... ok
+test successful_birth_clears_parent_pending_heredity_after_staging_child_memory ... ok
+test toroidal_birth_uses_unwrapped_candidate_and_obstacle_segment ... ok
+test full_parent_tie_capacity_allows_birth_without_birth_tie_or_staged_transfer ... ok
+
+test result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+

@@ -1,0 +1,11 @@
+   Compiling darwinbots-engine v0.1.0 (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\engine)
+   Compiling darwinbots-cli v0.1.0 (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\cli)
+    Finished `release` profile [optimized] target(s) in 3m 28s
+     Running unittests src\lib.rs (target\release\deps\darwinbots_cli-19b2f1d2dddc4ec7.exe)
+
+running 3 tests
+test native_comparison::tests::zero_cycle_original_round_trip_preserves_all_compared_live_fields ... ok
+test probe::tests::extinction_compaction_does_not_turn_unrelated_plants_into_candidates ... ok
+test probe::tests::surviving_candidate_and_its_child_remain_tracked_when_species_indices_shift ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.55s

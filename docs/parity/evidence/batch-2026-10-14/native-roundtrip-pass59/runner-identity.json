@@ -1,0 +1,20 @@
+{
+  "file": "output/qualify-native-roundtrip-pass59.ps1",
+  "sha256": "8634D4615BE92606F0E1CB4C5206D6783A496EAA57A10F5BCFEC85415F9F103E",
+  "source_manifest_sha256": "583D1DE4880EEE9D312B7B41B2E471CC3A06DEC145EEAE310315136E48DC80DA",
+  "protected_paths": [
+    "modern",
+    "Cargo.toml",
+    "Cargo.lock",
+    ".cargo",
+    "Installer/bots",
+    ".gitattributes",
+    ".github/workflows/modern-cross-platform.yml"
+  ],
+  "priority": "BelowNormal",
+  "cargo_build_jobs": 1,
+  "rust_test_threads": 1,
+  "rayon_threads": 1,
+  "msbuild_node_reuse": false,
+  "gui_audit_directory": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\docs\\parity\\evidence\\batch-2026-10-14\\native-roundtrip-pass59\\gui"
+}

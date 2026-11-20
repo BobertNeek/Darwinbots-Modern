@@ -1,0 +1,273 @@
+Window: "Darwinbots Modern", App: Darwinbots.Desktop.exe.
+	0 window Darwinbots Modern Secondary Actions: Raise
+		1 title bar (settable, string) Value: Darwinbots Modern
+			2 menu bar System ID: MenuBar
+				3 menu item System
+			4 button Minimize
+			5 button Restore
+			6 button Close
+		7 group WindowChrome ID: AvaloniaWindowChrome
+		8 custom ID: HistoricMenuBar
+			9 menu ID: RootMenu
+				10 menu item File Description: Open the File menu. ID: MenuFile
+				11 menu item Edit Description: Open the Edit menu. ID: MenuEdit
+				12 menu item View Description: Open the View menu. ID: MenuView
+				13 menu item Robot Description: Open the Robot menu. ID: MenuRobot
+				14 menu item Objects Description: Open the Objects menu. ID: MenuObjects
+				15 menu item Internet Description: Open the Internet menu. ID: MenuInternet
+				16 menu item Recording Description: Open the Recording menu. ID: MenuRecording
+				17 menu item Help Description: Open the Help menu. ID: MenuHelp
+		18 text DARWINBOTS
+		19 button ▶ RUN ID: RunButton
+		20 button Ⅱ PAUSE ID: PauseButton
+		21 button ▶| STEP ID: StepButton
+		22 button TURBO ID: TurboButton
+		23 button IMPORT BOT ID: ImportButton
+		24 button RESET SIMULATION Description: Stop the current simulation and start a fresh local world. ID: ResetButton
+		25 combo box Value: 1× ID: RuntimeSpeed
+			26 text 1×
+		27 button CPU ID: BackendButton
+		28 button SUN ON Description: Toggle daytime sunlight in the local simulation. ID: SunButton
+		29 button (disabled) INTERNET OFFLINE Description: Historical internet controls remain visible but disabled and inert. ID: InternetButton
+		30 button CONTEST RESULTS Description: Open local contest results. Online play is disabled. ID: ContestIndicator
+		31 button GRAPHS ID: GraphsButton
+		32 button CONTEST ID: ContestResultsButton
+		33 button SAVE ID: SaveButton
+		34 button LOAD ID: LoadButton
+		35 check box IGNORE ERRORS ID: IgnoreErrorsToggle
+		36 button TRAY ID: TrayButton
+		37 text TICK
+		38 text 282
+		39 text 0.0 t/s
+		40 text 0.0 snap/s
+		41 scroll viewer ID: LegacyToolbarScroller
+			42 button NEW SIMULATION Description: Open the new simulation setup. ID: ToolbarSlot01
+			43 button LOAD SIMULATION Description: Load an offline simulation file. ID: ToolbarSlot02
+			44 button SAVE SIMULATION Description: Save the current offline simulation. ID: ToolbarSlot03
+			45 button PLAY SIMULATION Description: Run the Rust-backed simulation. ID: ToolbarSlot05
+			46 button STEP SIMULATION Description: Advance the simulation by the selected batch. ID: ToolbarSlot06
+			47 button STOP SIMULATION Description: Pause the simulation clock. ID: ToolbarSlot07
+			48 button 15 CPS LIMIT OFF Description: Toggle the legacy 15 cycles per second limit. ID: ToolbarSlot09
+			49 button FAST MODE OFF Description: Toggle the fast simulation speed. ID: ToolbarSlot10
+			50 button FLICKER MODE OFF Description: Toggle reduced-detail alternating rendering. ID: ToolbarSlot11
+			51 button ORGANISM SKINS ON Description: Show or hide organism skin details. ID: ToolbarSlot12
+			52 button DEATH EFFECTS ON Description: Show or hide corpse effects in the playfield. ID: ToolbarSlot13
+			53 button WORLD GRAPHICS ON Description: Suspend or restore playfield rendering while the simulation runs. ID: ToolbarSlot14
+			54 button INSERTION MODE Description: Toggle insertion mode, then click an empty playfield position. ID: ToolbarSlot16
+			55 combo box INSERTION SPECIES Description: Choose the species used by insertion mode. ID: ToolbarSlot17
+				56 text
+			57 button FIND BEST ROBOT Description: Select the living animal with the strongest family, using the configured energy weighting. ID: ToolbarSlot18
+			58 button OPEN GRAPHS Description: Open the nonmodal local graph suite. ID: ToolbarSlot19
+			59 button LIVING SNAPSHOT Description: Save a snapshot of all living robots. ID: ToolbarSlot21
+			60 button STEALTH TRAY MODE Description: Hide the shell while the local simulation continues. ID: ToolbarSlot23
+			61 button IGNORE ERRORS OFF Description: Toggle the offline engine error recovery mode. ID: ToolbarSlot24
+		62 text SPECIES
+		63 text Active species
+		64 text 1
+		65 combo box ID: InsertionSpeciesSelector
+			66 text
+		67 button INSERT SPECIES ID: InsertSpeciesButton
+		68 scroll viewer
+			69 text SIMULATION
+			70 group ID: WorldExpander
+				71 button World ID: ExpanderHeader
+					72 text World
+				73 group ID: ParametersExpander
+					74 button Parameters ID: ExpanderHeader
+						75 text Parameters
+				76 group ID: EnvironmentExpander
+					77 button Environment ID: ExpanderHeader
+						78 text Environment
+					79 check box TOROIDAL WORLD ID: ToroidalWorldToggle
+					80 check box RENDER WASTE ID: RenderWasteToggle
+					81 button ＋ OBSTACLE ID: AddObstacleButton
+					82 button ＋ TELEPORTER ID: AddTeleporterButton
+					83 button ＋ FILE TELEPORTER ID: AddFileTeleporterButton
+					84 button (disabled) EDIT SHAPE PROPERTIES ID: EditShapeButton
+					85 button (disabled) EDIT TELEPORTER ID: EditTeleporterButton
+					86 button REMOVE FEATURE ID: RemoveFeatureButton
+				87 group ID: PhysicsExpander
+					88 button Physics ID: ExpanderHeader
+						89 text Physics
+				90 group ID: SensesExpander
+					91 button Senses ID: ExpanderHeader
+						92 text Senses
+				93 group ID: EnergyExpander
+					94 button Energy ID: ExpanderHeader
+						95 text Energy
+			96 group ID: LeagueExpander
+				97 button League / Local modes ID: ExpanderHeader
+					98 text League / Local modes
+				99 text LEAGUE TAB
+				100 combo box Value: LEAGUE ID: LocalModeKindSelector
+					101 text LEAGUE
+				102 combo box Value: F1 ID: LocalModePreset
+					103 text F1
+				104 text Rounds
+				105 spinner (settable, float) Value: 5 ID: ModeMinimumRounds
+					106 button Avalonia.Controls.PathIcon ID: PART_IncreaseButton
+					107 button Avalonia.Controls.PathIcon ID: PART_DecreaseButton
+					108 edit (settable, string) Value: 5 ID: PART_TextBox
+				109 text Round cap
+				110 spinner (settable, float) Value: 1 ID: ModeMaximumRounds
+					111 button Avalonia.Controls.PathIcon ID: PART_IncreaseButton
+					112 button (disabled) Avalonia.Controls.PathIcon ID: PART_DecreaseButton
+					113 edit (settable, string) Value: 1 ID: PART_TextBox
+				114 text Cycles
+				115 spinner (settable, float) Value: 15000 ID: ModeMaximumCycles
+					116 button Avalonia.Controls.PathIcon ID: PART_IncreaseButton
+					117 button Avalonia.Controls.PathIcon ID: PART_DecreaseButton
+					118 edit (settable, string) Value: 15000 ID: PART_TextBox
+				119 text Population cap
+				120 spinner (settable, float) Value: 700 ID: ModePopulationCap
+					121 button Avalonia.Controls.PathIcon ID: PART_IncreaseButton
+					122 button Avalonia.Controls.PathIcon ID: PART_DecreaseButton
+					123 edit (settable, string) Value: 700 ID: PART_TextBox
+				124 text Energy handicap
+				125 spinner (settable, float) Value: 0 ID: ModeEnergyHandicap
+					126 button Avalonia.Controls.PathIcon ID: PART_IncreaseButton
+					127 button Avalonia.Controls.PathIcon ID: PART_DecreaseButton
+					128 edit (settable, string) Value: 0 ID: PART_TextBox
+				129 check box RESTART AFTER EXTINCTION ID: ModeRestartOnExtinction
+				130 check box PROHIBIT INFORMATION SHOTS ID: ModeProhibitInformation
+				131 check box PROHIBIT VIRUSES ID: ModeProhibitViruses
+				132 check box PROHIBIT SEXUAL REPRODUCTION ID: ModeProhibitSexual
+				133 button CONFIGURE ID: ConfigureModeButton
+				134 button START ID: StartModeButton
+				135 button RESTART ID: RestartModeButton
+				136 button ADJUDICATE ID: AdjudicateModeButton
+				137 edit (settable, string) Description: Adjudication reason ID: LocalModeReason
+				138 text IDLE
+				139 text NOT STARTED
+				140 text CYCLE —
+				141 text ADJUDICATION PENDING
+			142 group ID: HistoryExpander
+				143 button History ID: ExpanderHeader
+					144 text History
+			145 group ID: StatisticsExpander
+				146 button Statistics ID: ExpanderHeader
+					147 text Statistics
+			148 group ID: ExperimentsExpander
+				149 button Experiments ID: ExpanderHeader
+					150 text Experiments
+			151 scroll bar (settable, float) Value: 0 ID: PART_VerticalScrollBar
+				152 button Line up ID: PART_LineUpButton
+				153 button Page up ID: PART_PageUpButton
+				154 button Page down ID: PART_PageDownButton
+				155 thumb Position
+				156 button Line down ID: PART_LineDownButton
+		157 text Legacy DNA compatible
+		158 text OFFLINE · INTERNET DISABLED
+		159 button Zoom in Description: Zoom in ID: ZoomInButton
+		160 button Zoom out Description: Zoom out ID: ZoomOutButton
+		161 button Lock camera Description: Keep the camera inside the world ID: ZoomLockButton
+		162 scroll viewer
+			163 text ORGANISM
+			164 text STABLE ID
+			165 text 16:0
+			166 text Selected organism follows stable slot:generation identity
+			167 text ENERGY
+			168 progress bar Value: 983
+			169 text Current reserve
+			170 text 983
+			171 text DNA
+			172 text ▌▏▌▌▏▏▌▏▌▌▏▏▏▌▌▏▌▏▌
+			173 button EDIT / EXPORT DNA ID: EditDnaButton
+			174 text STATE
+			175 text Age
+			176 text 132
+			177 text Species
+			178 text The One (1G)(Shen)-23.04.05.txt
+			179 text Body
+			180 text 149
+			181 text Waste
+			182 text 18
+			183 text Chloroplasts
+			184 text 0
+			185 text Shell / Slime
+			186 text 200
+			187 text /
+			188 text 0
+			189 text Poison / Venom
+			190 text 0
+			191 text /
+			192 text 10
+			193 text Aim
+			194 text 77
+			195 text Velocity
+			196 text 59.8, -4.7
+			197 text Parents
+			198 text 13:0 / NONE
+			199 text Activity
+			200 text MOVING
+			201 text Paralyzed / Poisoned
+			202 text 0
+			203 text /
+			204 text 0
+			205 button MOVE ID: MoveButton
+			206 button CLONE ID: CloneButton
+			207 button REPRODUCE ID: ReproduceButton
+			208 button KILL ID: KillButton
+			209 button FOLLOW ID: FollowButton
+			210 scroll bar (settable, float) Value: 0 ID: PART_VerticalScrollBar
+				211 button Line up ID: PART_LineUpButton
+				212 button Page up ID: PART_PageUpButton
+				213 button Page down ID: PART_PageDownButton
+				214 thumb Position
+				215 button Line down ID: PART_LineDownButton
+		216 text POPULATION
+		217 text 197 organisms · 1 species
+		218 text BIRTH 187 DEATH 2
+		219 text ENERGY
+		220 text 368,748 total
+		221 text FIRED 19 IMPACT 69 PLANT 1,486
+		222 text EVENT LOG
+		223 text SYSTEM Modern engine initialized
+		224 text BIRTH 187 DEATH 2
+		225 text FIRED 19 IMPACT 69 HARVEST 4,217 DONATED 4,217 FEED 25 MOVE 136 EFFECT 58
+		226 text PLANT ENERGY 1,486
+		227 text MUTATIONS 0
+		228 text DNA 0.0 ms
+		229 list ID: StatusInstrument
+			230 text CPS
+			231 text 0
+			232 text Tot
+			233 text 197
+			234 text Bots
+			235 text 160
+			236 text Chlr
+			237 text 890832
+			238 text Born
+			239 text 187
+			240 text Cycles
+			241 text 282
+			242 text Time
+			243 text 0h6m35s
+			244 text Mut
+			245 text 1x
+			246 text Restarts
+			247 text 0
+			248 text Shots
+			249 text 0
+			250 text Nrg
+			251 text 368748
+			252 text Delta
+			253 text 0
+			254 text CostX
+			255 text 1
+			256 text Feed
+			257 text 25
+			258 text Move
+			259 text 136
+			260 text Events
+			261 text 58
+		262 text LOADED
+		263 text INTERFACE ID: InterfaceTitle
+		264 text THEME ID: ThemeLabel
+		265 combo box APPLICATION THEME Description: Select the application theme Value: SYSTEM ID: ThemeSelector
+			266 text SYSTEM
+		267 text LANGUAGE ID: CultureLabel
+		268 combo box INTERFACE LANGUAGE Description: Select the interface language and number format Value: English ID: CultureSelector
+			269 text English
+
+The focused UI element is 34 button LOAD ID: LoadButton.

@@ -1,0 +1,413 @@
+{
+  "schema_version": 1,
+  "source_head": "9d9321e4b86d76d18ef5e2c10f6c873ce0446089",
+  "run_id": 39035994121,
+  "expected_per_platform": 214,
+  "platforms": [
+    {
+      "platform": "linux-x64",
+      "trx": {
+        "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-linux-x64/test-results/rendered-controls.trx",
+        "sha256": "0F8F1789F52724C8F7C670A7AC282E08AD2082D2FC8CCF4D10FFFE8D00BA9A7B",
+        "bytes": 334194
+      },
+      "counters": {
+        "total": 214,
+        "executed": 214,
+        "passed": 214,
+        "failed": 0,
+        "error": 0,
+        "timeout": 0,
+        "aborted": 0,
+        "inconclusive": 0,
+        "passedButRunAborted": 0,
+        "notRunnable": 0,
+        "notExecuted": 0,
+        "disconnected": 0,
+        "warning": 0,
+        "completed": 0,
+        "inProgress": 0,
+        "pending": 0
+      },
+      "actual_result_rows": 214,
+      "unique_execution_ids": 214,
+      "result_rows_match_counters": true,
+      "full_expected_suite_completed": true,
+      "failed_tests": [],
+      "selected_cases": [
+        {
+          "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.OriginalSettingsProfileRemainsAuthoritativeOverAnAdjacentSidecar",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.SetupKeepsPickedProfileAndOriginalSourcePathOnTheSpeciesDefinition",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.InvalidNativeSnapshotTextIsRejectedBeforeTheStorageDestinationIsOpened",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: True)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.CompletedClassicDnaExportUsesTheFolderPickerAndPreservesOriginalFiles",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.StartupSidecarReachesItsNativeRobotAtTheExactCenterAndSurvivesExportAndSaveResume",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.NativeLoadRetainsTheProcessHandoffButModernLoadRestoresItsOwnGaussianState(savedHasSpare: True)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.PopulationSeedingScoresExtinctionThenAutomaticallyRunsTheClassicTournamentAndExportsStartupDna",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.LegacySettingsNativeTests.OriginalExecutableContinuationOfThePortExportLoadsAndSteps",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.NativeLoadRetainsTheProcessHandoffButModernLoadRestoresItsOwnGaussianState(savedHasSpare: False)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.MalformedStartupSidecarFailsBeforeItsDnaImportAndPreservesTheSetupSpecies",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.ResetCapturesTheCurrentSpareOnceAndDoesNotReplayTheOriginalHandoffAfterItClears",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.NewSimulationRoutesCaptureCurrentSpareAndWireTheReplacementWithTheInjectedServices(useMenu: False)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.DnaExportRenderedTests.MainWindowSelectedOrganismExportsExactDnaAndKeepsCanceledRouteInert",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: False)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.UnknownShotUsesOwnerColourAndWritesRenderedReceipt",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.NativeFlashPaletteUsesPreviousPositionAndDisablingImpactsStillDrawsLiveShots",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.ExistingDeathParticlesUseArgbPointsWhileCreationIsDisabledAndCorpsesRemainVisible",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.StartupWithoutASidecarKeepsTheOriginalDefaultSpeciesAndInsertionRoute",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.ExplicitEvolutionFileCarriesItsSidecarThroughTheNativeConfigAndSavedSnapshot",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.NewSimulationRoutesCaptureCurrentSpareAndWireTheReplacementWithTheInjectedServices(useMenu: True)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.PickedSidecarProfileReachesOnlyItsActualNativeSpeciesAndSelectedExport",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.ShotExistenceAndStorageGateNormalPaintWhileFlashesRemainVisible",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.RuntimeControlSurfaceTests.LoadedNativeWorldHydratesControlsAndChangingTopologyPreservesItsRules",
+          "outcome": "Passed"
+        }
+      ]
+    },
+    {
+      "platform": "osx-arm64",
+      "trx": {
+        "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-arm64/test-results/rendered-controls.trx",
+        "sha256": "97A71AE17729B8D773EE26771CDCDCAD765F9BB596719BA69E595480C6D83E61",
+        "bytes": 348749
+      },
+      "counters": {
+        "total": 214,
+        "executed": 214,
+        "passed": 213,
+        "failed": 1,
+        "error": 0,
+        "timeout": 0,
+        "aborted": 0,
+        "inconclusive": 0,
+        "passedButRunAborted": 0,
+        "notRunnable": 0,
+        "notExecuted": 0,
+        "disconnected": 0,
+        "warning": 0,
+        "completed": 0,
+        "inProgress": 0,
+        "pending": 0
+      },
+      "actual_result_rows": 214,
+      "unique_execution_ids": 214,
+      "result_rows_match_counters": true,
+      "full_expected_suite_completed": true,
+      "failed_tests": [
+        {
+          "name": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: False)",
+          "outcome": "Failed",
+          "execution_id": "cdda37c3-7f03-4bdb-86eb-815fe09a4300",
+          "duration": "00:00:30.5363627",
+          "message": "Find Best route did not publish its expected UI state.",
+          "stack_trace": "   at Darwinbots.Desktop.Tests.FindBestRenderedTests.WaitFor(Func`1 ready) in /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/FindBestRenderedTests.cs:line 124\n   at Darwinbots.Desktop.Tests.FindBestRenderedTests.<>c__DisplayClass0_0.<<ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection>b__0>d.MoveNext() in /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/FindBestRenderedTests.cs:line 52\n--- End of stack trace from previous location ---\n   at Darwinbots.Desktop.Tests.DesktopTestApplication.UiSession.<>c__DisplayClass5_0.<<Dispatch>b__0>d.MoveNext() in /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/DesktopTestApplication.cs:line 45\n--- End of stack trace from previous location ---\n   at Avalonia.Headless.HeadlessUnitTestSession.<>c__DisplayClass12_0`1.<DispatchCore>b__0()\n--- End of stack trace from previous location ---\n   at Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(Boolean menu) in /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/FindBestRenderedTests.cs:line 22\n--- End of stack trace from previous location ---"
+        }
+      ],
+      "selected_cases": [
+        {
+          "name": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: True)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.RuntimeControlSurfaceTests.LoadedNativeWorldHydratesControlsAndChangingTopologyPreservesItsRules",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.PickedSidecarProfileReachesOnlyItsActualNativeSpeciesAndSelectedExport",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.PopulationSeedingScoresExtinctionThenAutomaticallyRunsTheClassicTournamentAndExportsStartupDna",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.ExplicitEvolutionFileCarriesItsSidecarThroughTheNativeConfigAndSavedSnapshot",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.ExistingDeathParticlesUseArgbPointsWhileCreationIsDisabledAndCorpsesRemainVisible",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.NewSimulationRoutesCaptureCurrentSpareAndWireTheReplacementWithTheInjectedServices(useMenu: True)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.UnknownShotUsesOwnerColourAndWritesRenderedReceipt",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.MalformedStartupSidecarFailsBeforeItsDnaImportAndPreservesTheSetupSpecies",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.LegacySettingsNativeTests.OriginalExecutableContinuationOfThePortExportLoadsAndSteps",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: False)",
+          "outcome": "Failed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.DnaExportRenderedTests.MainWindowSelectedOrganismExportsExactDnaAndKeepsCanceledRouteInert",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.StartupSidecarReachesItsNativeRobotAtTheExactCenterAndSurvivesExportAndSaveResume",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.StartupWithoutASidecarKeepsTheOriginalDefaultSpeciesAndInsertionRoute",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.ShotExistenceAndStorageGateNormalPaintWhileFlashesRemainVisible",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.NativeLoadRetainsTheProcessHandoffButModernLoadRestoresItsOwnGaussianState(savedHasSpare: True)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.NativeFlashPaletteUsesPreviousPositionAndDisablingImpactsStillDrawsLiveShots",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.NativeLoadRetainsTheProcessHandoffButModernLoadRestoresItsOwnGaussianState(savedHasSpare: False)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.SetupKeepsPickedProfileAndOriginalSourcePathOnTheSpeciesDefinition",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.ResetCapturesTheCurrentSpareOnceAndDoesNotReplayTheOriginalHandoffAfterItClears",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.InvalidNativeSnapshotTextIsRejectedBeforeTheStorageDestinationIsOpened",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.NewSimulationRoutesCaptureCurrentSpareAndWireTheReplacementWithTheInjectedServices(useMenu: False)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.CompletedClassicDnaExportUsesTheFolderPickerAndPreservesOriginalFiles",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.OriginalSettingsProfileRemainsAuthoritativeOverAnAdjacentSidecar",
+          "outcome": "Passed"
+        }
+      ]
+    },
+    {
+      "platform": "osx-x64",
+      "trx": {
+        "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-x64/test-results/rendered-controls.trx",
+        "sha256": "8557DCD48902CCE02D6BB46D4B801381CAC2136258564D124BB99A08333B4192",
+        "bytes": 349665
+      },
+      "counters": {
+        "total": 214,
+        "executed": 214,
+        "passed": 213,
+        "failed": 1,
+        "error": 0,
+        "timeout": 0,
+        "aborted": 0,
+        "inconclusive": 0,
+        "passedButRunAborted": 0,
+        "notRunnable": 0,
+        "notExecuted": 0,
+        "disconnected": 0,
+        "warning": 0,
+        "completed": 0,
+        "inProgress": 0,
+        "pending": 0
+      },
+      "actual_result_rows": 214,
+      "unique_execution_ids": 214,
+      "result_rows_match_counters": true,
+      "full_expected_suite_completed": true,
+      "failed_tests": [
+        {
+          "name": "Darwinbots.Desktop.Tests.RuntimeControlSurfaceTests.LoadedNativeWorldHydratesControlsAndChangingTopologyPreservesItsRules",
+          "outcome": "Failed",
+          "execution_id": "05665414-b749-4c6e-96f0-6cec486771e9",
+          "duration": "00:00:05.2676712",
+          "message": "Timed out waiting for the serialized UI command batch. Calls: ",
+          "stack_trace": "   at Darwinbots.Desktop.Tests.RuntimeControlSurfaceTests.WaitFor(Func`1 condition, Func`1 details) in /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/RuntimeControlSurfaceTests.cs:line 1682\n   at Darwinbots.Desktop.Tests.RuntimeControlSurfaceTests.<>c__DisplayClass12_0.<<LoadedNativeWorldHydratesControlsAndChangingTopologyPreservesItsRules>b__0>d.MoveNext() in /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/RuntimeControlSurfaceTests.cs:line 726\n--- End of stack trace from previous location ---\n   at Darwinbots.Desktop.Tests.RuntimeControlSurfaceTests.<>c__DisplayClass12_0.<<LoadedNativeWorldHydratesControlsAndChangingTopologyPreservesItsRules>b__0>d.MoveNext() in /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/RuntimeControlSurfaceTests.cs:line 757\n--- End of stack trace from previous location ---\n   at Darwinbots.Desktop.Tests.DesktopTestApplication.UiSession.<>c__DisplayClass5_0.<<Dispatch>b__0>d.MoveNext() in /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/DesktopTestApplication.cs:line 45\n--- End of stack trace from previous location ---\n   at Avalonia.Headless.HeadlessUnitTestSession.<>c__DisplayClass12_0`1.<DispatchCore>b__0()\n--- End of stack trace from previous location ---\n   at Darwinbots.Desktop.Tests.RuntimeControlSurfaceTests.LoadedNativeWorldHydratesControlsAndChangingTopologyPreservesItsRules() in /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/RuntimeControlSurfaceTests.cs:line 718\n--- End of stack trace from previous location ---"
+        }
+      ],
+      "selected_cases": [
+        {
+          "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.ExplicitEvolutionFileCarriesItsSidecarThroughTheNativeConfigAndSavedSnapshot",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: True)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.PopulationSeedingScoresExtinctionThenAutomaticallyRunsTheClassicTournamentAndExportsStartupDna",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.RuntimeControlSurfaceTests.LoadedNativeWorldHydratesControlsAndChangingTopologyPreservesItsRules",
+          "outcome": "Failed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.InvalidNativeSnapshotTextIsRejectedBeforeTheStorageDestinationIsOpened",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.PickedSidecarProfileReachesOnlyItsActualNativeSpeciesAndSelectedExport",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.CompletedClassicDnaExportUsesTheFolderPickerAndPreservesOriginalFiles",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.MalformedStartupSidecarFailsBeforeItsDnaImportAndPreservesTheSetupSpecies",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.OriginalSettingsProfileRemainsAuthoritativeOverAnAdjacentSidecar",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.NewSimulationRoutesCaptureCurrentSpareAndWireTheReplacementWithTheInjectedServices(useMenu: False)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.ExistingDeathParticlesUseArgbPointsWhileCreationIsDisabledAndCorpsesRemainVisible",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: False)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.NewSimulationRoutesCaptureCurrentSpareAndWireTheReplacementWithTheInjectedServices(useMenu: True)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.LegacySettingsNativeTests.OriginalExecutableContinuationOfThePortExportLoadsAndSteps",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.ResetCapturesTheCurrentSpareOnceAndDoesNotReplayTheOriginalHandoffAfterItClears",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.SetupKeepsPickedProfileAndOriginalSourcePathOnTheSpeciesDefinition",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.StartupWithoutASidecarKeepsTheOriginalDefaultSpeciesAndInsertionRoute",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.NativeLoadRetainsTheProcessHandoffButModernLoadRestoresItsOwnGaussianState(savedHasSpare: True)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.NativeFlashPaletteUsesPreviousPositionAndDisablingImpactsStillDrawsLiveShots",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.NativeLoadRetainsTheProcessHandoffButModernLoadRestoresItsOwnGaussianState(savedHasSpare: False)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.UnknownShotUsesOwnerColourAndWritesRenderedReceipt",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.StartupSidecarReachesItsNativeRobotAtTheExactCenterAndSurvivesExportAndSaveResume",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.DnaExportRenderedTests.MainWindowSelectedOrganismExportsExactDnaAndKeepsCanceledRouteInert",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.ShotExistenceAndStorageGateNormalPaintWhileFlashesRemainVisible",
+          "outcome": "Passed"
+        }
+      ]
+    }
+  ]
+}

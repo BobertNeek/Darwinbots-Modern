@@ -1,0 +1,20 @@
+[
+  {
+    "step": "format-check",
+    "exit_code": 0,
+    "seconds": 2.7866466,
+    "log": "format-check.log"
+  },
+  {
+    "step": "physical-target-clippy",
+    "exit_code": 0,
+    "seconds": 28.1081026,
+    "log": "physical-target-clippy.log"
+  },
+  {
+    "step": "physical-target-link",
+    "exit_code": 0,
+    "seconds": 257.8174907,
+    "log": "physical-target-link.log"
+  }
+]

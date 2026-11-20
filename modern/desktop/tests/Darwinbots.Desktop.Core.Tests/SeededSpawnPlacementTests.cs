@@ -28,4 +28,23 @@ public sealed class SeededSpawnPlacementTests
             Assert.InRange(position[1], 60f, 11_940f);
         });
     }
+
+    [Fact]
+    public void RandomObstaclePlacementIsRepeatableAndSeedSensitive()
+    {
+        var first = new SeededSpawnPlacement(17).NextObstacles(10, 16_000f, 12_000f);
+        var repeat = new SeededSpawnPlacement(17).NextObstacles(10, 16_000f, 12_000f);
+        var different = new SeededSpawnPlacement(23).NextObstacles(10, 16_000f, 12_000f);
+
+        Assert.Equal(first.Length, repeat.Length);
+        for (var index = 0; index < first.Length; index++)
+        {
+            Assert.True(first[index].Minimum.SequenceEqual(repeat[index].Minimum));
+            Assert.True(first[index].Maximum.SequenceEqual(repeat[index].Maximum));
+        }
+
+        Assert.True(first.Zip(different).Any(pair =>
+            !pair.First.Minimum.SequenceEqual(pair.Second.Minimum)
+            || !pair.First.Maximum.SequenceEqual(pair.Second.Maximum)));
+    }
 }

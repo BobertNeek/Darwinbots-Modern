@@ -1,0 +1,233 @@
+{
+  "schema_version": 1,
+  "batch": 61,
+  "state": "authored_quarantine_sealed_for_root_review_no_application_or_execution",
+  "sealed_utc": "2026-10-17T11:12:43.918Z",
+  "owner": "/root/recover_46_inventory",
+  "source_head": "43d38a55ac3e95c541bc9407bc0056b7cf45e351",
+  "files": [
+    {
+      "source_path": "docs/parity/db24832-parity-report-2026-10-14.html",
+      "base_raw_sha256": "C4EE836CBB75C94967E24809F13408178B2319116682A9DA9E84FC4853B291F3",
+      "base_bytes": 535992,
+      "candidate_path": "output/pass61-drafts/report/candidate/docs/parity/db24832-parity-report-2026-10-14.html",
+      "candidate_raw_sha256": "B143C3E7F425FDCF13AD47A7BC2E7852CB8AF47FAB1C2A4B8D00036D246D13C5",
+      "candidate_bytes": 588973,
+      "new_file": false
+    },
+    {
+      "source_path": "docs/parity/evidence/continuation-handoff-2026-10-13.md",
+      "base_raw_sha256": "513516AB291EF71DB93C3617BD1704C0FDC6FDF0F17410F1444183F75E21EFD9",
+      "base_bytes": 394927,
+      "candidate_path": "output/pass61-drafts/report/candidate/docs/parity/evidence/continuation-handoff-2026-10-13.md",
+      "candidate_raw_sha256": "548F78F2CD1FCDD7ECFD37EBFA1F4E49B5F420E0FEB08D4A2A1EFAE56D6F4243",
+      "candidate_bytes": 402247,
+      "new_file": false
+    }
+  ],
+  "scope": "Two document candidates only. Active files/source/HEAD unchanged. Source59 remains qualified;60 failed results are sealed separately;61 authoring counts are not passing results. Root records final managed two-file inherited-flash amendment/peer review and complete application/commit/freeze before execution.",
+  "latest_qualified_checkpoint": {
+    "batch": 59,
+    "source": "ff50b1a735ef61c6d5d282358da76f2734f64099",
+    "local_summary": {
+      "file": "evidence/batch-2026-10-14/native-roundtrip-pass59/qualification-summary.json",
+      "sha256": "321780566BF491CC6D5FAE7C5E0E92D74187C221D8889560A068C0F5F475584B"
+    },
+    "hosted_main": {
+      "file": "evidence/batch-2026-10-14/hosted-main-ff50b1a.json",
+      "sha256": "715A80121CF8B2CCD8F23758D6822AA1F0A4E02B0A32BE86547F78FFAF4705C0"
+    },
+    "hosted_diagnostics": {
+      "file": "evidence/batch-2026-10-14/hosted-diagnostics-ff50b1a.json",
+      "sha256": "65BD4BAFCCBB2342A118E9B4357F643CBECDD50704644061705409E7E04F46CF"
+    },
+    "scope": "Completed ordinary local CPU and hosted cross-platform checkpoint only; hardware, uncaptured original observations and final visible acceptance remain open."
+  },
+  "collected60": {
+    "source_head": "43d38a55ac3e95c541bc9407bc0056b7cf45e351",
+    "summary": {
+      "file": "evidence/batch-2026-10-14/native-roundtrip-pass60/qualification-summary.json",
+      "sha256": "8CD5A958315CE81FE587FBEC39B66CAB5A4B5738893BAA2B4672FA3CF5DF9B26"
+    },
+    "rust_receipt": {
+      "file": "evidence/batch-2026-10-14/native-roundtrip-pass60/rust-target-results.json",
+      "sha256": "FB94B7C63ECB9EE010F8945BC71DF358A4058EEF60DDB074623B2EF5842A0AAD"
+    },
+    "main": {
+      "file": "evidence/batch-2026-10-14/hosted-main-43d38a5.json",
+      "sha256": "65D9A9952807497F739D1C8D4CD66C7B690869E8A504A15E4E3431BAE2FE3E1A"
+    },
+    "diagnostics": {
+      "file": "evidence/batch-2026-10-14/hosted-diagnostics-43d38a5.json",
+      "sha256": "7CF265DAACB05D80F3AE7DEBF409E12308A85322F7E2AD1B2FFD2648C07BD2ED"
+    },
+    "ordinary": {
+      "total": 94,
+      "passed": 88,
+      "nondependency_nonzero": 5,
+      "dependent_not_run": 1
+    },
+    "rust": {
+      "targets": 68,
+      "passed": 1034,
+      "failed": 2,
+      "ignored": 0,
+      "filtered_out": 27
+    },
+    "core": {
+      "passed": 309,
+      "failed": 0
+    },
+    "desktop": {
+      "discovered": 0,
+      "executed": 0,
+      "passed": null,
+      "failed": null
+    },
+    "original": {
+      "controls": 25,
+      "matched": 24,
+      "matched_fields": 54165,
+      "failed_control": "feedingC100",
+      "failed_union_fields": 1983,
+      "failed_differences": 598,
+      "reference_only_fields": 55849
+    },
+    "sealed60receipts_modified": false
+  },
+  "next61_authoring_plan": {
+    "census": {
+      "total_targets": 33,
+      "existing_targets": 29,
+      "new_targets": 4,
+      "source_or_runner": 31,
+      "source_existing": 27,
+      "source_new": 4,
+      "existing_report_documents": 2,
+      "owners": {
+        "rust": {
+          "targets": 11,
+          "existing": 10,
+          "new": 1
+        },
+        "managed": {
+          "targets": 17,
+          "existing": 17,
+          "new": 0
+        },
+        "qualification": {
+          "targets": 3,
+          "existing": 0,
+          "new": 3
+        },
+        "report": {
+          "targets": 2,
+          "existing": 2,
+          "new": 0
+        }
+      },
+      "new_rows_vs60": {
+        "rust": 8,
+        "core": 3,
+        "desktop": 4
+      },
+      "expected": {
+        "rust_targets": 68,
+        "core": 312,
+        "desktop": 213,
+        "ordinary_outcomes": 94,
+        "original_controls": 25,
+        "reference_only_fields": 55849,
+        "isolated_logging_cases": 4
+      }
+    },
+    "releases": [
+      {
+        "file": "output/pass61-drafts/native-poffs/metadata.json",
+        "sha256": "AD9AFC64B68111DD6AF76C2BB89BAC615DD250F9A528C653204A257D30FEEF42"
+      },
+      {
+        "file": "output/pass61-drafts/managed-poffs/metadata.json",
+        "sha256": "81DBC1C1C476165D2133F7125D292ED5BDB5022C82E3C433FB7CAE331F521C4A"
+      },
+      {
+        "file": "output/pass61-drafts/qualification/metadata-final.json",
+        "sha256": "72749AD5C5D8081FE783CA5CD869F747583C541B7AA730D31988566E438E1C8F"
+      }
+    ],
+    "managed_final_two_file_inherited_flash_amendment": {
+      "adds_rows": 0,
+      "required_before_application": true,
+      "final_seal_and_peer_review_recorded_separately_by_root": true
+    },
+    "qualification_executed": false,
+    "new_product_results": null,
+    "source61_original_runtime_render_or_full_mode_proof_claimed": false
+  },
+  "static_document_checks": {
+    "ledger_ids_order_preserved": true,
+    "ledger_count": 25,
+    "historical_json_fields_preserved": 47,
+    "historical_json_mismatches": [],
+    "stylesheet_raw_unchanged": true,
+    "filter_script_raw_unchanged": true,
+    "historical_aside_suffix_raw_preserved": true,
+    "historical_current_prefix_preserved": true,
+    "handoff_prior_raw_bytes_exact_suffix": true,
+    "no_unresolved_template_tokens": true,
+    "latest_qualified_stays59": true,
+    "active61_unqualified": true,
+    "collected60_actual": true,
+    "planned_counts_match_released_metadata": true,
+    "parity_data_json_parsed": true,
+    "existing_ledger_ids": [
+      "IO-01",
+      "IO-02",
+      "IO-03",
+      "IO-04",
+      "IO-05",
+      "SIM-01",
+      "SIM-02",
+      "SIM-03",
+      "SIM-04",
+      "SIM-05",
+      "MODE-01",
+      "MODE-02",
+      "UI-01",
+      "UI-02",
+      "UI-03",
+      "MODE-03",
+      "DATA-01",
+      "UI-04",
+      "UI-05",
+      "UI-06",
+      "QA-01",
+      "QA-02",
+      "QA-03",
+      "ENG-01",
+      "ENG-02"
+    ],
+    "stylesheet_sha256": "C75177D3EC0C81F0866E9D7E24DB852442A63496BD93A053CE878CD93E74B0A5",
+    "filter_script_sha256": "16AEAC4206FA75B5DD632459EE53330C02FB776F5A0E1FAEE49B063F9F1CDAA3",
+    "historical_aside_suffix_sha256": "7968DDEB899B7B7AF9E26DDAE198222DABFE77AFC237668438EDA59FF77076AB",
+    "handoff_preserved_suffix_sha256": "513516AB291EF71DB93C3617BD1704C0FDC6FDF0F17410F1444183F75E21EFD9",
+    "base_active_docs_reverified_unchanged": true
+  },
+  "execution": {
+    "product_builds": false,
+    "product_tests": false,
+    "product_parser": false,
+    "formatter": false,
+    "browser": false,
+    "desktop": false,
+    "gpu": false,
+    "git_mutation": false,
+    "report_data_static_readback": true
+  },
+  "remaining": [
+    "Apply only the complete reviewed33-target batch after final managed flash amendment/peer review; root records commit/freeze separately.",
+    "Fresh61 qualification:68Rusttargets/Core312/Desktop213,94ordinary outcomes,25original controls/55849reference-onlyfields;4isolatedloggingcases separate.",
+    "Original fullmode/restart/settings/selection/graph observations; first officialRestarterlaunch human confirmation pending. Configuration screenshots are not actualmode/restart proof.",
+    "Physical/portable/switchGPU, sustained qualifiedCPU/GPUcapacity and final visible walkthrough, respecting A-Life priority and Bob desktop control."
+  ]
+}

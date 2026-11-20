@@ -1,0 +1,1099 @@
+{
+  "schema_version": 3,
+  "batch": 62,
+  "sealed_utc": "2026-10-17T13:34:22.025Z",
+  "source_head": "9d9321e4b86d76d18ef5e2c10f6c873ce0446089",
+  "source_manifest": {
+    "file": "output/native-roundtrip-pass62-source.json",
+    "sha256": "5F5E901F1B2461D2C9B0A67CC3CDDD45BEE3DC2061120CF12FC33FADF16B72ED",
+    "pinned_files": 661
+  },
+  "workflow": "Desktop platform diagnostics",
+  "workflow_file": ".github/workflows/modern-desktop-diagnostics.yml",
+  "run": {
+    "id": 39035994121,
+    "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39035994121",
+    "event": "push",
+    "run_attempt": 1,
+    "status": "completed",
+    "conclusion": "failure",
+    "created_at": "2026-10-17T13:18:07Z",
+    "updated_at": "2026-10-17T13:28:17Z",
+    "head_sha": "9d9321e4b86d76d18ef5e2c10f6c873ce0446089"
+  },
+  "all_jobs_terminal": true,
+  "all_three_diagnostic_outcomes_collected": true,
+  "jobs": [
+    {
+      "job_id": 117405752193,
+      "name": "rendered-desktop (macos-latest, osx-arm64)",
+      "platform": "osx-arm64",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-17T13:18:14Z",
+      "completed_at": "2026-10-17T13:22:47Z",
+      "steps": [
+        {
+          "number": 1,
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T13:18:14Z",
+          "completed_at": "2026-10-17T13:18:16Z"
+        },
+        {
+          "number": 2,
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T13:18:16Z",
+          "completed_at": "2026-10-17T13:18:19Z"
+        },
+        {
+          "number": 3,
+          "name": "Run dtolnay/rust-toolchain@stable",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T13:18:19Z",
+          "completed_at": "2026-10-17T13:18:26Z"
+        },
+        {
+          "number": 4,
+          "name": "Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T13:18:26Z",
+          "completed_at": "2026-10-17T13:18:37Z"
+        },
+        {
+          "number": 5,
+          "name": "Diagnose rendered desktop controls",
+          "status": "completed",
+          "conclusion": "failure",
+          "started_at": "2026-10-17T13:18:37Z",
+          "completed_at": "2026-10-17T13:22:37Z"
+        },
+        {
+          "number": 6,
+          "name": "Preserve diagnostic receipts",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T13:22:37Z",
+          "completed_at": "2026-10-17T13:22:39Z"
+        },
+        {
+          "number": 11,
+          "name": "Post Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "skipped",
+          "started_at": "2026-10-17T13:22:39Z",
+          "completed_at": "2026-10-17T13:22:39Z"
+        },
+        {
+          "number": 12,
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T13:22:39Z",
+          "completed_at": "2026-10-17T13:22:40Z"
+        },
+        {
+          "number": 13,
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T13:22:40Z",
+          "completed_at": "2026-10-17T13:22:45Z"
+        }
+      ],
+      "rust": {
+        "test_targets_executed": 0,
+        "native_library_build": "Ordinary native release library build within the exact Desktop project invocation; this workflow runs no Rust test corpus.",
+        "native_library_digest": "Not emitted by the artifact; no exact native library hash is inferred."
+      },
+      "managed": {
+        "project": "Darwinbots.Desktop.Tests",
+        "expected_cases": 214,
+        "total": 214,
+        "executed": 214,
+        "passed": 213,
+        "failed": 1,
+        "skipped": 0,
+        "result_rows": 214,
+        "unique_execution_ids": 214,
+        "result_rows_match_counters": true,
+        "full_expected_suite_completed": true,
+        "all_tests_passed": false,
+        "failed_tests": [
+          {
+            "name": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: False)",
+            "outcome": "Failed",
+            "execution_id": "cdda37c3-7f03-4bdb-86eb-815fe09a4300",
+            "duration": "00:00:30.5363627",
+            "message": "Find Best route did not publish its expected UI state.",
+            "stack_trace": "   at Darwinbots.Desktop.Tests.FindBestRenderedTests.WaitFor(Func`1 ready) in /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/FindBestRenderedTests.cs:line 124\n   at Darwinbots.Desktop.Tests.FindBestRenderedTests.<>c__DisplayClass0_0.<<ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection>b__0>d.MoveNext() in /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/FindBestRenderedTests.cs:line 52\n--- End of stack trace from previous location ---\n   at Darwinbots.Desktop.Tests.DesktopTestApplication.UiSession.<>c__DisplayClass5_0.<<Dispatch>b__0>d.MoveNext() in /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/DesktopTestApplication.cs:line 45\n--- End of stack trace from previous location ---\n   at Avalonia.Headless.HeadlessUnitTestSession.<>c__DisplayClass12_0`1.<DispatchCore>b__0()\n--- End of stack trace from previous location ---\n   at Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(Boolean menu) in /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/FindBestRenderedTests.cs:line 22\n--- End of stack trace from previous location ---"
+          }
+        ],
+        "trx": {
+          "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-arm64/test-results/rendered-controls.trx",
+          "sha256": "97A71AE17729B8D773EE26771CDCDCAD765F9BB596719BA69E595480C6D83E61",
+          "bytes": 348749
+        },
+        "selected_cases": [
+          {
+            "name": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: True)",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.RuntimeControlSurfaceTests.LoadedNativeWorldHydratesControlsAndChangingTopologyPreservesItsRules",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.PickedSidecarProfileReachesOnlyItsActualNativeSpeciesAndSelectedExport",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.PopulationSeedingScoresExtinctionThenAutomaticallyRunsTheClassicTournamentAndExportsStartupDna",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.ExplicitEvolutionFileCarriesItsSidecarThroughTheNativeConfigAndSavedSnapshot",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.ExistingDeathParticlesUseArgbPointsWhileCreationIsDisabledAndCorpsesRemainVisible",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.NewSimulationRoutesCaptureCurrentSpareAndWireTheReplacementWithTheInjectedServices(useMenu: True)",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.UnknownShotUsesOwnerColourAndWritesRenderedReceipt",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.MalformedStartupSidecarFailsBeforeItsDnaImportAndPreservesTheSetupSpecies",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.LegacySettingsNativeTests.OriginalExecutableContinuationOfThePortExportLoadsAndSteps",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: False)",
+            "outcome": "Failed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.DnaExportRenderedTests.MainWindowSelectedOrganismExportsExactDnaAndKeepsCanceledRouteInert",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.StartupSidecarReachesItsNativeRobotAtTheExactCenterAndSurvivesExportAndSaveResume",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.StartupWithoutASidecarKeepsTheOriginalDefaultSpeciesAndInsertionRoute",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.ShotExistenceAndStorageGateNormalPaintWhileFlashesRemainVisible",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.NativeLoadRetainsTheProcessHandoffButModernLoadRestoresItsOwnGaussianState(savedHasSpare: True)",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.NativeFlashPaletteUsesPreviousPositionAndDisablingImpactsStillDrawsLiveShots",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.NativeLoadRetainsTheProcessHandoffButModernLoadRestoresItsOwnGaussianState(savedHasSpare: False)",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.SetupKeepsPickedProfileAndOriginalSourcePathOnTheSpeciesDefinition",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.ResetCapturesTheCurrentSpareOnceAndDoesNotReplayTheOriginalHandoffAfterItClears",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.InvalidNativeSnapshotTextIsRejectedBeforeTheStorageDestinationIsOpened",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.NewSimulationRoutesCaptureCurrentSpareAndWireTheReplacementWithTheInjectedServices(useMenu: False)",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.CompletedClassicDnaExportUsesTheFolderPickerAndPreservesOriginalFiles",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.OriginalSettingsProfileRemainsAuthoritativeOverAnAdjacentSidecar",
+            "outcome": "Passed"
+          }
+        ]
+      },
+      "abort": {
+        "occurred": false,
+        "log_inactivity_abort": false
+      },
+      "artifacts": {
+        "file_count": 39,
+        "png_count": 38,
+        "trx_count": 1,
+        "changed_shot_render_captures_emitted": true
+      },
+      "log": {
+        "file": "output/hosted-diagnostics-9d9321e-agent/logs/osx-arm64-completed-final.log",
+        "sha256": "B63D307B57FD4E949DDD402292728B4F2AD4F8C5F4438204198F4AC113E5B67C",
+        "bytes": 69004
+      },
+      "not_run": [
+        "Rust workspace tests (outside this diagnostics workflow)",
+        "Desktop Core test project (outside this workflow)",
+        "Published package/package smoke/package identity (outside this workflow)",
+        "Physical GPU/capacity, actual original application and final visible desktop acceptance"
+      ]
+    },
+    {
+      "job_id": 117405752377,
+      "name": "rendered-desktop (ubuntu-latest, linux-x64)",
+      "platform": "linux-x64",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-17T13:18:10Z",
+      "completed_at": "2026-10-17T13:22:19Z",
+      "steps": [
+        {
+          "number": 1,
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T13:18:11Z",
+          "completed_at": "2026-10-17T13:18:12Z"
+        },
+        {
+          "number": 2,
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T13:18:12Z",
+          "completed_at": "2026-10-17T13:18:15Z"
+        },
+        {
+          "number": 3,
+          "name": "Run dtolnay/rust-toolchain@stable",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T13:18:15Z",
+          "completed_at": "2026-10-17T13:18:26Z"
+        },
+        {
+          "number": 4,
+          "name": "Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T13:18:26Z",
+          "completed_at": "2026-10-17T13:18:33Z"
+        },
+        {
+          "number": 5,
+          "name": "Diagnose rendered desktop controls",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T13:18:33Z",
+          "completed_at": "2026-10-17T13:22:17Z"
+        },
+        {
+          "number": 6,
+          "name": "Preserve diagnostic receipts",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T13:22:17Z",
+          "completed_at": "2026-10-17T13:22:17Z"
+        },
+        {
+          "number": 11,
+          "name": "Post Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T13:22:17Z",
+          "completed_at": "2026-10-17T13:22:18Z"
+        },
+        {
+          "number": 12,
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T13:22:18Z",
+          "completed_at": "2026-10-17T13:22:18Z"
+        },
+        {
+          "number": 13,
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T13:22:18Z",
+          "completed_at": "2026-10-17T13:22:18Z"
+        }
+      ],
+      "rust": {
+        "test_targets_executed": 0,
+        "native_library_build": "Ordinary native release library build within the exact Desktop project invocation; this workflow runs no Rust test corpus.",
+        "native_library_digest": "Not emitted by the artifact; no exact native library hash is inferred."
+      },
+      "managed": {
+        "project": "Darwinbots.Desktop.Tests",
+        "expected_cases": 214,
+        "total": 214,
+        "executed": 214,
+        "passed": 214,
+        "failed": 0,
+        "skipped": 0,
+        "result_rows": 214,
+        "unique_execution_ids": 214,
+        "result_rows_match_counters": true,
+        "full_expected_suite_completed": true,
+        "all_tests_passed": true,
+        "failed_tests": [],
+        "trx": {
+          "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-linux-x64/test-results/rendered-controls.trx",
+          "sha256": "0F8F1789F52724C8F7C670A7AC282E08AD2082D2FC8CCF4D10FFFE8D00BA9A7B",
+          "bytes": 334194
+        },
+        "selected_cases": [
+          {
+            "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.OriginalSettingsProfileRemainsAuthoritativeOverAnAdjacentSidecar",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.SetupKeepsPickedProfileAndOriginalSourcePathOnTheSpeciesDefinition",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.InvalidNativeSnapshotTextIsRejectedBeforeTheStorageDestinationIsOpened",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: True)",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.CompletedClassicDnaExportUsesTheFolderPickerAndPreservesOriginalFiles",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.StartupSidecarReachesItsNativeRobotAtTheExactCenterAndSurvivesExportAndSaveResume",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.NativeLoadRetainsTheProcessHandoffButModernLoadRestoresItsOwnGaussianState(savedHasSpare: True)",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.PopulationSeedingScoresExtinctionThenAutomaticallyRunsTheClassicTournamentAndExportsStartupDna",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.LegacySettingsNativeTests.OriginalExecutableContinuationOfThePortExportLoadsAndSteps",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.NativeLoadRetainsTheProcessHandoffButModernLoadRestoresItsOwnGaussianState(savedHasSpare: False)",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.MalformedStartupSidecarFailsBeforeItsDnaImportAndPreservesTheSetupSpecies",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.ResetCapturesTheCurrentSpareOnceAndDoesNotReplayTheOriginalHandoffAfterItClears",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.NewSimulationRoutesCaptureCurrentSpareAndWireTheReplacementWithTheInjectedServices(useMenu: False)",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.DnaExportRenderedTests.MainWindowSelectedOrganismExportsExactDnaAndKeepsCanceledRouteInert",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: False)",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.UnknownShotUsesOwnerColourAndWritesRenderedReceipt",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.NativeFlashPaletteUsesPreviousPositionAndDisablingImpactsStillDrawsLiveShots",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.ExistingDeathParticlesUseArgbPointsWhileCreationIsDisabledAndCorpsesRemainVisible",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.StartupWithoutASidecarKeepsTheOriginalDefaultSpeciesAndInsertionRoute",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.ExplicitEvolutionFileCarriesItsSidecarThroughTheNativeConfigAndSavedSnapshot",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.NewSimulationRoutesCaptureCurrentSpareAndWireTheReplacementWithTheInjectedServices(useMenu: True)",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.PickedSidecarProfileReachesOnlyItsActualNativeSpeciesAndSelectedExport",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.ShotExistenceAndStorageGateNormalPaintWhileFlashesRemainVisible",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.RuntimeControlSurfaceTests.LoadedNativeWorldHydratesControlsAndChangingTopologyPreservesItsRules",
+            "outcome": "Passed"
+          }
+        ]
+      },
+      "abort": {
+        "occurred": false,
+        "log_inactivity_abort": false
+      },
+      "artifacts": {
+        "file_count": 39,
+        "png_count": 38,
+        "trx_count": 1,
+        "changed_shot_render_captures_emitted": true
+      },
+      "log": {
+        "file": "output/hosted-diagnostics-9d9321e-agent/logs/linux-x64-completed-final.log",
+        "sha256": "303C617016969506A07766846CEE7102EA92872C0506103A120ECB0F83B2A32C",
+        "bytes": 66400
+      },
+      "not_run": [
+        "Rust workspace tests (outside this diagnostics workflow)",
+        "Desktop Core test project (outside this workflow)",
+        "Published package/package smoke/package identity (outside this workflow)",
+        "Physical GPU/capacity, actual original application and final visible desktop acceptance"
+      ]
+    },
+    {
+      "job_id": 117405752378,
+      "name": "rendered-desktop (macos-15-intel, osx-x64)",
+      "platform": "osx-x64",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-17T13:18:15Z",
+      "completed_at": "2026-10-17T13:28:16Z",
+      "steps": [
+        {
+          "number": 1,
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T13:18:18Z",
+          "completed_at": "2026-10-17T13:18:23Z"
+        },
+        {
+          "number": 2,
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T13:18:23Z",
+          "completed_at": "2026-10-17T13:18:40Z"
+        },
+        {
+          "number": 3,
+          "name": "Run dtolnay/rust-toolchain@stable",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T13:18:40Z",
+          "completed_at": "2026-10-17T13:18:59Z"
+        },
+        {
+          "number": 4,
+          "name": "Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T13:18:59Z",
+          "completed_at": "2026-10-17T13:19:35Z"
+        },
+        {
+          "number": 5,
+          "name": "Diagnose rendered desktop controls",
+          "status": "completed",
+          "conclusion": "failure",
+          "started_at": "2026-10-17T13:19:35Z",
+          "completed_at": "2026-10-17T13:28:07Z"
+        },
+        {
+          "number": 6,
+          "name": "Preserve diagnostic receipts",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T13:28:07Z",
+          "completed_at": "2026-10-17T13:28:12Z"
+        },
+        {
+          "number": 11,
+          "name": "Post Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "skipped",
+          "started_at": "2026-10-17T13:28:12Z",
+          "completed_at": "2026-10-17T13:28:12Z"
+        },
+        {
+          "number": 12,
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T13:28:12Z",
+          "completed_at": "2026-10-17T13:28:13Z"
+        },
+        {
+          "number": 13,
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T13:28:13Z",
+          "completed_at": "2026-10-17T13:28:13Z"
+        }
+      ],
+      "rust": {
+        "test_targets_executed": 0,
+        "native_library_build": "Ordinary native release library build within the exact Desktop project invocation; this workflow runs no Rust test corpus.",
+        "native_library_digest": "Not emitted by the artifact; no exact native library hash is inferred."
+      },
+      "managed": {
+        "project": "Darwinbots.Desktop.Tests",
+        "expected_cases": 214,
+        "total": 214,
+        "executed": 214,
+        "passed": 213,
+        "failed": 1,
+        "skipped": 0,
+        "result_rows": 214,
+        "unique_execution_ids": 214,
+        "result_rows_match_counters": true,
+        "full_expected_suite_completed": true,
+        "all_tests_passed": false,
+        "failed_tests": [
+          {
+            "name": "Darwinbots.Desktop.Tests.RuntimeControlSurfaceTests.LoadedNativeWorldHydratesControlsAndChangingTopologyPreservesItsRules",
+            "outcome": "Failed",
+            "execution_id": "05665414-b749-4c6e-96f0-6cec486771e9",
+            "duration": "00:00:05.2676712",
+            "message": "Timed out waiting for the serialized UI command batch. Calls: ",
+            "stack_trace": "   at Darwinbots.Desktop.Tests.RuntimeControlSurfaceTests.WaitFor(Func`1 condition, Func`1 details) in /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/RuntimeControlSurfaceTests.cs:line 1682\n   at Darwinbots.Desktop.Tests.RuntimeControlSurfaceTests.<>c__DisplayClass12_0.<<LoadedNativeWorldHydratesControlsAndChangingTopologyPreservesItsRules>b__0>d.MoveNext() in /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/RuntimeControlSurfaceTests.cs:line 726\n--- End of stack trace from previous location ---\n   at Darwinbots.Desktop.Tests.RuntimeControlSurfaceTests.<>c__DisplayClass12_0.<<LoadedNativeWorldHydratesControlsAndChangingTopologyPreservesItsRules>b__0>d.MoveNext() in /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/RuntimeControlSurfaceTests.cs:line 757\n--- End of stack trace from previous location ---\n   at Darwinbots.Desktop.Tests.DesktopTestApplication.UiSession.<>c__DisplayClass5_0.<<Dispatch>b__0>d.MoveNext() in /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/DesktopTestApplication.cs:line 45\n--- End of stack trace from previous location ---\n   at Avalonia.Headless.HeadlessUnitTestSession.<>c__DisplayClass12_0`1.<DispatchCore>b__0()\n--- End of stack trace from previous location ---\n   at Darwinbots.Desktop.Tests.RuntimeControlSurfaceTests.LoadedNativeWorldHydratesControlsAndChangingTopologyPreservesItsRules() in /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/RuntimeControlSurfaceTests.cs:line 718\n--- End of stack trace from previous location ---"
+          }
+        ],
+        "trx": {
+          "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-x64/test-results/rendered-controls.trx",
+          "sha256": "8557DCD48902CCE02D6BB46D4B801381CAC2136258564D124BB99A08333B4192",
+          "bytes": 349665
+        },
+        "selected_cases": [
+          {
+            "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.ExplicitEvolutionFileCarriesItsSidecarThroughTheNativeConfigAndSavedSnapshot",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: True)",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.PopulationSeedingScoresExtinctionThenAutomaticallyRunsTheClassicTournamentAndExportsStartupDna",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.RuntimeControlSurfaceTests.LoadedNativeWorldHydratesControlsAndChangingTopologyPreservesItsRules",
+            "outcome": "Failed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.InvalidNativeSnapshotTextIsRejectedBeforeTheStorageDestinationIsOpened",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.PickedSidecarProfileReachesOnlyItsActualNativeSpeciesAndSelectedExport",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.CompletedClassicDnaExportUsesTheFolderPickerAndPreservesOriginalFiles",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.MalformedStartupSidecarFailsBeforeItsDnaImportAndPreservesTheSetupSpecies",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.OriginalSettingsProfileRemainsAuthoritativeOverAnAdjacentSidecar",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.NewSimulationRoutesCaptureCurrentSpareAndWireTheReplacementWithTheInjectedServices(useMenu: False)",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.ExistingDeathParticlesUseArgbPointsWhileCreationIsDisabledAndCorpsesRemainVisible",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: False)",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.NewSimulationRoutesCaptureCurrentSpareAndWireTheReplacementWithTheInjectedServices(useMenu: True)",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.LegacySettingsNativeTests.OriginalExecutableContinuationOfThePortExportLoadsAndSteps",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.ResetCapturesTheCurrentSpareOnceAndDoesNotReplayTheOriginalHandoffAfterItClears",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.SetupKeepsPickedProfileAndOriginalSourcePathOnTheSpeciesDefinition",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.StartupWithoutASidecarKeepsTheOriginalDefaultSpeciesAndInsertionRoute",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.NativeLoadRetainsTheProcessHandoffButModernLoadRestoresItsOwnGaussianState(savedHasSpare: True)",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.NativeFlashPaletteUsesPreviousPositionAndDisablingImpactsStillDrawsLiveShots",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.NativeLoadRetainsTheProcessHandoffButModernLoadRestoresItsOwnGaussianState(savedHasSpare: False)",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.UnknownShotUsesOwnerColourAndWritesRenderedReceipt",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.StartupSidecarReachesItsNativeRobotAtTheExactCenterAndSurvivesExportAndSaveResume",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.DnaExportRenderedTests.MainWindowSelectedOrganismExportsExactDnaAndKeepsCanceledRouteInert",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.ShotExistenceAndStorageGateNormalPaintWhileFlashesRemainVisible",
+            "outcome": "Passed"
+          }
+        ]
+      },
+      "abort": {
+        "occurred": false,
+        "log_inactivity_abort": false
+      },
+      "artifacts": {
+        "file_count": 39,
+        "png_count": 38,
+        "trx_count": 1,
+        "changed_shot_render_captures_emitted": true
+      },
+      "log": {
+        "file": "output/hosted-diagnostics-9d9321e-agent/logs/osx-x64-completed-final.log",
+        "sha256": "6C0E3BD58010407FA38BE8E31A110AD6A3B05B902F87B5C2CD4B7782D5256316",
+        "bytes": 72780
+      },
+      "not_run": [
+        "Rust workspace tests (outside this diagnostics workflow)",
+        "Desktop Core test project (outside this workflow)",
+        "Published package/package smoke/package identity (outside this workflow)",
+        "Physical GPU/capacity, actual original application and final visible desktop acceptance"
+      ]
+    }
+  ],
+  "aggregate": {
+    "platforms": 3,
+    "successful_jobs": 1,
+    "failed_jobs": 2,
+    "actual_executed_desktop_tests": 642,
+    "actual_passed_test_rows": 640,
+    "actual_failed_test_rows": 2,
+    "actual_skipped_test_rows": 0,
+    "expected_desktop_tests_per_platform": 214,
+    "full_expected_corpus_completed": true,
+    "all_tests_passed": false,
+    "compiler_failures": 0
+  },
+  "failure_diagnosis": [
+    {
+      "platform": "osx-arm64",
+      "actual_test": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: False)",
+      "source_file": "modern/desktop/tests/Darwinbots.Desktop.Tests/FindBestRenderedTests.cs",
+      "source_lines": [
+        52,
+        124
+      ],
+      "duration": "00:00:30.5363627",
+      "actual_message": "Find Best route did not publish its expected UI state.",
+      "actual_ui_status_captured": false,
+      "evidence": "Failure is the first post-Global-settings-cancel BEST FAMILY wait. No actual status/selection/call trace was emitted. Later Restarted override is installed only after this assertion.",
+      "source_supported_inference": "CheckWeightDialogAndCancel97–104 waits only OwnedWindows disappearance. GlobalSettingsWindow244 closes; MainWindow1492–1493 awaits dialog and returns Cancel; router43 uses ConfigureAwait(false); outer async menu handler890–894 later assigns CANCELED. The next toolbar551–553 independently assigns BEST FAMILY. A late cancel-status overwrite is a supported completion-order race hypothesis, not demonstrated by the saved status.",
+      "smallest_future_investigation": "Wait for dialog absence AND a fresh terminal CANCELED completion before issuing next control, retaining BEST FAMILY and selected-key assertions. Emit actual status/selection/call details on timeout; no blanket timeout increase.",
+      "precedent": "GraphContestRenderedTests174 waits exact CANCELED before its next control action. Fake selection is deterministic3:2 at RenderedControlSurfaceAuditTests2206–2208."
+    },
+    {
+      "platform": "osx-x64",
+      "actual_test": "Darwinbots.Desktop.Tests.RuntimeControlSurfaceTests.LoadedNativeWorldHydratesControlsAndChangingTopologyPreservesItsRules",
+      "source_file": "modern/desktop/tests/Darwinbots.Desktop.Tests/RuntimeControlSurfaceTests.cs",
+      "source_lines": [
+        726,
+        1678,
+        1682
+      ],
+      "duration": "00:00:05.2676712",
+      "actual_message": "Timed out waiting for the serialized UI command batch. Calls: ",
+      "actual_ui_status_captured": false,
+      "evidence": "First startup Status==LOADED wait for the196-actor nativeSIM. Five-second wall-clock helper; no details callback supplied, so Calls text is empty by construction. No native exception/panic is emitted in the log; a handled startup error cannot be ruled out.",
+      "other_platform_durations": {
+        "linux_x64": "00:00:01.8153182",
+        "osx_arm64": "00:00:01.9706705"
+      },
+      "source_supported_inference": "MainWindow1946–2024 includes native creation, initial snapshot, disk read, serialized load, graph/config/control hydration and a background presentation barrier before LOADED. Cold load or scheduling pressure exceeding5s is plausible, not proven. Intel native/test build duration is distinct from this five-second readiness interval.",
+      "smallest_future_investigation": "Capture actual Status/session tick/population/recovery error and use a bounded load-specific readiness budget if evidence warrants, preserving exact loaded state and topology assertions. Do not label the generic Calls message an observed command queue failure or extend every helper timeout.",
+      "related_helper_budgets": "NativeStartupRobotFileTests248–255 nominal5s; NativeRobotFileIntegrationTests198–205 nominal2s. A found literal30s callback wait is unrelated to native-load readiness."
+    }
+  ],
+  "changed_shot_rendering": {
+    "all_four_world_shot_facts_passed_on_all_three_platforms": true,
+    "prior_white_energy_failure_now_passed_on_all_three": true,
+    "new_existence_storage_flash_fact_passed_on_all_three": true,
+    "visually_inspected_files": [
+      {
+        "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/world-death-particle-colours.png",
+        "sha256": "1E8614CCFF6B2CBFB055A36E480E4D41184C8C39148F6F0195F5C591AB56F984",
+        "bytes": 3876,
+        "png": {
+          "width": 640,
+          "height": 480
+        }
+      },
+      {
+        "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/world-shot-existence-storage-flashes.png",
+        "sha256": "A8A04FE4157E026E31B314688FCABA19FA44D300F73C9881E4103783D1B7D385",
+        "bytes": 3950,
+        "png": {
+          "width": 640,
+          "height": 480
+        }
+      },
+      {
+        "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/world-shot-existence-storage-normal.png",
+        "sha256": "741E01751DEB2FED0CC6038A868CBD7B61D93C0315C1CFF05A1DED83CD4DA32A",
+        "bytes": 3216,
+        "png": {
+          "width": 640,
+          "height": 480
+        }
+      },
+      {
+        "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/world-shot-flash-palette.png",
+        "sha256": "C7F33C656A7F7B8019F24FC614A148112D9229F2CD6F741F47507A5BE2F39502",
+        "bytes": 5900,
+        "png": {
+          "width": 640,
+          "height": 480
+        }
+      },
+      {
+        "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/world-shot-impacts-off-retains-shots.png",
+        "sha256": "E5E56FFBF5BC81A79105C7255340520D4025DCCEE68E1683D7B5A9AAEBA986C4",
+        "bytes": 3193,
+        "png": {
+          "width": 640,
+          "height": 480
+        }
+      },
+      {
+        "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/world-death-particle-colours.png",
+        "sha256": "1E8614CCFF6B2CBFB055A36E480E4D41184C8C39148F6F0195F5C591AB56F984",
+        "bytes": 3876,
+        "png": {
+          "width": 640,
+          "height": 480
+        }
+      },
+      {
+        "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/world-shot-existence-storage-flashes.png",
+        "sha256": "A8A04FE4157E026E31B314688FCABA19FA44D300F73C9881E4103783D1B7D385",
+        "bytes": 3950,
+        "png": {
+          "width": 640,
+          "height": 480
+        }
+      },
+      {
+        "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/world-shot-existence-storage-normal.png",
+        "sha256": "741E01751DEB2FED0CC6038A868CBD7B61D93C0315C1CFF05A1DED83CD4DA32A",
+        "bytes": 3216,
+        "png": {
+          "width": 640,
+          "height": 480
+        }
+      },
+      {
+        "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/world-death-particle-colours.png",
+        "sha256": "1E8614CCFF6B2CBFB055A36E480E4D41184C8C39148F6F0195F5C591AB56F984",
+        "bytes": 3876,
+        "png": {
+          "width": 640,
+          "height": 480
+        }
+      },
+      {
+        "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/world-shot-existence-storage-flashes.png",
+        "sha256": "A8A04FE4157E026E31B314688FCABA19FA44D300F73C9881E4103783D1B7D385",
+        "bytes": 3950,
+        "png": {
+          "width": 640,
+          "height": 480
+        }
+      },
+      {
+        "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/world-shot-existence-storage-normal.png",
+        "sha256": "741E01751DEB2FED0CC6038A868CBD7B61D93C0315C1CFF05A1DED83CD4DA32A",
+        "bytes": 3216,
+        "png": {
+          "width": 640,
+          "height": 480
+        }
+      }
+    ],
+    "visual_observation": "Actual artifact frames show endpoint particle points and corpse disc, four solid red Start flashes, and the restricted normal-flight point set consistently across all three platforms. Linux typed palette and impacts-off frame also inspected. White and exact RGB/state semantics are backed by the Passed test rows, not a claim that a white-on-paper point is visually obvious.",
+    "visual_scope": "Hosted headless captures only; no original app or final visible packaged walkthrough."
+  },
+  "artifacts": {
+    "index": {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifact-file-hashes.json",
+      "sha256": "49ACE6CDD16BDD3AE5654357954A38B3CA42EC899290ADDB688B0B29C0A71103",
+      "bytes": 37461
+    },
+    "server_artifacts": [
+      {
+        "id": 12102790193,
+        "name": "desktop-diagnostics-linux-x64",
+        "size_in_bytes": 2530462,
+        "digest": "sha256:f8d64beec9a4a47b5b99a7fd855123423577a3d7813c3729261d54c2cafb84d9",
+        "expired": false,
+        "source_head": "9d9321e4b86d76d18ef5e2c10f6c873ce0446089"
+      },
+      {
+        "id": 12102761071,
+        "name": "desktop-diagnostics-osx-x64",
+        "size_in_bytes": 3134258,
+        "digest": "sha256:5ca8428629b7e937ab0ff7189a5b9e151ea765c187884978a2b4714b929a9420",
+        "expired": false,
+        "source_head": "9d9321e4b86d76d18ef5e2c10f6c873ce0446089"
+      },
+      {
+        "id": 12101894620,
+        "name": "desktop-diagnostics-osx-arm64",
+        "size_in_bytes": 3133394,
+        "digest": "sha256:85000746ecec290a3b663d53b2f98bb28bb2f050fec92f02330bdb03bbbdac7e",
+        "expired": false,
+        "source_head": "9d9321e4b86d76d18ef5e2c10f6c873ce0446089"
+      }
+    ],
+    "downloaded_artifact_count": 3,
+    "file_count": 117,
+    "trx_files": 3,
+    "png_files": 114,
+    "downloaded_archive_digest_locally_verified": false,
+    "expanded_files_individually_hashed": true,
+    "published_package_count": 0,
+    "published_package_identity": null
+  },
+  "evidence": [
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/LegacyMenus/LegacyCommandResult.cs",
+      "sha256": "74941E90387C6974D066BC27D385218739555866AC5A77C0A2EB76EE818061CE",
+      "bytes": 521
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/LegacyMenus/LegacyCommandRouter.cs",
+      "sha256": "B89E38B262D08D1C74840E73733188C4458DBB8F9124ECDE8F414C0EBA337741",
+      "bytes": 2528
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/SimulationSession.cs",
+      "sha256": "1CF25A1B5D8C07D08A8D140353EABC022F17243F20A251237F3204D63D3698C1",
+      "bytes": 23225
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop/Views/GlobalSettingsWindow.axaml.cs",
+      "sha256": "A9B9793933B0D057C71574CFF0E5FD20CE47BBCF26889B3B2C83468F7A35769B",
+      "bytes": 13961
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml.cs",
+      "sha256": "28087E2067733C062260C9CB4BDBEACDB94FB24D900BCD0EA042F5053C6A5C76",
+      "bytes": 142736
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/FindBestRenderedTests.cs",
+      "sha256": "8A558C6E8CD35CC77DCB9EEB18E7D88CEE62C9333B29AB9F9ED3F9CC8A4CDB9A",
+      "bytes": 6559
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/GraphContestRenderedTests.cs",
+      "sha256": "6EFD984357CF8FEF685A4213A5098C2781C180D9F0B733088CFBEC5476626282",
+      "bytes": 37466
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/NativeRobotFileIntegrationTests.cs",
+      "sha256": "9CDB5CB11CF59C1C2881F51228C75575E7C518AF240231EEBC8BD06E3D909AA1",
+      "bytes": 10941
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/NativeStartupRobotFileTests.cs",
+      "sha256": "C01CEC2D8CE15490A1E47330635F12DC52A618A43EDB095C00EFA9AC69B242EF",
+      "bytes": 14542
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs",
+      "sha256": "756B50A34FB8EA56AAB9CDF56E1439E8F6BD4DCE1805D2A9AA836F11EB79F154",
+      "bytes": 136632
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/RuntimeControlSurfaceTests.cs",
+      "sha256": "B9FD23B5202315A5948C2875625803707B158AB126D8D9707BDDA1735042E0A4",
+      "bytes": 110291
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/StartupMazeColorRenderedTests.cs",
+      "sha256": "CBD25A24D0D05EDFCA9F124D6995700E73DC1DE5CFBA667740B20F5FB1ABCC14",
+      "bytes": 7437
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/WorldShotRenderedTests.cs",
+      "sha256": "F0BB6CE0FD26A287FBFF5CBFAB1B05EE5F71C55283EB20AFAA7C9545BCB84FE1",
+      "bytes": 22413
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/api/final-artifacts.json",
+      "sha256": "6609A54094118CE2E1322960998B27C4DE1AA802EB8A8AE03FDA42F66419E339",
+      "bytes": 2234
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/api/final-jobs.json",
+      "sha256": "197264116F5B959BCE3FC2F8C6B2C2D10698CB0D2D79BDFADE0C07C74539F220",
+      "bytes": 7500
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/api/final-run.json",
+      "sha256": "74C54B45162EA450AB03DA05BF37FFC77C7FE8303FC5109A2F530F858C5DA9DA",
+      "bytes": 13138
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifact-file-hashes.json",
+      "sha256": "49ACE6CDD16BDD3AE5654357954A38B3CA42EC899290ADDB688B0B29C0A71103",
+      "bytes": 37461
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-linux-x64/test-results/rendered-controls.trx",
+      "sha256": "0F8F1789F52724C8F7C670A7AC282E08AD2082D2FC8CCF4D10FFFE8D00BA9A7B",
+      "bytes": 334194
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-arm64/test-results/rendered-controls.trx",
+      "sha256": "97A71AE17729B8D773EE26771CDCDCAD765F9BB596719BA69E595480C6D83E61",
+      "bytes": 348749
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-x64/test-results/rendered-controls.trx",
+      "sha256": "8557DCD48902CCE02D6BB46D4B801381CAC2136258564D124BB99A08333B4192",
+      "bytes": 349665
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/logs/linux-x64-completed-final.log",
+      "sha256": "303C617016969506A07766846CEE7102EA92872C0506103A120ECB0F83B2A32C",
+      "bytes": 66400
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/logs/linux-x64-completed.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/logs/osx-arm64-completed-final.log",
+      "sha256": "B63D307B57FD4E949DDD402292728B4F2AD4F8C5F4438204198F4AC113E5B67C",
+      "bytes": 69004
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/logs/osx-arm64-completed.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/logs/osx-x64-completed-final.log",
+      "sha256": "6C0E3BD58010407FA38BE8E31A110AD6A3B05B902F87B5C2CD4B7782D5256316",
+      "bytes": 72780
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/trx-summary-verified.json",
+      "sha256": "108BE76EDF67B54BDE9AE2030C14591492F8EB69058C29169F4B0C75D77C59E7",
+      "bytes": 21448
+    },
+    {
+      "file": "output/native-roundtrip-pass62-source.json",
+      "sha256": "5F5E901F1B2461D2C9B0A67CC3CDDD45BEE3DC2061120CF12FC33FADF16B72ED",
+      "bytes": 113644
+    }
+  ],
+  "collector_actions": {
+    "dispatch": false,
+    "cancel": false,
+    "rerun": false,
+    "local_tests_or_builds": false,
+    "product_or_UI_or_GPU_execution": false,
+    "source_runner_manifest_or_report_edits": false,
+    "git_mutation": false,
+    "repair_drafts": false,
+    "log_fetch_retry": {
+      "initial_api_refused_terminal_escape_sequences": true,
+      "empty_initial_stdout_files_preserved": [
+        {
+          "file": "output/hosted-diagnostics-9d9321e-agent/logs/linux-x64-completed.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "file": "output/hosted-diagnostics-9d9321e-agent/logs/osx-arm64-completed.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        }
+      ],
+      "retry_used_documented_allow_escape_sequences_flag_for_raw_saved_job_logs": true
+    },
+    "frozen_source_manifest_reverified_at_end": true
+  },
+  "qualification_passed": false,
+  "boundary": [
+    "Exact-source hosted Desktop diagnostic evidence only; all642expected rows executed,640passed/twofailed/zeroskipped.",
+    "Every downloaded PNG/TRX is preserved and individually hashed. Server ZIP digest is metadata; no locally retained ZIP/binary is staged.",
+    "No Rust corpus/Core/package/GPU/capacity/original-runtime/final-visible pass or CPU admission is conferred.",
+    "All source repairs remain behind root all-normal-outcomes gate; this collector authored no63code."
+  ]
+}

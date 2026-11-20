@@ -1,4 +1,50 @@
-use darwinbots_engine::{Engine, EngineConfig, LegacyDna, PhysicsSettings, SpeciesDefinition};
+use darwinbots_engine::{
+    Engine, EngineConfig, LegacyDna, PhysicsSettings, SaveFile, SpeciesDefinition,
+};
+
+#[test]
+fn remove_many_rejects_the_whole_batch_before_mutating_any_slot() {
+    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    let stale = engine
+        .spawn(LegacyDna::parse("start\nstop").unwrap())
+        .unwrap();
+    engine.remove(stale).unwrap();
+    let valid = engine
+        .spawn(LegacyDna::parse("start\nstop").unwrap())
+        .unwrap();
+    let before = SaveFile::encode(&engine).unwrap();
+    let snapshot = engine.snapshot().clone();
+    let publications = engine.snapshot_publication_count();
+    assert!(engine.remove_many(&[valid, stale]).is_err());
+    assert_eq!(engine.snapshot().organisms.len(), 1);
+    assert_eq!(SaveFile::encode(&engine).unwrap(), before);
+    assert_eq!(engine.snapshot(), &snapshot);
+    assert_eq!(engine.snapshot_publication_count(), publications);
+}
+
+#[test]
+fn remove_many_publishes_one_world_without_the_validated_batch() {
+    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    let first = engine
+        .spawn(LegacyDna::parse("start\nstop").unwrap())
+        .unwrap();
+    let second = engine
+        .spawn(LegacyDna::parse("start\nstop").unwrap())
+        .unwrap();
+    let publications_before = engine.snapshot_publication_count();
+    engine.remove_many(&[first, second]).unwrap();
+    let publications_after = engine.snapshot_publication_count();
+    assert_eq!(publications_after, publications_before + 1);
+    assert!(engine.snapshot().organisms.is_empty());
+    assert_eq!(engine.snapshot().shots.len(), 40);
+    assert!(
+        engine
+            .snapshot()
+            .shots
+            .iter()
+            .all(|shot| shot.kind == -100 && shot.age == 0)
+    );
+}
 
 #[test]
 fn move_clone_and_replace_dna_preserve_stable_world_state() {
@@ -8,7 +54,9 @@ fn move_clone_and_replace_dna_preserve_stable_world_state() {
         ..SpeciesDefinition::default()
     });
     let original = LegacyDna::parse("start\n10 .up store\nstop").unwrap();
-    let source = engine.spawn_species_at(original.clone(), species, [100.0, 100.0]).unwrap();
+    let source = engine
+        .spawn_species_at(original.clone(), species, [100.0, 100.0])
+        .unwrap();
 
     engine.move_organism(source, [2_000.0, -50.0]).unwrap();
     let clone = engine.clone_organism(source, [500.0, 500.0]).unwrap();
@@ -25,16 +73,25 @@ fn move_clone_and_replace_dna_preserve_stable_world_state() {
 #[test]
 fn manual_two_parent_reproduction_records_parentage() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
-    let left_dna = LegacyDna::parse("start\n10 .up store\nstop").unwrap();
-    let right_dna = LegacyDna::parse("start\n20 .dx store\nstop").unwrap();
+    let left_dna = LegacyDna::parse("start\n10 .up store\n20 .dx store\nstop").unwrap();
+    let right_dna = LegacyDna::parse("start\n30 .sx store\n40 .down store\nstop").unwrap();
+    let expected_child = LegacyDna::parse("start\n10 .up store\n40 .down store\nstop").unwrap();
     let left = engine.spawn_at(left_dna, [100.0, 100.0]).unwrap();
     let right = engine.spawn_at(right_dna, [200.0, 100.0]).unwrap();
 
-    let child = engine.manual_reproduce(left, Some(right), [150.0, 100.0]).unwrap();
+    let child = engine
+        .manual_reproduce(left, Some(right), [150.0, 100.0])
+        .unwrap();
 
-    let snapshot = engine.snapshot().organisms.iter().find(|value| value.id == child).unwrap();
+    let snapshot = engine
+        .snapshot()
+        .organisms
+        .iter()
+        .find(|value| value.id == child)
+        .unwrap();
     assert_eq!(snapshot.parents, [Some(left), Some(right)]);
     assert_eq!(engine.snapshot().stats.births, 1);
+    assert_eq!(engine.dna(child).unwrap(), &expected_child);
     assert_ne!(engine.dna(child).unwrap(), engine.dna(left).unwrap());
     assert_ne!(engine.dna(child).unwrap(), engine.dna(right).unwrap());
 }
@@ -44,7 +101,10 @@ fn clone_preserves_live_energy_biology_and_velocity() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,
         drag: 0.0,
-        physics: PhysicsSettings { density: 0.0, ..PhysicsSettings::default() },
+        physics: PhysicsSettings {
+            density: 0.0,
+            ..PhysicsSettings::default()
+        },
         ..EngineConfig::testing()
     })
     .unwrap();
@@ -71,13 +131,19 @@ fn clone_preserves_live_energy_biology_and_velocity() {
 
 #[test]
 fn manual_one_parent_reproduction_splits_energy_and_body_fifty_fifty() {
-    let mut engine = Engine::new(EngineConfig { metabolism_cost: 0, ..EngineConfig::testing() }).unwrap();
+    let mut engine = Engine::new(EngineConfig {
+        metabolism_cost: 0,
+        ..EngineConfig::testing()
+    })
+    .unwrap();
     let parent = engine
         .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [100.0, 100.0])
         .unwrap();
     let before = engine.organism(parent).unwrap();
 
-    let child = engine.manual_reproduce(parent, None, [150.0, 100.0]).unwrap();
+    let child = engine
+        .manual_reproduce(parent, None, [150.0, 100.0])
+        .unwrap();
     let parent_after = engine.organism(parent).unwrap();
     let child_after = engine.organism(child).unwrap();
 
@@ -87,4 +153,3 @@ fn manual_one_parent_reproduction_splits_energy_and_body_fifty_fifty() {
     assert_eq!(child_after.body, before.body - parent_after.body);
     assert_eq!(child_after.parents, [Some(parent), None]);
 }
-

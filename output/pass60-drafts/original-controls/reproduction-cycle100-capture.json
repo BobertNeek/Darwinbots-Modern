@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "status": "ORIGINAL_CAPTURED_PORT_COMPARISON_PENDING",
+  "captured_utc": "2026-10-17T09:04:12.675Z",
+  "case": "reproduction",
+  "cycle": 100,
+  "seed": 48032,
+  "input": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-console59-9060ee6b-9427-4a54-8edc-39badc3114a1\\reproduction\\input.sim",
+  "input_sha256": "60FD33C86E938B94D86C074AE9B8097B9D61159CCF5D35D066BAFFCB4BF18040",
+  "source_executable_sha256": "7F580D9CE8F1095A01FD162E9BCAC03FE437599E080786FD670B676671C31990",
+  "source_revision": "467a8a0c1564db2071cf65efe39dcfefc5ab7a0c",
+  "capture": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-console59-9060ee6b-9427-4a54-8edc-39badc3114a1\\reproduction\\captures\\reproduction-original-cycle100-pass60.sim",
+  "candidate": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\pass60-drafts\\original-controls\\db24832-genuine-reproduction-cycle100-20261017.sim",
+  "sha256": "DEFBB6F511E8753F44B4FD5BC6D1629FFFCA3CEBEA1E6D7BA81D175AEC3BA234",
+  "bytes": 26475,
+  "raw_saved_counter": 100,
+  "decoded_records": [
+    {
+      "fixed": 0,
+      "position": [
+        7999.93798828125,
+        6000
+      ],
+      "velocity": [
+        -6.666666649834951e-7,
+        0
+      ],
+      "actual_velocity": [
+        0,
+        0
+      ],
+      "age": 100,
+      "body": 500,
+      "energy": 9990,
+      "dna_length": 10
+    },
+    {
+      "fixed": 0,
+      "position": [
+        8175.06201171875,
+        6000
+      ],
+      "velocity": [
+        0.0000013333333299669903,
+        0
+      ],
+      "actual_velocity": [
+        0,
+        0
+      ],
+      "age": 98,
+      "body": 500,
+      "energy": 9990,
+      "dna_length": 10
+    }
+  ],
+  "protocol": [
+    "Fresh original process; restore normal window; toolbarPause and toolbarLoad unchanged seed48032 C0.",
+    "Wait loaded title/bot and focus title bar; four successful20-click batches plus19 after initial load cycle; no cycle-action failure.",
+    "PlayerBot visually unchecked; no selection/Details/FindBest/console/NewSim/menuF2.",
+    "F3 unique save; raw counter100/seed verified before admission.",
+    "DocumentedSky/GDI fallback; other applications and shared helper unchanged."
+  ],
+  "port_engine_executed": false,
+  "canonical_port_comparison_passed": false,
+  "active_source_mutated": false
+}

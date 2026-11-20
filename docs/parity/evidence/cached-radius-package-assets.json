@@ -1,0 +1,198 @@
+{
+  "source_bot_files": 48,
+  "matching_published_files": 48,
+  "assets": [
+    {
+      "path": "Historical/Alga_Minimalis.txt",
+      "sha256": "79993974a6cd6a66cd3bcf940502a53e0886e17b40222773e0bf8baf8a155401"
+    },
+    {
+      "path": "Alga_Minimalis_Chloroplastus.txt",
+      "sha256": "220979d75843d6dde6edae65ad4e1cb6bfe9b2c54a6cfc789351054e6e507121"
+    },
+    {
+      "path": "Animal_Minimalis.txt",
+      "sha256": "a4e987876d99bb47926506807294b0628bf7ad1d4d1f138208842755019fc3a5"
+    },
+    {
+      "path": "Historical/Animal_Minimalis_Connubialis.txt",
+      "sha256": "2e82e517a7d8a33e4b6c3168cbe2e631727642d7c385ea76c6b63232ef3c35e6"
+    },
+    {
+      "path": "Historical/Blue on blue (F2)(Jez)-05.08.06.txt",
+      "sha256": "609270b7eeb6ef92782124ec942ee3160cf9613347bd98662b75b76f5b9b12cf"
+    },
+    {
+      "path": "Historical/Bubbles (F2)(Jez)-21.08.06.txt",
+      "sha256": "c575ab27ab498a075ddd6439cefc7bf470a169c6efe1cc16ca68098d0eae3ac8"
+    },
+    {
+      "path": "Historical/Callidus(F1)(Shen)-05.04.05.txt",
+      "sha256": "b447d333e6d2c5d3c416febb6766e326d5df11b4c022bba92769eda39bf1e3c8"
+    },
+    {
+      "path": "Historical/Catapiller(MB)(Peter).txt",
+      "sha256": "f112b9789159e6ac5ff839f9d33a1d0bc778624831e34b2bd81b9d684af16df9"
+    },
+    {
+      "path": "Historical/Detonator v1.2(F1)(bacillus)-24.04.08.txt",
+      "sha256": "ced8df58b4fe9ae29c6d03d8f64ec3afde5867fe2cbe08d90cd20d3a32efd3e6"
+    },
+    {
+      "path": "Historical/Ebola (F1Vir) (Moonfisher).txt",
+      "sha256": "d0b3437f9ed37f77d904ded4f0bc1f5b68a2ab70e3fb787625a97099ba58f345"
+    },
+    {
+      "path": "Historical/Etch Mk II(F1)(abyaly)-15.03.2008.txt",
+      "sha256": "1d881243c720f04ec81ef098d841e5292311e76087f3925f7c9fb6a171d10a9f"
+    },
+    {
+      "path": "Historical/Excalibur 1.12 (F2)(Light)-06.03.07.txt",
+      "sha256": "51852363cac2fda2f3bc9392dcdc297580a30b7ab3447dfd1e1c3dbb2df3835c"
+    },
+    {
+      "path": "Historical/Fruit_Fliesv0.21.txt",
+      "sha256": "5d554a6585e63a29b603fc1d5d93652afddaa1103fbe9faa9abec7fac3d9df86"
+    },
+    {
+      "path": "Historical/league/1-Fruit Flies v0.21 (F1) (Moonfisher) 28-09-08.txt",
+      "sha256": "ee29b771c3631add57628c773213d5b02a7ddf299dbc20552a31ca1088158281"
+    },
+    {
+      "path": "Historical/league/10-Expletus Sexcomplitus (6G)(Jez)-11.03.04.txt",
+      "sha256": "174e36a48f478e30da3d940a3540c2760d1b9c07e8f6a9c5697e3e010eb131e7"
+    },
+    {
+      "path": "Historical/league/11-Schoonmaker (6G)(Henk)-04.03.04.txt",
+      "sha256": "7fd0dd03a77f10c8a26f3b2d26e84071463f173f75240f9355c82e9b81f86208"
+    },
+    {
+      "path": "Historical/league/12-Caterpillar(Peter)(F2_MB)04-11-08.txt",
+      "sha256": "58cdfbe2202705f0b99bf9a863aeaf066e2dc206fb5e3e1905fa44f3fdb45775"
+    },
+    {
+      "path": "Historical/league/13-Alpha2.7 WidVis(F3)(d-EVO)23-10-2008.txt",
+      "sha256": "3bfb6ec260d72d165c497f3cabca28156b2a1d2a6db3eb877e04c2a7ff7b98c8"
+    },
+    {
+      "path": "Historical/league/14-A. Praxidikae mk2 (F2)(Unc) 07.29.05.txt",
+      "sha256": "5d0b6636aec6e80730474c684d606b5c6a76e6b66d4105fdbd30ac2c71a0d588"
+    },
+    {
+      "path": "Historical/league/15-Knotbot v2 (MB) MysticalDumpling -2.6.14.txt",
+      "sha256": "773bd3ea3b270e854e53c739b298a70a40684242e1a0a67a8e725b3e84ed9932"
+    },
+    {
+      "path": "Historical/league/16-Animal Minimalis (4G)(Numsgil)-10.03.05.txt",
+      "sha256": "76e70b9c9f29f38577172f04910d7c8846e858135cf46d3e0a2a3032c34b510b"
+    },
+    {
+      "path": "Historical/league/17-D. Blinder (F2)-01.03.04.txt",
+      "sha256": "823a557e42b05d2626dd28c2785696557fa4586710823694c5d27b89f0b6190c"
+    },
+    {
+      "path": "Historical/league/18-Drifting Spinner1 (F2)(Jez)-25.10.03.txt",
+      "sha256": "d777dd50238c5313ad81719cc14372ece2c10f7813ba94d186cdac188fb9a97b"
+    },
+    {
+      "path": "Historical/league/19-Equalite (F2)(Henk) -23.02.05.txt",
+      "sha256": "0a002084fd8fc9c8da04e8b8a920a325a8d3a83f02fac1fbd8797b776c1eefac"
+    },
+    {
+      "path": "Historical/league/2-Quickdraw (F1) (Moonfisher) 29-10-08.txt",
+      "sha256": "793472c1879f554c09c58a3180ab5673a55e88a861284ee75ace2ba3a34afa47"
+    },
+    {
+      "path": "Historical/league/20-Bot v 1.1.txt",
+      "sha256": "e56c73e3f173a14dc842af742ebd913be893938babba23bd89a14045906b6197"
+    },
+    {
+      "path": "Historical/league/21-Efficient Bot (F1)(Shen)-01.09.04.txt",
+      "sha256": "c853342e1b8e033bb05911037245a2f6eda14c6aa0329377d316c8ab8d6ea881"
+    },
+    {
+      "path": "Historical/league/3-Spinner v1.2 (F2) (Moonfisher) 14-04-08.txt",
+      "sha256": "da5d24c52e00e431ae051240af7ba9e9f2dd7eaf6f6b7481c69d36fcb6d496ac"
+    },
+    {
+      "path": "Historical/league/4-Singula Haloculus v2.1 (SB)(bacillus)5-12-2008.txt",
+      "sha256": "562dc85f510d5881ccd66bb3af26e5b3f161a7c399fa4e8d710c0ee801e1228f"
+    },
+    {
+      "path": "Historical/league/5-Gimmick1.0_F3__Ikke_11.6.2008.txt",
+      "sha256": "fc09e7d21e98569f59853752e84885efd377f40c417f5e6bfe35bb1c1d20d9cc"
+    },
+    {
+      "path": "Historical/league/6-Astronomo2 (F2)(Commander Keen)3-10-08.txt",
+      "sha256": "506635f191aa1f12716a069db3319a6bcad68be5d7f9c7d97bf18f81a693002e"
+    },
+    {
+      "path": "Historical/league/7-Astronomo (F2)(Commander Keen) 2-10-08.txt",
+      "sha256": "846fd16efda850db2a36db64480c45899ae26cd6481d9cefc4ac27257332c568"
+    },
+    {
+      "path": "Historical/league/8-multiply3 (F2)(peter) -18.9.07.txt",
+      "sha256": "e22956b386353102288f794573d2e3b5c29ffaaa1b3dc1c0f823c0e23b40ee5d"
+    },
+    {
+      "path": "Historical/league/9-Big (F3) (Moonfisher) 19-10-08.txt",
+      "sha256": "456129935205500440c29f01eb627713b0db660c2fd8144e8f97f39030a8b768"
+    },
+    {
+      "path": "Historical/Locust(F1)(Moonfisher).txt",
+      "sha256": "425376200a83ed56cda9ce6ca59fa50db1fca172fbf876628e4e739f6b4fbe81"
+    },
+    {
+      "path": "Historical/Martian Tank 3 (F2)(Martian)-06.07.2007.txt",
+      "sha256": "411b04032a8feaf20e7dd413a08340c96c3b93afebc7e5a35a54cbf7f6be071f"
+    },
+    {
+      "path": "Historical/Multiply4(F1)(F2)(Peter)19-12-07.txt",
+      "sha256": "c346e93dd954d111d569b8d2d63da4177d5433cf2eb15ba334a154c1613f25e9"
+    },
+    {
+      "path": "Historical/Occura Amplificis(F1)(bacillus)-25.03.08.txt",
+      "sha256": "9e93d6694dda3f3c6b5a054b24a12838e2d8a7e0160a62f33acdd890ae06c77a"
+    },
+    {
+      "path": "Historical/Pacifist (5G) (Moonfisher) 19-02-08.txt",
+      "sha256": "80ef0e7437fd2bbeac64736576fe48b906ff61e0fa4d6974c2e251181b8a45fb"
+    },
+    {
+      "path": "Historical/Quickdraw(F1)(Moonfisher).txt",
+      "sha256": "f24c30bfe66ce31e221f30ff520068345cfa1d7506fd716ff7054966e2fc0dee"
+    },
+    {
+      "path": "Historical/Reaper (F1)(Googlyeyesultra)-17.07.07.txt",
+      "sha256": "cdab99b7af6f8aca54a7e9d3064e11f8c5abdd4f98625febb0e48746fc2a59a0"
+    },
+    {
+      "path": "Historical/Republican Wasp (F1)(Commander Keen).txt",
+      "sha256": "cc3733f51bde8ac1ce0eff85f63217be061eb6003476e5ad8f527b3898fc32fa"
+    },
+    {
+      "path": "Historical/Saber.txt",
+      "sha256": "7cb4f03b211f279adea16281e39ac898a4bba2ef28e5375104c4101b1005cc0a"
+    },
+    {
+      "path": "Historical/Seasnake 1.0 (MB)(EricL) - 23.04.08.txt",
+      "sha256": "83e6ebf019b08156862496326a70700f1374a9a1bde7ea4c6032c09ff1562f8e"
+    },
+    {
+      "path": "Historical/Singula Haloculus v2.1(F1)(bacillus)21.04.08.txt",
+      "sha256": "c4eab07a29b53014d966adb4698fae156105ee0f01d25c8d42b40edeb5fb13d4"
+    },
+    {
+      "path": "Historical/Spinnerv1.52.txt",
+      "sha256": "27b5d7c70fa3a542b3ae38f83aad4a8123e5bd68637abb475b3b0812e50d2eed"
+    },
+    {
+      "path": "Historical/The One (1G)(Shen)-23.04.05.txt",
+      "sha256": "798e486bfa9c80c518455ada8061c547458d06cc6e3cc4e3ffe92ca6ce54d220"
+    },
+    {
+      "path": "Historical/TieFighters.txt",
+      "sha256": "878a101cadad7b4f98693cb5e3ed3e111f358c579004f393d465ace24116bbaa"
+    }
+  ]
+}

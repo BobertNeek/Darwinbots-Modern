@@ -1,0 +1,30 @@
+{
+  "status": "passed",
+  "checks": [
+    "valid_batch55_fixed_managed_census_without_manifest_counts",
+    "valid_batch56_declared_managed_census_288_core_193_desktop",
+    "absent_expected_managed_counts",
+    "zero_core_expected_count",
+    "zero_desktop_expected_count",
+    "string_core_expected_count",
+    "mismatched_core_expected_count",
+    "mismatched_desktop_expected_count",
+    "missing_core_result_row",
+    "mismatched_core_trx_counters",
+    "wrong_origin",
+    "wrong_core_origin",
+    "missing_pin",
+    "failed_target_status",
+    "failed_target_count",
+    "duplicate_target",
+    "failed_core_trx",
+    "failed_desktop_trx",
+    "false_fresh_flag",
+    "source_alias_duplicate",
+    "escape_source",
+    "changed_source",
+    "exclusive_lease_collision_and_release"
+  ],
+  "count": 23,
+  "scope": "CPU-only synthetic receipt/lease probes in an isolated owned Temp directory; no real workspace marker, build, Git, UI, native helper or GPU."
+}

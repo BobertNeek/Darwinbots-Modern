@@ -1,0 +1,94 @@
+{
+  "state": "Locally qualified CLI adapter identity follow-up; unchanged engine/Core/desktop evidence retained",
+  "source_parent": "655d4a4b16579b63e38ea43f7321b6d10ecef3a2",
+  "source_manifest": "source.json",
+  "scope": "CLI same-process adapter identity only; other source41 code unchanged",
+  "completed_utc": "2026-10-15T22:26:11.0810632Z",
+  "steps": [
+    {
+      "step": "format-check",
+      "exit_code": 0,
+      "seconds": 2.8780897,
+      "log": "format-check.log"
+    },
+    {
+      "step": "strict-cli-clippy",
+      "exit_code": 0,
+      "seconds": 6.5622354,
+      "log": "strict-cli-clippy.log"
+    },
+    {
+      "step": "cli-tests",
+      "exit_code": 0,
+      "seconds": 383.308921,
+      "log": "cli-tests.log"
+    },
+    {
+      "step": "cli-build",
+      "exit_code": 0,
+      "seconds": 1.1585413,
+      "log": "cli-build.log"
+    },
+    {
+      "step": "binary-cpu-adapter-smoke",
+      "exit_code": 0,
+      "seconds": 1.3111944,
+      "log": "binary-cpu-adapter-smoke.log"
+    }
+  ],
+  "cli": {
+    "passed": 9,
+    "failed": 0,
+    "ignored": 1,
+    "summaries": [
+      {
+        "passed": 6,
+        "failed": 0,
+        "ignored": 1
+      },
+      {
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0
+      }
+    ],
+    "physical_ignored_case_not_executed": true,
+    "binary_sha256": "B112ABF030FB200604453F2101F40B06429AE64F0816811842F1317FE599E4B5",
+    "binary_receipt": "cli-build-identity.json",
+    "binary_cpu_adapter_smoke": "binary-cpu-adapter-smoke.log"
+  },
+  "cpu": {
+    "passed": 764,
+    "failed": 0,
+    "fresh_full_workspace_invocation": false,
+    "newly_run": 9,
+    "retained": 755,
+    "reconciliation": "764 from pass41, replace its same 9 CLI library/command cases with 9 newly passing cases",
+    "baseline": "../native-roundtrip-pass41/summary.json"
+  },
+  "core": {
+    "passed": 181,
+    "failed": 0,
+    "inherited": true
+  },
+  "desktop": {
+    "passed": 133,
+    "failed": 0,
+    "inherited": true,
+    "receipt": "../native-roundtrip-pass41/desktop.trx"
+  },
+  "package": {
+    "inherited": true,
+    "receipt": "../native-roundtrip-pass41/summary.json",
+    "native_dll_sha256": "A5B07BF2715B418710FF16BD8AD77D48B63E7D096A4D72197AB5B4379CEC11E8"
+  },
+  "inheritance_receipt": "inherited-runtime-evidence.json",
+  "not_proven": [
+    "physical GPU",
+    "genuine original executable trajectories",
+    "current hosted matrix",
+    "sustained capacity",
+    "visible final walkthrough"
+  ],
+  "parity_complete": false
+}

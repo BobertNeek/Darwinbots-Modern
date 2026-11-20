@@ -1,0 +1,17 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="using:Darwinbots.Desktop.Controls"
+        x:Class="Darwinbots.Desktop.Views.GraphSeriesWindow"
+        Title="Darwinbots Graph"
+        Width="620" Height="380" MinWidth="460" MinHeight="300"
+        WindowStartupLocation="CenterOwner">
+  <Grid RowDefinitions="Auto,*" Margin="14" RowSpacing="8">
+    <Grid ColumnDefinitions="*,Auto">
+      <TextBlock x:Name="TitleText" Classes="section" />
+      <TextBlock x:Name="ValueText" Grid.Column="1" Foreground="#2D826F" />
+    </Grid>
+    <Border Grid.Row="1" Background="#F4F1E8" BorderBrush="#D4D0C4" BorderThickness="1" Padding="8">
+      <controls:GraphSeriesChart x:Name="SeriesChart" />
+    </Border>
+  </Grid>
+</Window>

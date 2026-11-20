@@ -1,0 +1,117 @@
+{
+  "source": "416fdf930690dcd1cb90b8e1b65e42791f0f273d",
+  "run_id": 38748034755,
+  "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/38748034755",
+  "conclusion": "success",
+  "scope": "Previous committed source only; excludes uncommitted native pass34 and physical GPU or original-runtime comparison.",
+  "platforms": {
+    "macos-15-intel, osx-x64": {
+      "rust": {
+        "passed": 694,
+        "failed": 0,
+        "ignored": 9,
+        "summaries": 64
+      },
+      "core": {
+        "failed": 0,
+        "passed": 159,
+        "skipped": 0
+      },
+      "desktop": {
+        "failed": 0,
+        "passed": 119,
+        "skipped": 0
+      },
+      "smoke": {
+        "status": "passed",
+        "backend": "CPU",
+        "ticks": 13,
+        "population": 1,
+        "movement": true,
+        "save_resume": true,
+        "bundled_bots": 48
+      }
+    },
+    "macos-latest, osx-arm64": {
+      "rust": {
+        "passed": 694,
+        "failed": 0,
+        "ignored": 9,
+        "summaries": 64
+      },
+      "core": {
+        "failed": 0,
+        "passed": 159,
+        "skipped": 0
+      },
+      "desktop": {
+        "failed": 0,
+        "passed": 119,
+        "skipped": 0
+      },
+      "smoke": {
+        "status": "passed",
+        "backend": "CPU",
+        "ticks": 13,
+        "population": 1,
+        "movement": true,
+        "save_resume": true,
+        "bundled_bots": 48
+      }
+    },
+    "windows-latest, win-x64": {
+      "rust": {
+        "passed": 694,
+        "failed": 0,
+        "ignored": 9,
+        "summaries": 64
+      },
+      "core": {
+        "failed": 0,
+        "passed": 159,
+        "skipped": 0
+      },
+      "desktop": {
+        "failed": 0,
+        "passed": 119,
+        "skipped": 0
+      },
+      "smoke": {
+        "status": "passed",
+        "backend": "CPU",
+        "ticks": 13,
+        "population": 1,
+        "movement": true,
+        "save_resume": true,
+        "bundled_bots": 48
+      }
+    },
+    "ubuntu-latest, linux-x64": {
+      "rust": {
+        "passed": 694,
+        "failed": 0,
+        "ignored": 9,
+        "summaries": 64
+      },
+      "core": {
+        "failed": 0,
+        "passed": 159,
+        "skipped": 0
+      },
+      "desktop": {
+        "failed": 0,
+        "passed": 119,
+        "skipped": 0
+      },
+      "smoke": {
+        "status": "passed",
+        "backend": "CPU",
+        "ticks": 13,
+        "population": 1,
+        "movement": true,
+        "save_resume": true,
+        "bundled_bots": 48
+      }
+    }
+  }
+}

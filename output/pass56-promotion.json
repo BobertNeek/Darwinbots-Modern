@@ -1,0 +1,260 @@
+{
+  "schema_version": 1,
+  "batch": 56,
+  "state": "all_finalized_code_and_tests_applied_before_any_checks",
+  "utc": "2026-10-17T04:21:12.0769448Z",
+  "source_head": "1b059f4dc18ca1d19952b35576bfbb840809e020",
+  "authoring_plan_sha256": "65ADC14A9CB2BD928058B362802C102B653883514455B979289FA19B6249391E",
+  "backup_receipt_sha256": "1DC977558938D0F61A78C6D14EB4FF550D12707D3CB538F6EE8B33BC29345BC0",
+  "static_reviews": "CLI independent normalization and three-file native ownership correction approved; compaction blocker resolved",
+  "net_new_rust_tests": 59,
+  "expected_rust_targets": 68,
+  "expected_managed_test_counts": {
+    "core": 289,
+    "desktop": 193
+  },
+  "files": [
+    {
+      "file": "modern/cli/src/lib.rs",
+      "sha256": "BE6D71ECDF152F3708850B246FBBCFCE07A2A27CEC5F97E6D12D1390372BFE9F",
+      "bytes": 18600
+    },
+    {
+      "file": "modern/cli/src/native_comparison.rs",
+      "sha256": "81A145E248C62B833CC127184B1D67DAD6B3F1C44F245394E24EC51505352721",
+      "bytes": 19702
+    },
+    {
+      "file": "modern/cli/tests/native_comparison.rs",
+      "sha256": "5710227149DF710028A8D47AF33D35D656B3EB6B3EDBD206C745F2716755F936",
+      "bytes": 11891
+    },
+    {
+      "file": "modern/engine/src/world.rs",
+      "sha256": "F458E1DD6A1A94018B891CD6922C04267E815393C714E158AC5314B3EC793DC3",
+      "bytes": 592028
+    },
+    {
+      "file": "modern/engine/src/world/native_io.rs",
+      "sha256": "CA509B7BBB4FD2BD8C323E8EEF87397E1B01D2D31DF076637BE2C92E21B86115",
+      "bytes": 62707
+    },
+    {
+      "file": "modern/engine/src/world/native_random_world.rs",
+      "sha256": "B43756637A1AE6486859F4F41A4C92FB0AFA0E2C97D9DD6B04F62E7D84FAAC51",
+      "bytes": 69317
+    },
+    {
+      "file": "modern/engine/src/world/native_reproduction.rs",
+      "sha256": "DEB75F81ECB3502737D2AA4150A76527D81FC6A53B587510BF04E3C3723557D8",
+      "bytes": 7567
+    },
+    {
+      "file": "modern/engine/src/shot/projectile.rs",
+      "sha256": "0CFFB35BD4C651CA678196F58F2E2052E82FA629E9F1756D384A84002D0BDD0F",
+      "bytes": 55944
+    },
+    {
+      "file": "modern/engine/src/world/native_shots.rs",
+      "sha256": "CAEAE133428D844EB54EF3E01B49A90CD36C40A19AE7F676FFC3DA6451D94A3F",
+      "bytes": 35991
+    },
+    {
+      "file": "modern/engine/src/world/native_virus.rs",
+      "sha256": "29FA2A0EDB3405E32CB0DC3DFA23889D87FC953E00555D603E7BF496429969B6",
+      "bytes": 30158
+    },
+    {
+      "file": "modern/engine/src/world/native_pipeline.rs",
+      "sha256": "D92B84F51815FB677C64665F5DF01F3A5EC4D00FE85DF77159CDE956B2A1AF71",
+      "bytes": 28584
+    },
+    {
+      "file": "modern/engine/src/world/native_corpses.rs",
+      "sha256": "87B8EE8BFD84DAAB77F7E1C83B1C0731057A986561BB32ABDF8789F15F74FC3C",
+      "bytes": 36806
+    },
+    {
+      "file": "modern/engine/src/world/native_waste.rs",
+      "sha256": "04C49D40BA6E4AF90A06280AFAAD1E4204B88967C967618FA33A5FA163F81ED2",
+      "bytes": 9161
+    },
+    {
+      "file": "modern/engine/tests/db24832_genuine_feeding.rs",
+      "sha256": "14483999C22DA86F22F51BECEE335A6379FC5027582B87F3585E3E2E9281D22A",
+      "bytes": 22020
+    },
+    {
+      "file": "modern/engine/src/stats.rs",
+      "sha256": "0E8A981B2F975145229960504CB9D00CBADCAC094BDC5CB32001893AAE611AFC",
+      "bytes": 2682
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/EngineSnapshot.cs",
+      "sha256": "7E5B2020F61B862757BE1E7DDF78206114338EC283DEA620F238457C67BB98BE",
+      "bytes": 12977
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/NativeSnapshotParser.cs",
+      "sha256": "1B5D13B9F8CF945AD31DF7C51EC8F75C4D73CA0FF8C15F6424C7B10C6CC0028B",
+      "bytes": 55376
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop/ViewModels/MainWindowViewModel.cs",
+      "sha256": "4F754301646B31FF08326A01258FDD5F56B1E8D031200A3D9248CD51398FE2E4",
+      "bytes": 17141
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/NativeSnapshotParserTests.cs",
+      "sha256": "8E6964CF3812730FF007397F65CC21B5BFEBEF345B65C0D99EC1C839C75B600B",
+      "bytes": 22548
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/MainWindowViewModelTests.cs",
+      "sha256": "770658C5D9EE79B6C8C6303AC923DF34F7EE4AC94E35CCB8D5CD4829513CD900",
+      "bytes": 14243
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/IEngineClient.cs",
+      "sha256": "3CBB7EB300245787CF4F69DBFECE399BFC1AA71F7C35D50871BA0CED49A6449E",
+      "bytes": 4909
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/NativeEngineClient.cs",
+      "sha256": "BC9A4ACFC7F84D891FA603B93AD0165E8C577CD299CAC8350BACDDAA2F5B981E",
+      "bytes": 48232
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/WorldSetupOptions.cs",
+      "sha256": "B7DB1DE839D32B4193642853AF1453424F370CD54DE0EFC5629D77645EE05F08",
+      "bytes": 3861
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/SimulationSession.cs",
+      "sha256": "1C2BA3E71A069FC0850978DFB94957262F8DBC4AB7F0894535D3E537655F78E2",
+      "bytes": 22446
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop/Views/SetupWindow.axaml.cs",
+      "sha256": "CE5B484236B50E825377671FADB44AC946011CD459F0DF48621BE008A4C1FAB5",
+      "bytes": 21690
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml.cs",
+      "sha256": "32310F808C1B313A696D0895E455E5B263142702F1904FF327AF4F3616722B51",
+      "bytes": 139997
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/SimulationSessionTests.cs",
+      "sha256": "17651D34D069686ECDAD94524ADAD51E90B3ECA0F44B49632D65A4050C9CD5D0",
+      "bytes": 25694
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/CommunityLeagueNativeTests.cs",
+      "sha256": "A637955B25785A38FD23FAD7FC0130E0B20763FAE69AFC26DAD58A74C61911BA",
+      "bytes": 38517
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs",
+      "sha256": "D1CA26C38D13B06FD1D0C97363E78D75DE282E3D00E50F6D408AAB030D605E6F",
+      "bytes": 134808
+    },
+    {
+      "file": "modern/engine/src/world/native_energy.rs",
+      "sha256": "F216F555B266909285121053B8107F6C20F343D20F975754A61ECF3CF4330FE1",
+      "bytes": 17135
+    },
+    {
+      "file": "modern/engine/tests/db24832_genuine_load_transients.rs",
+      "sha256": "9ECFD3769C041B5F15812701A7C17102F5355CA9E7CBEA40F4094C380714A652",
+      "bytes": 15017
+    },
+    {
+      "file": "modern/engine/tests/db2_final_engine_world.rs",
+      "sha256": "74C073BAA2DB157E4E7FBBBDB7EE47C7EF2E4D1CBAFC929D8AC9F78153AF3543",
+      "bytes": 10289
+    },
+    {
+      "file": "modern/engine/tests/db2_vegetation.rs",
+      "sha256": "B87336F2E38D8C7E059DF0FDE64C3D5E9EEAA39298D1186909529D6C5007F844",
+      "bytes": 26529
+    },
+    {
+      "file": "modern/engine/tests/environment_world.rs",
+      "sha256": "36E73224D18AC85E01472621CBF73F02421250DAC8AB1DE0BBDCA3EFBB14CFDB",
+      "bytes": 14080
+    },
+    {
+      "file": "modern/engine/src/ffi.rs",
+      "sha256": "A4A69226E7DC6761F34E266EDCDA909BB13F2AE74799D798DD2FDF0BC981EAFE",
+      "bytes": 84185
+    },
+    {
+      "file": "modern/engine/tests/reproduction_heredity_248.rs",
+      "sha256": "13D47B5ED345269B6AF3C9DC2256CB1FA4B3D56FD2E0CC4C399BB34CA81E1BF3",
+      "bytes": 39620
+    },
+    {
+      "file": "output/native-qualification-admission53.ps1",
+      "sha256": "A7DCD88F30F9430116CA691F3E4DDD2F990F00465A378446EA4DA85EDDCDAC40",
+      "bytes": 39194
+    },
+    {
+      "file": "output/test-native-admission56.ps1",
+      "sha256": "DDD99DCB5506B1C024AFE51A5E85D33198D0CFFF070E39853E01FCAAB5E659ED",
+      "bytes": 15791
+    },
+    {
+      "file": "output/qualify-native-roundtrip-pass56.ps1",
+      "sha256": "D4E8D66083D7E57AD73126F92467A000A9336275EAE34B88D0C3AA397C33177A",
+      "bytes": 54809
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-contacts-start-48032.sim",
+      "sha256": "4AF50D8B78BD75723DDF36E47C3A80B9DE64636FBC1A9501E16C7FCBFF9F0C72",
+      "bytes": 29805
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-capture-provenance.json",
+      "sha256": "739CBD3FB8528740F6CCB6B74988DB91126A5DE6D474A46FDB309C2C5A3C5F98",
+      "bytes": 9494
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-contacts-cycle1-20261017.sim",
+      "sha256": "F7DA4A17D59977FC65BB32CC6BCE2AE4C8E28087672F997CE9629CFB20D202D0",
+      "bytes": 35764
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-contacts-cycle100-20261017.sim",
+      "sha256": "C6AB7E5578162E576F37F3F1CCF738985015D9FD9C3AF155D5E561F02F9F378E",
+      "bytes": 35764
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-contacts-cycle11-20261017.sim",
+      "sha256": "8821C6D5EB2077EFAE7597FB1D4EB8ADEE3DE687275528BAF7A79C0DC5AF05BB",
+      "bytes": 35764
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-reproduction-cycle1-20261017.sim",
+      "sha256": "A6F9DC7F78280AF622D35401ECF65CB1E6ADE344D2D150342E89B5556DA0E03A",
+      "bytes": 17086
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-reproduction-cycle10-20261017.sim",
+      "sha256": "4BCD08A85E121216B1BF49C4315FACEA7C985CCF691C147306A479BACE437B69",
+      "bytes": 26475
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-reproduction-start-48032.sim",
+      "sha256": "60FD33C86E938B94D86C074AE9B8097B9D61159CCF5D35D066BAFFCB4BF18040",
+      "bytes": 11137
+    },
+    {
+      "file": "modern/engine/src/world/native_sim_export.rs",
+      "sha256": "A05C5B178C0736E5875471568F8CCC7F5DED659E032D321EBF424A988826D8E8",
+      "bytes": 55735
+    }
+  ],
+  "product_checks_before_application": false,
+  "desktop_or_gpu_launched": false
+}

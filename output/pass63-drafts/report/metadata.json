@@ -1,0 +1,122 @@
+{
+  "schema_version": 1,
+  "batch": 63,
+  "state": "authored_and_peer_reviewed_qualification_pending",
+  "created_utc": "2026-10-17T13:58:03.395Z",
+  "owner": "/root/recover_46_inventory",
+  "base_source_head": "9d9321e4b86d76d18ef5e2c10f6c873ce0446089",
+  "base_source_manifest": {
+    "file": "output/native-roundtrip-pass62-source.json",
+    "sha256": "5F5E901F1B2461D2C9B0A67CC3CDDD45BEE3DC2061120CF12FC33FADF16B72ED",
+    "source_file_count": 661
+  },
+  "files": [
+    {
+      "target": "docs/parity/db24832-parity-report-2026-10-14.html",
+      "base_sha256": "D4DCC893E051190CE9B6081BBE5F87AF336BF33C5E7573D4B4C2D2D42A0D05C9",
+      "base_bytes": 656446,
+      "candidate": "output/pass63-drafts/report/candidate/docs/parity/db24832-parity-report-2026-10-14.html",
+      "candidate_sha256": "EB18EE6A764A7661A5355E29E2E05DF0958BB53CE7AC933B2B42CE4FCA5FA1F2",
+      "candidate_bytes": 687520
+    },
+    {
+      "target": "docs/parity/evidence/continuation-handoff-2026-10-13.md",
+      "base_sha256": "4472323A9DB4D048BFB2B8AD7C5F4A64D3BA1E8507BA623F6746A1B1E53E0B29",
+      "base_bytes": 414182,
+      "candidate": "output/pass63-drafts/report/candidate/docs/parity/evidence/continuation-handoff-2026-10-13.md",
+      "candidate_sha256": "799437293CAE6B281C61FE58BE70E3D8B5D4E0515F6D9F2EEDBC974CD34BDA33",
+      "candidate_bytes": 421881
+    }
+  ],
+  "scope": {
+    "application_census": {
+      "total_targets": 8,
+      "existing_targets": 7,
+      "new_targets": 1,
+      "owners": {
+        "rust_test_sources": 3,
+        "managed_readiness_tests": 2,
+        "qualification_runner": 1,
+        "reports": 2
+      },
+      "new_test_rows": {
+        "rust": 0,
+        "core": 0,
+        "desktop": 0
+      },
+      "expected": {
+        "rust_targets": 68,
+        "core": 314,
+        "desktop": 214,
+        "ordinary_outcomes": 94,
+        "original_controls": 25,
+        "reference_only_fields": 55849
+      },
+      "production_logic_changed": false
+    },
+    "latest_fully_qualified_ordinary_checkpoint": 59,
+    "collected62_state": "needs_repair",
+    "all63_code_and_tests_authored": true,
+    "all63_static_peer_reviews_complete": true,
+    "product_execution_for63": false,
+    "active_source_application_by_report_owner": false,
+    "inventory_ownership": "Transferred to /root/review_46_failures before any inventory write."
+  },
+  "sealed62_receipts": [
+    {
+      "file": "evidence/batch-2026-10-14/native-roundtrip-pass62/qualification-summary.json",
+      "sha256": "BCD1AC87464C165280D912973A8A588E37630E77D649E9B62D01B18C06AE7443"
+    },
+    {
+      "file": "evidence/batch-2026-10-14/native-roundtrip-pass62/rust-target-results.json",
+      "sha256": "2439EFE7A41A4724638E9DBECB6E5640F6A136FAB0AD4A535AB2B0118E7E1BF1"
+    },
+    {
+      "file": "evidence/batch-2026-10-14/hosted-main-9d9321e.json",
+      "sha256": "985F7C5F6CF91669DEBD566F71BF1545F9C91D92056BF433237F1569F52AA463"
+    },
+    {
+      "file": "evidence/batch-2026-10-14/hosted-diagnostics-9d9321e.json",
+      "sha256": "1FF0545FF6DA856F9121341EE78E0ACA6EC280C74F2BB10D61EC97AC8A3BCFA1"
+    }
+  ],
+  "authored63_releases": [
+    {
+      "file": "output/pass63-drafts/rust-test-compilation/metadata.json",
+      "sha256": "A929975A2FD9E073C51299588FDF574425537F03E8F6E4D6FD31BD9CB53582A8"
+    },
+    {
+      "file": "output/pass63-drafts/managed-readiness/metadata.json",
+      "sha256": "5715165007D7BD56068B111776F5742AD219E7615BC554BC949438AA5A088FC7"
+    },
+    {
+      "file": "output/pass63-drafts/qualification/metadata.json",
+      "sha256": "6E97BC06473915E34E062859C5263106249D4B634B1C9B4E0CFA843D31AA96E6"
+    }
+  ],
+  "static_readback": {
+    "ledger_count": 25,
+    "ledger_order_preserved": true,
+    "historical_json_values_preserved": true,
+    "historical_json_keys_preserved": 54,
+    "css_bytes_preserved": true,
+    "filter_javascript_bytes_preserved": true,
+    "old_current_aside_preserved": true,
+    "full_old_handoff_suffix_preserved": true,
+    "latest_qualified_checkpoint_still59": true,
+    "authoring_not_qualification": true
+  },
+  "execution": {
+    "source_edits": false,
+    "tests": false,
+    "builds": false,
+    "formatter": false,
+    "product_parser": false,
+    "browser": false,
+    "ui": false,
+    "gpu": false,
+    "git": false
+  },
+  "qualification_boundary": "Report current sections record actual62 results and authored63 test-only repairs without claiming passing63 results. Source59 remains latest fully qualified ordinary CPU/hosted checkpoint; original mode/helper, final visible and hardware/capacity gates remain pending.",
+  "ownership": "Only the two candidate document paths and this metadata were written; root owns application, Git and fresh qualification."
+}

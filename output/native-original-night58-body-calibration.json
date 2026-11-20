@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "created_utc": "2026-10-17T07:14:33.415Z",
+  "status": "CALIBRATION ONLY; C10 NOT ACHIEVED",
+  "case": "body",
+  "fresh_process": true,
+  "selection": false,
+  "console": false,
+  "protocol": "ToolbarPause; toolbarLoad freshinputC0; reselect and activate returned window; click_count10 on cycle toolbar; normal F3save; framedcounter verifiesactualC1.",
+  "file": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-console59-9060ee6b-9427-4a54-8edc-39badc3114a1\\body\\captures\\body-after10-toolbar-clicks.sim",
+  "bytes": 17054,
+  "sha256": "0F6EBE616D67BA8FAA45372BE1F0DB0FACEC2994DCC1632953F31634E9A847E5",
+  "actual_saved_cycles": 1,
+  "seed": 48032,
+  "canonical_accepted": false,
+  "product_compared": false,
+  "source58_mutated": false
+}

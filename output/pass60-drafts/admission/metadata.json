@@ -1,0 +1,152 @@
+{
+  "schema_version": 1,
+  "batch": 60,
+  "state": "authored_unapplied_unexecuted",
+  "authored_utc": "2026-10-17T09:18:13.219Z",
+  "source_head": "ff50b1a735ef61c6d5d282358da76f2734f64099",
+  "source_manifest": {
+    "file": "output/native-roundtrip-pass59-source.json",
+    "sha256": "583D1DE4880EEE9D312B7B41B2E471CC3A06DEC145EEAE310315136E48DC80DA",
+    "bytes": 97845
+  },
+  "source_manifest_file_count": 555,
+  "target_file_count": 2,
+  "targets": [
+    {
+      "target": "output/native-qualification-admission53.ps1",
+      "new_file": false,
+      "base": {
+        "file": "output/native-qualification-admission53.ps1",
+        "sha256": "A7DCD88F30F9430116CA691F3E4DDD2F990F00465A378446EA4DA85EDDCDAC40",
+        "bytes": 39194
+      },
+      "raw_before": {
+        "file": "output/pass60-drafts/admission/raw-before/output/native-qualification-admission53.ps1",
+        "sha256": "A7DCD88F30F9430116CA691F3E4DDD2F990F00465A378446EA4DA85EDDCDAC40",
+        "bytes": 39194
+      },
+      "candidate": {
+        "file": "output/pass60-drafts/admission/candidate/output/native-qualification-admission53.ps1",
+        "sha256": "B3E9D15B0BD1B6EC6E3FAFCC789FFC6E4546F3C0863882F8A3A34E0E0F39145B",
+        "bytes": 39477
+      },
+      "change": "Schema5 genuine movement admission selects exact C1/C10/C102 for batch55-59 and exact C1/C10/C100/C102 for batch60 onward; all existing per-checkpoint/source/managed/package checks remain."
+    },
+    {
+      "target": "output/test-native-admission60.ps1",
+      "new_file": true,
+      "base": null,
+      "pattern_base": {
+        "file": "output/test-native-admission56.ps1",
+        "sha256": "DDD99DCB5506B1C024AFE51A5E85D33198D0CFFF070E39853E01FCAAB5E659ED",
+        "bytes": 15791
+      },
+      "pattern_raw_before": {
+        "file": "output/pass60-drafts/admission/raw-before/output/test-native-admission56.ps1",
+        "sha256": "DDD99DCB5506B1C024AFE51A5E85D33198D0CFFF070E39853E01FCAAB5E659ED",
+        "bytes": 15791
+      },
+      "candidate": {
+        "file": "output/pass60-drafts/admission/candidate/output/test-native-admission60.ps1",
+        "sha256": "80EDF97A2FB6076FC584B38ACA98DE6502F0C1ED180352AF5FBC1DD104C9CD94",
+        "bytes": 14168
+      },
+      "change": "Isolated synthetic schema5 receipt regression script; no actual workspace marker, source mutation, product, build, UI or GPU."
+    }
+  ],
+  "static_scope_proof": {
+    "whole_helper_inverse_bytes_equal": true,
+    "schema4_prefix_bytes_equal": true,
+    "positive_batches": [
+      55,
+      56,
+      57,
+      58,
+      59,
+      60,
+      61
+    ],
+    "negative_call_count": 15
+  },
+  "retained_contracts": {
+    "schema4_prefix_byte_identical": true,
+    "whole_helper_byte_equal_after_inverse_three_focused_changes": true,
+    "legacy_batch55_through59_exact_cycles": [
+      1,
+      10,
+      102
+    ],
+    "batch60_and_later_exact_cycles": [
+      1,
+      10,
+      100,
+      102
+    ],
+    "compared_fields_per_checkpoint": 1379,
+    "all_exits_differences_and_tolerances_zero": true,
+    "every_original_in_frozen_source_pin_set": true,
+    "all_other_source_rust_managed_dll_cli_package_admission_checks_unchanged": true
+  },
+  "authored_probe_census": {
+    "expected_total": 22,
+    "positive_count": 7,
+    "positive_batches": [
+      55,
+      56,
+      57,
+      58,
+      59,
+      60,
+      61
+    ],
+    "negative_count": 15,
+    "batch60_negative_cases": [
+      "missing_C100",
+      "wrong_expected_cycles",
+      "duplicate_cycle",
+      "unexpected_cycle",
+      "wrong_field_count",
+      "nonzero_difference",
+      "nonzero_absolute_tolerance",
+      "nonzero_relative_tolerance",
+      "failed_compare_exit",
+      "false_checkpoint_passed",
+      "unpinned_original"
+    ],
+    "batch59_negative_cases": [
+      "extra_C100",
+      "missing_C102",
+      "duplicate_cycle",
+      "unexpected_C100"
+    ],
+    "synthetic_managed_counts": {
+      "batch55": {
+        "core": 285,
+        "desktop": 189
+      },
+      "batch56_and_later": {
+        "core": 288,
+        "desktop": 193
+      }
+    },
+    "synthetic_rust_target_count": 68,
+    "results": null
+  },
+  "execution": {
+    "powershell_parser": false,
+    "probe_execution": false,
+    "formatter": false,
+    "build": false,
+    "test": false,
+    "product": false,
+    "ui": false,
+    "gpu": false,
+    "git": false
+  },
+  "active_inputs_unchanged": {
+    "helper_sha256": "A7DCD88F30F9430116CA691F3E4DDD2F990F00465A378446EA4DA85EDDCDAC40",
+    "probe_pattern_sha256": "DDD99DCB5506B1C024AFE51A5E85D33198D0CFFF070E39853E01FCAAB5E659ED",
+    "source_manifest_sha256": "583D1DE4880EEE9D312B7B41B2E471CC3A06DEC145EEAE310315136E48DC80DA"
+  },
+  "ownership": "Released to root for review/application after all batch60 code and tests are authored. No active file was modified."
+}

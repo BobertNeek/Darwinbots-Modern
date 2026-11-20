@@ -1,0 +1,369 @@
+{
+  "schema_version": 1,
+  "batch": 50,
+  "parent_head": "dbffdc58787f369e7490461836df7ef677c01e8f",
+  "frozen_utc": "2026-10-16T16:52:58.737Z",
+  "all_code_and_tests_written_before_formatter": true,
+  "format_exit_code": 0,
+  "scope": "Physical-only test assertions and guarded hardware/capacity runners; production source and executed CPU branches unchanged from qualified49",
+  "files": [
+    {
+      "file": "modern/cli/src/dna_source.rs",
+      "sha256": "AD56DE5A1D3FD8D05E0B431537D8D95D8A7E159EA87AE9A4AB9A8796B75A1D31"
+    },
+    {
+      "file": "modern/cli/src/lib.rs",
+      "sha256": "1DF70C2D34D671763CB786781F973ECC509DE3873AE6383EDA44F03D6053B02B"
+    },
+    {
+      "file": "modern/cli/src/native_comparison.rs",
+      "sha256": "DC7CF837A8489187D67715204BFBF96ED2F67BED1AA778D7E9941DE97E90F83E"
+    },
+    {
+      "file": "modern/cli/src/probe.rs",
+      "sha256": "4D05E43F01FF5766F3A318AC28961C7DF4F9927030D182E83BE081C60F8DB5B0"
+    },
+    {
+      "file": "modern/cli/tests/native_comparison.rs",
+      "sha256": "F39C078B571E63EF928FD407C2009EE815E6CC3969A1E069CD9ED0A2AE709EEB"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/ClassicTournamentDnaExport.cs",
+      "sha256": "3248E68BE64A02D2349300B6B9077730E3CD74FB87A3BC0ED2F3C8A28ED7B997"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/ContestResultsWorkflow.cs",
+      "sha256": "19F90FD0631345E6E6C133166E2E14028666C451E75C025F6C7CA400E6B0A6EB"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/CycleAutosavePolicy.cs",
+      "sha256": "4D9A10672E73414E19490E06611B4A570F25D87A30A675E2583F1F6C782B36F9"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/Db2Persistence.cs",
+      "sha256": "A868EA6EC62CCF79E3B937738399913933BC99857C92ACE13941967FA57CE658"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/EngineSnapshot.cs",
+      "sha256": "89075FFDD5F8C147BB6FB8EF2F8F21696FE4390900C5A6E42548A6F349D50C06"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/IEngineClient.cs",
+      "sha256": "E02DCAF5AE4C5CE3E421A219415B7BD98391195BA193969432A19286A97EAF5E"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/LegacyDnaText.cs",
+      "sha256": "9066B564C47E72C46A89ED1A0600CDA0F5859D804C6E08E88F3960A50F9819BE"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/LegacySettingsAdapter.cs",
+      "sha256": "0096A155BCA0F07558074DCCCD11535BB58CB5251C19632FCC9D6161293B3CCD"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/LocalMode.cs",
+      "sha256": "2BD0B12F2A15F15A13465A1DB6987D9E4E8FF380D7B2A08F53B3CF1039A59A0B"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/NativeEngineClient.cs",
+      "sha256": "BB9C9EE1F1FA59122F23359C31C1179DDD481E4664078A1824640ACDD0064783"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/NativeSnapshotParser.cs",
+      "sha256": "0F31C3579ED93B517D62BB566FCC71A800F82E2830ADA991A3DC838ACFAC7694"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/PopulationSeedingExport.cs",
+      "sha256": "7E8485F70C2C955513FF9171D1BD20E40E23957656156021C9853FC2D22199C5"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/SimulationSession.cs",
+      "sha256": "0383EBC2C03F4003794A7A25A78E723DA68A01D32711AB9FBF7E7E7A581C2614"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/WorldSetupOptions.cs",
+      "sha256": "9372084AC7579386C9F87096E38F879C471044BA97D7D45AC74AE329098493A3"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop/Services/AvaloniaDesktopStorageService.cs",
+      "sha256": "08F03B5B4A80698597BD17EFE7780F97E74F11A09411F2DD6DDC9696CBFDDCC7"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop/Services/IDesktopStorageService.cs",
+      "sha256": "9CA5EE858232961523C6D7447B52B34C151B792EB0E76F7A63AFA209718842ED"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop/Services/SetupStorageService.cs",
+      "sha256": "5A55BFF07AC214D2A871DD4363C3D8DA11AD8FEB0184500DE7CFCD7685FF7247"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop/ViewModels/LocalModeViewModel.cs",
+      "sha256": "459D747CF99BBA230F48C9A054B4A62E5A7AE5803BF03C63B15D4EF6C1315F6A"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop/ViewModels/MainWindowViewModel.cs",
+      "sha256": "FC4305AF0A0748A5BFE5EA631335052A8A816A31D52CC389B1E62786F6EBA60B"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop/Views/AdvancedSettingsWindow.axaml.cs",
+      "sha256": "8F7D34FB7EC83FEC4F35E29D86896DFD10BE7C455F3374E914224FEF91D416E2"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml",
+      "sha256": "EF9787C2D52B4A612A85FF56BCC9D705EBAA89CB790D029DABBA27C2B8531591"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml.cs",
+      "sha256": "86E694995BF24B6660BFB8549E9E3A967D4FB86FF979B506770F86F314B99B91"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop/Views/SetupWindow.axaml.cs",
+      "sha256": "A53A5CC6DCD74E7FF49BAF51F33FAC88074A46E8A988E4BFD57B1BE889CD9FBB"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/ClassicTournamentDnaExportTests.cs",
+      "sha256": "102B4530D202E26AA29C4122B75E08870404EE8DB6114D6E18AF944F1F498E59"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/CycleAutosavePolicyTests.cs",
+      "sha256": "6ABA80C98DA8C77E58ADAA43567A335D805598A9AC6E4853303F2F6E4E895EF3"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/Db2PersistenceTests.cs",
+      "sha256": "AE832EC308AB291F801F6F665AA410F2A6717780DDD2E67057BB69232CFEA2DD"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/LegacyDnaTextTests.cs",
+      "sha256": "2C62C46311590F0EEB91D18B6E14CEFFE31DE8904EC63000A9B59581F554E170"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/LegacySettingsImportTests.cs",
+      "sha256": "26DC4B6A7472392A717449A9D6816E6661132D46BCD978649B6820DE654495EC"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/NativeLeagueSeriesTests.cs",
+      "sha256": "6B156171FCF5FF2292976BC01B5820B411A1DE96A6346DBA358B676540D4D4AA"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/NativeSnapshotParserTests.cs",
+      "sha256": "DFE85E12DC20588E854DB057BD9CD981BC9AF536E6B9E4DDC8CCC18A2CC61029"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/SettingsDomainWorkflowTests.cs",
+      "sha256": "65B21528A1F41190A5B62786F13554C4F17AC067C3C20C6051519199F15A99AC"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/SimulationSessionTests.cs",
+      "sha256": "B7D34A13011F3D807D5F916FB5611107663A5566C7CA8FAF1607CE11953F99A7"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/CommunityLeagueNativeTests.cs",
+      "sha256": "05A172D0AC19B2F6F023421BF2F4FA3EC38D3DD59A79167A7960C5F5F125BDA2"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/ControlSurfaceBindingTests.cs",
+      "sha256": "F2C97CCEACCB9584C2DBFCE8D591257CB096CFC6B0463824671212DEF213487B"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/LegacySettingsNativeTests.cs",
+      "sha256": "3C226E32CB317DFE8A377D3A6B181EB1751A924232BA9B03984B065E8DAC49AA"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/LocalModeWorkflowTests.cs",
+      "sha256": "78C893F554634F64700AAA63CDD7737D94D7B2AD7E45B2899A96DCDE285D5D8F"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/MainWindowViewModelTests.cs",
+      "sha256": "2C68A097E5A6B8382E9B608C07780C05FCCEE6DF0E034820913F9FEA50A9BB92"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs",
+      "sha256": "FEBD23901946CF2DA9A3B41DB7143638CBE296E1FE3196B76555ED9030525761"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/SafeModeAutosaveRenderedTests.cs",
+      "sha256": "6C2BBB6DFAFFF94EC316CE38DFF991D53D7A75128AF6576CBA7CA6C06296EC05"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/SetupControlSurfaceTests.cs",
+      "sha256": "CBAEFB7F24CD7294556044C8CEC7D16FAD2E8312FBCC13B9EBD98D9295607605"
+    },
+    {
+      "file": "modern/engine/src/config.rs",
+      "sha256": "5DB0C2C2750CE0D16E949E587FD6D927B7A86FFE1811832F4759AC0F4ADACBF2"
+    },
+    {
+      "file": "modern/engine/src/dna.rs",
+      "sha256": "141BF4A580903DA61BCAF52CC3937E5CDCE59771D1688BA4CC4CDE7B168BB974"
+    },
+    {
+      "file": "modern/engine/src/dna/native_load.rs",
+      "sha256": "E0F1BEBEFB016EABE4E26E7D0BF67C846BCEF6DD8C2D868D5C93BE6FB3070E02"
+    },
+    {
+      "file": "modern/engine/src/ffi.rs",
+      "sha256": "3D343E7CDBCFBC1297D03DC1115E5905C8BE39FD69D9F03C9D41347757279AA6"
+    },
+    {
+      "file": "modern/engine/src/league.rs",
+      "sha256": "0F605FB2EBB3CA045E4BB425803DDB385E4A2FCAEF81A66DC423CDA6A338F7C9"
+    },
+    {
+      "file": "modern/engine/src/lib.rs",
+      "sha256": "5D8C0D0151E087C09BC12CBABB27714000529BCB7A2C7CF3DE016E3501A2BDAC"
+    },
+    {
+      "file": "modern/engine/src/modes.rs",
+      "sha256": "8612D9EA96C6CD67425F7639E1F42AC1724B31225CA8A07BA0AB65FF3AC8D008"
+    },
+    {
+      "file": "modern/engine/src/native_random.rs",
+      "sha256": "3B2B316F92FB101D503B19AB6459A233304E6040B28E65721E3DD6127369B23B"
+    },
+    {
+      "file": "modern/engine/src/native_skin.rs",
+      "sha256": "56466D1DA2C91DF6426A4CAC57F10B73927AF627FFFDCF39459E17AA90CE3126"
+    },
+    {
+      "file": "modern/engine/src/robot_state.rs",
+      "sha256": "8995060A6064C564FDC5CD30EAEDBE7B68C808A0C3374390649590E81A854A20"
+    },
+    {
+      "file": "modern/engine/src/vegetation.rs",
+      "sha256": "2F4CFE05CECB3DF29225144D3CF9714924890454C7A90F95CA3F5C3214C8F2B2"
+    },
+    {
+      "file": "modern/engine/src/world.rs",
+      "sha256": "98DA7AE4410C6E6E2973876EC9D76C98C8C5B46462094224942A5ECF8806D30A"
+    },
+    {
+      "file": "modern/engine/src/world/cached_radius.rs",
+      "sha256": "21E1FF741E3C15FA33B25834DDA0FB56F3BF90E77E36EAC54774E69A8D91BA4C"
+    },
+    {
+      "file": "modern/engine/src/world/classic_tournament_tests.rs",
+      "sha256": "3882FD72E63FA6B30BF5451E221153225A0407A63D8965952E67F8F3469008D1"
+    },
+    {
+      "file": "modern/engine/src/world/league_series.rs",
+      "sha256": "F7C94838E0038BF1E489203995B08687DFA13A1CB86002DF9FA861E24F178529"
+    },
+    {
+      "file": "modern/engine/src/world/native_disqualification.rs",
+      "sha256": "035F6239B8EA0B5EB393C2FD2DE7D16CF42576A87D3349E1CF8AE9AD7EE88546"
+    },
+    {
+      "file": "modern/engine/src/world/native_dynamic_costs.rs",
+      "sha256": "B72974A62A270B835177B1135F5393C6CE2D5DDDC9082DFBF4BC675AF946E494"
+    },
+    {
+      "file": "modern/engine/src/world/native_export.rs",
+      "sha256": "D1459A649DB664842E73C18CC8822113F446621BE93D1C51B5E232607449025F"
+    },
+    {
+      "file": "modern/engine/src/world/native_graphs.rs",
+      "sha256": "FC49CA77E771D9CCB0B0CA196093F24F3AA6B87142EF547D396F91E9EAE115E3"
+    },
+    {
+      "file": "modern/engine/src/world/native_io.rs",
+      "sha256": "D80BEDE2B6ABE9D67086BBE7355ABC948AEB2A79CADE774111C03F06F5920BEE"
+    },
+    {
+      "file": "modern/engine/src/world/native_league.rs",
+      "sha256": "932DE8C1ECAFAE21C7DFB5FB24D0F994D6D5577930A665A45121FF9736F30969"
+    },
+    {
+      "file": "modern/engine/src/world/native_mutation_oscillation.rs",
+      "sha256": "7DCA9BEA0F38D6B48ECF2D4225E24F29FBF2F316255C3EA0F1EBD1B1ABC7F9D4"
+    },
+    {
+      "file": "modern/engine/src/world/native_obstacles.rs",
+      "sha256": "AB3C083AE4664B94999030155AAB7889C4A27211014D40FCFF73CCD2C44A82C9"
+    },
+    {
+      "file": "modern/engine/src/world/native_random_world.rs",
+      "sha256": "956A732F20D1B7195B8692A530431FCB0097CE89BD308E58731AD9B70B191C65"
+    },
+    {
+      "file": "modern/engine/src/world/native_recognition_fudging.rs",
+      "sha256": "357677340FDB0656EAF661A551EDD6642BAB693A30DE663A0E0AADBF072CB586"
+    },
+    {
+      "file": "modern/engine/src/world/native_script_placement.rs",
+      "sha256": "831D9AEE660B2177A58A534DC95D3E280F743F052D662F71899C5E90AAC51F4D"
+    },
+    {
+      "file": "modern/engine/src/world/native_sim_export.rs",
+      "sha256": "60877A0C0442293AA72FBA0E1957FED62C72B0C48945A4EB1E2CDCF6AE1EEEA2"
+    },
+    {
+      "file": "modern/engine/src/world/native_virus.rs",
+      "sha256": "E051E79D07CE3C0423E0C5849907B9AED0080AD089E72A1CC4356F6D78F684CD"
+    },
+    {
+      "file": "modern/engine/src/world/player_insertion.rs",
+      "sha256": "30AC9FEB53EEE9E57F26EF17D10797A5E80AA772CD3150084C61092891045242"
+    },
+    {
+      "file": "modern/engine/src/world/staged_evolution.rs",
+      "sha256": "9FBA91D4F653736B4734E6EFD59FD5F6C42E690CC38EC8EA2A7E4A4E5DE15AC6"
+    },
+    {
+      "file": "modern/engine/tests/db24832_starter_movement.rs",
+      "sha256": "957CFAFCAEBF5CBF8F62ED831F17FBD246AA519B08AD34A2A67DE9C64E435F98"
+    },
+    {
+      "file": "modern/engine/tests/gpu_ffi.rs",
+      "sha256": "B080F1916426D33594924F586EDE8567C88B9254C11E21A5DBED4695DF96F174"
+    },
+    {
+      "file": "modern/engine/tests/native_random_lifecycle_248.rs",
+      "sha256": "57E05E3010070568FB15EAB12340A23F01F4A03621728361B2E979FE5367BAC2"
+    },
+    {
+      "file": "modern/engine/tests/w4_evolution_gpu.rs",
+      "sha256": "3CACAB4F43B49312C19D5F373E960AFCE02AAF9A5C329E0E3CB00D776067C497"
+    }
+  ],
+  "delta_from49": [
+    {
+      "file": "modern/engine/src/world/cached_radius.rs",
+      "before_sha256": "B4ECFF40D0747B71A72E2D41E61D3C0E138D05C2D912244EE27F3AC770D6AECE",
+      "snapshot": "output/pass50-source-before/modern/engine/src/world/cached_radius.rs",
+      "snapshot_sha256": "B4ECFF40D0747B71A72E2D41E61D3C0E138D05C2D912244EE27F3AC770D6AECE",
+      "after_sha256": "21E1FF741E3C15FA33B25834DDA0FB56F3BF90E77E36EAC54774E69A8D91BA4C",
+      "before_bytes": 6301,
+      "after_bytes": 6957,
+      "eol": "CRLF",
+      "exact_single_replacement_static_review": true,
+      "after_formatter_sha256": "21E1FF741E3C15FA33B25834DDA0FB56F3BF90E77E36EAC54774E69A8D91BA4C"
+    },
+    {
+      "file": "modern/engine/tests/db24832_starter_movement.rs",
+      "before_sha256": "5FA1B1844CD03F410CE66C8565DB03F23DF8F0D8A6F02D71AE72FF8ABC7A769B",
+      "snapshot": "output/pass50-source-before/modern/engine/tests/db24832_starter_movement.rs",
+      "snapshot_sha256": "5FA1B1844CD03F410CE66C8565DB03F23DF8F0D8A6F02D71AE72FF8ABC7A769B",
+      "after_sha256": "957CFAFCAEBF5CBF8F62ED831F17FBD246AA519B08AD34A2A67DE9C64E435F98",
+      "before_bytes": 3401,
+      "after_bytes": 3550,
+      "eol": "LF",
+      "exact_single_replacement_static_review": true,
+      "after_formatter_sha256": "957CFAFCAEBF5CBF8F62ED831F17FBD246AA519B08AD34A2A67DE9C64E435F98"
+    },
+    {
+      "file": "modern/engine/tests/w4_evolution_gpu.rs",
+      "before_sha256": "EA19870DCE03C09DB68CF00A8B7A6BF7499AE6EA5EFF0FE180559EBCE6DD270F",
+      "snapshot": "output/pass50-source-before/modern/engine/tests/w4_evolution_gpu.rs",
+      "snapshot_sha256": "EA19870DCE03C09DB68CF00A8B7A6BF7499AE6EA5EFF0FE180559EBCE6DD270F",
+      "after_sha256": "3CACAB4F43B49312C19D5F373E960AFCE02AAF9A5C329E0E3CB00D776067C497",
+      "before_bytes": 9140,
+      "after_bytes": 9280,
+      "eol": "LF",
+      "exact_single_replacement_static_review": true,
+      "after_formatter_sha256": "3CACAB4F43B49312C19D5F373E960AFCE02AAF9A5C329E0E3CB00D776067C497"
+    }
+  ],
+  "qualified49_summary_sha256": "8B0E1F822E060C4C891554B688A044567502C1D568A94213FE2813BC9A289D42",
+  "qualified49_source_pins_unchanged": 76,
+  "retained49_input_pins_unchanged": 236,
+  "declared_test_only_pin_changes": 3
+}

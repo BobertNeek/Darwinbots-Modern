@@ -14,6 +14,16 @@ fn phenotype_engine(auto_speciation: bool, threshold: f32) -> Engine {
 }
 
 fn spawn_mutating_parent(engine: &mut Engine, vegetable: bool) -> OrganismId {
+    let mut profile = darwinbots_engine::StandardMutationProfile::default();
+    profile.point.one_in = 0.0;
+    profile.delta.one_in = 0.0;
+    profile.copy_error.one_in = 1.0;
+    profile.copy_error.mean = 1.0;
+    profile.copy_error.std_dev = 0.0;
+    profile.insertion.one_in = 0.0;
+    profile.reversal.one_in = 0.0;
+    profile.minor_deletion.one_in = 0.0;
+    profile.major_deletion.one_in = 0.0;
     let species = engine.register_species(SpeciesDefinition {
         name: if vegetable {
             "Visual Alga"
@@ -23,7 +33,7 @@ fn spawn_mutating_parent(engine: &mut Engine, vegetable: bool) -> OrganismId {
         .to_owned(),
         vegetable,
         color: if vegetable { 0xff4c_963b } else { 0xff23_9ac0 },
-        mutation_rate: 100.0,
+        mutation_profile: Some(profile),
         ..SpeciesDefinition::default()
     });
     engine
@@ -52,8 +62,7 @@ fn generated_skin_is_stable_and_inside_the_bot() {
 
 #[test]
 fn real_mutation_drifts_color_but_zero_changes_do_not() {
-    let mut phenotype =
-        VisualPhenotype::new(3, 0xff23_9ac0, generated_skin("Animal", 3));
+    let mut phenotype = VisualPhenotype::new(3, 0xff23_9ac0, generated_skin("Animal", 3));
     let original = phenotype.clone();
     let mut random = 91;
 
@@ -79,8 +88,7 @@ fn autotroph_mutations_remain_green() {
 
 #[test]
 fn speciation_changes_one_skin_point_and_resets_distance() {
-    let mut phenotype =
-        VisualPhenotype::new(9, 0xff23_9ac0, generated_skin("Animal", 9));
+    let mut phenotype = VisualPhenotype::new(9, 0xff23_9ac0, generated_skin("Animal", 9));
     phenotype.accumulated_mutations = 12;
     let before = phenotype.skin;
     let mut random = 17;
@@ -121,7 +129,7 @@ fn child_inherits_phenotype_then_mutation_drifts_only_the_child() {
 }
 
 #[test]
-fn crossing_speciation_threshold_changes_skin_once() {
+fn native_speciation_preserves_the_inherited_skin_and_resets_the_counter() {
     let mut engine = phenotype_engine(true, 1.0);
     let parent = spawn_mutating_parent(&mut engine, false);
     let parent_skin = engine.organism(parent).unwrap().phenotype.skin;
@@ -135,19 +143,52 @@ fn crossing_speciation_threshold_changes_skin_once() {
         .find(|organism| organism.id != parent)
         .unwrap();
     assert_ne!(child.phenotype.lineage_id, 0);
-    assert_ne!(child.phenotype.skin, parent_skin);
+    assert_eq!(child.phenotype.skin, parent_skin);
     assert_eq!(child.phenotype.accumulated_mutations, 0);
 }
 
 #[test]
-fn phenotype_round_trips_through_version_two_save() {
+fn phenotype_round_trips_through_version_four_save() {
     let mut engine = phenotype_engine(true, 1.0);
     spawn_mutating_parent(&mut engine, true);
     engine.tick().unwrap();
 
     let bytes = SaveFile::encode(&engine).unwrap();
-    assert_eq!(&bytes[..6], &[b'D', b'B', b'3', b'S', 2, 0]);
+    assert_eq!(&bytes[..6], &[b'D', b'B', b'3', b'S', 4, 0]);
     let restored = SaveFile::decode(&bytes).unwrap();
 
-    assert_eq!(restored.snapshot().organisms, engine.snapshot().organisms);
+    // Inspector readbacks are rebuilt after loading; this test qualifies the
+    // persisted phenotype of every parent and child.
+    let phenotypes = |engine: &Engine| {
+        engine
+            .snapshot()
+            .organisms
+            .iter()
+            .map(|organism| (organism.id, organism.phenotype.clone()))
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(phenotypes(&restored), phenotypes(&engine));
+}
+
+#[test]
+fn zero_native_speciation_threshold_survives_updates_and_save_resume() {
+    // DB2 permits zero: any accumulated mutation can cross the threshold.
+    let mut engine = phenotype_engine(false, 0.0);
+    engine
+        .update_speciation_settings(Some(true), Some(0.0))
+        .unwrap();
+    let bytes = SaveFile::encode(&engine).unwrap();
+    let mut restored = SaveFile::decode(&bytes).unwrap();
+    restored
+        .update_speciation_settings(None, Some(0.0))
+        .unwrap();
+    assert_eq!(SaveFile::encode(&restored).unwrap(), bytes);
+    for invalid in [-1.0, f32::NAN, f32::INFINITY] {
+        assert!(
+            restored
+                .update_speciation_settings(Some(false), Some(invalid))
+                .is_err()
+        );
+        assert_eq!(SaveFile::encode(&restored).unwrap(), bytes);
+    }
 }

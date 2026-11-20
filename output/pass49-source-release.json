@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "released_utc": "2026-10-16T16:05:35.860Z",
+  "baseline_batch": 48,
+  "all_normal_outcomes_collected": true,
+  "baseline_summary": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass48/summary.json",
+  "baseline_summary_sha256": "5241130A4111F8CB793BA3C1C2E69AB49E3BBC40F97724A33E1387EF710B684F",
+  "source48_pins_match": true,
+  "source_files": 76,
+  "owned_build_test_app_workers_absent": true,
+  "index_clean": true,
+  "authoring_batch": 49,
+  "authoring_scope": [
+    "three fixture corrections and one Clippy initializer",
+    "two ImportDna dispatcher expressions only; no new template helper",
+    "sequential seed export streams and focused729-file regression"
+  ],
+  "all_code_tests_before_commands": true,
+  "no_formatter_build_test_Git_UI_until_all_authors_release": true
+}

@@ -1,0 +1,137 @@
+{
+  "schema_version": 1,
+  "batch": 58,
+  "status": "authored_unapplied_released",
+  "base_source_head": "f2a42877fdc15ad8a332dd041c0ce8c6a9bd0d69",
+  "classification": "production native feedveg2 ran in the wrong phase, omitted its source RNG order and independent strict-cap waste costs; strict reproduction fixtures exposed late post-birth contamination",
+  "source_formulas": {
+    "file": "output/pass58-drafts/native-waste-single-intermediates/source-formulas.json",
+    "sha256": "805EC4E80C903336453EA91615C86C4B0D24C10A006D4FE87624430635A24663"
+  },
+  "repair": [
+    "Native HandleWaste performs feedveg2 before Alzheimer, defecation and subsequent per-actor phases; queued reproduction sees converted stores",
+    "Positive waste and chloroplasts consume exactly one source Rndy to select energy/body order; NoChlr and darkness do not suppress it",
+    "Energy/body meal variables are Single; each successful channel requires new store strictly below32000, then independently subtracts its own Single-expression share into Single waste and clamps waste at0",
+    "Late native FeedVeg no longer runs generic waste conversion; portable legacy late conversion is retained without changes",
+    "Shared positive-waste reproduction fixture now asserts explicit original Single/Integer transfer equations, preserving exact integer childbody100, mem3102999, fees and chloroplasts",
+    "Isolated CInt-body boundary clears waste locally and retains all original exact5/0,0/5,3/2 assertions",
+    "Long64000 meal quotient usesDouble; Integer1−Single complement and Single/Integer32000 waste rates/products/subtractions useSingle. Literal nonbinary .1/.4 bit controls distinguish prior all-f64 path; source/type inference, not an original empirical precision capture."
+  ],
+  "files": [
+    {
+      "target": "modern/engine/src/world.rs",
+      "draft": "output/pass58-drafts/native-waste-single-intermediates/modern/engine/src/world.rs",
+      "raw_before": "output/pass58-drafts/native-waste-single-intermediates/before/modern/engine/src/world.rs",
+      "base_raw_sha256": "DB85822E2E30622CA907FEA2BA80727086F6AA0C55B3D9072573A6E7552EDAC2",
+      "base_bytes": 578163,
+      "derived_from": "output/pass58-drafts/fresh-native-stats/modern/engine/src/world.rs",
+      "derived_from_sha256": "4E85AD2535C6446968A84CC294657D837EE5B9EC6C85B042E8C8A5A37964ED33",
+      "candidate_raw_sha256": "625FACF1EC60551A1E225340B6BB16FFA6B16348573BA534ED37EB945FF8A3F9",
+      "candidate_bytes": 580098,
+      "new_test_rows": 0
+    },
+    {
+      "target": "modern/engine/src/world/native_waste.rs",
+      "draft": "output/pass58-drafts/native-waste-single-intermediates/modern/engine/src/world/native_waste.rs",
+      "raw_before": "output/pass58-drafts/native-waste-single-intermediates/before/modern/engine/src/world/native_waste.rs",
+      "base_raw_sha256": "04C49D40BA6E4AF90A06280AFAAD1E4204B88967C967618FA33A5FA163F81ED2",
+      "base_bytes": 9161,
+      "derived_from": "output/pass58-drafts/native-waste-timing/modern/engine/src/world/native_waste.rs",
+      "derived_from_sha256": "94980D1D13C5E30C375B10BF261E5DC15F49B33D092F5CCA59B46927627F7B3B",
+      "candidate_raw_sha256": "D961027F368295F9F9E4CF21B6674999EA50216FB2071534F15FF2672CEC79B9",
+      "candidate_bytes": 19807,
+      "new_test_rows": 2
+    },
+    {
+      "target": "modern/engine/tests/reproduction_heredity_248.rs",
+      "draft": "output/pass58-drafts/native-waste-single-intermediates/modern/engine/tests/reproduction_heredity_248.rs",
+      "raw_before": "output/pass58-drafts/native-waste-single-intermediates/before/modern/engine/tests/reproduction_heredity_248.rs",
+      "base_raw_sha256": "13D47B5ED345269B6AF3C9DC2256CB1FA4B3D56FD2E0CC4C399BB34CA81E1BF3",
+      "base_bytes": 39620,
+      "derived_from": "output/pass58-drafts/native-waste-timing/modern/engine/tests/reproduction_heredity_248.rs",
+      "derived_from_sha256": "607C030608DF8FD9B4EDBDCD45CADCC98D5198B3B3C3EF8DC20A1260B20E2C62",
+      "candidate_raw_sha256": "A1A791EBFFA98F7F1F848F7EB78B5B080EF795FB6EA92A55A99AF591874E8FC1",
+      "candidate_bytes": 40998,
+      "new_test_rows": 0
+    }
+  ],
+  "test_census": {
+    "native_waste_before": 4,
+    "native_waste_after": 6,
+    "reproduction_before": 30,
+    "reproduction_after": 30,
+    "new_rust_test_rows": 2,
+    "cumulative_net_new_rust_rows_vs55": 65,
+    "expected_distinct_rust_targets": 68,
+    "expected_managed_test_counts": {
+      "core": 307,
+      "desktop": 197
+    },
+    "union_basis": "Includes threshold676F+1Rust/+9Core in addition to earlier62Rust/298Core basis, plus this2Rust; no new rows in precision supersession"
+  },
+  "new_tests": [
+    {
+      "name": "native_waste_meal_uses_source_order_exhaustion_and_strict_store_caps",
+      "assertions": [
+        "Both channel orders with exhausted waste",
+        "Exact store-cap and over-cap rejection without consuming waste",
+        "Below-cap gain consumes exact source waste share",
+        "Native phase uses exactly one seeded draw and follows its energy/body order",
+        "Nonbinary .1 and .4 exact bit patterns distinguish Single complement/waste intermediate precision"
+      ]
+    },
+    {
+      "name": "native_handle_waste_feeds_in_darkness_before_birth_and_not_again_in_feedveg",
+      "assertions": [
+        "Explicit source-equation pre-reproduction stores",
+        "Exactly one native draw and legacy RNG mirror",
+        "NoChlr and darkness do not block HandleWaste meal",
+        "Late dark FeedVeg does not convert twice",
+        "Whole native tick splits converted stores before birth, including exact fractional energy/body/waste",
+        "DB3S full encode-decode-encode equality after birth",
+        "Portable profile retains unchanged late generic waste conversion"
+      ]
+    }
+  ],
+  "ancestry": {
+    "world_inverse_equals_4E85": true,
+    "preserved_prior_releases": [
+      "fresh-native-stats metadata3D3E8A6DFF56C315ED9767721B07257DB11F1096D1AAF7681623007394D47762",
+      "shape-policy world881651 and shots45837",
+      "native-energy-validation energy2DEB"
+    ],
+    "new_intended_targets": [
+      "modern/engine/src/world/native_waste.rs",
+      "modern/engine/tests/reproduction_heredity_248.rs"
+    ],
+    "supersedes_only": "fresh-native-stats world.rs4E85 with the late native conversion guard; all previous releases/active files remain unchanged"
+  },
+  "required_later_qualification": [
+    "Full fresh Rust/Core/Desktop/package checks after all58 code and tests are applied",
+    "All15 genuine original CLI comparisons, particularly feeding and reproduction",
+    "Original plant/light, loaded-census, energy-ring and whole-source continuation tests"
+  ],
+  "performed": {
+    "static_source_read": true,
+    "source_arithmetic_data_analysis": true,
+    "active_source_edits": false,
+    "formatter": false,
+    "parser": false,
+    "build": false,
+    "tests": false,
+    "engine_or_cli": false,
+    "git": false,
+    "ui": false,
+    "gpu": false
+  },
+  "supersedes": {
+    "metadata": "output/pass58-drafts/native-waste-timing/metadata.json",
+    "sha256": "F60225FBF30B3F80C82454C1E4651B45E2AD58ABBCEAE5E4F00D1DF6868CB9F9",
+    "old_release_unchanged": true,
+    "reason": "Classic Integer/Single expression intermediates must not all be evaluated asDouble"
+  },
+  "precision_source_evidence": {
+    "file": "output/pass58-drafts/native-waste-single-intermediates/precision-source-evidence.json",
+    "sha256": "EDDAD47CD0FDF3E2D6D0EAA5E34489F2BE069B56B5A089949A1B7B53B2056241"
+  }
+}

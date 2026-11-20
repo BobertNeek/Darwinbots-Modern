@@ -1,0 +1,48 @@
+   Compiling darwinbots-engine v0.1.0 (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\engine)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 23.90s
+     Running tests\native_resource_precision.rs (target\debug\deps\native_resource_precision-9110688f77e9583c.exe)
+
+running 9 tests
+test dna_costs_round_the_native_store_after_each_instruction ... ok
+test unmaking_fractional_shell_spends_the_native_conversion_cost ... ok
+test fractional_material_transaction_cost_is_energy_and_waste ... ok
+test default_energy_ammunition_keeps_a_fraction_below_its_integer_value ... ok
+test birth_preserves_fractional_energy_then_applies_the_native_half_unit_death_threshold ... ok
+test fractional_upkeep_changes_the_store_before_an_integer_readback_changes ... ok
+test birth_uses_native_double_percentage_expression_before_single_assignment ... ok
+test genuine_reference_single_values_survive_modern_save_restore_exactly ... ok
+test v3_carried_fractions_are_absorbed_once_when_the_old_save_is_loaded ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests\reproduction_heredity_248.rs (target\debug\deps\reproduction_heredity_248-5b5141649e0e8deb.exe)
+
+running 25 tests
+test birth_tie_uses_source_asymmetric_ports_and_lifetime_100 ... ok
+test birth_tie_transfers_one_staged_cell_per_early_age_without_overwrite ... ok
+test child_generation_saturates_at_32000 ... ok
+test buoyancy_command_readback_and_birth_inheritance_round_trip ... ok
+test absolute_identity_allocator_survives_child_deletion_and_save_round_trip ... ok
+test child_inherits_parent_program_profile_species_and_birth_identity ... ok
+test delayed_heredity_requires_the_surviving_birth_tie ... ok
+test blocked_birth_preserves_parent_pending_heredity ... ok
+test collision_uses_radius_stored_before_same_cycle_body_feed ... ok
+test later_normal_tie_uses_first_free_child_record_after_birth_tie ... ok
+test competing_births_commit_in_parent_slot_order_and_leave_loser_unchanged ... ok
+test body_split_uses_vb6_cint_round_to_even_without_minimums ... ok
+test non_toroidal_birth_bounds_include_parent_radius_and_smudge_50 ... ok
+test newborn_clears_ordinary_memory_and_stages_only_delayed_heredity ... ok
+test blocked_birth_charges_no_five_block_dna_copy_cost ... ok
+test repro_125_transfers_twenty_five_percent_of_db2_resources ... ok
+test positive_energy_below_201_remains_eligible_for_reproduction ... ok
+test post_birth_mass_and_previous_energy_match_source_bookkeeping ... ok
+test repro_with_zero_effective_percentage_does_not_birth_or_consume_request ... ok
+test ties_disabled_allows_birth_but_gates_staged_transfer ... ok
+test successful_birth_charges_parent_only_for_five_block_dna_copy ... ok
+test successful_birth_clears_parent_pending_heredity_after_staging_child_memory ... ok
+test occupied_forward_placement_is_atomic_and_keeps_repro_pending ... ok
+test toroidal_birth_uses_unwrapped_candidate_and_obstacle_segment ... ok
+test full_parent_tie_capacity_allows_birth_without_birth_tie_or_staged_transfer ... ok
+
+test result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.14s
+

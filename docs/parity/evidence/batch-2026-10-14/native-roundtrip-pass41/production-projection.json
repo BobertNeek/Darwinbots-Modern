@@ -1,0 +1,41 @@
+{
+  "parent_head": "655d4a4b16579b63e38ea43f7321b6d10ecef3a2",
+  "created_utc": "2026-10-15T21:37:24.911Z",
+  "engine_production_unchanged": true,
+  "core_sources_unchanged": true,
+  "desktop_production_unchanged": true,
+  "scope": "Only CLI production capacity validation changes. All engine and desktop production behavior is unchanged.",
+  "world": {
+    "file": "modern/engine/src/world.rs",
+    "candidate_sha256": "d60ff1b4004c5d1203b27f82eb75d867c5b675397c2422239bfdddf4811347a7",
+    "baseline_projected_sha256": "6f321c9a6c1f4cb29c3bc5f8916fd60a3fee3ede053c337b5b3a2e3601280be3",
+    "candidate_projected_sha256": "6f321c9a6c1f4cb29c3bc5f8916fd60a3fee3ede053c337b5b3a2e3601280be3",
+    "normalization": "CRLF to LF and omit empty lines only; all other bytes preserved",
+    "excluded_candidate_cfg_test_additions": [
+      {
+        "count": 1,
+        "text": "    #[cfg(test)]\n    #[serde(skip)]\n    forced_sensing_error_for_tests: Option<String>,\n"
+      },
+      {
+        "count": 2,
+        "text": "            #[cfg(test)]\n            forced_sensing_error_for_tests: None,\n"
+      },
+      {
+        "count": 1,
+        "text": "        #[cfg(test)]\n        let gpu_result = self\n            .forced_sensing_error_for_tests\n            .take()\n            .map_or(gpu_result, |message| Some(Err(EngineError::Gpu(message))));\n"
+      }
+    ],
+    "excluded_both": "complete existing cfg(test) tests module after verified unique boundary"
+  },
+  "other_engine_source_and_core_ui": {
+    "git_diff_against_parent_exit_code": 0
+  },
+  "inherited_from": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass39/summary.json",
+  "not_inherited": [
+    "edited Rust unit/integration targets",
+    "CLI production/tests",
+    "desktop rendered tests",
+    "physical GPU",
+    "original-runtime trajectories"
+  ]
+}

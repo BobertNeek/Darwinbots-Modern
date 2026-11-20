@@ -1,0 +1,9 @@
+   Compiling darwinbots-engine v0.1.0 (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\engine)
+    Finished `release` profile [optimized] target(s) in 2m 54s
+     Running unittests src\lib.rs (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\target\release\deps\darwinbots_engine-01d7936031f3692d.exe)
+
+running 1 test
+test world::native_biology::tests::native_corpse_death_uses_fifteen_after_senses_including_older_zero_defaults ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 65 filtered out; finished in 0.01s
+

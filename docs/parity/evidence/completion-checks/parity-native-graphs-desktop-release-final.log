@@ -1,0 +1,10 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  Darwinbots.Desktop.Core -> C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\desktop\src\Darwinbots.Desktop.Core\bin\Release\net10.0\Darwinbots.Desktop.Core.dll
+  Darwinbots.Desktop -> C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\desktop\src\Darwinbots.Desktop\bin\Release\net10.0\Darwinbots.Desktop.dll
+      Finished `release` profile [optimized] target(s) in 1.00s
+  Darwinbots.Desktop.Tests -> C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\desktop\tests\Darwinbots.Desktop.Tests\bin\Release\net10.0\Darwinbots.Desktop.Tests.dll
+Test run for C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\desktop\tests\Darwinbots.Desktop.Tests\bin\Release\net10.0\Darwinbots.Desktop.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+
+Passed!  - Failed:     0, Passed:   105, Skipped:     0, Total:   105, Duration: 1 m 12 s - Darwinbots.Desktop.Tests.dll (net10.0)

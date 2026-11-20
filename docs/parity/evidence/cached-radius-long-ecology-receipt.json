@@ -1,0 +1,30 @@
+{
+  "source_revision": "ab5673db814ae225aeee958354c7769fd8264507",
+  "backend": "CPU",
+  "tests": [
+    {
+      "test": "starter_world_sustains_moving_predators_finite_shots_and_bounded_plants",
+      "cycles": 20000,
+      "seconds": 880.8,
+      "source_revision": "ab5673db814ae225aeee958354c7769fd8264507",
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "log": "completion-checks/parity-cached-radius-db2-long-soak.log"
+    },
+    {
+      "test": "starter_ecology_remains_bounded_and_animals_move_feed_and_reproduce",
+      "cycles": 10000,
+      "seconds": 348.18,
+      "source_revision": "ab5673db814ae225aeee958354c7769fd8264507",
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "log": "completion-checks/parity-cached-radius-starter-long-soak.log"
+    }
+  ],
+  "limits": [
+    "These scenarios do not establish matching original-runtime trajectories or long GPU ecology.",
+    "Later simulation repairs need their own relevant qualification."
+  ]
+}

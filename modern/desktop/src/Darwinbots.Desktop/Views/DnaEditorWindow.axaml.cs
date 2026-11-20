@@ -10,6 +10,7 @@ public sealed partial class DnaEditorWindow : Window
     private SimulationSession _session = null!;
     private OrganismSnapshot _organism = null!;
     private readonly IDesktopStorageService _storage;
+    private MutationProfileUpdate? _mutationProfile;
 
     public DnaEditorWindow() : this(AvaloniaDesktopStorageService.Instance)
     {
@@ -19,6 +20,7 @@ public sealed partial class DnaEditorWindow : Window
     {
         _storage = storage ?? throw new ArgumentNullException(nameof(storage));
         InitializeComponent();
+        SaveBotButton.IsEnabled = false;
     }
 
     public DnaEditorWindow(SimulationSession session, OrganismSnapshot organism) :
@@ -39,7 +41,14 @@ public sealed partial class DnaEditorWindow : Window
 
     private async void LoadDna(object? sender, EventArgs e)
     {
-        try { Editor.Text = await _session.ExportDnaAsync(_organism.Slot, _organism.Generation); }
+        try
+        {
+            var file = await _session.ExportRobotFileAsync(_organism.Slot, _organism.Generation);
+            _mutationProfile = file.MutationProfile
+                ?? throw new InvalidDataException("Engine returned no mutation profile.");
+            Editor.Text = file.Dna;
+            SaveBotButton.IsEnabled = true;
+        }
         catch (Exception error) { Status.Text = error.Message; }
     }
 
@@ -69,10 +78,16 @@ public sealed partial class DnaEditorWindow : Window
 
     private async void Save_Click(object? sender, RoutedEventArgs e)
     {
-        if (await _storage.SaveDnaAsync(
+        try
+        {
+            if (_mutationProfile is null)
+                throw new InvalidOperationException("Load robot DNA and mutation settings before exporting.");
+            Status.Text = await _storage.SaveDnaAsync(
                 this,
                 $"bot-{_organism.Slot}-{_organism.Generation}.txt",
-                Editor.Text ?? string.Empty))
-            Status.Text = "BOT EXPORTED";
+                Editor.Text ?? string.Empty,
+                _mutationProfile) ? "BOT EXPORTED" : "EXPORT CANCELLED";
+        }
+        catch (Exception error) { Status.Text = $"EXPORT FAILED · {error.Message}"; }
     }
 }

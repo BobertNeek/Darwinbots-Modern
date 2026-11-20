@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "batch": 61,
+  "state": "complete_authored_unapplied_unexecuted_second_amendment",
+  "created_utc": "2026-10-17T11:19:27.531Z",
+  "base_head": "43d38a55ac3e95c541bc9407bc0056b7cf45e351",
+  "preserved_initial_release": {
+    "file": "output/pass61-drafts/managed-poffs/metadata.json",
+    "sha256": "81DBC1C1C476165D2133F7125D292ED5BDB5022C82E3C433FB7CAE331F521C4A",
+    "bytes": 22225
+  },
+  "preserved_first_amendment": {
+    "file": "output/pass61-drafts/managed-poffs/metadata-amendment.json",
+    "sha256": "E71A99E4AC223E0341998D0C17AD6DCC1FE23343CC2E5F750641BCFB4B90B847",
+    "bytes": 8914
+  },
+  "changed_candidates": [
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/CommunityLeagueNativeTests.cs",
+      "active_base": {
+        "sha256": "7D69BDB02B6DE1762BCB88655263AD81DE3862DD24BD3F45FF694A4B7D119416",
+        "bytes": 42165
+      },
+      "superseded_candidate": {
+        "file": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/CommunityLeagueNativeTests.cs",
+        "sha256": "C04E1D1397BB5804A75408D3829CF2F398D178DE005C06E81F1402620A726D5E",
+        "bytes": 45639
+      },
+      "candidate": {
+        "file": "output/pass61-drafts/managed-poffs/amendment-2/candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/CommunityLeagueNativeTests.cs",
+        "sha256": "8257981DB3983DA766CC0DF0BCF0F7C8191AD2090B48A9BBB9C5ECEDF7BF7F25",
+        "bytes": 46066
+      }
+    }
+  ],
+  "reason": "Globals.makepoff selects either the original COLORREF or DBrite; the fixture must accept both exact internal ARGB identities rather than require every packet to retain the original. The exact count is strengthened to20. Literal independently derived DBrite channels use Long ties-to-even:98->176,168->212,68->162. Presence of both branches is not asserted without executing the deterministic full startup RNG path.",
+  "remaining_candidates": "Keep first-amendment two-path override and the initial release for all other14 paths.",
+  "managed_census": {
+    "net_added_core": 3,
+    "net_added_desktop": 4,
+    "expected_core": 312,
+    "expected_desktop": 213,
+    "amendment_added_rows": 0
+  },
+  "verification": {
+    "static_review_only": true,
+    "active_source_modified": false,
+    "sealed_candidates_modified": false,
+    "compiler": false,
+    "formatter": false,
+    "parser": false,
+    "tests": false,
+    "product_execution": false,
+    "ui": false,
+    "gpu": false,
+    "git": false
+  },
+  "ownership": "Second amendment candidate released to root."
+}

@@ -1,0 +1,317 @@
+{
+  "schema_version": 1,
+  "batch": 60,
+  "state": "all_ten_reference_integration_authored_unapplied_unexecuted",
+  "created_utc": "2026-10-17T09:05:58.195Z",
+  "owner": "/root/seeding_tournament_ui",
+  "source_head": "ff50b1a735ef61c6d5d282358da76f2734f64099",
+  "frozen_source_manifest": {
+    "file": "output/native-roundtrip-pass59-source.json",
+    "sha256": "583D1DE4880EEE9D312B7B41B2E471CC3A06DEC145EEAE310315136E48DC80DA",
+    "pins": 555
+  },
+  "files": [
+    {
+      "source_path": "modern/engine/tests/db24832_genuine_load_transients.rs",
+      "base_raw_sha256": "8D443F438490F2C8E600A4E6255F6AEED31378746953E279EDFD1186A2D08F48",
+      "candidate_path": "output/pass60-drafts/original-controls/integration/candidate/modern/engine/tests/db24832_genuine_load_transients.rs",
+      "candidate_raw_sha256": "598151C5D10F186FBB0EBE6B7DEB7BE4D54291638B390700D066861FBCAF47A8",
+      "base_bytes": 15191,
+      "candidate_bytes": 17664,
+      "new_file": false
+    },
+    {
+      "source_path": "modern/engine/tests/db24832_genuine_feeding.rs",
+      "base_raw_sha256": "73973FA6DA0D8A0E8B0F0960E0DE9D566C9B0E2C5D1ACE43E6DB6437938FB1F4",
+      "candidate_path": "output/pass60-drafts/original-controls/integration/candidate/modern/engine/tests/db24832_genuine_feeding.rs",
+      "candidate_raw_sha256": "7A32384D89B391BDFE6073F6422097BB30DD8BB34B98ACD4FB2D03E853C3E04B",
+      "base_bytes": 24045,
+      "candidate_bytes": 28023,
+      "new_file": false
+    },
+    {
+      "source_path": "modern/engine/tests/fixtures/db24832-genuine-capture-provenance.json",
+      "base_raw_sha256": "739CBD3FB8528740F6CCB6B74988DB91126A5DE6D474A46FDB309C2C5A3C5F98",
+      "candidate_path": "output/pass60-drafts/original-controls/integration/candidate/modern/engine/tests/fixtures/db24832-genuine-capture-provenance.json",
+      "candidate_raw_sha256": "07D3F4A73466694DB00B54F9324C5CA27EB97992ACB8D425521928C8895FDC4F",
+      "base_bytes": 9494,
+      "candidate_bytes": 18144,
+      "new_file": false
+    },
+    {
+      "source_path": "modern/engine/tests/fixtures/db24832-genuine-fixed-cycle10-20261017.sim",
+      "base_raw_sha256": null,
+      "candidate_path": "output/pass60-drafts/original-controls/integration/candidate/modern/engine/tests/fixtures/db24832-genuine-fixed-cycle10-20261017.sim",
+      "candidate_raw_sha256": "051F845860338E6D1B21572A73EE60867D1AD6EC2981016A1E3E6BEC11450A44",
+      "base_bytes": 0,
+      "candidate_bytes": 17068,
+      "new_file": true,
+      "original_capture": "output/pass60-drafts/original-controls/db24832-genuine-fixed-cycle10-20261017.sim"
+    },
+    {
+      "source_path": "modern/engine/tests/fixtures/db24832-genuine-fixed-cycle100-20261017.sim",
+      "base_raw_sha256": null,
+      "candidate_path": "output/pass60-drafts/original-controls/integration/candidate/modern/engine/tests/fixtures/db24832-genuine-fixed-cycle100-20261017.sim",
+      "candidate_raw_sha256": "792BE4607BA33883184F260092646E673FFBED263AFDD1915C045B34E71C1ACA",
+      "base_bytes": 0,
+      "candidate_bytes": 17068,
+      "new_file": true,
+      "original_capture": "output/pass60-drafts/original-controls/db24832-genuine-fixed-cycle100-20261017.sim"
+    },
+    {
+      "source_path": "modern/engine/tests/fixtures/db24832-genuine-body-cycle10-20261017.sim",
+      "base_raw_sha256": null,
+      "candidate_path": "output/pass60-drafts/original-controls/integration/candidate/modern/engine/tests/fixtures/db24832-genuine-body-cycle10-20261017.sim",
+      "candidate_raw_sha256": "B3373F593FBFB6C60D7A0F9BDB2D3F0936C274567655E8F0029F809189246E95",
+      "base_bytes": 0,
+      "candidate_bytes": 17054,
+      "new_file": true,
+      "original_capture": "output/pass60-drafts/original-controls/db24832-genuine-body-cycle10-20261017.sim"
+    },
+    {
+      "source_path": "modern/engine/tests/fixtures/db24832-genuine-body-cycle100-20261017.sim",
+      "base_raw_sha256": null,
+      "candidate_path": "output/pass60-drafts/original-controls/integration/candidate/modern/engine/tests/fixtures/db24832-genuine-body-cycle100-20261017.sim",
+      "candidate_raw_sha256": "9657E8D3917AAFD3DE87E3B409D90EBEFA1F811356EF0DA9225BAEFD18CB89C9",
+      "base_bytes": 0,
+      "candidate_bytes": 17054,
+      "new_file": true,
+      "original_capture": "output/pass60-drafts/original-controls/db24832-genuine-body-cycle100-20261017.sim"
+    },
+    {
+      "source_path": "modern/engine/tests/fixtures/db24832-genuine-contacts-cycle10-20261017.sim",
+      "base_raw_sha256": null,
+      "candidate_path": "output/pass60-drafts/original-controls/integration/candidate/modern/engine/tests/fixtures/db24832-genuine-contacts-cycle10-20261017.sim",
+      "candidate_raw_sha256": "DE73B60672D17B3C5C8FADCF1DD37F2C917B9D63C3F161BA26978FC989249453",
+      "base_bytes": 0,
+      "candidate_bytes": 35764,
+      "new_file": true,
+      "original_capture": "output/pass60-drafts/original-controls/db24832-genuine-contacts-cycle10-20261017.sim"
+    },
+    {
+      "source_path": "modern/engine/tests/fixtures/db24832-genuine-ties-cycle10-20261017.sim",
+      "base_raw_sha256": null,
+      "candidate_path": "output/pass60-drafts/original-controls/integration/candidate/modern/engine/tests/fixtures/db24832-genuine-ties-cycle10-20261017.sim",
+      "candidate_raw_sha256": "1065E95C9F8B3BDE99773ABB90AD8C37D5DE3D8B56351C32EAE531A7F5959AD0",
+      "base_bytes": 0,
+      "candidate_bytes": 26443,
+      "new_file": true,
+      "original_capture": "output/pass60-drafts/original-controls/db24832-genuine-ties-cycle10-20261017.sim"
+    },
+    {
+      "source_path": "modern/engine/tests/fixtures/db24832-genuine-ties-cycle100-20261017.sim",
+      "base_raw_sha256": null,
+      "candidate_path": "output/pass60-drafts/original-controls/integration/candidate/modern/engine/tests/fixtures/db24832-genuine-ties-cycle100-20261017.sim",
+      "candidate_raw_sha256": "6AC8CA1E1ACC3FBE443DC6D9006BAA3A615D402362D1495CC57E37EEC3EE5D00",
+      "base_bytes": 0,
+      "candidate_bytes": 26443,
+      "new_file": true,
+      "original_capture": "output/pass60-drafts/original-controls/db24832-genuine-ties-cycle100-20261017.sim"
+    },
+    {
+      "source_path": "modern/engine/tests/fixtures/db24832-genuine-movement-cycle100-20261017.sim",
+      "base_raw_sha256": null,
+      "candidate_path": "output/pass60-drafts/original-controls/integration/candidate/modern/engine/tests/fixtures/db24832-genuine-movement-cycle100-20261017.sim",
+      "candidate_raw_sha256": "D1F078B57BC1DDF4690DBEF24CC5945FC925755293060A8561FB7E82A1100202",
+      "base_bytes": 0,
+      "candidate_bytes": 17062,
+      "new_file": true,
+      "original_capture": "output/pass60-drafts/original-controls/db24832-genuine-movement-cycle100-20261017.sim"
+    },
+    {
+      "source_path": "modern/engine/tests/fixtures/db24832-genuine-feeding-cycle100-20261017.sim",
+      "base_raw_sha256": null,
+      "candidate_path": "output/pass60-drafts/original-controls/integration/candidate/modern/engine/tests/fixtures/db24832-genuine-feeding-cycle100-20261017.sim",
+      "candidate_raw_sha256": "32537482FDB46360B18219BECDB33D99D02B2ACEFDC41E68A9E929A3C5B2CB4F",
+      "base_bytes": 0,
+      "candidate_bytes": 18512,
+      "new_file": true,
+      "original_capture": "output/pass60-drafts/original-controls/db24832-genuine-feeding-cycle100-20261017.sim"
+    },
+    {
+      "source_path": "modern/engine/tests/fixtures/db24832-genuine-reproduction-cycle100-20261017.sim",
+      "base_raw_sha256": null,
+      "candidate_path": "output/pass60-drafts/original-controls/integration/candidate/modern/engine/tests/fixtures/db24832-genuine-reproduction-cycle100-20261017.sim",
+      "candidate_raw_sha256": "DEFBB6F511E8753F44B4FD5BC6D1629FFFCA3CEBEA1E6D7BA81D175AEC3BA234",
+      "base_bytes": 0,
+      "candidate_bytes": 26475,
+      "new_file": true,
+      "original_capture": "output/pass60-drafts/original-controls/db24832-genuine-reproduction-cycle100-20261017.sim"
+    },
+    {
+      "source_path": "output/qualify-native-roundtrip-pass60.ps1",
+      "base_raw_sha256": null,
+      "base_candidate_sha256": "ECEF31FC682B296C55BC2C2EA94B4F10B0BC03430B71920E99E66044B4286412",
+      "candidate_path": "output/pass60-drafts/original-controls/integration/candidate/output/qualify-native-roundtrip-pass60.ps1",
+      "candidate_raw_sha256": "A6F540D22A3A9C2B071B506DCA0092628920FB2B6E838324BF5AFB1B6A84A20C",
+      "base_bytes": 0,
+      "candidate_bytes": 57673,
+      "new_file": true,
+      "template": "output/pass60-drafts/qualification/qualify-native-roundtrip-pass60.ps1"
+    }
+  ],
+  "original_capture_receipts": [
+    {
+      "file": "output/pass60-drafts/original-controls/fixed-cycle10-capture.json",
+      "sha256": "FB37165D53A81C5A6D009ABDBA3E919E1141001CD6D7142713385F95A9E9693B",
+      "case": "fixed",
+      "cycle": 10,
+      "capture_sha256": "051F845860338E6D1B21572A73EE60867D1AD6EC2981016A1E3E6BEC11450A44"
+    },
+    {
+      "file": "output/pass60-drafts/original-controls/fixed-cycle100-capture.json",
+      "sha256": "52AF7B411B871E8111F8BC7D83AE00368FB43B898CC5AC7955F87292840EBA20",
+      "case": "fixed",
+      "cycle": 100,
+      "capture_sha256": "792BE4607BA33883184F260092646E673FFBED263AFDD1915C045B34E71C1ACA"
+    },
+    {
+      "file": "output/pass60-drafts/original-controls/body-cycle10-capture.json",
+      "sha256": "C78B5EA857C5A4C3C3358A73CB3D1EF9132532F4FA021628A4D8891398EF0385",
+      "case": "body",
+      "cycle": 10,
+      "capture_sha256": "B3373F593FBFB6C60D7A0F9BDB2D3F0936C274567655E8F0029F809189246E95"
+    },
+    {
+      "file": "output/pass60-drafts/original-controls/body-cycle100-capture.json",
+      "sha256": "194A981F0AD3E8193F5B230F90C738889556F8C279780183FA2EEBEF8661D107",
+      "case": "body",
+      "cycle": 100,
+      "capture_sha256": "9657E8D3917AAFD3DE87E3B409D90EBEFA1F811356EF0DA9225BAEFD18CB89C9"
+    },
+    {
+      "file": "output/pass60-drafts/original-controls/contacts-cycle10-capture.json",
+      "sha256": "C2ACCDD8435DCA82BEB60FC8176F964A128F5EC127120222CAD799F19A8288A6",
+      "case": "contacts",
+      "cycle": 10,
+      "capture_sha256": "DE73B60672D17B3C5C8FADCF1DD37F2C917B9D63C3F161BA26978FC989249453"
+    },
+    {
+      "file": "output/pass60-drafts/original-controls/ties-cycle10-capture.json",
+      "sha256": "01141C144AB9D2F575D70BE2F0B9F06BE8C8D6399B3C4B345C36FFD6F8BCB0AE",
+      "case": "ties",
+      "cycle": 10,
+      "capture_sha256": "1065E95C9F8B3BDE99773ABB90AD8C37D5DE3D8B56351C32EAE531A7F5959AD0"
+    },
+    {
+      "file": "output/pass60-drafts/original-controls/ties-cycle100-capture.json",
+      "sha256": "A788E86F5DB0EF8F54D44728A61C16AF02C078F79CE4658D628ADD04F04832C5",
+      "case": "ties",
+      "cycle": 100,
+      "capture_sha256": "6AC8CA1E1ACC3FBE443DC6D9006BAA3A615D402362D1495CC57E37EEC3EE5D00"
+    },
+    {
+      "file": "output/pass60-drafts/original-controls/movement-cycle100-capture.json",
+      "sha256": "11863F69C5E509147E877FFE643F83D9356E4EC77B544CB74B52A34C49E94573",
+      "case": "movement",
+      "cycle": 100,
+      "capture_sha256": "D1F078B57BC1DDF4690DBEF24CC5945FC925755293060A8561FB7E82A1100202"
+    },
+    {
+      "file": "output/pass60-drafts/original-controls/feeding-cycle100-capture.json",
+      "sha256": "1DD41661674666EA258EB1E74DAFA4B1F72448555E47723EC19CE78DFD6D74B0",
+      "case": "feeding",
+      "cycle": 100,
+      "capture_sha256": "32537482FDB46360B18219BECDB33D99D02B2ACEFDC41E68A9E929A3C5B2CB4F"
+    },
+    {
+      "file": "output/pass60-drafts/original-controls/reproduction-cycle100-capture.json",
+      "sha256": "97F9A7ECA514DC459494169A12F2556393B5CA70178011505082617A9C46AA49",
+      "case": "reproduction",
+      "cycle": 100,
+      "capture_sha256": "DEFBB6F511E8753F44B4FD5BC6D1629FFFCA3CEBEA1E6D7BA81D175AEC3BA234"
+    }
+  ],
+  "reference_census": {
+    "file": "output/pass60-drafts/original-controls/integration/reference-only-field-census.json",
+    "sha256": "4E4204CB084E8ED60CCA67F7EA81F1AC7F59E72B437D3C6B85FA696992021BFE"
+  },
+  "provenance": {
+    "base_sha256": "739CBD3FB8528740F6CCB6B74988DB91126A5DE6D474A46FDB309C2C5A3C5F98",
+    "prior_inputs": 8,
+    "prior_captures": 15,
+    "prior_inputs_and_captures_value_exact": true,
+    "prior_history_value_exact": true,
+    "final_inputs": 8,
+    "final_captures": 25,
+    "claim": "Source and actual original-byte evidence only; no current port behavior is assumed."
+  },
+  "test_census": {
+    "method": "Static #[test] row count, no discovery or execution.",
+    "files": [
+      {
+        "file": "modern/engine/tests/db24832_genuine_load_transients.rs",
+        "before_rows": 8,
+        "after_rows": 9
+      },
+      {
+        "file": "modern/engine/tests/db24832_genuine_feeding.rs",
+        "before_rows": 7,
+        "after_rows": 8
+      }
+    ],
+    "new_rust_rows": 2,
+    "rust_distinct_targets_unchanged": 68,
+    "managed_row_delta": {
+      "core": 0,
+      "desktop": 0
+    },
+    "new_rows": [
+      "genuine_fixed_and_body_later_cycles_match_continuous_and_checkpointed_worlds",
+      "genuine_ties_later_cycles_preserve_both_endpoint_records_across_checkpoints"
+    ],
+    "renamed_existing_rows": [
+      {
+        "before": "genuine_feeding_c10_matches_after_preserving_post_c1_runtime_caches",
+        "after": "genuine_feeding_c10_and_c100_match_after_preserving_runtime_caches"
+      },
+      {
+        "before": "genuine_reproduction_c10_proves_birth_at_c2_and_continuation_from_the_c1_checkpoint",
+        "after": "genuine_reproduction_c10_and_c100_preserve_birth_at_c2_and_saved_continuation"
+      },
+      {
+        "before": "genuine_contacts_c11_and_c100_match_live_state_and_saved_continuation",
+        "after": "genuine_contacts_c10_c11_and_c100_match_live_state_and_saved_continuation"
+      }
+    ],
+    "coverage": "Preserve original fifteen references and assertions; add fixed/body later table10/100 with continuous and C1/C10 checkpoints; preserve movementC102 and extend tableC100; extend feeding and reproduction C10 proof with continuous/C1/C10 DB3S branches atC100; contacts adds genuineC10 checkpoint to existingC11/C100 branches; ties compares full core+extension endpoint records at10/100 across checkpoints."
+  },
+  "qualifier": {
+    "template_sha256": "ECEF31FC682B296C55BC2C2EA94B4F10B0BC03430B71920E99E66044B4286412",
+    "namespace_unchanged": "pass60",
+    "mode": "fresh full CPU workspace, existing serial/BelowNormal/STOP/source/lease/PNG/package/managed/DLL/asset gates retained",
+    "previous_original_references": 15,
+    "final_original_references": 25,
+    "previous_fields": 34835,
+    "final_fields": 55849,
+    "movement_references": 4,
+    "control_references": 21,
+    "previous_ordinary_outcomes": 74,
+    "expected_ordinary_outcomes": 94,
+    "new_comparison_invocations": 10,
+    "new_coverage_rows": 10,
+    "new_replay_invocations": 0,
+    "candidate_plan": "Unchanged seven prepared cases and21 outputs; the ten newly captured standard checkpoints all use outputs already freshly generated by that plan. Existing movementC102/plant/C11 extra replays remain unchanged.",
+    "tolerance": {
+      "absolute": 0,
+      "relative": 0
+    },
+    "new_managed_counts_not_changed": "This integration does not alter managed tests; root combines independent FindBest revisions and freezes authoritative totals."
+  },
+  "static_review": {
+    "all_ten_raw_fixtures_and_capture_receipts_verified": true,
+    "all_original_bytes_fully_framed": true,
+    "qualifier_reference_literals_match_canonical_provenance": true,
+    "strict_field_sum_exact": 55849,
+    "active_owned_source_bases_unchanged": 3,
+    "released_60_drafts_untouched": true,
+    "new_source_files_not_applied": true,
+    "formatter": false,
+    "parser": false,
+    "build_or_test": false,
+    "engine_or_cli_execution": false,
+    "ui_or_gpu": false,
+    "git": false
+  },
+  "remaining": "Root reviews all60 drafts, applies only the complete authored batch, freezes exact source/metadata, and then runs fresh qualification. These captures do not imply current port comparison or whole-port parity."
+}

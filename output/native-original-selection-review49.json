@@ -1,0 +1,168 @@
+{
+  "schema_version": 1,
+  "status": "Read-only original-source review complete; avoid robot selection/console in differential captures; source predictions only",
+  "reviewed_utc": "2026-10-16T16:39:42.517Z",
+  "workspace": "C:/Users/PC/.codex/worktrees/db24832-completion/Darwinbots 2/",
+  "source_files": [
+    {
+      "file": "Darwinbots2/main.frm",
+      "sha256": "87924F9881813672CE603E70DA44AE2FF876C2C010C2065E1953216E99CE5765"
+    },
+    {
+      "file": "Darwinbots2/MDIForm1.frm",
+      "sha256": "7CE8CDEBEA42396A2371E22E6FDE5D568B6FF26AE89720F5DC107C008F155D95"
+    },
+    {
+      "file": "Darwinbots2/Common.bas",
+      "sha256": "EB5554B3639932E76CC4D12154D1E66B3EF26B69510B2B6181A03F24377B64F1"
+    },
+    {
+      "file": "Darwinbots2/HDRoutines.bas",
+      "sha256": "E767C9CFF585E0ABEF6DD56F46C69CC076DC89B012A21875A7290DE2456939A3"
+    },
+    {
+      "file": "Darwinbots2/DNA.bas",
+      "sha256": "6905D4A3E235F0BC88306CE47654E7A4EDE9D6016E44A46983DD63D89C6F4652"
+    },
+    {
+      "file": "Darwinbots2/Robots.bas",
+      "sha256": "9EF9C3F61B8CBD1206259F408335195F073153403A36A7563389FEE2E4201FB3"
+    },
+    {
+      "file": "Darwinbots2/Multibots.bas",
+      "sha256": "82ECAC2BED12BA56D296EAC85E8CF17E5AB8C4C7203B19C297F004400CA14103"
+    },
+    {
+      "file": "Darwinbots2/console.frm",
+      "sha256": "1CE6D7315FC2AFBD44C8479916A7CED15D1F9FDD7E5647A983C7562E0B221780"
+    }
+  ],
+  "recommendation": {
+    "preferred": "Keep loaded robfocus0. Use toolbar keycycle for9 separate single-cycle clicks from nativecounter1 to10, save; then90 clicks to100, save. Do not click robot/world selection, Ctrl+B/FindBest or Open Console between captures.",
+    "reason": "This avoids extra hit-test/render compensation, focus/highlight changes and accidental drag. It adds no new original helper/app dependency.",
+    "scope_limit": "It avoids selection-specific mutation. Toolbar cycle still performs the original UpdateSim→Redraw behavior. Do not describe all rendering as bit-perfect nonmutation.",
+    "supersedes": "Earlier source recipe suggesting selecting a loaded robot to enable console should not be used for controlled differential capture."
+  },
+  "non_drag_mouse_selection": {
+    "answer_to_any_state_change": "Yes. Even an ideal click with no drag writes robot position fields through hit-testing, changes selection/highlights and adds Redraw.",
+    "source": [
+      {
+        "file": "Darwinbots2/main.frm",
+        "lines": "1848;1590-1620",
+        "fact": "MouseDown calls whichrob. whichrob temporarily subtracts vel−actvel from EVERY nonhidden live robot position at1597–1598, then adds it at1616–1617."
+      },
+      {
+        "file": "Darwinbots2/Common.bas",
+        "lines": "11-14",
+        "fact": "vector.x/y are Single. Subtracting and adding equal offsets through stored Single fields is not generally lossless; final position bits can differ. No runtime calculation/capture was performed here."
+      },
+      {
+        "file": "Darwinbots2/HDRoutines.bas",
+        "lines": "2025-2031;2067;2231-2232",
+        "fact": "Original SIM writes Fixed, positions, velocities, whole memory and actual velocities. Any selection-induced position/velocity change can affect saved fields and later physics."
+      },
+      {
+        "file": "Darwinbots2/main.frm",
+        "lines": "1860-1865;1896-1899;1932-1936",
+        "fact": "MouseDown arms DraggingBot, sets robfocus, enables robot menu and can clear all highlight flags."
+      },
+      {
+        "file": "Darwinbots2/main.frm",
+        "lines": "1923;422-470",
+        "fact": "MouseDown also invokes Redraw. Redraw performs another position subtract/add compensation around drawing at428–429 and466–467."
+      },
+      {
+        "file": "Darwinbots2/main.frm",
+        "lines": "1708-1720",
+        "fact": "MouseUp clears MouseClicked/ZoomFlag/DraggingBot, and optionally player mouse control coordinates. It does not restore old position bits or focus/highlights."
+      }
+    ],
+    "fixed_and_latch": "No direct assignment to robot.Fixed, mem216/fixpos, general robot memory, vel or actvel was found in non-drag MouseDown/MouseUp. This does not make the click safe: position writes occur in whichrob/Redraw and rounding depends on actual values, including vel−actvel in the fixed case.",
+    "actual_fixed_fixture_contamination_observed": false
+  },
+  "drag_risk": {
+    "file": "Darwinbots2/main.frm",
+    "lines": "1666-1675",
+    "fact": "Any button-held MouseMove with robfocus>0 and DraggingBot overwrites position and zeros both velocity and actual velocity, also for listed highlighted organism cells. A supposedly small click movement can directly change saved physics."
+  },
+  "keyboard_find_best": {
+    "source": [
+      {
+        "file": "Darwinbots2/MDIForm1.frm",
+        "lines": "722-724;1398-1400;1780-1781",
+        "fact": "Ctrl+B/Find Best and toolbarbest only assign robfocus=Form1.fittest. Neither calls EnableRobotsMenu."
+      },
+      {
+        "file": "Darwinbots2/main.frm",
+        "lines": "1441-1442",
+        "fact": "startloaded resets robfocus0 and disables robot actions, including console. There is no loaded default robot selection to reuse."
+      },
+      {
+        "file": "Darwinbots2/main.frm",
+        "lines": "2993-3034;3077-3082",
+        "fact": "fittest scans scores and changes TotalOffspring/Cancer scratch counters; special zerobot modes have additional effects. Under ordinary mode0 no position/Fixed/memory write was found in this scoring path, but it still changes focus and does not enable console."
+      },
+      {
+        "file": "Darwinbots2/DNA.bas",
+        "lines": "71-80;152;1181",
+        "fact": "Future DNA execution initializes/populates gene activation arrays for selected or console-attached robots. Focus is not semantically identical to leaving the loaded selection untouched."
+      },
+      {
+        "file": "Darwinbots2/Robots.bas",
+        "lines": "2387;2821",
+        "fact": "Reproduction can propagate highlight to offspring when parent is focused/highlighted."
+      }
+    ],
+    "conclusion": "Ctrl+B is not a source-confirmed state-neutral console-enabling workaround. Skip it for differential acceptance."
+  },
+  "organism_selection_menu": {
+    "source": [
+      {
+        "file": "Darwinbots2/MDIForm1.frm",
+        "lines": "3086-3088",
+        "fact": "Select Entire Organism calls FreezeOrganism."
+      },
+      {
+        "file": "Darwinbots2/Multibots.bas",
+        "lines": "67-75",
+        "fact": "Despite its name, FreezeOrganism sets linked robots.highlight=True. It does not toggle Fixed or mem216 in this source."
+      }
+    ],
+    "conclusion": "Still modifies selection state and does not solve initial console gating."
+  },
+  "toolbar_only_step_protocol": {
+    "source": [
+      {
+        "file": "Darwinbots2/MDIForm1.frm",
+        "lines": "1771-1773",
+        "fact": "Toolbarcycle sets DisplayActivationsFalse and directly calls Consoleform.cycle1, without a selected robot or enabled robot console."
+      },
+      {
+        "file": "Darwinbots2/console.frm",
+        "lines": "461-487",
+        "fact": "cycleN invokes UpdateSim exactlyN times and Redraw once per update. Toolbarclicks avoid attaching robot console or changing focus."
+      },
+      {
+        "file": "Darwinbots2/main.frm",
+        "lines": "2066-2127",
+        "fact": "With initial toolbar pause complete, ActiveFalse/pausefixTrue/camfixTrue keeps outer main from adding updates."
+      }
+    ],
+    "target_counters": [
+      1,
+      10,
+      100
+    ],
+    "actual_saved_counter_verification_required": true,
+    "precondition": "Use the original first-load toolbar-Pause protocol, then confirm nativecounter1 before any stepping. Avoid queued Play/extra cycle commands and do not select the world.",
+    "rendering_caveat": "Ordinary original Redraw itself can round positions through stored Single compensation. That original behavior is still present in toolbar stepping and may require actual compared capture evidence; this review does not claim rendering-free physics parity."
+  },
+  "activity": {
+    "original_source_read_only": true,
+    "modern_changes": false,
+    "existing239_pins_or_plans_modified": false,
+    "only_new_receipt": "output/native-original-selection-review49.json",
+    "formatter_tests_builds_Git_UI_apps_Sky_input": false,
+    "genuine_runtime_proof": false
+  }
+}

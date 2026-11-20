@@ -6,6 +6,302 @@ namespace Darwinbots.Desktop.Core.Tests;
 public sealed class NativeSnapshotParserTests
 {
     [Fact]
+    public void NativeEnergyStatusDistinguishesMissingNullZeroAndSignedValues()
+    {
+        foreach (var json in new[]
+        {
+            "{\"tick\":1,\"organisms\":[]}",
+            "{\"tick\":1,\"organisms\":[],\"stats\":{\"total_energy\":99}}",
+            "{\"tick\":1,\"organisms\":[],\"stats\":{\"native_energy_displayed\":null,\"native_energy_delta\":null}}",
+        })
+        {
+            var stats = NativeSnapshotParser.Parse(json, "CPU").Stats;
+            Assert.Null(stats.NativeEnergyDisplayed);
+            Assert.Null(stats.NativeEnergyDelta);
+        }
+        foreach (var value in new[] { 0, -123, 456 })
+        {
+            var json = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                tick = 1, organisms = Array.Empty<object>(),
+                stats = new { total_energy = 99, native_energy_displayed = value, native_energy_delta = (long)value },
+            });
+            var stats = NativeSnapshotParser.Parse(json, "CPU").Stats;
+            Assert.Equal<int?>(value, stats.NativeEnergyDisplayed);
+            Assert.Equal<long?>(value, stats.NativeEnergyDelta);
+            Assert.Equal(99L, stats.TotalEnergy);
+        }
+    }
+
+    [Fact]
+    public void ProcessCachesRoundTripTheirSourceShapeWithoutEnteringSavedSetup()
+    {
+        var ring = Enumerable.Range(0, 101).Select(value => value * 7).ToArray();
+        var caches = new NativeProcessCachesSnapshot(0.125, new(ring, 99, -123), 17, false);
+        var json = System.Text.Json.JsonSerializer.Serialize(caches);
+        Assert.Contains("\"light_availability\":0.125", json);
+        Assert.Contains("\"current_index\":99", json);
+        Assert.Contains("\"shots_this_cycle\":17", json);
+        Assert.Contains("\"death_poffs_enabled\":false", json);
+        var restored = System.Text.Json.JsonSerializer.Deserialize<NativeProcessCachesSnapshot>(json)!;
+        Assert.Equal(caches.LightAvailability, restored.LightAvailability);
+        Assert.Equal(ring, restored.Energy.Ring);
+        Assert.Equal((byte)99, restored.Energy.CurrentIndex);
+        Assert.Equal(-123, restored.Energy.Displayed);
+        Assert.Equal(17UL, restored.ShotsThisCycle);
+        Assert.False(restored.DeathPoffsEnabled);
+        var oldJson = System.Text.Json.JsonSerializer.Serialize(new { light_availability = 0.125, energy = caches.Energy });
+        var oldCaches = System.Text.Json.JsonSerializer.Deserialize<NativeProcessCachesSnapshot>(oldJson)!;
+        Assert.Equal(0UL, oldCaches.ShotsThisCycle);
+        Assert.True(oldCaches.DeathPoffsEnabled);
+        Assert.True(NativeProcessCachesSnapshot.Empty.DeathPoffsEnabled);
+
+        var setup = new WorldSetupOptions { Seed = 42, NativeProcessCaches = caches };
+        var savedSetup = System.Text.Json.JsonSerializer.Serialize(setup);
+        Assert.DoesNotContain("NativeProcessCaches", savedSetup, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("light_availability", savedSetup, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("death_poffs_enabled", savedSetup, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("native_energy", NativeCommandSerializer.SerializeEngineConfig(setup), StringComparison.OrdinalIgnoreCase);
+        var loadedSetup = System.Text.Json.JsonSerializer.Deserialize<WorldSetupOptions>(savedSetup)!;
+        Assert.Null(loadedSetup.NativeProcessCaches);
+        Assert.Equal(42UL, loadedSetup.Seed);
+    }
+
+    [Fact]
+    public void DeathParticlePolicyAndShotArgbPreserveOldPayloadsAndExplicitZero()
+    {
+        Assert.True(EngineSnapshot.Empty.DeathPoffsEnabled);
+        foreach (var policy in new[] { "", ",\"death_poffs_enabled\":null", ",\"death_poffs_enabled\":true" })
+            Assert.True(NativeSnapshotParser.Parse("{\"tick\":1,\"organisms\":[]" + policy + "}", "CPU").DeathPoffsEnabled);
+        Assert.False(NativeSnapshotParser.Parse("{\"tick\":1,\"organisms\":[],\"death_poffs_enabled\":false}", "CPU").DeathPoffsEnabled);
+
+        // Native SIM import converts original COLORREF red255/blue16711680/black0
+        // to these existing opaque ARGB snapshot values before managed transport.
+        foreach (var (member, expected) in new (string, uint?)[]
+        {
+            ("", null), (",\"color\":null", null), (",\"color\":0", 0),
+            (",\"color\":4294901760", 0xffff0000),
+            (",\"color\":4278190335", 0xff0000ff),
+            (",\"color\":4278190080", 0xff000000),
+        })
+        {
+            var json = "{\"tick\":1,\"organisms\":[],\"shots\":[{\"owner\":{\"slot\":4,\"generation\":2},\"start\":[1,2],\"end\":[3,4],\"kind\":-100" + member + "}]}";
+            Assert.Equal(expected, Assert.Single(NativeSnapshotParser.Parse(json, "CPU").Shots).Color);
+        }
+        Assert.Null(new ShotSnapshot(new(4, 2), [1, 2], [3, 4], [0, 0], 42, 0, 0, 10, 1, false).Color);
+    }
+
+    [Fact]
+    public void ShotStateFlagsPreserveLegacyConstructorDeconstructionAndExplicitPacketStates()
+    {
+        var legacy = new ShotSnapshot(new(4, 2), [1, 2], [3, 4], [5, 6], -2, 7, 8, 9, 10, false, 0xffffffff);
+        Assert.True(legacy.Alive);
+        Assert.False(legacy.Stored);
+        var (owner, start, end, velocity, kind, value, age, range, energy, flash, color) = legacy;
+        Assert.Equal(new OrganismKey(4, 2), owner);
+        Assert.Same(legacy.Start, start);
+        Assert.Same(legacy.End, end);
+        Assert.Same(legacy.Velocity, velocity);
+        Assert.Equal(-2, kind);
+        Assert.Equal(7, value);
+        Assert.Equal(8U, age);
+        Assert.Equal(9U, range);
+        Assert.Equal(10f, energy);
+        Assert.False(flash);
+        Assert.Equal<uint?>(0xffffffff, color);
+
+        const string oldPayload = "{\"tick\":1,\"organisms\":[],\"shots\":[{\"owner\":{\"slot\":4,\"generation\":2},\"start\":[1,2],\"end\":[3,4],\"kind\":-2}]}";
+        var oldShot = Assert.Single(NativeSnapshotParser.Parse(oldPayload, "CPU").Shots);
+        Assert.True(oldShot.Alive);
+        Assert.False(oldShot.Stored);
+        Assert.False(oldShot.ImpactFlash);
+        Assert.Null(oldShot.Color);
+
+        foreach (var alive in new[] { false, true })
+        foreach (var stored in new[] { false, true })
+        foreach (var impact in new[] { false, true })
+        {
+            var json = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                tick = 1, organisms = Array.Empty<object>(),
+                shots = new[]
+                {
+                    new { owner = new { slot = 4, generation = 2 }, start = new[] { 1, 2 },
+                        end = new[] { 3, 4 }, kind = -2, alive, stored, impact_flash = impact, color = 0u },
+                },
+            });
+            var shot = Assert.Single(NativeSnapshotParser.Parse(json, "CPU").Shots);
+            Assert.Equal(alive, shot.Alive);
+            Assert.Equal(stored, shot.Stored);
+            Assert.Equal(impact, shot.ImpactFlash);
+            Assert.Equal<uint?>(0, shot.Color);
+        }
+        var changed = legacy with { Alive = false, Stored = true };
+        var resumed = System.Text.Json.JsonSerializer.Deserialize<ShotSnapshot>(
+            System.Text.Json.JsonSerializer.Serialize(changed))!;
+        Assert.False(resumed.Alive);
+        Assert.True(resumed.Stored);
+        Assert.True(legacy.Alive);
+        Assert.False(legacy.Stored);
+    }
+
+    [Fact]
+    public void RepopulationCounterCachesKeepMissingNullAndSignedLongValuesOutsideSavedSetup()
+    {
+        var legacy = new NativeProcessCachesSnapshot(0.125, NativeEnergyContextSnapshot.Empty, 17, false);
+        Assert.Null(legacy.RepopulationCounter);
+        var (light, energy, shots, poffs) = legacy;
+        Assert.Equal(0.125, light);
+        Assert.Same(legacy.Energy, energy);
+        Assert.Equal(17UL, shots);
+        Assert.False(poffs);
+        Assert.Null(NativeProcessCachesSnapshot.Empty.RepopulationCounter);
+        var oldJson = System.Text.Json.JsonSerializer.Serialize(legacy);
+        Assert.DoesNotContain("repopulation_counter", oldJson, StringComparison.Ordinal);
+        foreach (var json in new[] { oldJson, oldJson[..^1] + ",\"repopulation_counter\":null}" })
+            Assert.Null(System.Text.Json.JsonSerializer.Deserialize<NativeProcessCachesSnapshot>(json)!.RepopulationCounter);
+
+        foreach (var invalid in new[] { "-2147483649", "2147483648" })
+            Assert.Throws<System.Text.Json.JsonException>(() =>
+                System.Text.Json.JsonSerializer.Deserialize<NativeProcessCachesSnapshot>(oldJson[..^1] + ",\"repopulation_counter\":" + invalid + "}"));
+
+        foreach (var counter in new[] { int.MinValue, -10, 0, 17, int.MaxValue })
+        {
+            var caches = legacy with { RepopulationCounter = counter };
+            var json = System.Text.Json.JsonSerializer.Serialize(caches);
+            using var document = System.Text.Json.JsonDocument.Parse(json);
+            Assert.Equal(counter, document.RootElement.GetProperty("repopulation_counter").GetInt32());
+            var resumed = System.Text.Json.JsonSerializer.Deserialize<NativeProcessCachesSnapshot>(json)!;
+            Assert.Equal<int?>(counter, resumed.RepopulationCounter);
+            Assert.Null(legacy.RepopulationCounter);
+            var setup = new WorldSetupOptions { NativeProcessCaches = caches };
+            Assert.DoesNotContain("repopulation_counter", System.Text.Json.JsonSerializer.Serialize(setup), StringComparison.Ordinal);
+            Assert.DoesNotContain("repopulation_counter", NativeCommandSerializer.SerializeEngineConfig(setup), StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
+    public void MissingAndNullNativeShotCountsRemainAbsentForOlderSnapshots()
+    {
+        string[] payloads =
+        [
+            "{\"tick\":1,\"organisms\":[]}",
+            "{\"tick\":1,\"organisms\":[],\"stats\":null}",
+            "{\"tick\":1,\"organisms\":[],\"stats\":{\"shots_fired\":9}}",
+            "{\"tick\":1,\"organisms\":[],\"stats\":{\"shots_fired\":9,\"native_shots_visited\":null}}",
+        ];
+        foreach (var json in payloads)
+            Assert.Null(NativeSnapshotParser.Parse(json, "CPU").Stats.NativeShotsVisited);
+
+        Assert.Null(SimulationStatsSnapshot.Empty.NativeShotsVisited);
+        Assert.Null(new SimulationStatsSnapshot(0, 0, 9, 0, 0, 0, 0).NativeShotsVisited);
+    }
+
+    [Fact]
+    public void NativeShotVisitsIncludingZeroRemainDistinctFromFiringAndVisibleTrails()
+    {
+        foreach (var visited in new[] { 0UL, 17UL })
+        {
+            var json = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                tick = 24,
+                organisms = Array.Empty<object>(),
+                stats = new { shots_fired = 99, native_shots_visited = visited },
+                shots = new[]
+                {
+                    new { owner = new { slot = 4, generation = 2 }, start = new[] { 10f, 20f },
+                        end = new[] { 30f, 20f }, kind = -1, value = 25 },
+                    new { owner = new { slot = 5, generation = 2 }, start = new[] { 40f, 20f },
+                        end = new[] { 60f, 20f }, kind = -2, value = 80 },
+                },
+            });
+
+            var snapshot = NativeSnapshotParser.Parse(json, "CPU");
+
+            Assert.Equal<ulong?>(visited, snapshot.Stats.NativeShotsVisited);
+            Assert.Equal(99UL, snapshot.Stats.ShotsFired);
+            Assert.Equal(2, snapshot.Shots.Count);
+        }
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(0)]
+    [InlineData(int.MinValue)]
+    [InlineData(int.MaxValue)]
+    public void SignedNativeCycleDoesNotReplaceTheUnsignedSchedulingOrHistoryTick(int cycle)
+    {
+        var json = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            tick = ulong.MaxValue,
+            native_cycle = cycle,
+            organisms = Array.Empty<object>(),
+            history = new[] { new { tick = ulong.MaxValue, population = 0 } },
+        });
+
+        var snapshot = NativeSnapshotParser.Parse(json, "CPU");
+
+        Assert.Equal(cycle, snapshot.NativeCycle);
+        Assert.Equal(ulong.MaxValue, snapshot.Tick);
+        Assert.Equal(ulong.MaxValue, Assert.Single(snapshot.History).Tick);
+    }
+
+    [Theory]
+    [InlineData("{\"tick\":91,\"organisms\":[]}")]
+    [InlineData("{\"tick\":91,\"native_cycle\":null,\"organisms\":[]}")]
+    public void MissingAndNullNativeCycleRetainTheExistingSnapshotContract(string json)
+    {
+        var snapshot = NativeSnapshotParser.Parse(json, "CPU");
+        Assert.Null(snapshot.NativeCycle);
+        Assert.Equal(91ul, snapshot.Tick);
+    }
+
+    [Fact]
+    public void RetainsNativeSpeciesGraphSamplesAndSixCostSeries()
+    {
+        const string json = """
+            { "tick": 100, "organisms": [], "history": [{ "tick": 100, "population": 3,
+              "species_graphs": [{ "name": "Alga.txt", "color": 4278255360,
+                 "values": { "population": 3, "average_age": 2.5, "slow_genetic_distance": 123.5 } }],
+              "dynamic_cost_series": [0.5, 1.2, 1.1, 0.9, 0.2, 0.4] }] }
+            """;
+        var history = NativeSnapshotParser.Parse(json, "CPU").History[0];
+        Assert.Equal("Alga.txt", history.SpeciesGraphs[0].Name);
+        Assert.Equal(123.5, history.SpeciesGraphs[0].Values["slow_genetic_distance"]);
+        Assert.Equal([0.5, 1.2, 1.1, 0.9, 0.2, 0.4], history.DynamicCostSeries);
+    }
+
+    [Fact]
+    public void RetainsCompleteLocalModeConfigurationForLoadedEditors()
+    {
+        const string json = """
+            {
+              "tick": 17, "organisms": [],
+              "local_mode": {
+                "status": "Configured", "current_round": 0,
+                "cycle_in_round": 0, "restart_count": 0, "results": [],
+                "config": {
+                  "kind": "Contest", "preset": "F2",
+                  "minimum_rounds": 2, "maximum_rounds": 7,
+                  "maximum_cycles": 123, "maximum_population": 37,
+                  "restart_on_extinction": false, "energy_handicap": 25,
+                  "source_species": 4, "selection_population_weight": 0.25,
+                  "selection_energy_weight": 0.75
+                }
+              }
+            }
+            """;
+        var mode = NativeSnapshotParser.Parse(json, "CPU").LocalMode;
+        var configuration = Assert.IsType<LocalModeConfig>(mode.Configuration);
+        Assert.Equal(37, configuration.MaximumPopulation);
+        Assert.Equal(2u, configuration.MinimumRounds);
+        Assert.False(configuration.RestartOnExtinction);
+        Assert.Equal(4u, configuration.SourceSpecies);
+        Assert.Equal(0.25f, configuration.SelectionPopulationWeight);
+        Assert.Equal(0.75f, configuration.SelectionEnergyWeight);
+    }
+
+    [Fact]
     public void ParsesStableIdsVectorsAndPopulationFromRustSnapshot()
     {
         const string json = """
@@ -314,5 +610,57 @@ public sealed class NativeSnapshotParserTests
         Assert.Equal(new OrganismKey(2, 1), snapshot.Ties[0].First);
         Assert.Equal(new OrganismKey(5, 3), snapshot.Ties[0].Second);
         Assert.Equal(42.5f, snapshot.Ties[0].RestLength);
+    }
+
+    [Fact]
+    public void ParsesShapePoliciesAndOfflineTeleporterState()
+    {
+        const string json = """
+            {
+              "tick": 12,
+              "organisms": [],
+              "obstacles": [
+                {
+                  "id": 7,
+                  "minimum": [10, 20],
+                  "maximum": [30, 40],
+                  "color": 4279312947,
+                  "opacity": 0.35,
+                  "drift": [2, -3],
+                  "vision_policy": "see_through",
+                  "shot_policy": "pass_through"
+                }
+              ],
+              "file_teleporters": [
+                {
+                  "id": 9,
+                  "center": [50, 60],
+                  "radius": 15,
+                  "inbound_path": "in",
+                  "outbound_path": "out",
+                  "poll_interval": 3,
+                  "poll_countdown": 1,
+                  "capacity": 4,
+                  "filters": { "teleport_vegetables": false, "teleport_corpses": true, "teleport_heterotrophs": true },
+                  "sent": 8,
+                  "received": 5,
+                  "backflow_guard": "out/db2-guard.dbo"
+                }
+              ]
+            }
+            """;
+
+        var snapshot = NativeSnapshotParser.Parse(json, "CPU");
+
+        Assert.Equal("see_through", snapshot.Obstacles[0].VisionPolicy);
+        Assert.Equal("pass_through", snapshot.Obstacles[0].ShotPolicy);
+        Assert.Equal([2f, -3f], snapshot.Obstacles[0].Drift);
+        Assert.Equal(0.35f, snapshot.Obstacles[0].Opacity);
+        var teleporter = Assert.Single(snapshot.FileTeleporters);
+        Assert.Equal("in", teleporter.InboundPath);
+        Assert.Equal(8UL, teleporter.Sent);
+        Assert.Equal(5UL, teleporter.Received);
+        Assert.False(teleporter.Filters.TeleportVegetables);
+        Assert.Equal("out/db2-guard.dbo", teleporter.BackflowGuardPath);
     }
 }

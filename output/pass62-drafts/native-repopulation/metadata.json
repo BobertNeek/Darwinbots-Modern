@@ -1,0 +1,321 @@
+{
+  "schema_version": 1,
+  "batch": 62,
+  "state": "complete_authored_unapplied_unexecuted",
+  "created_utc": "2026-10-17T13:04:54.546Z",
+  "owner": "/root/seeding_tournament_ui",
+  "base_source_head": "8a42380d2096bb97d5028a0c3cfc03b96420fdcd",
+  "base_source_manifest": {
+    "file": "output/native-roundtrip-pass61-source.json",
+    "sha256": "4AD7E8553AAF90EBDE8C5B73172F38B67D97C76B8A4D239F99074E2C580408A0",
+    "pinned_files": 636
+  },
+  "scope": "Source-backed native repopulation startloaded delay, signed process counter continuity, highwater retention, and checked cache transport. No original reference/golden/tolerance changes.",
+  "files": [
+    {
+      "source_relative_path": "modern/engine/src/vegetation.rs",
+      "new_file": false,
+      "base_sha256": "667A18E6911BE67994626ACE0E21A6A9B551F4CF1494B6D3942AF729C68665FB",
+      "base_bytes": 21397,
+      "candidate_path": "output/pass62-drafts/native-repopulation/candidate/modern/engine/src/vegetation.rs",
+      "candidate_sha256": "FE67AB166F51F7D3527DFA5EAFD0A1F700E72E5352CEB950E5FC7599B762E0FD",
+      "candidate_bytes": 27476,
+      "existing_test_rows": 9,
+      "candidate_test_rows": 10,
+      "added_test_rows": [
+        "native_repopulation_retains_signed_credit_and_zero_cooldown_without_changing_portable_counter"
+      ],
+      "removed_test_rows": []
+    },
+    {
+      "source_relative_path": "modern/engine/src/world/native_io.rs",
+      "new_file": false,
+      "base_sha256": "BA53098AC7C7651F261F414892E82E366D65483AAE2EBD9977CD8E24D4526EBB",
+      "base_bytes": 61809,
+      "candidate_path": "output/pass62-drafts/native-repopulation/candidate/modern/engine/src/world/native_io.rs",
+      "candidate_sha256": "743A271D43C55772BE717C2312B31670987C07A2B8447AB6DBD11184DEDAE20C",
+      "candidate_bytes": 61954,
+      "existing_test_rows": 12,
+      "candidate_test_rows": 12,
+      "added_test_rows": [],
+      "removed_test_rows": []
+    },
+    {
+      "source_relative_path": "modern/engine/src/world.rs",
+      "new_file": false,
+      "base_sha256": "A3376DF667E9C06C79D18E12A8CE01A72A5EB5D6F1E583D49B07E861186D399D",
+      "base_bytes": 583847,
+      "base_candidate_path": "output/pass62-drafts/rust-shot-state/candidate/modern/engine/src/world.rs",
+      "base_candidate_sha256": "BB3D49A04942D5387A56C106DB7FAB3190FC9580C9135EBE34A6D71D92680C6D",
+      "base_candidate_bytes": 583872,
+      "supersedes_only": "The prior world.rs candidate; retains its sole alive:true initializer and adds only native/portable repopulation dispatch.",
+      "candidate_path": "output/pass62-drafts/native-repopulation/candidate/modern/engine/src/world.rs",
+      "candidate_sha256": "02B864205D9D94857E8C595952C55A5A700B52A372F53B55A640E76D1856CC6D",
+      "candidate_bytes": 584085,
+      "existing_test_rows": 30,
+      "candidate_test_rows": 30,
+      "added_test_rows": [],
+      "removed_test_rows": []
+    },
+    {
+      "source_relative_path": "modern/engine/src/world/native_energy.rs",
+      "new_file": false,
+      "base_sha256": "066B58BE64BB0377E1EE7E516BE3453E13DE6DEEF98D9621251C38DD8176BC57",
+      "base_bytes": 22066,
+      "candidate_path": "output/pass62-drafts/native-repopulation/candidate/modern/engine/src/world/native_energy.rs",
+      "candidate_sha256": "7B905E05C1CBAD7D80A3410E5F30BF0FB44BDD26132EB0E9076C61E575714772",
+      "candidate_bytes": 23460,
+      "existing_test_rows": 8,
+      "candidate_test_rows": 8,
+      "added_test_rows": [],
+      "removed_test_rows": []
+    },
+    {
+      "source_relative_path": "modern/engine/src/ffi.rs",
+      "new_file": false,
+      "base_sha256": "AE40A7C715D1E717FEC38BAA6C5C9B77BC931960BFE735D75338593A261A6ABF",
+      "base_bytes": 95244,
+      "candidate_path": "output/pass62-drafts/native-repopulation/candidate/modern/engine/src/ffi.rs",
+      "candidate_sha256": "08793B1116C33F21C04DB964DA3DB87D1F2916B95FD7A506811113C237301207",
+      "candidate_bytes": 95734,
+      "existing_test_rows": 16,
+      "candidate_test_rows": 16,
+      "added_test_rows": [],
+      "removed_test_rows": []
+    },
+    {
+      "source_relative_path": "modern/engine/src/world/native_reproduction.rs",
+      "new_file": false,
+      "base_sha256": "3D88B05038FEB1085F5C05C30679701FC2A1290A3492A7D61F18336144778140",
+      "base_bytes": 8020,
+      "candidate_path": "output/pass62-drafts/native-repopulation/candidate/modern/engine/src/world/native_reproduction.rs",
+      "candidate_sha256": "DDAE16420C2388CCC6716742DF944FF71A89148B532775038E48FC144C22F294",
+      "candidate_bytes": 11649,
+      "existing_test_rows": 6,
+      "candidate_test_rows": 7,
+      "added_test_rows": [
+        "native_load_repopulation_waits_until_c21_and_preserves_negative_db3s_delay_and_caller_draws"
+      ],
+      "removed_test_rows": []
+    }
+  ],
+  "test_census": {
+    "added_rust_rows": 2,
+    "removed_rust_rows": 0,
+    "expected_distinct_rust_targets": 68,
+    "discovery_executed": false,
+    "added_rows": {
+      "modern/engine/src/vegetation.rs": [
+        "native_repopulation_retains_signed_credit_and_zero_cooldown_without_changing_portable_counter"
+      ],
+      "modern/engine/src/world/native_reproduction.rs": [
+        "native_load_repopulation_waits_until_c21_and_preserves_negative_db3s_delay_and_caller_draws"
+      ]
+    },
+    "existing_facts_extended": [
+      "cache_survives_db3s_and_cycle_checkpoint_and_same_process_starts_only",
+      "native_sim_load_inherits_process_light_while_db3s_restores_saved_light",
+      "absent_old_checkpoint_cache_defaults_zero_but_malformed_saved_ring_is_rejected",
+      "loaded_guard_skips_first_repopulation_cooldown_but_refreshes_chloroplast_census"
+    ],
+    "all_existing_test_names_retained": true
+  },
+  "source_revision": "467a8a0c1564db2071cf65efe39dcfefc5ab7a0c",
+  "source_references": [
+    {
+      "file": "Darwinbots2/main.frm",
+      "lines": [
+        1506,
+        1509
+      ],
+      "sha256": "87924F9881813672CE603E70DA44AE2FF876C2C010C2065E1953216E99CE5765",
+      "bytes": 104816,
+      "purpose": "startloaded resets process-global cooldown to negative loaded RepopCooldown and sets first-cycle census guard."
+    },
+    {
+      "file": "Darwinbots2/Vegs.bas",
+      "lines": [
+        23,
+        37
+      ],
+      "sha256": "0AF2A56CBD7FD14D67BC4AA7C6488470CE3C1B59C6739B6576F6DB15A929419E",
+      "bytes": 12059,
+      "purpose": "Signed Long increments only on caller entry, attempts all requested plants and subtracts the exact cooldown includingzero."
+    },
+    {
+      "file": "Darwinbots2/Master.bas",
+      "lines": [
+        390,
+        396
+      ],
+      "sha256": "D46C737105A0DDACD46BE56BB73D5747317B4D2928D058DE2D5D67BFE48FEA1A",
+      "bytes": 21415,
+      "purpose": "No call above minimum chloroplast count; loaded first-cycle displayed census blocks the first call."
+    }
+  ],
+  "contract": {
+    "runtime": "VegetationRuntime adds optional signed native_repopulation_counter:i32. Existing repopulation_counter:u64 and portable advance method remain byte-exact. None native state reads existing unsigned credit through checked Long conversion without mutation.",
+    "native_load": "Only originalSIM import initializes native counter to -decoded cooldown. The existing loaded-census guard blocks C1; cooldown10 first attempts atC21, thenC31.",
+    "runtime_continuity": "DB3S encodes lived signed counter/debt. Configured/same-process StartSimul retains it; external-process reset usesfresh0. Above minimum returns without resetting signed credit/debt.",
+    "zero_and_overflow": "Native cooldown0 increments and subtracts0 exactly. Checked Long add/sub/conversions reject overflow before counter mutation; no clamp/default/panic hides invalid old unsigned state.",
+    "cache_wire": "NativeProcessCaches optional repopulation_counter:Option<i32>, defaultNone/omitNone. Native read emitsSome(effectiveLong), portable readNone. SetSome sets signednative state; None leaves it unchanged.",
+    "sim_load_precedence": "Renamed SIM-only inherit_native_process_caches_after_sim_load copies other caches but explicitly omits old counter, retaining the newly reset negative value. DB3S loader bypasses process inheritance asbefore.",
+    "cache_read_api": "Crate-private read_native_process_caches now returnsResult<NativeProcessCaches,EngineError>. Both FFI query paths map the value without Result wrappers and propagate errors. Existing C ABI and valid JSON response shape are unchanged.",
+    "managed_dependency": {
+      "owner": "/root/review_46_failures",
+      "metadata": "output/pass62-drafts/managed-shot-state/repopulation-counter/metadata.json",
+      "sha256": "3E26FC4DF681AB9C68C1CECC6CB921DDCEFCDDB32D40169FDB38C1C1D26FE9CF",
+      "field": "nullableInt32 init RepopulationCounter / snake repopulation_counter / nullomitted"
+    },
+    "prior_world_ancestry": "World candidate retains accepted shot-state alive:true initializer; inverse removing only new dispatcher matches priorBB3D49...candidate byte-for-byte."
+  },
+  "read_api_inventory": {
+    "actual_existing_callsite_paths": [
+      "modern/engine/src/world/native_energy.rs",
+      "modern/engine/src/ffi.rs"
+    ],
+    "new_test_callsite_paths": [
+      "modern/engine/src/world/native_reproduction.rs"
+    ],
+    "checked_no_callsite_paths": [
+      "modern/engine/src/world/native_random_world.rs",
+      "modern/engine/src/world/native_virus.rs",
+      "modern/engine/src/world/native_organism_io.rs"
+    ],
+    "candidate_calls": [
+      {
+        "file": "modern/engine/src/world/native_energy.rs",
+        "line": 190,
+        "text": "let mut caches = previous.read_native_process_caches()?;"
+      },
+      {
+        "file": "modern/engine/src/world/native_energy.rs",
+        "line": 250,
+        "text": "let mut original = world.read_native_process_caches().unwrap();"
+      },
+      {
+        "file": "modern/engine/src/world/native_energy.rs",
+        "line": 301,
+        "text": "assert_eq!(world.read_native_process_caches().unwrap(), original);"
+      },
+      {
+        "file": "modern/engine/src/world/native_energy.rs",
+        "line": 401,
+        "text": "let mut caches = world.read_native_process_caches().unwrap();"
+      },
+      {
+        "file": "modern/engine/src/world/native_energy.rs",
+        "line": 412,
+        "text": "world.read_native_process_caches().unwrap().repopulation_counter,"
+      },
+      {
+        "file": "modern/engine/src/world/native_energy.rs",
+        "line": 417,
+        "text": "assert_eq!(restored.read_native_process_caches().unwrap(), caches);"
+      },
+      {
+        "file": "modern/engine/src/world/native_energy.rs",
+        "line": 427,
+        "text": "assert_eq!(restored.read_native_process_caches().unwrap(), caches);"
+      },
+      {
+        "file": "modern/engine/src/world/native_energy.rs",
+        "line": 433,
+        "text": "assert_eq!(restored.read_native_process_caches().unwrap(), caches);"
+      },
+      {
+        "file": "modern/engine/src/world/native_energy.rs",
+        "line": 437,
+        "text": "restored.read_native_process_caches().unwrap(),"
+      },
+      {
+        "file": "modern/engine/src/world/native_energy.rs",
+        "line": 479,
+        "text": "old.read_native_process_caches().unwrap().repopulation_counter,"
+      },
+      {
+        "file": "modern/engine/src/world/native_energy.rs",
+        "line": 482,
+        "text": "assert_eq!(old.read_native_process_caches().unwrap().shots_this_cycle, 0);"
+      },
+      {
+        "file": "modern/engine/src/world/native_energy.rs",
+        "line": 543,
+        "text": "let mut legacy_context = world.read_native_process_caches().unwrap();"
+      },
+      {
+        "file": "modern/engine/src/ffi.rs",
+        "line": 599,
+        "text": ".read_native_process_caches()"
+      },
+      {
+        "file": "modern/engine/src/ffi.rs",
+        "line": 666,
+        "text": ".read_native_process_caches()"
+      },
+      {
+        "file": "modern/engine/src/ffi.rs",
+        "line": 1450,
+        "text": "serde_json::to_value(fresh_process.read_native_process_caches().unwrap()).unwrap();"
+      },
+      {
+        "file": "modern/engine/src/ffi.rs",
+        "line": 1477,
+        "text": "serde_json::to_value(current.read_native_process_caches().unwrap()).unwrap(),"
+      },
+      {
+        "file": "modern/engine/src/ffi.rs",
+        "line": 1492,
+        "text": "serde_json::to_value(current.read_native_process_caches().unwrap()).unwrap(),"
+      },
+      {
+        "file": "modern/engine/src/ffi.rs",
+        "line": 1618,
+        "text": "assert!(!resumed.read_native_process_caches().unwrap().death_poffs_enabled);"
+      },
+      {
+        "file": "modern/engine/src/world/native_reproduction.rs",
+        "line": 58,
+        "text": "continuous.read_native_process_caches().unwrap().repopulation_counter,"
+      },
+      {
+        "file": "modern/engine/src/world/native_reproduction.rs",
+        "line": 87,
+        "text": "world.read_native_process_caches().unwrap().repopulation_counter,"
+      }
+    ]
+  },
+  "causal_diagnostic_context": {
+    "directory": "output/pass61-c100-diagnostic-20261017T1246",
+    "counterfactual_file": "output/pass61-c100-diagnostic-20261017T1246/counterfactual-cycle100.sim",
+    "counterfactual_sha256": "A0F5C86CBEAFD6B9B6FA7A24A443AF8FB5D8E38E260AC1992C9D269A676146C1",
+    "scope": "Parent diagnostic on unchanged61, with modified temporary input; strict original C100active1684fields and all20 dormant poff fields matched. This is causal context, not canonical source62 qualification or a new original capture."
+  },
+  "static_review": {
+    "all6_base_hashes_match_frozen61": true,
+    "world_prior_alive_candidate_retained": true,
+    "portable_advance_method_byte_exact": true,
+    "no_production_unwrap_expect_or_lossy_counter_cast": true,
+    "pure_cache_read_does_not_normalize_or_mutate_saved_runtime": true,
+    "all_source_original25_controls_55849fields_retained": true,
+    "all_old_full_save_and_goldens_retained": true,
+    "new_native_zero_cooldown_and_overflow_controls": true,
+    "new_loadedC21_noeligible20draw_negativeDB3S_controls": true
+  },
+  "execution": {
+    "active_apply": false,
+    "formatter": false,
+    "parser": false,
+    "build": false,
+    "tests": false,
+    "cli_or_product": false,
+    "ui": false,
+    "gpu": false,
+    "git": false
+  },
+  "qualification_required": [
+    "Parent and peer static review of entirebatch62 beforeapplication/checks.",
+    "Fresh full Rust, managed and package qualification; all25 strict originalcontrols/55849activefields plus existing dormant20Fact unchanged.",
+    "Existing physical-GPU and visibleacceptance gates remain independent."
+  ]
+}

@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "batch": 58,
+  "status": "authored_unapplied_static_diff_reviewed",
+  "base_source_head": "f2a42877fdc15ad8a332dd041c0ce8c6a9bd0d69",
+  "files": [
+    {
+      "target": "modern/engine/tests/contracts.rs",
+      "draft": "output/pass58-drafts/toxin-migration-contract/modern/engine/tests/contracts.rs",
+      "before": "output/pass58-drafts/toxin-migration-contract/before/modern/engine/tests/contracts.rs",
+      "base_raw_sha256": "E7053ADB06233C61D23776A8EA10781AF9764E5516860BD88D7221AAB532114F",
+      "candidate_raw_sha256": "CF369243FA400EEE8B73E3C1D8EEAF90453A67633A67CF8A792E306BC6F4B800",
+      "base_bytes": 61041,
+      "candidate_bytes": 63414
+    }
+  ],
+  "failure": {
+    "test": "db3s_v3_missing_toxin_projectile_fields_default_to_aligned_empty_payloads",
+    "log": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass57/cpu-rust-workspace.log",
+    "source_line": 892,
+    "expected_null_entries": 1,
+    "actual_null_entries_counted_from_existing_log": 100,
+    "contracts_outcome": "30passed/1failed/2filtered"
+  },
+  "classification": "Stale fixture representation assumption; existing migration correctly resizes missing toxin vectors to owners.len. The venom helper ticks a native engine and materializes100 source slots, with one live projectile.",
+  "source_authority": [
+    "shot/projectile.rs124-133 fill_toxin_payload_defaults aligns every toxin/default vector to owners.len.",
+    "shot/projectile.rs949-957 native slot mode materializes full logical capacity; bare empty pool defaults100.",
+    "world.rs2695-2698 v3 decode calls existing default fill without executing a cycle."
+  ],
+  "repair": "Test only. Keep source-exact100-slot native image and add a one-slot compact older-v3 control in the same Fact, without changing runtime/migration code.",
+  "coverage": {
+    "native": "Pin100 owners and equal logical capacity/native cursor; require exactly one live slot0. Remove3 toxin fields and compare every restored default entry plus all remaining owner/payload/parallel state.",
+    "older_compact": "Retain the full slot0 data across20 parallel arrays, no free slots, remove new cursor/shadow fields. Keep prior logical capacity while old physical arrays have one slot. Require exact one-slot defaults and unchanged full retained state.",
+    "repeat_restore": "Both images repeat DB3S save/decode and preserve the whole projectile object.",
+    "arrays_defaulted": [
+      "source_species_names allNull",
+      "toxin_memory_locations all0",
+      "toxin_memory_values all0"
+    ]
+  },
+  "new_test_rows": 0,
+  "existing_contract_facts_before": 33,
+  "existing_contract_facts_after": 33,
+  "combined_new_code_test_count": 59,
+  "production_files_changed": false,
+  "overlapping_energy_validation_candidates_untouched": {
+    "metadata": "output/pass58-drafts/native-energy-validation/metadata.json",
+    "sha256": "74F7F354824D54E4B7D7158CC51BEA023E4914C58A3E73B3AB230AF39DA80499"
+  },
+  "execution": {
+    "static_source_and_existing_log_reads": true,
+    "active_contracts_unchanged": true,
+    "formatter": false,
+    "parser": false,
+    "build": false,
+    "tests": false,
+    "engine": false,
+    "cli": false,
+    "git_command": false,
+    "git_mutation": false,
+    "ui": false,
+    "gpu": false
+  },
+  "apply_gate": "After all57 ordinary local+hosted outcomes and all58 authoring; combine with approved repairs before checks."
+}

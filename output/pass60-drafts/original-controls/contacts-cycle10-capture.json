@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "status": "ORIGINAL_CAPTURED_PORT_COMPARISON_PENDING",
+  "captured_utc": "2026-10-17T08:44:58.859Z",
+  "case": "contacts",
+  "cycle": 10,
+  "seed": 48032,
+  "input": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-console59-9060ee6b-9427-4a54-8edc-39badc3114a1\\contacts\\input.sim",
+  "input_sha256": "4AF50D8B78BD75723DDF36E47C3A80B9DE64636FBC1A9501E16C7FCBFF9F0C72",
+  "source_executable_sha256": "7F580D9CE8F1095A01FD162E9BCAC03FE437599E080786FD670B676671C31990",
+  "source_revision": "467a8a0c1564db2071cf65efe39dcfefc5ab7a0c",
+  "capture": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-console59-9060ee6b-9427-4a54-8edc-39badc3114a1\\contacts\\captures\\contacts-original-cycle10-pass60.sim",
+  "candidate": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\pass60-drafts\\original-controls\\db24832-genuine-contacts-cycle10-20261017.sim",
+  "sha256": "DE73B60672D17B3C5C8FADCF1DD37F2C917B9D63C3F161BA26978FC989249453",
+  "bytes": 35764,
+  "raw_saved_counter": 10,
+  "decoded_records": [
+    {
+      "fixed": 0,
+      "position": [
+        7801.4423828125,
+        6000
+      ],
+      "velocity": [
+        -0.0000064104779085027985,
+        0
+      ],
+      "actual_velocity": [
+        -0.0009765625,
+        0
+      ],
+      "age": 10,
+      "body": 1000,
+      "energy": 20000,
+      "dna_length": 3
+    },
+    {
+      "fixed": 0,
+      "position": [
+        8258.556640625,
+        6000
+      ],
+      "velocity": [
+        0.000007762708264635876,
+        0
+      ],
+      "actual_velocity": [
+        0,
+        0
+      ],
+      "age": 10,
+      "body": 1000,
+      "energy": 20000,
+      "dna_length": 3
+    },
+    {
+      "fixed": 0,
+      "position": [
+        8029.99951171875,
+        6000
+      ],
+      "velocity": [
+        -3.3222886486328207e-7,
+        0
+      ],
+      "actual_velocity": [
+        0.00048828125,
+        0
+      ],
+      "age": 10,
+      "body": 1000,
+      "energy": 20000,
+      "dna_length": 3
+    }
+  ],
+  "protocol": [
+    "Fresh original process; no previous simulation prompt; restore normal window before toolbarPause and toolbarLoad exactC0.",
+    "Wait loaded input title/robots, activate original, then nine successful single-cycle clicks.",
+    "PlayerBot visually unchecked in Edit menu; no Details/selection/FindBest/console/NewSim/menuF2.",
+    "F3 unique save; raw saved counter/seed verified before admission.",
+    "DocumentedSky input, GDI screenshot fallback, no helper/runtime modifications."
+  ],
+  "port_engine_executed": false,
+  "canonical_port_comparison_passed": false,
+  "active_source_mutated": false
+}

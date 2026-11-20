@@ -1,0 +1,110 @@
+{
+  "schema_version": 1,
+  "batch": 61,
+  "state": "authored_unexecuted_collector_candidate_for_root_review",
+  "created_utc": "2026-10-17T11:41:14.140Z",
+  "owner": "/root/recover_46_inventory",
+  "source_head": "8a42380d2096bb97d5028a0c3cfc03b96420fdcd",
+  "source_manifest": {
+    "file": "output/native-roundtrip-pass61-source.json",
+    "sha256": "4AD7E8553AAF90EBDE8C5B73172F38B67D97C76B8A4D239F99074E2C580408A0",
+    "pins": 636
+  },
+  "files": [
+    {
+      "candidate_path": "output/pass61-drafts/collector/collect-native-roundtrip-pass61.mjs",
+      "candidate_raw_sha256": "B5178915DA7F5014B0BDA6890C19530F88AA54B9D3428DB3359C3054AFEE6724",
+      "candidate_bytes": 44606,
+      "new_file": true
+    }
+  ],
+  "invocation": {
+    "executable": "node.exe",
+    "arguments": [
+      "output/pass61-drafts/collector/collect-native-roundtrip-pass61.mjs",
+      "--repo",
+      "C:/Users/PC/.codex/worktrees/db24832-completion/Darwinbots 2",
+      "--runner-exit-code",
+      "<actual closed root-session exit:0or1>"
+    ],
+    "root_supplies_actual_closed_session_exit": true,
+    "node_modules_or_installation_required": false
+  },
+  "execution_gate": [
+    "Terminal all94unique exact ordinary outcomes; state completed/needs_repair and supplied actual exit agree.",
+    "Original runner PID must be absent via read-only CIM query; failure/query errors abort.",
+    "Exact HEAD, raw source/proof manifest and636distinct contained source pins verified before collection and again before sealing.",
+    "Immutable proof snapshot, runner identity, original25capture identities, candidate input/output hashes, package48assets/DLL identities and protected PNG observed."
+  ],
+  "derivation": {
+    "rust": "Actual Cargo target headers/summaries mapped to pinned metadata by package/kind/name, including both doctests; incomplete/missing targets and failure excerpts explicit, no historical/hosted counts.",
+    "managed": "Actual312/213TRXcounter/row comparison. Dependency-not-run has0discovered/0executed and null test counts; missing terminalTRX has unknown/null counts. No predicted passes.",
+    "original": "All25case/cycle records bound to immutable source capture metadata and fresh61outputs; complete separate stdoutJSON parsed even on nonzero exit and separate stderr hashed. Expected55849original-only fields never replace actual union fields.",
+    "raw_zero": "Strict393316-field/raw-byte copy result kept separate from nativeEngine normalization.",
+    "package": "Fresh actual publish/smoke/assets receipts and current hashes; DesktopDLLqualified only for actual test invocation."
+  },
+  "output_policy": {
+    "only_new_files": [
+      "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/rust-target-results.json",
+      "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/qualification-summary.json"
+    ],
+    "exclusive_create": true,
+    "overwrite_existing": false,
+    "canonical_summary_json_created": false,
+    "cpu_ready_or_hardware_admission_created": false,
+    "valid_failed_run_receipts_supported": true,
+    "collector_exit0_means": "Evidence sealed; use qualification_state/all_ordinary_outcomes_passed for outcome. Tool exit0doesnotconferadmission."
+  },
+  "future_read_only_subprocesses": [
+    [
+      "git.exe",
+      "-C",
+      "<repo>",
+      "rev-parse",
+      "HEAD"
+    ],
+    [
+      "pwsh.exe",
+      "-NoProfile",
+      "-NonInteractive",
+      "-Command",
+      "CIM PID existence query only"
+    ]
+  ],
+  "authoring_inputs": [
+    {
+      "file": "output/qualify-native-roundtrip-pass61.ps1",
+      "scope": "Output/status/result/stream schema only."
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/qualification-summary.json",
+      "sha256": "8CD5A958315CE81FE587FBEC39B66CAB5A4B5738893BAA2B4672FA3CF5DF9B26"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/rust-target-results.json",
+      "sha256": "FB94B7C63ECB9EE010F8945BC71DF358A4058EEF60DDB074623B2EF5842A0AAD"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/results.json",
+      "scope": "Exact94step names only; no runtime counts inherited."
+    }
+  ],
+  "static_review": {
+    "source_readback_only": true,
+    "unresolved_placeholders": false,
+    "only_write_operations_are_two_exclusive_new_receipts": true,
+    "missing_or_inconsistent_evidence_cannot_mark_qualification_passed": true
+  },
+  "execution": {
+    "candidate_executed": false,
+    "javascript_parser": false,
+    "product_commands": false,
+    "builds": false,
+    "tests": false,
+    "formatter": false,
+    "ui": false,
+    "gpu": false,
+    "git_mutation": false,
+    "active_source_or_report_edits": false
+  }
+}

@@ -1,0 +1,30 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.62s
+     Running tests\db2_projectiles.rs (target\debug\deps\db2_projectiles-9d8dce0d56cfd0b6.exe)
+
+running 23 tests
+test energy_ammunition_is_capped_to_the_senders_available_energy ... ok
+test db24832_shootval_positive_power_and_negative_range_are_applied_to_spawn ... ok
+test direct_poff_command_does_not_create_a_projectile ... ok
+test energy_packet_applies_db24832_transfer_without_a_live_packet_owner ... ok
+test firing_creates_a_moving_projectile_instead_of_an_instant_hit_line ... ok
+test delgene_information_shot_is_inert_without_defensive_poison_return ... ok
+test direct_minus_seven_command_does_not_emit_a_virus ... ok
+test energy_feeding_request_extracts_target_resources_and_returns_energy_packet ... ok
+test information_shots_cannot_bypass_sexual_reproduction_requirements ... ok
+test lethal_projectile_hit_cannot_be_undone_by_same_tick_photosynthesis ... ok
+test newborn_is_immune_to_parent_stream_for_one_tick ... ok
+test obstacle_intercepts_projectile_before_target ... ok
+test positive_memory_shot_writes_the_target_address ... ok
+test negative_and_zero_information_values_reach_the_requested_memory_address ... ok
+test shot_velocity_inherits_the_firers_actual_velocity ... ok
+test moving_robot_obstacle_edge_preserves_collision_shot_and_drift_invariants ... ok
+test sperm_shot_fertilizes_without_forcing_reproduction ... ok
+test pass_through_shape_allows_a_projectile_to_reach_the_target ... ok
+test swept_collision_hits_a_bot_between_projectile_endpoints ... ok
+test shot_formation_spends_the_original_flat_boost_and_ammunition_costs ... ok
+test reproductive_projectiles_use_staged_virus_and_sperm_gates ... ok
+test projectile_moves_once_per_tick_and_expires_after_range ... ok
+test shot_01_projectile_corpus_covers_moving_target_edges_and_range_decay_boundaries ... ok
+
+test result: ok. 23 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+

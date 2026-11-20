@@ -1,0 +1,46 @@
+{
+  "date": "2026-10-12",
+  "code_revision": "857ab7fdb4db94319a02514224a4e806047de53b",
+  "checks": {
+    "native_rust_subset": {
+      "passed": 24,
+      "failed": 0,
+      "log": "parity-native-organism-integration-expanded.log"
+    },
+    "strict_engine_lib_tests_clippy": {
+      "passed": true,
+      "log": "parity-native-organism-integration-clippy.log"
+    },
+    "production_desktop_and_native": {
+      "passed": 14,
+      "failed": 0,
+      "log": "parity-native-organism-integration-desktop-final.log"
+    },
+    "selected_group_rendered_followup": {
+      "passed": 2,
+      "failed": 0,
+      "log": "parity-native-organism-integration-rendered.log",
+      "overlaps_final_desktop_subset": true
+    },
+    "original_returned_save": {
+      "passed": 1,
+      "failed": 0,
+      "log": "parity-native-organism-original-return.log"
+    }
+  },
+  "changes": [
+    "Native .dbo imports retain memory, Single resources, heading, profiles, restrictions, ancestry fields, epigenetics and genetic payloads represented by the runtime.",
+    "Incoming groups remap reciprocal ties through actual reused slot generations.",
+    "Malformed later members and nonfinite used tie state reject atomically.",
+    "Nonzero native absolute IDs may repeat; metadata provenance stays distinct.",
+    "Imported metadata is owned by live robots and released on removal, instead of appended to an unbounded archive.",
+    "Saved Integer memory keeps -32768..32767; DNA stores retain native modulo-32000 semantics.",
+    "Desktop group save exports through the engine before showing the picker.",
+    "Zero-robot native .sim files now enter the production loader."
+  ],
+  "limits": [
+    "Case counts overlap. These are focused checks, not the complete parity gate.",
+    "Full corpse state, offline native teleporters, native insertion placement and loaded control synchronization remain open."
+  ],
+  "original_interop_receipt": "native-organism-original-roundtrip.json"
+}

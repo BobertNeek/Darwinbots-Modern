@@ -1,0 +1,399 @@
+{
+  "schema_version": 2,
+  "batch": 60,
+  "sealed_utc": "2026-10-17T09:34:33.183Z",
+  "source_head": "43d38a55ac3e95c541bc9407bc0056b7cf45e351",
+  "source_manifest": {
+    "file": "output/native-roundtrip-pass60-source.json",
+    "sha256": "D1218C0674D8B1C7C11F4A2CEFC8F886E891356AD7E5EB1FB7977EA436F43700",
+    "pinned_files": 613
+  },
+  "workflow": "Desktop platform diagnostics",
+  "workflow_file": ".github/workflows/modern-desktop-diagnostics.yml",
+  "run": {
+    "id": 39021030726,
+    "html_url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39021030726",
+    "event": "push",
+    "run_attempt": 1,
+    "status": "completed",
+    "conclusion": "failure",
+    "created_at": "2026-10-17T09:24:53Z",
+    "updated_at": "2026-10-17T09:33:02Z",
+    "head_sha": "43d38a55ac3e95c541bc9407bc0056b7cf45e351"
+  },
+  "all_jobs_terminal": true,
+  "jobs": [
+    {
+      "job_id": 117362709166,
+      "name": "rendered-desktop (macos-latest, osx-arm64)",
+      "platform": "osx-arm64",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-17T09:25:04Z",
+      "completed_at": "2026-10-17T09:29:30Z",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-17T09:25:05Z",
+          "completed_at": "2026-10-17T09:25:08Z"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-17T09:25:08Z",
+          "completed_at": "2026-10-17T09:25:13Z"
+        },
+        {
+          "name": "Run dtolnay/rust-toolchain@stable",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-17T09:25:13Z",
+          "completed_at": "2026-10-17T09:25:24Z"
+        },
+        {
+          "name": "Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-17T09:25:24Z",
+          "completed_at": "2026-10-17T09:25:42Z"
+        },
+        {
+          "name": "Diagnose rendered desktop controls",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 5,
+          "started_at": "2026-10-17T09:25:42Z",
+          "completed_at": "2026-10-17T09:29:24Z"
+        },
+        {
+          "name": "Preserve diagnostic receipts",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-10-17T09:29:24Z",
+          "completed_at": "2026-10-17T09:29:25Z"
+        },
+        {
+          "name": "Post Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 11,
+          "started_at": "2026-10-17T09:29:25Z",
+          "completed_at": "2026-10-17T09:29:25Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 12,
+          "started_at": "2026-10-17T09:29:25Z",
+          "completed_at": "2026-10-17T09:29:26Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 13,
+          "started_at": "2026-10-17T09:29:26Z",
+          "completed_at": "2026-10-17T09:29:28Z"
+        }
+      ],
+      "desktop": {
+        "executed_tests": 0,
+        "failed_test_rows": 0,
+        "full_expected_corpus_completed": false,
+        "trx": null,
+        "compile_exit_code": 1,
+        "compiler_errors": [
+          {
+            "line": 535,
+            "text": "##[error]/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/FindBestRenderedTests.cs(60,23): error CS0121: The call is ambiguous between the following methods or properties: 'Darwinbots.Desktop.ViewModels.MainWindowViewModel.Select(uint)' and 'Darwinbots.Desktop.ViewModels.MainWindowViewModel.Select(Darwinbots.Desktop.Core.OrganismKey)' [/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj]"
+          }
+        ]
+      },
+      "log": {
+        "file": "output/hosted-diagnostics-43d38a5-agent/logs/osx-arm64-completed.log",
+        "sha256": "5861805F3509621EF5D266C37895C805F359900E6B161F36597AB7BFC454D896",
+        "bytes": 65463
+      },
+      "not_run_after_failure": [
+        "Desktop test discovery/execution",
+        "Rendered controls/screenshots/TRX"
+      ],
+      "artifact_count": 0
+    },
+    {
+      "job_id": 117362709242,
+      "name": "rendered-desktop (macos-15-intel, osx-x64)",
+      "platform": "osx-x64",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-17T09:25:03Z",
+      "completed_at": "2026-10-17T09:33:01Z",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-17T09:25:04Z",
+          "completed_at": "2026-10-17T09:25:10Z"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-17T09:25:11Z",
+          "completed_at": "2026-10-17T09:25:25Z"
+        },
+        {
+          "name": "Run dtolnay/rust-toolchain@stable",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-17T09:25:25Z",
+          "completed_at": "2026-10-17T09:25:43Z"
+        },
+        {
+          "name": "Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-17T09:25:43Z",
+          "completed_at": "2026-10-17T09:26:05Z"
+        },
+        {
+          "name": "Diagnose rendered desktop controls",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 5,
+          "started_at": "2026-10-17T09:26:05Z",
+          "completed_at": "2026-10-17T09:32:56Z"
+        },
+        {
+          "name": "Preserve diagnostic receipts",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-10-17T09:32:56Z",
+          "completed_at": "2026-10-17T09:32:57Z"
+        },
+        {
+          "name": "Post Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 11,
+          "started_at": "2026-10-17T09:32:57Z",
+          "completed_at": "2026-10-17T09:32:57Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 12,
+          "started_at": "2026-10-17T09:32:57Z",
+          "completed_at": "2026-10-17T09:32:58Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 13,
+          "started_at": "2026-10-17T09:32:58Z",
+          "completed_at": "2026-10-17T09:32:59Z"
+        }
+      ],
+      "desktop": {
+        "executed_tests": 0,
+        "failed_test_rows": 0,
+        "full_expected_corpus_completed": false,
+        "trx": null,
+        "compile_exit_code": 1,
+        "compiler_errors": [
+          {
+            "line": 574,
+            "text": "##[error]/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/FindBestRenderedTests.cs(60,23): error CS0121: The call is ambiguous between the following methods or properties: 'Darwinbots.Desktop.ViewModels.MainWindowViewModel.Select(uint)' and 'Darwinbots.Desktop.ViewModels.MainWindowViewModel.Select(Darwinbots.Desktop.Core.OrganismKey)' [/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj]"
+          }
+        ]
+      },
+      "log": {
+        "file": "output/hosted-diagnostics-43d38a5-agent/logs/osx-x64-completed.log",
+        "sha256": "F44DACA28FD58B1BB9333ABA8359008BAC44D3B9FCF476C15F267FFA026AC2BB",
+        "bytes": 67956
+      },
+      "not_run_after_failure": [
+        "Desktop test discovery/execution",
+        "Rendered controls/screenshots/TRX"
+      ],
+      "artifact_count": 0
+    },
+    {
+      "job_id": 117362709301,
+      "name": "rendered-desktop (ubuntu-latest, linux-x64)",
+      "platform": "linux-x64",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-17T09:24:57Z",
+      "completed_at": "2026-10-17T09:27:17Z",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-17T09:24:57Z",
+          "completed_at": "2026-10-17T09:24:59Z"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-17T09:24:59Z",
+          "completed_at": "2026-10-17T09:25:02Z"
+        },
+        {
+          "name": "Run dtolnay/rust-toolchain@stable",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-17T09:25:02Z",
+          "completed_at": "2026-10-17T09:25:11Z"
+        },
+        {
+          "name": "Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-17T09:25:11Z",
+          "completed_at": "2026-10-17T09:25:19Z"
+        },
+        {
+          "name": "Diagnose rendered desktop controls",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 5,
+          "started_at": "2026-10-17T09:25:19Z",
+          "completed_at": "2026-10-17T09:27:14Z"
+        },
+        {
+          "name": "Preserve diagnostic receipts",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-10-17T09:27:14Z",
+          "completed_at": "2026-10-17T09:27:15Z"
+        },
+        {
+          "name": "Post Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 11,
+          "started_at": "2026-10-17T09:27:15Z",
+          "completed_at": "2026-10-17T09:27:15Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 12,
+          "started_at": "2026-10-17T09:27:15Z",
+          "completed_at": "2026-10-17T09:27:15Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 13,
+          "started_at": "2026-10-17T09:27:15Z",
+          "completed_at": "2026-10-17T09:27:15Z"
+        }
+      ],
+      "desktop": {
+        "executed_tests": 0,
+        "failed_test_rows": 0,
+        "full_expected_corpus_completed": false,
+        "trx": null,
+        "compile_exit_code": 1,
+        "compiler_errors": [
+          {
+            "line": 536,
+            "text": "##[error]/home/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/FindBestRenderedTests.cs(60,23): error CS0121: The call is ambiguous between the following methods or properties: 'Darwinbots.Desktop.ViewModels.MainWindowViewModel.Select(uint)' and 'Darwinbots.Desktop.ViewModels.MainWindowViewModel.Select(Darwinbots.Desktop.Core.OrganismKey)' [/home/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj]"
+          }
+        ]
+      },
+      "log": {
+        "file": "output/hosted-diagnostics-43d38a5-agent/logs/linux-x64-completed.log",
+        "sha256": "4A382B969AC95071D21337460678092C5D17247F0AF28683FEFA9C34BCFDF0A3",
+        "bytes": 64770
+      },
+      "not_run_after_failure": [
+        "Desktop test discovery/execution",
+        "Rendered controls/screenshots/TRX"
+      ],
+      "artifact_count": 0
+    }
+  ],
+  "aggregate": {
+    "platforms": 3,
+    "successful_jobs": 0,
+    "failed_jobs": 3,
+    "actual_executed_desktop_tests": 0,
+    "actual_failed_test_rows": 0,
+    "expected_desktop_tests_per_platform": 209,
+    "full_expected_corpus_completed": false,
+    "compiler_failures": 3
+  },
+  "artifacts": {
+    "api_total": 0,
+    "downloaded": 0,
+    "trx_files": 0,
+    "png_files": 0,
+    "reason": "All three jobs failed during Desktop test-project compilation before discovery/execution; upload steps reported no files."
+  },
+  "evidence": [
+    {
+      "file": "output/hosted-diagnostics-43d38a5-agent/logs/osx-arm64-completed.log",
+      "sha256": "5861805F3509621EF5D266C37895C805F359900E6B161F36597AB7BFC454D896",
+      "bytes": 65463
+    },
+    {
+      "file": "output/hosted-diagnostics-43d38a5-agent/logs/osx-x64-completed.log",
+      "sha256": "F44DACA28FD58B1BB9333ABA8359008BAC44D3B9FCF476C15F267FFA026AC2BB",
+      "bytes": 67956
+    },
+    {
+      "file": "output/hosted-diagnostics-43d38a5-agent/logs/linux-x64-completed.log",
+      "sha256": "4A382B969AC95071D21337460678092C5D17247F0AF28683FEFA9C34BCFDF0A3",
+      "bytes": 64770
+    },
+    {
+      "file": "output/hosted-diagnostics-43d38a5-agent/api/run-20261017T093406284.json",
+      "sha256": "3F79EED722884C121DD226FEF02B960457D7BA6F1B2B4AB208C7419A8A3578B1",
+      "bytes": 13180
+    },
+    {
+      "file": "output/hosted-diagnostics-43d38a5-agent/api/jobs-20261017T093406284.json",
+      "sha256": "86417351D1D7D157764D0A3E18B9F4C5A43604E35D4933A58DCB9EF798E371B2",
+      "bytes": 7502
+    },
+    {
+      "file": "output/hosted-diagnostics-43d38a5-agent/api/artifacts-20261017T093406284.json",
+      "sha256": "E338FB10E6740E1E43CDBE137DA3A22EC09F95D8097C5F247E751DE5F81F87B4",
+      "bytes": 34
+    }
+  ],
+  "boundaries": [
+    "Hosted diagnostic compile outcomes only; zero rendered tests executed.",
+    "No TRX, screenshot, rendered interaction, hardware, GPU/capacity, package qualification or local CPU admission is established.",
+    "The three compiler errors are fixture CS0121 ambiguity at FindBestRenderedTests.cs:60; repair remains unapplied while ordinary batch60 local/MAIN outcomes collect."
+  ]
+}

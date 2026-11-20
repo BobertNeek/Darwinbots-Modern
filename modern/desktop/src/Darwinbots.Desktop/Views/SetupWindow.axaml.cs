@@ -10,11 +10,21 @@ namespace Darwinbots.Desktop.Views;
 public sealed partial class SetupWindow : Window
 {
     private bool _controlsReady;
+    private readonly bool _speciesEditor;
+    public WorldSetupOptions? EditedOptions { get; private set; }
+    public bool StartNewRequested { get; private set; }
     private readonly IDesktopStorageService _storage;
+    private readonly float? _nativeGaussianSpare;
+    private readonly byte? _nativeSunChange;
+    private readonly NativeProcessCachesSnapshot? _nativeProcessCaches;
+    private readonly SimulationSettingsWorkflow _workflow;
     private EnvironmentUpdate _environment = EnvironmentUpdate.Default;
+    private GlobalSettings _globalSettings = new();
+    private MutationSettingsUpdate _mutationSettings = MutationSettingsUpdate.Default;
+    private IReadOnlyList<string>? _legacySettingsFields;
     private const string ZerobotDna = "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0";
-    private const string FeederDna = "cond\nstart\n-2 .shoot store\n50 .shootval store\n314 rnd .aimdx store\nstop";
-    private const string FeederReproducerDna = "cond\nstart\n-2 302 1 rnd rnd rnd rnd rnd rnd mult add .shoot store\n50 .shootval store\n314 rnd .aimdx store\nstop";
+    private const string FeederDna = "cond\r\nstart\r\n-2 .shoot store\r\n50 .shootval store\r\n314 rnd .aimdx store\r\nstop";
+    private const string FeederReproducerDna = "cond\r\nstart\r\n-2 302 1 rnd rnd rnd rnd rnd rnd mult add .shoot store\r\n50 .shootval store\r\n314 rnd .aimdx store\r\nstop";
 
     public ObservableCollection<SetupSpeciesRow> Species { get; } = [];
     public event Action<WorldSetupOptions>? WorldCreated;
@@ -23,13 +33,37 @@ public sealed partial class SetupWindow : Window
     {
     }
 
-    public SetupWindow(IDesktopStorageService storage)
+    public SetupWindow(IDesktopStorageService storage, float? nativeGaussianSpare = null, byte? nativeSunChange = null, NativeProcessCachesSnapshot? nativeProcessCaches = null, WorldSetupOptions? speciesEditor = null)
     {
+        _speciesEditor = speciesEditor is not null;
         _storage = storage ?? throw new ArgumentNullException(nameof(storage));
+        _nativeGaussianSpare = nativeGaussianSpare;
+        _nativeSunChange = nativeSunChange;
+        _nativeProcessCaches = nativeProcessCaches;
+        _workflow = new(new WorldSetupOptions());
         InitializeComponent();
+        if (!_speciesEditor)
+            CreateWorldButton.HotKey = new KeyGesture(Key.Enter, KeyModifiers.Control);
         DataContext = this;
         _controlsReady = true;
         LoadMode(StartingMode.StarterBotsAndVegetables);
+        _workflow.Reset(ReadSetupOptions());
+        OnboardingPanel.IsVisible = !_speciesEditor && _storage.IsFirstRun;
+        if (speciesEditor is not null)
+        {
+            ApplySetupOptions(speciesEditor);
+            _workflow.Reset(speciesEditor);
+            Title = "Species settings";
+            WindowState = WindowState.Normal;
+            SetupSurfaceGrid.ColumnDefinitions = new ColumnDefinitions("0,*,0");
+            WorldSettingsPanel.IsVisible = false;
+            StartingModeTitle.IsVisible = false;
+            StartingModeChoices.IsVisible = false;
+            SimulationSettingsTabs.IsEnabled = false;
+            FileMenu.IsVisible = FileMenu.IsEnabled = false;
+            ViewMenu.IsVisible = ViewMenu.IsEnabled = false;
+            SpeciesEditActions.IsVisible = true;
+        }
     }
 
     private void Mode_Checked(object? sender, RoutedEventArgs e)
@@ -64,8 +98,28 @@ public sealed partial class SetupWindow : Window
 
     private async void AddDna_Click(object? sender, RoutedEventArgs e)
     {
-        foreach (var file in await _storage.OpenDnaFilesAsync(this))
-            Species.Add(new(Path.GetFileNameWithoutExtension(file.Name), file.Content, false, 0xffd07a2d, 50, 1_000, 1.0, false));
+        try
+        {
+            foreach (var file in await _storage.OpenDnaFilesAsync(this))
+                Species.Add(new(Path.GetFileNameWithoutExtension(file.Name), file.Content, false, 0xffd07a2d, 50, 1_000, 1.0, false,
+                    mutationProfile: file.MutationProfile, dnaPath: file.LocalPath));
+        }
+        catch (Exception error) { SetupStatus.Text = $"IMPORT FAILED · {error.Message}"; }
+    }
+
+    private void DuplicateSpecies_Click(object? sender, RoutedEventArgs e)
+    {
+        var source = sender is Button { Tag: SetupSpeciesRow row }
+            ? row
+            : Species.LastOrDefault();
+        if (source is null)
+        {
+            SetupStatus.Text = "Add a species before duplicating it.";
+            return;
+        }
+
+        Species.Add(source.Duplicate());
+        SetupStatus.Text = $"DUPLICATED {source.Name.ToUpperInvariant()}";
     }
 
     private void RemoveSpecies_Click(object? sender, RoutedEventArgs e)
@@ -73,12 +127,55 @@ public sealed partial class SetupWindow : Window
         if (sender is Button { Tag: SetupSpeciesRow row }) Species.Remove(row);
     }
 
+    private async void SpeciesMutationRates_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: SetupSpeciesRow row }) return;
+        var dialog = new MutationRatesWindow(row.MutationProfile ?? _mutationSettings.Profile ?? MutationProfileUpdate.Default);
+        await dialog.ShowDialog(this);
+        if (!dialog.Accepted) return;
+        row.MutationProfile = dialog.Profile;
+        SetupStatus.Text = $"MUTATION RATES SAVED FOR {row.Name.ToUpperInvariant()}";
+    }
+
     private void CreateWorld_Click(object? sender, RoutedEventArgs e)
     {
+        StartNew_Click(sender, e);
+    }
+
+    private void StartNew_Click(object? sender, RoutedEventArgs e)
+    {
         if (Species.Count == 0) { SetupStatus.Text = "Add at least one species."; return; }
+        _workflow.UpdateWorkingCopy(_ => ReadSetupOptions());
+        var options = _workflow.StartNew();
+        if (_speciesEditor) { EditedOptions = options; StartNewRequested = true; Close(); }
+        else PublishWorld(options);
+    }
+
+    private void Change_Click(object? sender, RoutedEventArgs e)
+    {
+        if (Species.Count == 0) { SetupStatus.Text = "Add at least one species."; return; }
+        _workflow.UpdateWorkingCopy(_ => ReadSetupOptions());
+        var options = _workflow.Change();
+        if (_speciesEditor) { EditedOptions = options; Close(); }
+        else PublishWorld(options);
+    }
+
+    private void Cancel_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_speciesEditor) { Close(); return; }
+        _workflow.Cancel();
+        ApplySetupOptions(_workflow.WorkingCopy);
+        SetupStatus.Text = "WORKING COPY CANCELLED";
+    }
+
+    private void PublishWorld(WorldSetupOptions options) =>
+        WorldCreated?.Invoke(options with { NativeGaussianSpare = _nativeGaussianSpare, NativeSunChange = _nativeSunChange, NativeProcessCaches = _nativeProcessCaches });
+
+    private WorldSetupOptions ReadSetupOptions()
+    {
         var sustenance = (ZerobotSustenance)Math.Max(0, Sustenance.SelectedIndex);
         var species = Species.Select((row, index) => row.ToImport(index)).ToList();
-        if (CurrentMode() != StartingMode.StarterBotsAndVegetables)
+        if (!_speciesEditor && CurrentMode() != StartingMode.StarterBotsAndVegetables)
         {
             if (sustenance == ZerobotSustenance.PhotosyntheticZerobots)
                 species[0] = species[0] with { Vegetable = true };
@@ -89,12 +186,13 @@ public sealed partial class SetupWindow : Window
             }
         }
         var speed = Speed.SelectedIndex switch { 0 => 1u, 1 => 5u, 2 => 20u, _ => 100u };
-        WorldCreated?.Invoke(new WorldSetupOptions
+        return new WorldSetupOptions
         {
             StartingMode = CurrentMode(),
             ZerobotSustenance = sustenance,
             AutomaticZerobotProgression = AutomaticProgression.IsChecked == true,
             Backend = ((ComboBoxItem)Backend.SelectedItem!).Content?.ToString() ?? "Auto",
+            Seed = (ulong)(Seed.Value ?? 1),
             PopulationCapacity = (int)(PopulationCap.Value ?? 25_000),
             VegetablePopulationCap = (int)(VegetablePopulationCap.Value ?? 500),
             WorldWidth = (float)(WorldWidth.Value ?? 16_000),
@@ -107,23 +205,73 @@ public sealed partial class SetupWindow : Window
             BrownianMotion = _environment.BrownianMotion,
             Physics = _environment.Physics,
             Shots = _environment.Shots,
+            CorpseDecay = _environment.CorpseDecay ?? new Db2CorpseDecayOptions(),
+            Waste = _environment.Waste ?? new Db2WasteOptions(),
             Vegetation = _environment.Vegetation,
+            Recording = _environment.Recording ?? new Db2RecordingOptions(),
             AutoSpeciation = _environment.AutoSpeciation,
             SpeciationGeneticDistancePercent = _environment.SpeciationGeneticDistancePercent,
             ToroidalWorld = _environment.ToroidalWorld,
+            WrapX = _environment.WrapX,
+            WrapY = _environment.WrapY,
             TicksPerUpdate = speed,
             Species = species,
-        });
+            GlobalSettings = _globalSettings,
+            MutationSettings = _mutationSettings,
+            LegacySettingsFields = _legacySettingsFields,
+        };
     }
 
-    private async void Advanced_Click(object? sender, RoutedEventArgs e)
+    private async void SimulationSettingsTab_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (!_controlsReady || !ReferenceEquals(e.Source, SimulationSettingsTabs)) return;
+        var section = SimulationSettingsTabs.SelectedIndex;
+        if (section == 1) { WorldWidth.BringIntoView(); WorldWidth.Focus(); return; }
+        if (section == 2) await EditAdvancedSettingsAsync(2);
+        else if (section == 3) await EditAdvancedSettingsAsync(0);
+        else if (section == 4) await EditGlobalSettingsAsync(2);
+        else return;
+        _controlsReady = false;
+        SimulationSettingsTabs.SelectedIndex = 0;
+        _controlsReady = true;
+    }
+
+    private async void Advanced_Click(object? sender, RoutedEventArgs e) => await EditAdvancedSettingsAsync(0);
+
+    private async Task EditAdvancedSettingsAsync(int selectedTab)
     {
         try
         {
-            var dialog = new AdvancedSettingsWindow(_environment);
+            var snapshot = EngineSnapshot.Empty with
+            {
+                MutationSettings = new(_mutationSettings.Enabled, _mutationSettings.GlobalMultiplier)
+                {
+                    Profile = _mutationSettings.Profile ?? MutationProfileUpdate.Default,
+                },
+                Species = new[] { new SpeciesSnapshot("Default", false, 0, 0, false) }
+                    .Concat(Species.Select(row => new SpeciesSnapshot(row.Name, row.Vegetable,
+                        row.Color, row.MinimumPopulation, row.Reseed, (float)row.MutationRate))).ToArray(),
+            };
+            var dialog = new AdvancedSettingsWindow(_environment, snapshot, selectedTab);
             await dialog.ShowDialog(this);
             if (!dialog.Accepted) return;
             _environment = dialog.Update;
+            _globalSettings = _globalSettings with
+            {
+                Main = _globalSettings.Main with { SafeMode = _environment.Recording?.SafeModeBackup ?? false },
+            };
+            var mutationUpdate = dialog.MutationUpdate;
+            // Species do not have engine IDs until startup imports them. Keep
+            // their percentages on the startup definitions rather than sending
+            // live-world IDs to an engine that has not registered them yet.
+            _mutationSettings = mutationUpdate with
+            {
+                SpeciesRates = [],
+                Profile = mutationUpdate.Profile ?? _mutationSettings.Profile,
+            };
+            foreach (var rate in mutationUpdate.SpeciesRates)
+                if (rate.Species > 0 && rate.Species <= Species.Count)
+                    Species[(int)rate.Species - 1].MutationRate = rate.Rate;
             SetupStatus.Text = "ADVANCED SETTINGS APPLIED";
         }
         catch (Exception error)
@@ -132,12 +280,132 @@ public sealed partial class SetupWindow : Window
         }
     }
 
+    private async void GlobalSettings_Click(object? sender, RoutedEventArgs e) => await EditGlobalSettingsAsync(0);
+
+    private async Task EditGlobalSettingsAsync(int selectedTab)
+    {
+        try
+        {
+            var dialog = new GlobalSettingsWindow(_globalSettings);
+            dialog.FindControl<TabControl>("Tabs")!.SelectedIndex = selectedTab;
+            await dialog.ShowDialog(this);
+            if (!dialog.Accepted) return;
+            _globalSettings = dialog.Settings;
+            _environment = _environment with
+            {
+                Recording = (_environment.Recording ?? new()) with { SafeModeBackup = _globalSettings.Main.SafeMode },
+            };
+            SetupStatus.Text = "GLOBAL SETTINGS SAVED";
+        }
+        catch (Exception error)
+        {
+            SetupStatus.Text = $"GLOBAL SETTINGS FAILED: {error.Message}";
+        }
+    }
+
+    private async void SaveSettings_Click(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var settings = ReadDesktopSettings();
+            SetupStatus.Text = await _storage.SaveSettingsAsync(this, settings)
+                ? "SETTINGS SAVED"
+                : "SETTINGS SAVE CANCELLED";
+        }
+        catch (Exception error)
+        {
+            SetupStatus.Text = $"SETTINGS SAVE FAILED: {error.Message}";
+        }
+    }
+
+    private async void LoadSettings_Click(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var settings = await _storage.OpenSettingsAsync(this);
+            if (settings is null)
+            {
+                SetupStatus.Text = "SETTINGS LOAD CANCELLED";
+                return;
+            }
+
+            ApplyDesktopSettings(settings);
+            SetupStatus.Text = "SETTINGS LOADED";
+        }
+        catch (Exception error)
+        {
+            SetupStatus.Text = $"SETTINGS LOAD FAILED: {error.Message}";
+        }
+    }
+
+    private DesktopSettings ReadDesktopSettings()
+    {
+        _workflow.UpdateWorkingCopy(_ => ReadSetupOptions());
+        return DesktopSettings.FromWorldSetup(_workflow.WorkingCopy);
+    }
+
+    private void ApplyDesktopSettings(DesktopSettings settings)
+    {
+        var setup = settings.ToWorldSetup(_workflow.Live);
+        ApplySetupOptions(setup);
+        _workflow.LoadWorkingCopy(setup);
+    }
+
+    private void ApplySetupOptions(WorldSetupOptions setup)
+    {
+        _controlsReady = false;
+        Backend.SelectedIndex = setup.Backend.ToUpperInvariant() switch
+        {
+            "CPU" => 1,
+            "GPU" => 2,
+            _ => 0,
+        };
+        WorldWidth.Value = (decimal)setup.WorldWidth;
+        WorldHeight.Value = (decimal)setup.WorldHeight;
+        PopulationCap.Value = setup.PopulationCapacity;
+        VegetablePopulationCap.Value = setup.VegetablePopulationCap;
+        Seed.Value = (decimal)setup.Seed;
+        Speed.SelectedIndex = setup.TicksPerUpdate switch
+        {
+            <= 1 => 0,
+            <= 5 => 1,
+            <= 20 => 2,
+            _ => 3,
+        };
+        Sustenance.SelectedIndex = (int)setup.ZerobotSustenance;
+        AutomaticProgression.IsChecked = setup.AutomaticZerobotProgression;
+        _environment = setup.ToEnvironmentUpdate();
+        _globalSettings = setup.GlobalSettings;
+        _globalSettings = _globalSettings with
+        {
+            Main = _globalSettings.Main with { SafeMode = _environment.Recording?.SafeModeBackup ?? false },
+        };
+        _mutationSettings = setup.MutationSettings;
+        _legacySettingsFields = setup.LegacySettingsFields;
+        StarterMode.IsChecked = setup.StartingMode == StartingMode.StarterBotsAndVegetables;
+        ZerobotMode.IsChecked = setup.StartingMode == StartingMode.Zerobots;
+        ZerobotVegetableMode.IsChecked = setup.StartingMode == StartingMode.ZerobotsAndVegetables;
+        LoadMode(setup.StartingMode);
+        if (setup.Species.Count > 0)
+        {
+            Species.Clear();
+            foreach (var species in setup.Species)
+                Species.Add(new(species.Name, species.Dna, species.Vegetable, species.Color,
+                    species.InitialCount, species.InitialEnergy, species.MutationRate, species.Reseed,
+                    species.MinimumPopulation, species.Comment, species.Placement, species.Skin, species.Restrictions,
+                    species.MutationProfile, species.DnaPath, species.SpeciesId));
+        }
+        _controlsReady = true;
+    }
+
     private void NewWorld_Click(object? sender, RoutedEventArgs e)
     {
         _environment = EnvironmentUpdate.Default;
+        _globalSettings = new GlobalSettings();
         Backend.SelectedIndex = 0;
         WorldWidth.Value = 16_000;
         WorldHeight.Value = 12_000;
+        Seed.Value = 1;
         PopulationCap.Value = 25_000;
         VegetablePopulationCap.Value = 500;
         Speed.SelectedIndex = 3;
@@ -145,13 +413,20 @@ public sealed partial class SetupWindow : Window
         AutomaticProgression.IsChecked = true;
         StarterMode.IsChecked = true;
         Mode_Checked(StarterMode, e);
+        _workflow.Reset(ReadSetupOptions());
         SetupStatus.Text = "New world defaults restored.";
+    }
+
+    private void ChangeSeed_Click(object? sender, RoutedEventArgs e)
+    {
+        Seed.Value = (decimal)Random.Shared.NextInt64(1, long.MaxValue);
+        SetupStatus.Text = "A new local seed is staged.";
     }
 
     private async void OpenSave_Click(object? sender, RoutedEventArgs e)
     {
         if (await _storage.PickSimulationPathAsync(this) is { } path)
-            WorldCreated?.Invoke(new WorldSetupOptions { LoadSavePath = path });
+            PublishWorld(new WorldSetupOptions { LoadSavePath = path });
     }
 
     private void Exit_Click(object? sender, RoutedEventArgs e) => Close();
@@ -189,6 +464,11 @@ public sealed partial class SetupWindow : Window
 
     private void SetupWindow_KeyDown(object? sender, KeyEventArgs e)
     {
+        if (_speciesEditor)
+        {
+            if (e.Key == Key.Escape) { Close(); e.Handled = true; }
+            return;
+        }
         if (e.Key == Key.F1)
         {
             About_Click(sender, new RoutedEventArgs());
@@ -233,7 +513,21 @@ public sealed partial class SetupWindow : Window
     {
         var latest = _storage.FindLatestAutosave();
         if (latest is null) { SetupStatus.Text = "No autosave is available."; return; }
-        WorldCreated?.Invoke(new WorldSetupOptions { LoadSavePath = latest });
+        PublishWorld(new WorldSetupOptions { LoadSavePath = latest, IsAutosaveRecovery = true });
+    }
+
+    private async void OnboardingGotIt_Click(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            await _storage.MarkFirstRunCompleteAsync();
+            OnboardingPanel.IsVisible = false;
+            SetupStatus.Text = "ONBOARDING COMPLETE";
+        }
+        catch (Exception error)
+        {
+            SetupStatus.Text = $"ONBOARDING FAILED: {error.Message}";
+        }
     }
 
     private StartingMode CurrentMode() => ZerobotMode.IsChecked == true

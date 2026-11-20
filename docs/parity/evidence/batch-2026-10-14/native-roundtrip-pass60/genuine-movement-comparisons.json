@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "batch": 60,
+  "source_head": "43d38a55ac3e95c541bc9407bc0056b7cf45e351",
+  "source_manifest_sha256": "D1218C0674D8B1C7C11F4A2CEFC8F886E891356AD7E5EB1FB7977EA436F43700",
+  "source_version": "2.48.32",
+  "expected_cycles": [
+    1,
+    10,
+    100,
+    102
+  ],
+  "passed": true,
+  "checkpoints": [
+    {
+      "cycle": 1,
+      "candidate_exit_code": 0,
+      "compare_exit_code": 0,
+      "passed": true,
+      "original": "modern/engine/tests/fixtures/db24832-genuine-movement-cycle1-20261016.sim",
+      "original_sha256": "766F386C392C59834A3390A2C726D3E2F8DB695FE5B05A932A593D0DCCD010E3",
+      "rust_output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\movement-rust-cycle1.sim",
+      "rust_output_sha256": "F0C94224D60926F863DD015FC884AC93EFAB8E6392F9ED6C501C8245A09D7173",
+      "compared_fields": 1379,
+      "difference_count": 0,
+      "absolute_tolerance": 0,
+      "relative_tolerance": 0,
+      "log": "genuine-movement-1-compare.log",
+      "parse_error": null
+    },
+    {
+      "cycle": 10,
+      "candidate_exit_code": 0,
+      "compare_exit_code": 0,
+      "passed": true,
+      "original": "modern/engine/tests/fixtures/db24832-genuine-movement-cycle10-20261016.sim",
+      "original_sha256": "DA23FCBE0B725FCF134F7FA25022951E600088603126BFB6E327027FF23465A2",
+      "rust_output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\movement-rust-cycle10.sim",
+      "rust_output_sha256": "66E473E595BBE146893F1722B15863107365859EA4113896747C1EA7F818CDAA",
+      "compared_fields": 1379,
+      "difference_count": 0,
+      "absolute_tolerance": 0,
+      "relative_tolerance": 0,
+      "log": "genuine-movement-10-compare.log",
+      "parse_error": null
+    },
+    {
+      "cycle": 100,
+      "candidate_exit_code": 0,
+      "compare_exit_code": 0,
+      "passed": true,
+      "original": "modern/engine/tests/fixtures/db24832-genuine-movement-cycle100-20261017.sim",
+      "original_sha256": "D1F078B57BC1DDF4690DBEF24CC5945FC925755293060A8561FB7E82A1100202",
+      "rust_output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\movement-rust-cycle100.sim",
+      "rust_output_sha256": "E7C255272824FAEA49E4DEE0B69B165CB543DED93809CA45D7AA00C24578B309",
+      "compared_fields": 1379,
+      "difference_count": 0,
+      "absolute_tolerance": 0,
+      "relative_tolerance": 0,
+      "log": "genuine-movement-100-compare.log",
+      "parse_error": null
+    },
+    {
+      "cycle": 102,
+      "candidate_exit_code": 0,
+      "compare_exit_code": 0,
+      "passed": true,
+      "original": "modern/engine/tests/fixtures/db24832-genuine-movement-cycle102-20261016.sim",
+      "original_sha256": "2BB48F9883CA05E5771989CB08056BAC737E1EE50F148A8B234FF894EAF37B5B",
+      "rust_output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\movement-rust-cycle102.sim",
+      "rust_output_sha256": "36F3840B0DBB16E5218BDEDDC347598F63F19DF8B53182D935A15AC5A6F32F1A",
+      "compared_fields": 1379,
+      "difference_count": 0,
+      "absolute_tolerance": 0,
+      "relative_tolerance": 0,
+      "log": "genuine-movement-102-compare.log",
+      "parse_error": null
+    }
+  ],
+  "boundary": "Actual original fresh-load C1/C10/C100 and separate C102 saves. All counters are read from the original bytes. Other seven-case checkpoints are outside this movement receipt; additional genuine comparisons are recorded separately. SIM omits arbitrary historical Rnd/Gauss state."
+}

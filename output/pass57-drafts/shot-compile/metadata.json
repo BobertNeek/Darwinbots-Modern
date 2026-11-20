@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "batch": 57,
+  "status": "authored_unapplied_no_checks",
+  "base_source_head": "9be8474cdcdf3bba2ac249ca141ed19e1f64df9f",
+  "base_head_read_directly_from_existing_worktree_git_metadata": true,
+  "files": [
+    {
+      "target": "modern/engine/src/world/native_shots.rs",
+      "draft": "output/pass57-drafts/shot-compile/modern/engine/src/world/native_shots.rs",
+      "base_raw_sha256": "394F91B6A25F7B696519457980EE59C96CB6669E7B9C9D3152A6F9D8C526D545",
+      "candidate_raw_sha256": "1A188728891B1B145A9524686C2113FC37A9E21474B43604C195DD47AF293ACA",
+      "base_bytes": 41203,
+      "candidate_bytes": 41211,
+      "preserved_base": "output/pass57-drafts/shot-compile/before/modern/engine/src/world/native_shots.rs"
+    }
+  ],
+  "repair": "Use self.config.physics.max_velocity in the original MaxBotShotSeperation reach formula; EngineConfig has no top-level max_velocity.",
+  "exact_edit": {
+    "before": "f64::from(self.config.max_velocity)",
+    "after": "f64::from(self.config.physics.max_velocity)",
+    "occurrences": 1
+  },
+  "source_authority": [
+    "Darwinbots2/main.frm1291/1456: MaxBotShotSeperation uses SimOpts.MaxVelocity.",
+    "modern/engine/src/config.rs9 and261: max_velocity belongs to PhysicsSettings; EngineConfig.physics owns it.",
+    "modern/engine/src/world/native_io.rs206 reads saved max_velocity into PhysicsSettings.",
+    "modern/engine/src/world/native_physics.rs190-192 uses self.config.physics.max_velocity."
+  ],
+  "net_new_code_test_cases": 0,
+  "combined_batch_new_code_test_count": 59,
+  "unchanged": "No formula, data flow, runtime branch or existing test expectation changed beyond the field path.",
+  "verification": {
+    "static_source_reads_only": true,
+    "active_file_still_base_hash": true,
+    "format": false,
+    "parser": false,
+    "build": false,
+    "test": false,
+    "engine": false,
+    "cli": false,
+    "git_command": false,
+    "git_mutation": false,
+    "ui": false,
+    "gpu": false
+  }
+}

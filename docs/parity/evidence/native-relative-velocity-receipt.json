@@ -1,0 +1,19 @@
+{
+  "source_revision": "cf7be4de477cc1cf4b2ac27508b46dbebdb1d69a",
+  "passed": 158,
+  "failed": 0,
+  "ignored": 5,
+  "original_sources": [
+    "Senses.bas:309-324",
+    "Ties.bas:770-783"
+  ],
+  "log": "completion-checks/parity-native-relative-final.log",
+  "lint": {
+    "status": "passed",
+    "log": "completion-checks/parity-native-relative-clippy.log"
+  },
+  "limits": [
+    "Original executable differential and moving obstacle references remain unqualified.",
+    "Out-of-range VB6 Integer overflow cases are guarded by saturation in the port; original overflow behavior is not reproduced."
+  ]
+}

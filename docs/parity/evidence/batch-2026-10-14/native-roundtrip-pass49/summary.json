@@ -1,0 +1,605 @@
+{
+  "schema_version": 1,
+  "batch": 49,
+  "sealed_utc": "2026-10-16T16:49:15.932Z",
+  "state": "completed",
+  "local_cpu_qualification_passed": true,
+  "parity_complete": false,
+  "source_parent": "dbffdc58787f369e7490461836df7ef677c01e8f",
+  "source_manifest": "source.json",
+  "source_manifest_sha256": "3900DB4715D56D1A40D38572889338A679701457002685E4BAC29146084D0570",
+  "source_files": 76,
+  "source_pins_match_at_release": true,
+  "retained_input_pins": 239,
+  "retained_input_pins_match_at_release": true,
+  "owned_workers_verified_absent": true,
+  "normal_step_count": 39,
+  "normal_steps": [
+    {
+      "step": "format-check",
+      "exit_code": 0,
+      "seconds": 3.9347971,
+      "log": "format-check.log"
+    },
+    {
+      "step": "strict-clippy",
+      "exit_code": 0,
+      "seconds": 95.1439032,
+      "log": "strict-clippy.log"
+    },
+    {
+      "step": "cpu-engine-lib",
+      "exit_code": 0,
+      "seconds": 403.7251994,
+      "log": "cpu-engine-lib.log"
+    },
+    {
+      "step": "cpu-ffi-integrations",
+      "exit_code": 0,
+      "seconds": 398.0318169,
+      "log": "cpu-ffi-integrations.log"
+    },
+    {
+      "step": "cpu-cli-lib",
+      "exit_code": 0,
+      "seconds": 367.6133454,
+      "log": "cpu-cli-lib.log"
+    },
+    {
+      "step": "cpu-cli-integrations",
+      "exit_code": 0,
+      "seconds": 84.103666,
+      "log": "cpu-cli-integrations.log"
+    },
+    {
+      "step": "cpu-docs",
+      "exit_code": 0,
+      "seconds": 4.6724574,
+      "log": "cpu-docs.log"
+    },
+    {
+      "step": "cli-build",
+      "exit_code": 0,
+      "seconds": 1.3171729,
+      "log": "cli-build.log"
+    },
+    {
+      "step": "original-zero-cycle-replay",
+      "exit_code": 0,
+      "seconds": 1.8381256,
+      "log": "original-zero-cycle-replay.log"
+    },
+    {
+      "step": "original-zero-cycle-compare",
+      "exit_code": 0,
+      "seconds": 1.9217774,
+      "log": "original-zero-cycle-compare.log"
+    },
+    {
+      "step": "candidate-movement-1",
+      "exit_code": 0,
+      "seconds": 0.4807836,
+      "log": "candidate-movement-1.log"
+    },
+    {
+      "step": "candidate-movement-10",
+      "exit_code": 0,
+      "seconds": 0.4377109,
+      "log": "candidate-movement-10.log"
+    },
+    {
+      "step": "candidate-movement-100",
+      "exit_code": 0,
+      "seconds": 0.4946446,
+      "log": "candidate-movement-100.log"
+    },
+    {
+      "step": "candidate-fixed-1",
+      "exit_code": 0,
+      "seconds": 0.7058619,
+      "log": "candidate-fixed-1.log"
+    },
+    {
+      "step": "candidate-fixed-10",
+      "exit_code": 0,
+      "seconds": 0.5173334,
+      "log": "candidate-fixed-10.log"
+    },
+    {
+      "step": "candidate-fixed-100",
+      "exit_code": 0,
+      "seconds": 0.4791644,
+      "log": "candidate-fixed-100.log"
+    },
+    {
+      "step": "candidate-contacts-1",
+      "exit_code": 0,
+      "seconds": 0.4406555,
+      "log": "candidate-contacts-1.log"
+    },
+    {
+      "step": "candidate-contacts-10",
+      "exit_code": 0,
+      "seconds": 0.4298494,
+      "log": "candidate-contacts-10.log"
+    },
+    {
+      "step": "candidate-contacts-100",
+      "exit_code": 0,
+      "seconds": 0.5052301,
+      "log": "candidate-contacts-100.log"
+    },
+    {
+      "step": "candidate-body-1",
+      "exit_code": 0,
+      "seconds": 0.42629,
+      "log": "candidate-body-1.log"
+    },
+    {
+      "step": "candidate-body-10",
+      "exit_code": 0,
+      "seconds": 0.4559844,
+      "log": "candidate-body-10.log"
+    },
+    {
+      "step": "candidate-body-100",
+      "exit_code": 0,
+      "seconds": 0.4432885,
+      "log": "candidate-body-100.log"
+    },
+    {
+      "step": "candidate-ties-1",
+      "exit_code": 0,
+      "seconds": 0.4399307,
+      "log": "candidate-ties-1.log"
+    },
+    {
+      "step": "candidate-ties-10",
+      "exit_code": 0,
+      "seconds": 0.4575683,
+      "log": "candidate-ties-10.log"
+    },
+    {
+      "step": "candidate-ties-100",
+      "exit_code": 0,
+      "seconds": 0.5044049,
+      "log": "candidate-ties-100.log"
+    },
+    {
+      "step": "candidate-feeding-1",
+      "exit_code": 0,
+      "seconds": 0.5430073,
+      "log": "candidate-feeding-1.log"
+    },
+    {
+      "step": "candidate-feeding-10",
+      "exit_code": 0,
+      "seconds": 0.4981823,
+      "log": "candidate-feeding-10.log"
+    },
+    {
+      "step": "candidate-feeding-100",
+      "exit_code": 0,
+      "seconds": 0.4694054,
+      "log": "candidate-feeding-100.log"
+    },
+    {
+      "step": "candidate-reproduction-1",
+      "exit_code": 0,
+      "seconds": 0.9566071,
+      "log": "candidate-reproduction-1.log"
+    },
+    {
+      "step": "candidate-reproduction-10",
+      "exit_code": 0,
+      "seconds": 0.7294351,
+      "log": "candidate-reproduction-10.log"
+    },
+    {
+      "step": "candidate-reproduction-100",
+      "exit_code": 0,
+      "seconds": 1.0765978,
+      "log": "candidate-reproduction-100.log"
+    },
+    {
+      "step": "candidate-checkpoints-completeness",
+      "exit_code": 0,
+      "cases": 7,
+      "expected_outputs": 21,
+      "actual_rows": 21
+    },
+    {
+      "step": "desktop-core",
+      "exit_code": 0,
+      "seconds": 25.4672501,
+      "log": "desktop-core.log"
+    },
+    {
+      "step": "desktop-test-build",
+      "exit_code": 0,
+      "seconds": 279.5429811,
+      "log": "desktop-test-build.log"
+    },
+    {
+      "step": "windows-publish",
+      "exit_code": 0,
+      "seconds": 16.3086265,
+      "log": "windows-publish.log"
+    },
+    {
+      "step": "package-smoke",
+      "exit_code": 0,
+      "timed_out": false,
+      "log": "package-smoke.json"
+    },
+    {
+      "step": "packaged-native-desktop",
+      "exit_code": 0,
+      "seconds": 132.0749757,
+      "log": "packaged-native-desktop.log"
+    },
+    {
+      "step": "package-assets",
+      "exit_code": 0,
+      "bots": 48
+    },
+    {
+      "step": "retained-pass48-targets",
+      "exit_code": 0,
+      "retained_targets": 56,
+      "fresh_target_invocations": 10,
+      "basis": "exact source and reachability projection; not fresh49 runtime"
+    }
+  ],
+  "rust_cpu": {
+    "qualification_method": "10 fresh49 target invocations plus56 successful fresh48 targets retained through exact source/input/reachability proof",
+    "fresh_full_workspace_invocation": false,
+    "total_distinct_targets": 66,
+    "fresh_target_invocations": 10,
+    "fresh_counts": {
+      "passed": 463,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filtered_out": 22
+    },
+    "retained_target_count": 56,
+    "retained_counts": {
+      "passed": 440,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filtered_out": 5
+    },
+    "composed_counts": {
+      "passed": 903,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filtered_out": 27
+    },
+    "retained_projection": "retained-pass48-projection.json",
+    "fresh_targets": [
+      {
+        "package": "darwinbots-engine",
+        "type": "lib",
+        "name": "darwinbots_engine",
+        "key": "darwinbots-engine:lib:darwinbots_engine",
+        "source_path": "modern/engine/src/lib.rs",
+        "start_line": 3,
+        "header": "     Running unittests src\\lib.rs (target\\release\\deps\\darwinbots_engine-f5a573ff9adb3a9e.exe)",
+        "end_line": 423,
+        "result": {
+          "status": "ok",
+          "passed": 412,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 7,
+          "duration_seconds": 18
+        },
+        "failed_tests": [],
+        "log": "cpu-engine-lib.log",
+        "log_sha256": "8AD24798F0AD4DEA15808AE1EC85BA2C6999C903021D3BC721757D9CC27A8613"
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "core_state_contracts",
+        "key": "darwinbots-engine:test:core_state_contracts",
+        "source_path": "modern/engine/tests/core_state_contracts.rs",
+        "start_line": 3,
+        "header": "     Running tests\\core_state_contracts.rs (target\\release\\deps\\core_state_contracts-ccd89b507eed90ae.exe)",
+        "end_line": 12,
+        "result": {
+          "status": "ok",
+          "passed": 5,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0,
+          "duration_seconds": 0.02
+        },
+        "failed_tests": [],
+        "log": "cpu-ffi-integrations.log",
+        "log_sha256": "33EEF24FD2BF6329679C6FB6C55243CF737EF9AC0DBB3704D396785C5DCFF475"
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "gpu_ffi",
+        "key": "darwinbots-engine:test:gpu_ffi",
+        "source_path": "modern/engine/tests/gpu_ffi.rs",
+        "start_line": 14,
+        "header": "     Running tests\\gpu_ffi.rs (target\\release\\deps\\gpu_ffi-0257c6a4cd2bc001.exe)",
+        "end_line": 32,
+        "result": {
+          "status": "ok",
+          "passed": 14,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 14,
+          "duration_seconds": 11.81
+        },
+        "failed_tests": [],
+        "log": "cpu-ffi-integrations.log",
+        "log_sha256": "33EEF24FD2BF6329679C6FB6C55243CF737EF9AC0DBB3704D396785C5DCFF475"
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "native_random_lifecycle_248",
+        "key": "darwinbots-engine:test:native_random_lifecycle_248",
+        "source_path": "modern/engine/tests/native_random_lifecycle_248.rs",
+        "start_line": 34,
+        "header": "     Running tests\\native_random_lifecycle_248.rs (target\\release\\deps\\native_random_lifecycle_248-44cdc89674ea0ecf.exe)",
+        "end_line": 51,
+        "result": {
+          "status": "ok",
+          "passed": 13,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0,
+          "duration_seconds": 0.18
+        },
+        "failed_tests": [],
+        "log": "cpu-ffi-integrations.log",
+        "log_sha256": "33EEF24FD2BF6329679C6FB6C55243CF737EF9AC0DBB3704D396785C5DCFF475"
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "robot_tools",
+        "key": "darwinbots-engine:test:robot_tools",
+        "source_path": "modern/engine/tests/robot_tools.rs",
+        "start_line": 53,
+        "header": "     Running tests\\robot_tools.rs (target\\release\\deps\\robot_tools-1d99c83bc1ba5691.exe)",
+        "end_line": 62,
+        "result": {
+          "status": "ok",
+          "passed": 5,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0,
+          "duration_seconds": 1.61
+        },
+        "failed_tests": [],
+        "log": "cpu-ffi-integrations.log",
+        "log_sha256": "33EEF24FD2BF6329679C6FB6C55243CF737EF9AC0DBB3704D396785C5DCFF475"
+      },
+      {
+        "package": "darwinbots-cli",
+        "type": "lib",
+        "name": "darwinbots_cli",
+        "key": "darwinbots-cli:lib:darwinbots_cli",
+        "source_path": "modern/cli/src/lib.rs",
+        "start_line": 4,
+        "header": "     Running unittests src\\lib.rs (target\\release\\deps\\darwinbots_cli-19b2f1d2dddc4ec7.exe)",
+        "end_line": 16,
+        "result": {
+          "status": "ok",
+          "passed": 8,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 1,
+          "duration_seconds": 8.86
+        },
+        "failed_tests": [],
+        "log": "cpu-cli-lib.log",
+        "log_sha256": "1710B40BEC84B45E34077275AE1653E124EC8E5D01C4BA0758776C14CCDC0A77"
+      },
+      {
+        "package": "darwinbots-cli",
+        "type": "test",
+        "name": "commands",
+        "key": "darwinbots-cli:test:commands",
+        "source_path": "modern/cli/tests/commands.rs",
+        "start_line": 3,
+        "header": "     Running tests\\commands.rs (target\\release\\deps\\commands-eec7744335c58eb1.exe)",
+        "end_line": 10,
+        "result": {
+          "status": "ok",
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0,
+          "duration_seconds": 0.05
+        },
+        "failed_tests": [],
+        "log": "cpu-cli-integrations.log",
+        "log_sha256": "C80CD3F66FFF7B041ED1C868DC0626D2AD87DF721EE9CEE1F0F1C42D071B6CAD"
+      },
+      {
+        "package": "darwinbots-cli",
+        "type": "test",
+        "name": "native_comparison",
+        "key": "darwinbots-cli:test:native_comparison",
+        "source_path": "modern/cli/tests/native_comparison.rs",
+        "start_line": 12,
+        "header": "     Running tests\\native_comparison.rs (target\\release\\deps\\native_comparison-d3c5181653a931bd.exe)",
+        "end_line": 19,
+        "result": {
+          "status": "ok",
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0,
+          "duration_seconds": 0.56
+        },
+        "failed_tests": [],
+        "log": "cpu-cli-integrations.log",
+        "log_sha256": "C80CD3F66FFF7B041ED1C868DC0626D2AD87DF721EE9CEE1F0F1C42D071B6CAD"
+      },
+      {
+        "package": "darwinbots-cli",
+        "type": "doc",
+        "name": "darwinbots_cli",
+        "key": "darwinbots-cli:doc:darwinbots_cli",
+        "source_path": "modern/cli/src/lib.rs",
+        "start_line": 2,
+        "header": "   Doc-tests darwinbots_cli",
+        "end_line": 6,
+        "result": {
+          "status": "ok",
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0,
+          "duration_seconds": 0
+        },
+        "failed_tests": [],
+        "log": "cpu-docs.log",
+        "log_sha256": "78740ACD1EBA7A3F5BEFC827C940C049ED8D74169338CBB464FED42B8A52B048"
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "doc",
+        "name": "darwinbots_engine",
+        "key": "darwinbots-engine:doc:darwinbots_engine",
+        "source_path": "modern/engine/src/lib.rs",
+        "start_line": 8,
+        "header": "   Doc-tests darwinbots_engine",
+        "end_line": 12,
+        "result": {
+          "status": "ok",
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0,
+          "duration_seconds": 0
+        },
+        "failed_tests": [],
+        "log": "cpu-docs.log",
+        "log_sha256": "78740ACD1EBA7A3F5BEFC827C940C049ED8D74169338CBB464FED42B8A52B048"
+      }
+    ]
+  },
+  "strict_clippy": {
+    "exit_code": 0,
+    "seconds": 95.1439032
+  },
+  "desktop_core": {
+    "counters": {
+      "total": 235,
+      "executed": 235,
+      "passed": 235,
+      "failed": 0,
+      "error": 0,
+      "timeout": 0,
+      "aborted": 0,
+      "inconclusive": 0,
+      "passedButRunAborted": 0,
+      "notRunnable": 0,
+      "notExecuted": 0,
+      "disconnected": 0,
+      "warning": 0,
+      "completed": 0,
+      "inProgress": 0,
+      "pending": 0
+    },
+    "receipt": "core.trx"
+  },
+  "desktop": {
+    "counters": {
+      "total": 176,
+      "executed": 176,
+      "passed": 176,
+      "failed": 0,
+      "error": 0,
+      "timeout": 0,
+      "aborted": 0,
+      "inconclusive": 0,
+      "passedButRunAborted": 0,
+      "notRunnable": 0,
+      "notExecuted": 0,
+      "disconnected": 0,
+      "warning": 0,
+      "completed": 0,
+      "inProgress": 0,
+      "pending": 0
+    },
+    "receipt": "desktop.trx",
+    "native_dll": {
+      "target_release": "8F7986350255DBCD8A565D818741F7E6A1511E1CDC66EB52C67456FA63B1385A",
+      "package": "8F7986350255DBCD8A565D818741F7E6A1511E1CDC66EB52C67456FA63B1385A",
+      "desktop": "8F7986350255DBCD8A565D818741F7E6A1511E1CDC66EB52C67456FA63B1385A"
+    }
+  },
+  "package": {
+    "path": "artifacts/win-x64-native-roundtrip-pass49",
+    "cli": {
+      "cli_sha256": "08CD646CEED4241DAF01E466F9CC03C205B6A5884151578C7F718EF9A8898728",
+      "source": "source.json",
+      "build_exit_code": 0
+    },
+    "smoke": {
+      "status": "passed",
+      "backend": "CPU",
+      "ticks": 13,
+      "population": 1,
+      "movement": true,
+      "save_resume": true,
+      "bundled_bots": 48
+    },
+    "assets": {
+      "bots": 48,
+      "asset_mismatches": []
+    }
+  },
+  "strict_zero_cycle": {
+    "passed": true,
+    "compared_fields": 393316,
+    "difference_count": 0,
+    "tolerance": 0
+  },
+  "rust_candidate_checkpoints": {
+    "cases": 7,
+    "outputs": 21,
+    "cycles": [
+      1,
+      10,
+      100
+    ],
+    "receipt": "candidate-checkpoints.json",
+    "original_program_observations": 0
+  },
+  "preserved_wip_image": {
+    "file": "docs/parity/receipts/db24832-world06-shape-editor.png",
+    "before": "44B7419EC76B825F1C307A284BD14A607DC975C1C410857F41A6A66C1E57FAE9",
+    "test_output": "44B7419EC76B825F1C307A284BD14A607DC975C1C410857F41A6A66C1E57FAE9",
+    "restored": "44B7419EC76B825F1C307A284BD14A607DC975C1C410857F41A6A66C1E57FAE9"
+  },
+  "physical_gpu_current_passes": 0,
+  "original_trajectories_current_passes": 0,
+  "visible_final_walkthrough": false,
+  "source_committed": false,
+  "source_pushed": false
+}

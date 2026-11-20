@@ -1,0 +1,34 @@
+{
+  "source_head": "9d9321e4b86d76d18ef5e2c10f6c873ce0446089",
+  "source_manifest_sha256": "5F5E901F1B2461D2C9B0A67CC3CDDD45BEE3DC2061120CF12FC33FADF16B72ED",
+  "status": "Two fresh plant outputs and one actual-C11 contacts output from pinned inputs; runtime outcomes are not inherited.",
+  "cases": [
+    {
+      "case": "chloroplast",
+      "cycle": 1,
+      "exit_code": 0,
+      "input": "modern/engine/tests/fixtures/db24832-chloroplast-start-48032.sim",
+      "input_sha256": "CB85F10215164C18EB8D8E73A98C2B365B91FE5F7F2BB52E4F2789B7D1E38859",
+      "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate62\\chloroplast-rust-cycle1.sim",
+      "output_sha256": "5A2ADDA715E640293EDF86C4E4F8BFAA23200E2A1D44BA7ABBA8ADB6EB030858"
+    },
+    {
+      "case": "chloroplast",
+      "cycle": 10,
+      "exit_code": 0,
+      "input": "modern/engine/tests/fixtures/db24832-chloroplast-start-48032.sim",
+      "input_sha256": "CB85F10215164C18EB8D8E73A98C2B365B91FE5F7F2BB52E4F2789B7D1E38859",
+      "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate62\\chloroplast-rust-cycle10.sim",
+      "output_sha256": "1D4BDC51CEA523E4B478E208EC2FFB1A5E137221BEDF0219089B8BF6E91A7931"
+    },
+    {
+      "case": "contacts",
+      "cycle": 11,
+      "exit_code": 0,
+      "input": "modern/engine/tests/fixtures/db24832-contacts-start-48032.sim",
+      "input_sha256": "4AF50D8B78BD75723DDF36E47C3A80B9DE64636FBC1A9501E16C7FCBFF9F0C72",
+      "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate62\\contacts-rust-cycle11.sim",
+      "output_sha256": "8F7B5742EC5C6ACA9C950C298E27CEBA3321B53267A0DEC319F3394F55305CF5"
+    }
+  ]
+}

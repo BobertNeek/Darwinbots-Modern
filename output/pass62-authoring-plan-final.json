@@ -1,0 +1,302 @@
+{
+  "schema_version": 1,
+  "batch": 62,
+  "state": "all62_code_and_tests_authored_peer_reviewed_unapplied",
+  "authored_utc": "2026-10-17T13:16:11.012Z",
+  "base_head": "8a42380d2096bb97d5028a0c3cfc03b96420fdcd",
+  "target_count": 25,
+  "existing_targets": 23,
+  "new_targets": 2,
+  "files": [
+    {
+      "target": "docs/parity/db24832-parity-report-2026-10-14.html",
+      "candidate": "output/pass62-drafts/report/candidate/docs/parity/db24832-parity-report-2026-10-14.html",
+      "base_sha256": "B143C3E7F425FDCF13AD47A7BC2E7852CB8AF47FAB1C2A4B8D00036D246D13C5",
+      "candidate_sha256": "D4DCC893E051190CE9B6081BBE5F87AF336BF33C5E7573D4B4C2D2D42A0D05C9",
+      "new_file": false,
+      "metadata": "output/pass62-drafts/report/metadata.json",
+      "backup": "output/pass62-preapply-backup/docs/parity/db24832-parity-report-2026-10-14.html"
+    },
+    {
+      "target": "docs/parity/evidence/batch-2026-10-14/native-repopulation-source-authority62.json",
+      "candidate": "output/pass62-drafts/source-authority/candidate/docs/parity/evidence/batch-2026-10-14/native-repopulation-source-authority62.json",
+      "base_sha256": null,
+      "candidate_sha256": "BCA9A27390F1176B7308465E7F813434D0649912D3380BF3BD6FFA59024EC294",
+      "new_file": true,
+      "metadata": "output/pass62-drafts/source-authority/metadata.json"
+    },
+    {
+      "target": "docs/parity/evidence/continuation-handoff-2026-10-13.md",
+      "candidate": "output/pass62-drafts/report/candidate/docs/parity/evidence/continuation-handoff-2026-10-13.md",
+      "base_sha256": "548F78F2CD1FCDD7ECFD37EBFA1F4E49B5F420E0FEB08D4A2A1EFAE56D6F4243",
+      "candidate_sha256": "4472323A9DB4D048BFB2B8AD7C5F4A64D3BA1E8507BA623F6746A1B1E53E0B29",
+      "new_file": false,
+      "metadata": "output/pass62-drafts/report/metadata.json",
+      "backup": "output/pass62-preapply-backup/docs/parity/evidence/continuation-handoff-2026-10-13.md"
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop.Core/EngineSnapshot.cs",
+      "candidate": "output/pass62-drafts/managed-shot-state/repopulation-counter/candidate/modern/desktop/src/Darwinbots.Desktop.Core/EngineSnapshot.cs",
+      "base_sha256": "BD63CB4BD9894BCE8FE88A978A8B4F47E9B1BB19890FB3E933AC212020E3AB61",
+      "candidate_sha256": "95F3D3E595D45AD89AC442FCED4DD963F9FD4D153C7B72FD8D13E08A930DE3FD",
+      "new_file": false,
+      "metadata": "output/pass62-drafts/managed-shot-state/repopulation-counter/metadata.json",
+      "superseded_candidate": "output/pass62-drafts/managed-shot-state/candidate/modern/desktop/src/Darwinbots.Desktop.Core/EngineSnapshot.cs",
+      "superseded_sha256": "2EB86EC5B54AC8DEC5D30F5C1A527633E48B7B00DC62DF129A04BCD775D4C5FB",
+      "backup": "output/pass62-preapply-backup/modern/desktop/src/Darwinbots.Desktop.Core/EngineSnapshot.cs"
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop.Core/NativeSnapshotParser.cs",
+      "candidate": "output/pass62-drafts/managed-shot-state/candidate/modern/desktop/src/Darwinbots.Desktop.Core/NativeSnapshotParser.cs",
+      "base_sha256": "11C5C37BCCF2E4FDCC4281A3B250E7071E504ECEB9655EA41769F407199C30FC",
+      "candidate_sha256": "65A72147F58927941514590922FEADDBF49ACB60822B770CA2C4D0C8B7FC9107",
+      "new_file": false,
+      "metadata": "output/pass62-drafts/managed-shot-state/metadata.json",
+      "backup": "output/pass62-preapply-backup/modern/desktop/src/Darwinbots.Desktop.Core/NativeSnapshotParser.cs"
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop/Controls/WorldViewport.cs",
+      "candidate": "output/pass62-drafts/managed-shot-state/candidate/modern/desktop/src/Darwinbots.Desktop/Controls/WorldViewport.cs",
+      "base_sha256": "9290BBEAB7BC0F0AF016C6DE54BA33FFBADB6470AADB1864F1AA53B614F4DF6D",
+      "candidate_sha256": "1D6D8E66E6D0E6EC88F8B118B55B2A834EC06564F6F0AFC877F2D2CB84AB7EFE",
+      "new_file": false,
+      "metadata": "output/pass62-drafts/managed-shot-state/metadata.json",
+      "backup": "output/pass62-preapply-backup/modern/desktop/src/Darwinbots.Desktop/Controls/WorldViewport.cs"
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop/Views/RobotDetailsWindow.cs",
+      "candidate": "output/pass62-drafts/managed-shot-state/candidate/modern/desktop/src/Darwinbots.Desktop/Views/RobotDetailsWindow.cs",
+      "base_sha256": "4E340F2512FC9A22AAAC1EEF09015F9BE01EE4E2C8677BC5BB8C8F1A795B7D8E",
+      "candidate_sha256": "19302117F6BA6E7F3C8338E36D0437F0616A62C5F932054F44C335B84C9912EA",
+      "new_file": false,
+      "metadata": "output/pass62-drafts/managed-shot-state/metadata.json",
+      "backup": "output/pass62-preapply-backup/modern/desktop/src/Darwinbots.Desktop/Views/RobotDetailsWindow.cs"
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/NativeSnapshotParserTests.cs",
+      "candidate": "output/pass62-drafts/managed-shot-state/repopulation-counter/candidate/modern/desktop/tests/Darwinbots.Desktop.Core.Tests/NativeSnapshotParserTests.cs",
+      "base_sha256": "93C66BB428772C627872DEBDC89EF0A0531636072ACBD48473FA6806BC6C36B3",
+      "candidate_sha256": "702CABA3B759583DC42FF5530F5226A9C25907BA0CBF5F83F82305E2095B939C",
+      "new_file": false,
+      "metadata": "output/pass62-drafts/managed-shot-state/repopulation-counter/metadata.json",
+      "superseded_candidate": "output/pass62-drafts/managed-shot-state/candidate/modern/desktop/tests/Darwinbots.Desktop.Core.Tests/NativeSnapshotParserTests.cs",
+      "superseded_sha256": "20F09FE6C9F2F4D7179F91913B4AFA0E4F824E1CBA29110E99BCCFCBEB4FF1F8",
+      "backup": "output/pass62-preapply-backup/modern/desktop/tests/Darwinbots.Desktop.Core.Tests/NativeSnapshotParserTests.cs"
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/SimulationSessionTests.cs",
+      "candidate": "output/pass62-drafts/managed-shot-state/repopulation-counter/candidate/modern/desktop/tests/Darwinbots.Desktop.Core.Tests/SimulationSessionTests.cs",
+      "base_sha256": "9BF58294FE960915DBD04012EF61D2707CB2083ABB036C2FD7F92266E05BEB84",
+      "candidate_sha256": "44C4A6969176F0344DD16C846A5B876A3342AFF0758777D44A79ED35BDDE0655",
+      "new_file": false,
+      "metadata": "output/pass62-drafts/managed-shot-state/repopulation-counter/metadata.json",
+      "backup": "output/pass62-preapply-backup/modern/desktop/tests/Darwinbots.Desktop.Core.Tests/SimulationSessionTests.cs"
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/CommunityLeagueNativeTests.cs",
+      "candidate": "output/pass62-drafts/managed-shot-state/repopulation-counter/candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/CommunityLeagueNativeTests.cs",
+      "base_sha256": "8257981DB3983DA766CC0DF0BCF0F7C8191AD2090B48A9BBB9C5ECEDF7BF7F25",
+      "candidate_sha256": "02BA40A2845D70016E15425A1308281F3D5BA1C157F5C5E111E184707C13C779",
+      "new_file": false,
+      "metadata": "output/pass62-drafts/managed-shot-state/repopulation-counter/metadata.json",
+      "backup": "output/pass62-preapply-backup/modern/desktop/tests/Darwinbots.Desktop.Tests/CommunityLeagueNativeTests.cs"
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs",
+      "candidate": "output/pass62-drafts/managed-shot-state/repopulation-counter/candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs",
+      "base_sha256": "7364A34B585FC794D7EF2BC56D966627ACBF6532A0EEC01C6FF0D784DAD479EC",
+      "candidate_sha256": "756B50A34FB8EA56AAB9CDF56E1439E8F6BD4DCE1805D2A9AA836F11EB79F154",
+      "new_file": false,
+      "metadata": "output/pass62-drafts/managed-shot-state/repopulation-counter/metadata.json",
+      "backup": "output/pass62-preapply-backup/modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs"
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/RobotDetailsRenderedTests.cs",
+      "candidate": "output/pass62-drafts/managed-shot-state/candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/RobotDetailsRenderedTests.cs",
+      "base_sha256": "0E292F0A53B98DAC875615F91C315E17C0C6A5E916295744889D45736BD24D31",
+      "candidate_sha256": "6357C23F4BC23FB59E5FD42559F327B42B78B54C102985591FE4EE5416F21231",
+      "new_file": false,
+      "metadata": "output/pass62-drafts/managed-shot-state/metadata.json",
+      "backup": "output/pass62-preapply-backup/modern/desktop/tests/Darwinbots.Desktop.Tests/RobotDetailsRenderedTests.cs"
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/WorldShotRenderedTests.cs",
+      "candidate": "output/pass62-drafts/managed-shot-state/candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/WorldShotRenderedTests.cs",
+      "base_sha256": "1748A21EE85DB2B615777F6CAEC92396033F0C58B9C6F0BD07EE152609BD9BB9",
+      "candidate_sha256": "F0BB6CE0FD26A287FBFF5CBFAB1B05EE5F71C55283EB20AFAA7C9545BCB84FE1",
+      "new_file": false,
+      "metadata": "output/pass62-drafts/managed-shot-state/metadata.json",
+      "backup": "output/pass62-preapply-backup/modern/desktop/tests/Darwinbots.Desktop.Tests/WorldShotRenderedTests.cs"
+    },
+    {
+      "target": "modern/engine/src/ffi.rs",
+      "candidate": "output/pass62-drafts/native-repopulation/candidate/modern/engine/src/ffi.rs",
+      "base_sha256": "AE40A7C715D1E717FEC38BAA6C5C9B77BC931960BFE735D75338593A261A6ABF",
+      "candidate_sha256": "08793B1116C33F21C04DB964DA3DB87D1F2916B95FD7A506811113C237301207",
+      "new_file": false,
+      "metadata": "output/pass62-drafts/native-repopulation/metadata.json",
+      "backup": "output/pass62-preapply-backup/modern/engine/src/ffi.rs"
+    },
+    {
+      "target": "modern/engine/src/shot.rs",
+      "candidate": "output/pass62-drafts/rust-shot-state/candidate/modern/engine/src/shot.rs",
+      "base_sha256": "9CCD4965E31BE3FE25633AA4AF0675E83B50C304A00B2EF7F5876A032475EF8F",
+      "candidate_sha256": "848BBBC57ACE3DA69DB3488A8139A028173D8B43ADCE72DB38A520E6B209AFBE",
+      "new_file": false,
+      "metadata": "output/pass62-drafts/rust-shot-state/metadata.json",
+      "backup": "output/pass62-preapply-backup/modern/engine/src/shot.rs"
+    },
+    {
+      "target": "modern/engine/src/shot/projectile.rs",
+      "candidate": "output/pass62-drafts/rust-shot-state/candidate/modern/engine/src/shot/projectile.rs",
+      "base_sha256": "A1858CBF45F1C0AAAAD92433531A96231CC251361DC1DFBBCF27C61F8ECC6990",
+      "candidate_sha256": "42F6FB498BE639F7DD57258BFEAE51DD46B63B4CDE7687A54BCA707FCBFEDF18",
+      "new_file": false,
+      "metadata": "output/pass62-drafts/rust-shot-state/metadata.json",
+      "backup": "output/pass62-preapply-backup/modern/engine/src/shot/projectile.rs"
+    },
+    {
+      "target": "modern/engine/src/vegetation.rs",
+      "candidate": "output/pass62-drafts/native-repopulation/candidate/modern/engine/src/vegetation.rs",
+      "base_sha256": "667A18E6911BE67994626ACE0E21A6A9B551F4CF1494B6D3942AF729C68665FB",
+      "candidate_sha256": "FE67AB166F51F7D3527DFA5EAFD0A1F700E72E5352CEB950E5FC7599B762E0FD",
+      "new_file": false,
+      "metadata": "output/pass62-drafts/native-repopulation/metadata.json",
+      "backup": "output/pass62-preapply-backup/modern/engine/src/vegetation.rs"
+    },
+    {
+      "target": "modern/engine/src/world.rs",
+      "candidate": "output/pass62-drafts/native-repopulation/candidate/modern/engine/src/world.rs",
+      "base_sha256": "A3376DF667E9C06C79D18E12A8CE01A72A5EB5D6F1E583D49B07E861186D399D",
+      "candidate_sha256": "02B864205D9D94857E8C595952C55A5A700B52A372F53B55A640E76D1856CC6D",
+      "new_file": false,
+      "metadata": "output/pass62-drafts/native-repopulation/metadata.json",
+      "superseded_candidate": "output/pass62-drafts/rust-shot-state/candidate/modern/engine/src/world.rs",
+      "superseded_sha256": "BB3D49A04942D5387A56C106DB7FAB3190FC9580C9135EBE34A6D71D92680C6D",
+      "backup": "output/pass62-preapply-backup/modern/engine/src/world.rs"
+    },
+    {
+      "target": "modern/engine/src/world/native_energy.rs",
+      "candidate": "output/pass62-drafts/native-repopulation/candidate/modern/engine/src/world/native_energy.rs",
+      "base_sha256": "066B58BE64BB0377E1EE7E516BE3453E13DE6DEEF98D9621251C38DD8176BC57",
+      "candidate_sha256": "7B905E05C1CBAD7D80A3410E5F30BF0FB44BDD26132EB0E9076C61E575714772",
+      "new_file": false,
+      "metadata": "output/pass62-drafts/native-repopulation/metadata.json",
+      "backup": "output/pass62-preapply-backup/modern/engine/src/world/native_energy.rs"
+    },
+    {
+      "target": "modern/engine/src/world/native_feeding.rs",
+      "candidate": "output/pass62-drafts/rust-shot-state/candidate/modern/engine/src/world/native_feeding.rs",
+      "base_sha256": "BD2528497C9CD42DF50CB0A5DCAF4EDD7483B1930EBDDA464C785E035217D9C4",
+      "candidate_sha256": "E24EA4F746548EE262CE8C1D66438DEB013A4879D87C2A75B4E5E9D34F0CD397",
+      "new_file": false,
+      "metadata": "output/pass62-drafts/rust-shot-state/metadata.json",
+      "backup": "output/pass62-preapply-backup/modern/engine/src/world/native_feeding.rs"
+    },
+    {
+      "target": "modern/engine/src/world/native_io.rs",
+      "candidate": "output/pass62-drafts/native-repopulation/candidate/modern/engine/src/world/native_io.rs",
+      "base_sha256": "BA53098AC7C7651F261F414892E82E366D65483AAE2EBD9977CD8E24D4526EBB",
+      "candidate_sha256": "743A271D43C55772BE717C2312B31670987C07A2B8447AB6DBD11184DEDAE20C",
+      "new_file": false,
+      "metadata": "output/pass62-drafts/native-repopulation/metadata.json",
+      "backup": "output/pass62-preapply-backup/modern/engine/src/world/native_io.rs"
+    },
+    {
+      "target": "modern/engine/src/world/native_reproduction.rs",
+      "candidate": "output/pass62-drafts/native-repopulation/candidate/modern/engine/src/world/native_reproduction.rs",
+      "base_sha256": "3D88B05038FEB1085F5C05C30679701FC2A1290A3492A7D61F18336144778140",
+      "candidate_sha256": "DDAE16420C2388CCC6716742DF944FF71A89148B532775038E48FC144C22F294",
+      "new_file": false,
+      "metadata": "output/pass62-drafts/native-repopulation/metadata.json",
+      "backup": "output/pass62-preapply-backup/modern/engine/src/world/native_reproduction.rs"
+    },
+    {
+      "target": "modern/engine/src/world/native_shots.rs",
+      "candidate": "output/pass62-drafts/rust-shot-state/candidate/modern/engine/src/world/native_shots.rs",
+      "base_sha256": "C46B9C0F125D8C28DECA799E3812E15E05510D5487FAC70F1894C6C600B42C1A",
+      "candidate_sha256": "34A19C48BCBB1330B6BB3F70E54223A7B06D89295F9B50C167A800202390ADB1",
+      "new_file": false,
+      "metadata": "output/pass62-drafts/rust-shot-state/metadata.json",
+      "backup": "output/pass62-preapply-backup/modern/engine/src/world/native_shots.rs"
+    },
+    {
+      "target": "modern/engine/src/world/native_sim_export.rs",
+      "candidate": "output/pass62-drafts/rust-shot-state/candidate/modern/engine/src/world/native_sim_export.rs",
+      "base_sha256": "A04EBE61C4B72144F4CB3B3DEB4EF2FC89A5490A0F268D021AF034B77042591B",
+      "candidate_sha256": "C2629BFB7477F9AF5BB3950544D28DFF1EAA4AAF1FBDADBF4A2EB2F6C284D6E2",
+      "new_file": false,
+      "metadata": "output/pass62-drafts/rust-shot-state/metadata.json",
+      "backup": "output/pass62-preapply-backup/modern/engine/src/world/native_sim_export.rs"
+    },
+    {
+      "target": "output/qualify-native-roundtrip-pass62.ps1",
+      "candidate": "output/pass62-drafts/qualification/candidate/output/qualify-native-roundtrip-pass62.ps1",
+      "base_sha256": null,
+      "candidate_sha256": "C75F20122582DDD4EC357C3674C1F4784E5B4C1A95BE56F8E2D371661DBDE118",
+      "new_file": true,
+      "metadata": "output/pass62-drafts/qualification/metadata.json"
+    }
+  ],
+  "metadata_pins": [
+    {
+      "file": "output/pass62-drafts/rust-shot-state/metadata.json",
+      "sha256": "F19FFF691E06DE0947E91036061EF5C7834086D2EE037384A7DF8EDE3C222ABF"
+    },
+    {
+      "file": "output/pass62-drafts/native-repopulation/metadata.json",
+      "sha256": "A6042F0445A1F4AAE45D1E877839D4E8B62ED5D24D470C7A0CE2B8122F9BDED5"
+    },
+    {
+      "file": "output/pass62-drafts/managed-shot-state/metadata.json",
+      "sha256": "165ABE3C3B02508BF15D5751B960E63FFC35D53832F6F62259E9E0633F6C6F23"
+    },
+    {
+      "file": "output/pass62-drafts/managed-shot-state/repopulation-counter/metadata.json",
+      "sha256": "3E26FC4DF681AB9C68C1CECC6CB921DDCEFCDDB32D40169FDB38C1C1D26FE9CF"
+    },
+    {
+      "file": "output/pass62-drafts/qualification/metadata.json",
+      "sha256": "8BD498C3259AFDB9DE556DA5E4437E115B20409013F935AB5D2C5ADC3FF0106F"
+    },
+    {
+      "file": "output/pass62-drafts/report/metadata.json",
+      "sha256": "DA500466D368C406611054FC9B4F0AD0277518559E5F4910A998A5B96A0F91EC"
+    },
+    {
+      "file": "output/pass62-drafts/source-authority/metadata.json",
+      "sha256": "312C597A5D291E235F1A84B525B8431BD8F32D3B1CED1EEB784380F9FA1AB1C5"
+    }
+  ],
+  "peer_review": {
+    "rust_shot_state": "review_46_failures: approved",
+    "rust_repopulation": "review_46_failures: approved",
+    "managed_shot_state": "seeding_tournament_ui: approved",
+    "managed_repopulation": "seeding_tournament_ui: approved",
+    "root_production_diff_review": "approved"
+  },
+  "expected_counts": {
+    "rust_targets": 68,
+    "net_new_rust_tests_vs61": 4,
+    "managed_core": 314,
+    "managed_desktop": 214,
+    "ordinary_outcomes": 94,
+    "strict_original_controls": 25,
+    "strict_reference_fields": 55849
+  },
+  "protected_png": {
+    "file": "docs/parity/receipts/db24832-world06-shape-editor.png",
+    "sha256": "44B7419EC76B825F1C307A284BD14A607DC975C1C410857F41A6A66C1E57FAE9",
+    "excluded_from_application_and_staging": true
+  },
+  "execution_before_complete_authoring": {
+    "formatter": false,
+    "parser": false,
+    "build": false,
+    "tests": false,
+    "product": false,
+    "UI": false,
+    "GPU": false
+  },
+  "separate_diagnostic": "Unchanged source61 counterfactual is causal evidence, not source62 qualification."
+}

@@ -1,0 +1,35 @@
+{
+  "date": "2026-10-12",
+  "code_revision": "21e3f40ac8ee5be4bb41f1d50957ac7949c9f196",
+  "focused_aim": {
+    "passed": 4,
+    "failed": 0,
+    "log": "completion-checks/parity-native-aim-tests-cost-order.log"
+  },
+  "related_integration": {
+    "passed": 49,
+    "failed": 0,
+    "targets": [
+      "canonical_cycle_248",
+      "db2_physics",
+      "db2_vision",
+      "native_resource_precision"
+    ],
+    "log": "completion-checks/parity-native-aim-integration.log"
+  },
+  "strict_lib_tests_clippy": {
+    "passed": true,
+    "log": "completion-checks/parity-native-aim-clippy-final.log"
+  },
+  "encounter_followup": {
+    "passed": 53,
+    "failed": 49,
+    "targets": 6,
+    "log": "completion-checks/parity-native-aim-encounters.log"
+  },
+  "limits": [
+    "Related integration and encounter checks ran before the final multiplication-order-only refinement; the four aim checks and strict lint cover the final code.",
+    "The last complete workspace run remains 454 passed, 58 failed, 2 filtered at 4e83860.",
+    "Original executable aiming trajectories remain unqualified."
+  ]
+}

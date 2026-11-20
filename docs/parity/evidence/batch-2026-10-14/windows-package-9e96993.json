@@ -1,0 +1,40 @@
+{
+  "source_head": "9e9699360ad5f117c43a6af9ba6b1576682747d2",
+  "state": "published; CPU smoke and full desktop suite passed with exact packaged native DLL",
+  "package": "artifacts/win-x64-9e96993",
+  "smoke": {
+    "status": "passed",
+    "backend": "CPU",
+    "ticks": 13,
+    "population": 1,
+    "movement": true,
+    "save_resume": true,
+    "bundled_bots": 48
+  },
+  "bundled_assets": 48,
+  "asset_mismatches": [],
+  "native_dll_sha256": "F1B3925A3C896317B68E72D5035796A3802105A31F86564FD1D3B0FCA2A4B872",
+  "desktop_native_dll_sha256": "F1B3925A3C896317B68E72D5035796A3802105A31F86564FD1D3B0FCA2A4B872",
+  "same_native_binary": true,
+  "native_desktop": {
+    "total": 119,
+    "executed": 119,
+    "passed": 119,
+    "failed": 0,
+    "error": 0,
+    "timeout": 0,
+    "aborted": 0,
+    "inconclusive": 0,
+    "passedButRunAborted": 0,
+    "notRunnable": 0,
+    "notExecuted": 0,
+    "disconnected": 0,
+    "warning": 0,
+    "completed": 0,
+    "inProgress": 0,
+    "pending": 0
+  },
+  "desktop_receipt": "desktop-package-native-9e96993.trx",
+  "publish_log": "parity-batch-final-windows-publish-9e96993.log",
+  "visible_application_proof": false
+}

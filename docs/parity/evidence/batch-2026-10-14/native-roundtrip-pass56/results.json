@@ -1,0 +1,347 @@
+[
+  {
+    "step": "format-check",
+    "exit_code": 0,
+    "seconds": 3.2654392,
+    "executable": "cargo.exe",
+    "arguments": [
+      "fmt",
+      "--all",
+      "--",
+      "--check"
+    ],
+    "log": "format-check.log",
+    "invocation_error": null
+  },
+  {
+    "step": "strict-clippy",
+    "exit_code": 101,
+    "seconds": 22.813055,
+    "executable": "cargo.exe",
+    "arguments": [
+      "clippy",
+      "--release",
+      "--workspace",
+      "--all-targets",
+      "--",
+      "-D",
+      "warnings"
+    ],
+    "log": "strict-clippy.log",
+    "invocation_error": null
+  },
+  {
+    "step": "cpu-rust-workspace",
+    "exit_code": 101,
+    "seconds": 24.2446399,
+    "executable": "cargo.exe",
+    "arguments": [
+      "test",
+      "--release",
+      "--workspace",
+      "--no-fail-fast",
+      "--",
+      "--skip",
+      "gpu",
+      "--skip",
+      "switch",
+      "--nocapture",
+      "--test-threads=1"
+    ],
+    "log": "cpu-rust-workspace.log",
+    "invocation_error": null
+  },
+  {
+    "step": "cli-build",
+    "exit_code": 101,
+    "seconds": 16.5540224,
+    "executable": "cargo.exe",
+    "arguments": [
+      "build",
+      "--release",
+      "-p",
+      "darwinbots-cli"
+    ],
+    "log": "cli-build.log",
+    "invocation_error": null
+  },
+  {
+    "step": "original-zero-cycle-replay",
+    "exit_code": 125,
+    "status": "not_run_dependency",
+    "reason": "Fresh CLI build failed."
+  },
+  {
+    "step": "original-zero-cycle-raw-file-preservation",
+    "exit_code": 125,
+    "status": "not_run_dependency",
+    "reason": "Fresh CLI build failed."
+  },
+  {
+    "step": "original-zero-cycle-compare",
+    "exit_code": 125,
+    "status": "not_run_dependency",
+    "reason": "Fresh CLI build failed."
+  },
+  {
+    "step": "original-zero-cycle-field-coverage",
+    "exit_code": 125,
+    "status": "not_run_dependency",
+    "reason": "Fresh CLI build failed."
+  },
+  {
+    "step": "candidate-checkpoints-completeness",
+    "exit_code": 125,
+    "status": "not_run_dependency",
+    "reason": "Fresh CLI build failed; no stale CLI or earlier candidate outputs used."
+  },
+  {
+    "step": "genuine-movement-checkpoints-completeness",
+    "exit_code": 125,
+    "status": "not_run_dependency",
+    "reason": "Fresh CLI build failed; no stale Rust movement outputs used."
+  },
+  {
+    "step": "genuine-additional-candidate-checkpoints-completeness",
+    "exit_code": 125,
+    "status": "not_run_dependency",
+    "reason": "Fresh CLI build failed; no plant or contacts C11 outputs reused."
+  },
+  {
+    "step": "genuine-additional-checkpoints-completeness",
+    "exit_code": 125,
+    "status": "not_run_dependency",
+    "reason": "Fresh CLI build failed; no original comparison outcomes inherited."
+  },
+  {
+    "step": "genuine-fixed-1-compare",
+    "exit_code": 125,
+    "status": "not_run_dependency",
+    "reason": "Fresh CLI build failed."
+  },
+  {
+    "step": "genuine-fixed-1-field-coverage",
+    "exit_code": 125,
+    "status": "not_run_dependency",
+    "reason": "Fresh CLI build failed."
+  },
+  {
+    "step": "genuine-body-1-compare",
+    "exit_code": 125,
+    "status": "not_run_dependency",
+    "reason": "Fresh CLI build failed."
+  },
+  {
+    "step": "genuine-body-1-field-coverage",
+    "exit_code": 125,
+    "status": "not_run_dependency",
+    "reason": "Fresh CLI build failed."
+  },
+  {
+    "step": "genuine-chloroplast-1-compare",
+    "exit_code": 125,
+    "status": "not_run_dependency",
+    "reason": "Fresh CLI build failed."
+  },
+  {
+    "step": "genuine-chloroplast-1-field-coverage",
+    "exit_code": 125,
+    "status": "not_run_dependency",
+    "reason": "Fresh CLI build failed."
+  },
+  {
+    "step": "genuine-chloroplast-10-compare",
+    "exit_code": 125,
+    "status": "not_run_dependency",
+    "reason": "Fresh CLI build failed."
+  },
+  {
+    "step": "genuine-chloroplast-10-field-coverage",
+    "exit_code": 125,
+    "status": "not_run_dependency",
+    "reason": "Fresh CLI build failed."
+  },
+  {
+    "step": "genuine-feeding-1-compare",
+    "exit_code": 125,
+    "status": "not_run_dependency",
+    "reason": "Fresh CLI build failed."
+  },
+  {
+    "step": "genuine-feeding-1-field-coverage",
+    "exit_code": 125,
+    "status": "not_run_dependency",
+    "reason": "Fresh CLI build failed."
+  },
+  {
+    "step": "genuine-feeding-10-compare",
+    "exit_code": 125,
+    "status": "not_run_dependency",
+    "reason": "Fresh CLI build failed."
+  },
+  {
+    "step": "genuine-feeding-10-field-coverage",
+    "exit_code": 125,
+    "status": "not_run_dependency",
+    "reason": "Fresh CLI build failed."
+  },
+  {
+    "step": "genuine-ties-1-compare",
+    "exit_code": 125,
+    "status": "not_run_dependency",
+    "reason": "Fresh CLI build failed."
+  },
+  {
+    "step": "genuine-ties-1-field-coverage",
+    "exit_code": 125,
+    "status": "not_run_dependency",
+    "reason": "Fresh CLI build failed."
+  },
+  {
+    "step": "genuine-contacts-1-compare",
+    "exit_code": 125,
+    "status": "not_run_dependency",
+    "reason": "Fresh CLI build failed."
+  },
+  {
+    "step": "genuine-contacts-1-field-coverage",
+    "exit_code": 125,
+    "status": "not_run_dependency",
+    "reason": "Fresh CLI build failed."
+  },
+  {
+    "step": "genuine-contacts-11-compare",
+    "exit_code": 125,
+    "status": "not_run_dependency",
+    "reason": "Fresh CLI build failed."
+  },
+  {
+    "step": "genuine-contacts-11-field-coverage",
+    "exit_code": 125,
+    "status": "not_run_dependency",
+    "reason": "Fresh CLI build failed."
+  },
+  {
+    "step": "genuine-contacts-100-compare",
+    "exit_code": 125,
+    "status": "not_run_dependency",
+    "reason": "Fresh CLI build failed."
+  },
+  {
+    "step": "genuine-contacts-100-field-coverage",
+    "exit_code": 125,
+    "status": "not_run_dependency",
+    "reason": "Fresh CLI build failed."
+  },
+  {
+    "step": "genuine-reproduction-1-compare",
+    "exit_code": 125,
+    "status": "not_run_dependency",
+    "reason": "Fresh CLI build failed."
+  },
+  {
+    "step": "genuine-reproduction-1-field-coverage",
+    "exit_code": 125,
+    "status": "not_run_dependency",
+    "reason": "Fresh CLI build failed."
+  },
+  {
+    "step": "genuine-reproduction-10-compare",
+    "exit_code": 125,
+    "status": "not_run_dependency",
+    "reason": "Fresh CLI build failed."
+  },
+  {
+    "step": "genuine-reproduction-10-field-coverage",
+    "exit_code": 125,
+    "status": "not_run_dependency",
+    "reason": "Fresh CLI build failed."
+  },
+  {
+    "step": "desktop-core",
+    "exit_code": 0,
+    "seconds": 23.1132746,
+    "executable": "dotnet.exe",
+    "arguments": [
+      "test",
+      "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/Darwinbots.Desktop.Core.Tests.csproj",
+      "-c",
+      "Release",
+      "--logger",
+      "trx;LogFileName=core.trx",
+      "--results-directory",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\docs\\parity\\evidence\\batch-2026-10-14\\native-roundtrip-pass56",
+      "--disable-build-servers",
+      "-m:1",
+      "-nr:false",
+      "-p:UseSharedCompilation=false"
+    ],
+    "log": "desktop-core.log",
+    "invocation_error": null
+  },
+  {
+    "step": "desktop-test-build",
+    "exit_code": 1,
+    "seconds": 34.7714727,
+    "executable": "dotnet.exe",
+    "arguments": [
+      "build",
+      "modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj",
+      "-c",
+      "Release",
+      "--disable-build-servers",
+      "-m:1",
+      "-nr:false",
+      "-p:UseSharedCompilation=false"
+    ],
+    "log": "desktop-test-build.log",
+    "invocation_error": null
+  },
+  {
+    "step": "windows-publish",
+    "exit_code": 1,
+    "seconds": 30.9281467,
+    "executable": "dotnet.exe",
+    "arguments": [
+      "publish",
+      "modern/desktop/src/Darwinbots.Desktop/Darwinbots.Desktop.csproj",
+      "-c",
+      "Release",
+      "-r",
+      "win-x64",
+      "--self-contained",
+      "false",
+      "-o",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\artifacts\\win-x64-native-roundtrip-pass56",
+      "--disable-build-servers",
+      "-m:1",
+      "-nr:false",
+      "-p:UseSharedCompilation=false"
+    ],
+    "log": "windows-publish.log",
+    "invocation_error": null
+  },
+  {
+    "step": "package-smoke",
+    "exit_code": 125,
+    "status": "not_run_dependency",
+    "reason": "Fresh package publish failed."
+  },
+  {
+    "step": "packaged-native-desktop",
+    "exit_code": 125,
+    "status": "not_run_dependency",
+    "reason": "Fresh package publish failed; no earlier package/native DLL used."
+  },
+  {
+    "step": "package-assets",
+    "exit_code": 125,
+    "status": "not_run_dependency",
+    "reason": "Fresh package publish failed."
+  },
+  {
+    "step": "preexisting-wip-image",
+    "exit_code": 0,
+    "log": "preserved-wip-image.json"
+  }
+]

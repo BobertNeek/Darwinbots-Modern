@@ -1,0 +1,29 @@
+{
+  "status": "passed",
+  "checks": [
+    "valid_batch55_exact_movement_checkpoints",
+    "valid_batch56_exact_movement_checkpoints",
+    "valid_batch57_exact_movement_checkpoints",
+    "valid_batch58_exact_movement_checkpoints",
+    "valid_batch59_exact_movement_checkpoints",
+    "valid_batch60_exact_movement_checkpoints",
+    "valid_batch61_exact_movement_checkpoints",
+    "batch60:missing_checkpoint",
+    "batch60:wrong_expected_cycles",
+    "batch60:duplicate_cycle",
+    "batch60:unexpected_cycle",
+    "batch60:wrong_field_count",
+    "batch60:nonzero_difference",
+    "batch60:nonzero_absolute_tolerance",
+    "batch60:nonzero_relative_tolerance",
+    "batch60:failed_compare",
+    "batch60:false_checkpoint_passed",
+    "batch60:unpinned_original",
+    "batch59:legacy_extra_cycle",
+    "batch59:missing_checkpoint",
+    "batch59:duplicate_cycle",
+    "batch59:unexpected_cycle"
+  ],
+  "count": 22,
+  "scope": "CPU-only synthetic fully pinned receipt probes in an isolated owned Temp directory; no real workspace marker, product, build, Git, UI, native helper or GPU."
+}

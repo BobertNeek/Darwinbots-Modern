@@ -1,0 +1,741 @@
+{
+  "schema_version": 1,
+  "status": "PREPARED ONLY; ALL SEVEN ORIGINAL RUNTIMES UNLAUNCHED",
+  "created_utc": "2026-10-17T03:00:06.777Z",
+  "temporary_root": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532",
+  "parent_source_context": "Frozen55 source; preparation creates external data inputs only and does not qualify or mutate runtime source.",
+  "template": {
+    "receipt": "output/pass55-drafts/publication/chloroplast-oracle-runtime-template.json",
+    "sha256": "8B68D7EE7C960A598D7DB56444C2269E68FF03EF18EF1FA3230A41518E7651D1",
+    "baseline": "output/native-original-qualification-app39",
+    "expected_files": 56,
+    "runtime_files": 8,
+    "robot_files": 48,
+    "verified_asset_set_sha256": "69389EC44467FE8E6D0FF6BE25A8A5F4ACEF76773B9C7FC756CBF626FCB03349"
+  },
+  "source_input_plan": {
+    "receipt": "output/native-original-isolated-pass54/plan.json",
+    "sha256": "A847E6C934235A3FD0D34B545E0380E8A8491BE60FC408F744DA627328B2AB91",
+    "identity": "Exact seven raw input hashes from the existing plan; no simulation engine used."
+  },
+  "settings_source": {
+    "file": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\Installer\\sets\\Simple Simulation.set",
+    "bytes": 2011,
+    "sha256": "A0A483E962E6BC9B1AB90EBB5294B7A9DEA20FD30AE807CC81AB5D1C00A262A7",
+    "copy_to": "settings/lastexit.set",
+    "all_targets_previously_absent": true
+  },
+  "assets": [
+    {
+      "relative_path": "COMCT232.OCX",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/COMCT232.OCX",
+      "bytes": 164144,
+      "sha256": "45AF0570AC918A57A0E4F868CC4198CBAC02957C6BE35EC131987101683A9F97"
+    },
+    {
+      "relative_path": "COMDLG32.OCX",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/COMDLG32.OCX",
+      "bytes": 140288,
+      "sha256": "46F4FDB12C30742FF4607876D2F36CF432CDC7EC3D2C99097011448FC57E997C"
+    },
+    {
+      "relative_path": "Darwin2.48.32.exe",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Darwin2.48.32.exe",
+      "bytes": 4759552,
+      "sha256": "7F580D9CE8F1095A01FD162E9BCAC03FE437599E080786FD670B676671C31990"
+    },
+    {
+      "relative_path": "Darwin2.48.32.exe.manifest",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Darwin2.48.32.exe.manifest",
+      "bytes": 539,
+      "sha256": "7A482CADC0C4CEBB96BDEFDF02B924FBB85F549992127F7D55F7F2909191C3C7"
+    },
+    {
+      "relative_path": "MSCOMCTL.OCX",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/MSCOMCTL.OCX",
+      "bytes": 1077336,
+      "sha256": "18A83D7A420A17FCB6F56EB3BA5362C975D32E5DED7553C6FD407F07BDB7B006"
+    },
+    {
+      "relative_path": "MSINET.OCX",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/MSINET.OCX",
+      "bytes": 115920,
+      "sha256": "DD1215F01B484E7842763302D42749D516963D9AC74E2FE8825A5EABA34F6229"
+    },
+    {
+      "relative_path": "RICHTX32.OCX",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/RICHTX32.OCX",
+      "bytes": 203976,
+      "sha256": "0FB6EAE2AB36CE6CBEB2DFC45AF5DD0C4BB0DC1E59ABEC84DB4E102C3F2B7249"
+    },
+    {
+      "relative_path": "TABCTL32.OCX",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/TABCTL32.OCX",
+      "bytes": 209608,
+      "sha256": "40CADBFB2EB5732F025D687664F34239DB7153A192BCA0287F9208852B201FB6"
+    },
+    {
+      "relative_path": "Robots/Alga_Minimalis.txt",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Robots/Alga_Minimalis.txt",
+      "bytes": 277,
+      "sha256": "79993974A6CD6A66CD3BCF940502A53E0886E17B40222773E0BF8BAF8A155401"
+    },
+    {
+      "relative_path": "Robots/Alga_Minimalis_Chloroplastus.txt",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Robots/Alga_Minimalis_Chloroplastus.txt",
+      "bytes": 373,
+      "sha256": "220979D75843D6DDE6EDAE65AD4E1CB6BFE9B2C54A6CFC789351054E6E507121"
+    },
+    {
+      "relative_path": "Robots/Animal_Minimalis.txt",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Robots/Animal_Minimalis.txt",
+      "bytes": 606,
+      "sha256": "A4E987876D99BB47926506807294B0628BF7AD1D4D1F138208842755019FC3A5"
+    },
+    {
+      "relative_path": "Robots/Animal_Minimalis_Connubialis.txt",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Robots/Animal_Minimalis_Connubialis.txt",
+      "bytes": 1136,
+      "sha256": "2E82E517A7D8A33E4B6C3168CBE2E631727642D7C385EA76C6B63232EF3C35E6"
+    },
+    {
+      "relative_path": "Robots/Blue on blue (F2)(Jez)-05.08.06.txt",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Robots/Blue on blue (F2)(Jez)-05.08.06.txt",
+      "bytes": 9935,
+      "sha256": "609270B7EEB6EF92782124EC942EE3160CF9613347BD98662B75B76F5B9B12CF"
+    },
+    {
+      "relative_path": "Robots/Bubbles (F2)(Jez)-21.08.06.txt",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Robots/Bubbles (F2)(Jez)-21.08.06.txt",
+      "bytes": 7170,
+      "sha256": "C575AB27AB498A075DDD6439CEFC7BF470A169C6EFE1CC16CA68098D0EAE3AC8"
+    },
+    {
+      "relative_path": "Robots/Callidus(F1)(Shen)-05.04.05.txt",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Robots/Callidus(F1)(Shen)-05.04.05.txt",
+      "bytes": 3710,
+      "sha256": "B447D333E6D2C5D3C416FEBB6766E326D5DF11B4C022BBA92769EDA39BF1E3C8"
+    },
+    {
+      "relative_path": "Robots/Catapiller(MB)(Peter).txt",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Robots/Catapiller(MB)(Peter).txt",
+      "bytes": 5513,
+      "sha256": "F112B9789159E6AC5FF839F9D33A1D0BC778624831E34B2BD81B9D684AF16DF9"
+    },
+    {
+      "relative_path": "Robots/Detonator v1.2(F1)(bacillus)-24.04.08.txt",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Robots/Detonator v1.2(F1)(bacillus)-24.04.08.txt",
+      "bytes": 3258,
+      "sha256": "CED8DF58B4FE9AE29C6D03D8F64EC3AFDE5867FE2CBE08D90CD20D3A32EFD3E6"
+    },
+    {
+      "relative_path": "Robots/Ebola (F1Vir) (Moonfisher).txt",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Robots/Ebola (F1Vir) (Moonfisher).txt",
+      "bytes": 15568,
+      "sha256": "D0B3437F9ED37F77D904DED4F0BC1F5B68A2AB70E3FB787625A97099BA58F345"
+    },
+    {
+      "relative_path": "Robots/Etch Mk II(F1)(abyaly)-15.03.2008.txt",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Robots/Etch Mk II(F1)(abyaly)-15.03.2008.txt",
+      "bytes": 9744,
+      "sha256": "1D881243C720F04EC81EF098D841E5292311E76087F3925F7C9FB6A171D10A9F"
+    },
+    {
+      "relative_path": "Robots/Excalibur 1.12 (F2)(Light)-06.03.07.txt",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Robots/Excalibur 1.12 (F2)(Light)-06.03.07.txt",
+      "bytes": 4250,
+      "sha256": "51852363CAC2FDA2F3BC9392DCDC297580A30B7AB3447DFD1E1C3DBB2DF3835C"
+    },
+    {
+      "relative_path": "Robots/Fruit_Fliesv0.21.txt",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Robots/Fruit_Fliesv0.21.txt",
+      "bytes": 2639,
+      "sha256": "5D554A6585E63A29B603FC1D5D93652AFDDAA1103FBE9FAA9ABEC7FAC3D9DF86"
+    },
+    {
+      "relative_path": "Robots/Locust(F1)(Moonfisher).txt",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Robots/Locust(F1)(Moonfisher).txt",
+      "bytes": 7172,
+      "sha256": "425376200A83ED56CDA9CE6CA59FA50DB1FCA172FBF876628E4E739F6B4FBE81"
+    },
+    {
+      "relative_path": "Robots/Martian Tank 3 (F2)(Martian)-06.07.2007.txt",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Robots/Martian Tank 3 (F2)(Martian)-06.07.2007.txt",
+      "bytes": 4877,
+      "sha256": "411B04032A8FEAF20E7DD413A08340C96C3B93AFEBC7E5A35A54CBF7F6BE071F"
+    },
+    {
+      "relative_path": "Robots/Multiply4(F1)(F2)(Peter)19-12-07.txt",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Robots/Multiply4(F1)(F2)(Peter)19-12-07.txt",
+      "bytes": 3722,
+      "sha256": "C346E93DD954D111D569B8D2D63DA4177D5433CF2EB15BA334A154C1613F25E9"
+    },
+    {
+      "relative_path": "Robots/Occura Amplificis(F1)(bacillus)-25.03.08.txt",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Robots/Occura Amplificis(F1)(bacillus)-25.03.08.txt",
+      "bytes": 575,
+      "sha256": "9E93D6694DDA3F3C6B5A054B24A12838E2D8A7E0160A62F33ACDD890AE06C77A"
+    },
+    {
+      "relative_path": "Robots/Pacifist (5G) (Moonfisher) 19-02-08.txt",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Robots/Pacifist (5G) (Moonfisher) 19-02-08.txt",
+      "bytes": 11711,
+      "sha256": "80EF0E7437FD2BBEAC64736576FE48B906FF61E0FA4D6974C2E251181B8A45FB"
+    },
+    {
+      "relative_path": "Robots/Quickdraw(F1)(Moonfisher).txt",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Robots/Quickdraw(F1)(Moonfisher).txt",
+      "bytes": 8345,
+      "sha256": "F24C30BFE66CE31E221F30FF520068345CFA1D7506FD716FF7054966E2FC0DEE"
+    },
+    {
+      "relative_path": "Robots/Reaper (F1)(Googlyeyesultra)-17.07.07.txt",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Robots/Reaper (F1)(Googlyeyesultra)-17.07.07.txt",
+      "bytes": 3863,
+      "sha256": "CDAB99B7AF6F8ACA54A7E9D3064E11F8C5ABDD4F98625FEBB0E48746FC2A59A0"
+    },
+    {
+      "relative_path": "Robots/Republican Wasp (F1)(Commander Keen).txt",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Robots/Republican Wasp (F1)(Commander Keen).txt",
+      "bytes": 2634,
+      "sha256": "CC3733F51BDE8AC1CE0EFF85F63217BE061EB6003476E5AD8F527B3898FC32FA"
+    },
+    {
+      "relative_path": "Robots/Saber.txt",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Robots/Saber.txt",
+      "bytes": 18584,
+      "sha256": "7CB4F03B211F279ADEA16281E39AC898A4BBA2EF28E5375104C4101B1005CC0A"
+    },
+    {
+      "relative_path": "Robots/Seasnake 1.0 (MB)(EricL) - 23.04.08.txt",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Robots/Seasnake 1.0 (MB)(EricL) - 23.04.08.txt",
+      "bytes": 7945,
+      "sha256": "83E6EBF019B08156862496326A70700F1374A9A1BDE7EA4C6032C09FF1562F8E"
+    },
+    {
+      "relative_path": "Robots/Singula Haloculus v2.1(F1)(bacillus)21.04.08.txt",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Robots/Singula Haloculus v2.1(F1)(bacillus)21.04.08.txt",
+      "bytes": 641,
+      "sha256": "C4EAB07A29B53014D966ADB4698FAE156105EE0F01D25C8D42B40EDEB5FB13D4"
+    },
+    {
+      "relative_path": "Robots/Spinnerv1.52.txt",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Robots/Spinnerv1.52.txt",
+      "bytes": 19802,
+      "sha256": "27B5D7C70FA3A542B3AE38F83AAD4A8123E5BD68637ABB475B3B0812E50D2EED"
+    },
+    {
+      "relative_path": "Robots/The One (1G)(Shen)-23.04.05.txt",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Robots/The One (1G)(Shen)-23.04.05.txt",
+      "bytes": 1900,
+      "sha256": "798E486BFA9C80C518455ADA8061C547458D06CC6E3CC4E3FFE92CA6CE54D220"
+    },
+    {
+      "relative_path": "Robots/TieFighters.txt",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Robots/TieFighters.txt",
+      "bytes": 18909,
+      "sha256": "878A101CADAD7B4F98693CB5E3ED3E111F358C579004F393D465ACE24116BBAA"
+    },
+    {
+      "relative_path": "Robots/league/1-Fruit Flies v0.21 (F1) (Moonfisher) 28-09-08.txt",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Robots/league/1-Fruit Flies v0.21 (F1) (Moonfisher) 28-09-08.txt",
+      "bytes": 2690,
+      "sha256": "EE29B771C3631ADD57628C773213D5B02A7DDF299DBC20552A31CA1088158281"
+    },
+    {
+      "relative_path": "Robots/league/10-Expletus Sexcomplitus (6G)(Jez)-11.03.04.txt",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Robots/league/10-Expletus Sexcomplitus (6G)(Jez)-11.03.04.txt",
+      "bytes": 916,
+      "sha256": "174E36A48F478E30DA3D940A3540C2760D1B9C07E8F6A9C5697E3E010EB131E7"
+    },
+    {
+      "relative_path": "Robots/league/11-Schoonmaker (6G)(Henk)-04.03.04.txt",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Robots/league/11-Schoonmaker (6G)(Henk)-04.03.04.txt",
+      "bytes": 851,
+      "sha256": "7FD0DD03A77F10C8A26F3B2D26E84071463F173F75240F9355C82E9B81F86208"
+    },
+    {
+      "relative_path": "Robots/league/12-Caterpillar(Peter)(F2_MB)04-11-08.txt",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Robots/league/12-Caterpillar(Peter)(F2_MB)04-11-08.txt",
+      "bytes": 5558,
+      "sha256": "58CDFBE2202705F0B99BF9A863AEAF066E2DC206FB5E3E1905FA44F3FDB45775"
+    },
+    {
+      "relative_path": "Robots/league/13-Alpha2.7 WidVis(F3)(d-EVO)23-10-2008.txt",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Robots/league/13-Alpha2.7 WidVis(F3)(d-EVO)23-10-2008.txt",
+      "bytes": 3138,
+      "sha256": "3BFB6EC260D72D165C497F3CABCA28156B2A1D2A6DB3EB877E04C2A7FF7B98C8"
+    },
+    {
+      "relative_path": "Robots/league/14-A. Praxidikae mk2 (F2)(Unc) 07.29.05.txt",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Robots/league/14-A. Praxidikae mk2 (F2)(Unc) 07.29.05.txt",
+      "bytes": 2715,
+      "sha256": "5D0B6636AEC6E80730474C684D606B5C6A76E6B66D4105FDBD30AC2C71A0D588"
+    },
+    {
+      "relative_path": "Robots/league/15-Knotbot v2 (MB) MysticalDumpling -2.6.14.txt",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Robots/league/15-Knotbot v2 (MB) MysticalDumpling -2.6.14.txt",
+      "bytes": 1723,
+      "sha256": "773BD3EA3B270E854E53C739B298A70A40684242E1A0A67A8E725B3E84ED9932"
+    },
+    {
+      "relative_path": "Robots/league/16-Animal Minimalis (4G)(Numsgil)-10.03.05.txt",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Robots/league/16-Animal Minimalis (4G)(Numsgil)-10.03.05.txt",
+      "bytes": 522,
+      "sha256": "76E70B9C9F29F38577172F04910D7C8846E858135CF46D3E0A2A3032C34B510B"
+    },
+    {
+      "relative_path": "Robots/league/17-D. Blinder (F2)-01.03.04.txt",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Robots/league/17-D. Blinder (F2)-01.03.04.txt",
+      "bytes": 1322,
+      "sha256": "823A557E42B05D2626DD28C2785696557FA4586710823694C5D27B89F0B6190C"
+    },
+    {
+      "relative_path": "Robots/league/18-Drifting Spinner1 (F2)(Jez)-25.10.03.txt",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Robots/league/18-Drifting Spinner1 (F2)(Jez)-25.10.03.txt",
+      "bytes": 983,
+      "sha256": "D777DD50238C5313AD81719CC14372ECE2C10F7813BA94D186CDAC188FB9A97B"
+    },
+    {
+      "relative_path": "Robots/league/19-Equalite (F2)(Henk) -23.02.05.txt",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Robots/league/19-Equalite (F2)(Henk) -23.02.05.txt",
+      "bytes": 1960,
+      "sha256": "0A002084FD8FC9C8DA04E8B8A920A325A8D3A83F02FAC1FBD8797B776C1EEFAC"
+    },
+    {
+      "relative_path": "Robots/league/2-Quickdraw (F1) (Moonfisher) 29-10-08.txt",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Robots/league/2-Quickdraw (F1) (Moonfisher) 29-10-08.txt",
+      "bytes": 8398,
+      "sha256": "793472C1879F554C09C58A3180AB5673A55E88A861284EE75ACE2BA3A34AFA47"
+    },
+    {
+      "relative_path": "Robots/league/20-Bot v 1.1.txt",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Robots/league/20-Bot v 1.1.txt",
+      "bytes": 3068,
+      "sha256": "E56C73E3F173A14DC842AF742EBD913BE893938BABBA23BD89A14045906B6197"
+    },
+    {
+      "relative_path": "Robots/league/21-Efficient Bot (F1)(Shen)-01.09.04.txt",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Robots/league/21-Efficient Bot (F1)(Shen)-01.09.04.txt",
+      "bytes": 774,
+      "sha256": "C853342E1B8E033BB05911037245A2F6EDA14C6AA0329377D316C8AB8D6EA881"
+    },
+    {
+      "relative_path": "Robots/league/3-Spinner v1.2 (F2) (Moonfisher) 14-04-08.txt",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Robots/league/3-Spinner v1.2 (F2) (Moonfisher) 14-04-08.txt",
+      "bytes": 10831,
+      "sha256": "DA5D24C52E00E431AE051240AF7BA9E9F2DD7EAF6F6B7481C69D36FCB6D496AC"
+    },
+    {
+      "relative_path": "Robots/league/4-Singula Haloculus v2.1 (SB)(bacillus)5-12-2008.txt",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Robots/league/4-Singula Haloculus v2.1 (SB)(bacillus)5-12-2008.txt",
+      "bytes": 736,
+      "sha256": "562DC85F510D5881CCD66BB3AF26E5B3F161A7C399FA4E8D710C0EE801E1228F"
+    },
+    {
+      "relative_path": "Robots/league/5-Gimmick1.0_F3__Ikke_11.6.2008.txt",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Robots/league/5-Gimmick1.0_F3__Ikke_11.6.2008.txt",
+      "bytes": 6295,
+      "sha256": "FC09E7D21E98569F59853752E84885EFD377F40C417F5E6BFE35BB1C1D20D9CC"
+    },
+    {
+      "relative_path": "Robots/league/6-Astronomo2 (F2)(Commander Keen)3-10-08.txt",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Robots/league/6-Astronomo2 (F2)(Commander Keen)3-10-08.txt",
+      "bytes": 3039,
+      "sha256": "506635F191AA1F12716A069DB3319A6BCAD68BE5D7F9C7D97BF18F81A693002E"
+    },
+    {
+      "relative_path": "Robots/league/7-Astronomo (F2)(Commander Keen) 2-10-08.txt",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Robots/league/7-Astronomo (F2)(Commander Keen) 2-10-08.txt",
+      "bytes": 2839,
+      "sha256": "846FD16EFDA850DB2A36DB64480C45899AE26CD6481D9CEFC4AC27257332C568"
+    },
+    {
+      "relative_path": "Robots/league/8-multiply3 (F2)(peter) -18.9.07.txt",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Robots/league/8-multiply3 (F2)(peter) -18.9.07.txt",
+      "bytes": 3024,
+      "sha256": "E22956B386353102288F794573D2E3B5C29FFAAA1B3DC1C0F823C0E23B40EE5D"
+    },
+    {
+      "relative_path": "Robots/league/9-Big (F3) (Moonfisher) 19-10-08.txt",
+      "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/Robots/league/9-Big (F3) (Moonfisher) 19-10-08.txt",
+      "bytes": 1773,
+      "sha256": "456129935205500440C29F01EB627713B0DB660C2FD8144E8F97F39030A8B768"
+    }
+  ],
+  "cases": [
+    {
+      "case": "movement",
+      "sandbox": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\movement",
+      "executable": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\movement\\Darwin2.48.32.exe",
+      "executable_sha256": "7F580D9CE8F1095A01FD162E9BCAC03FE437599E080786FD670B676671C31990",
+      "input": {
+        "path": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\movement\\input.sim",
+        "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/movement/input.sim",
+        "bytes": 11113,
+        "sha256": "6678CDD874314AED26D738B29897EE8CEE4E269DA6BEFDB55BEC47292F19E52E"
+      },
+      "settings": {
+        "path": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\movement\\settings\\lastexit.set",
+        "bytes": 2011,
+        "sha256": "A0A483E962E6BC9B1AB90EBB5294B7A9DEA20FD30AE807CC81AB5D1C00A262A7",
+        "target_previously_absent": true
+      },
+      "captures_directory": {
+        "path": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\movement\\captures",
+        "empty": true
+      },
+      "verified_template_files": 56,
+      "verified_runtime_files": 8,
+      "verified_robots": 48,
+      "verified_asset_set_sha256": "69389EC44467FE8E6D0FF6BE25A8A5F4ACEF76773B9C7FC756CBF626FCB03349",
+      "asset_hashes_reference": "assets[] joined to this sandbox; all56 target copies read back and hash-verified",
+      "random_sensitive": false,
+      "planned_captures": [
+        {
+          "native_cycle": 1,
+          "path": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\movement\\captures\\movement-original-cycle1.sim",
+          "actual_capture_exists": false
+        },
+        {
+          "native_cycle": 10,
+          "path": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\movement\\captures\\movement-original-cycle10.sim",
+          "actual_capture_exists": false
+        },
+        {
+          "native_cycle": 100,
+          "path": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\movement\\captures\\movement-original-cycle100.sim",
+          "actual_capture_exists": false
+        }
+      ],
+      "no_existing_overwrites": true,
+      "launched": false,
+      "actual_file_count": 58,
+      "only_expected_files_present": true
+    },
+    {
+      "case": "fixed",
+      "sandbox": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\fixed",
+      "executable": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\fixed\\Darwin2.48.32.exe",
+      "executable_sha256": "7F580D9CE8F1095A01FD162E9BCAC03FE437599E080786FD670B676671C31990",
+      "input": {
+        "path": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\fixed\\input.sim",
+        "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/fixed/input.sim",
+        "bytes": 11119,
+        "sha256": "94C32DA0BDB409DF42C7DF7CB43B59A3DEA70E08D0D53631B8FEE0FDEAD41BE6"
+      },
+      "settings": {
+        "path": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\fixed\\settings\\lastexit.set",
+        "bytes": 2011,
+        "sha256": "A0A483E962E6BC9B1AB90EBB5294B7A9DEA20FD30AE807CC81AB5D1C00A262A7",
+        "target_previously_absent": true
+      },
+      "captures_directory": {
+        "path": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\fixed\\captures",
+        "empty": true
+      },
+      "verified_template_files": 56,
+      "verified_runtime_files": 8,
+      "verified_robots": 48,
+      "verified_asset_set_sha256": "69389EC44467FE8E6D0FF6BE25A8A5F4ACEF76773B9C7FC756CBF626FCB03349",
+      "asset_hashes_reference": "assets[] joined to this sandbox; all56 target copies read back and hash-verified",
+      "random_sensitive": false,
+      "planned_captures": [
+        {
+          "native_cycle": 1,
+          "path": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\fixed\\captures\\fixed-original-cycle1.sim",
+          "actual_capture_exists": false
+        },
+        {
+          "native_cycle": 10,
+          "path": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\fixed\\captures\\fixed-original-cycle10.sim",
+          "actual_capture_exists": false
+        },
+        {
+          "native_cycle": 100,
+          "path": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\fixed\\captures\\fixed-original-cycle100.sim",
+          "actual_capture_exists": false
+        }
+      ],
+      "no_existing_overwrites": true,
+      "launched": false,
+      "actual_file_count": 58,
+      "only_expected_files_present": true
+    },
+    {
+      "case": "contacts",
+      "sandbox": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\contacts",
+      "executable": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\contacts\\Darwin2.48.32.exe",
+      "executable_sha256": "7F580D9CE8F1095A01FD162E9BCAC03FE437599E080786FD670B676671C31990",
+      "input": {
+        "path": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\contacts\\input.sim",
+        "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/contacts/input.sim",
+        "bytes": 29805,
+        "sha256": "4AF50D8B78BD75723DDF36E47C3A80B9DE64636FBC1A9501E16C7FCBFF9F0C72"
+      },
+      "settings": {
+        "path": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\contacts\\settings\\lastexit.set",
+        "bytes": 2011,
+        "sha256": "A0A483E962E6BC9B1AB90EBB5294B7A9DEA20FD30AE807CC81AB5D1C00A262A7",
+        "target_previously_absent": true
+      },
+      "captures_directory": {
+        "path": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\contacts\\captures",
+        "empty": true
+      },
+      "verified_template_files": 56,
+      "verified_runtime_files": 8,
+      "verified_robots": 48,
+      "verified_asset_set_sha256": "69389EC44467FE8E6D0FF6BE25A8A5F4ACEF76773B9C7FC756CBF626FCB03349",
+      "asset_hashes_reference": "assets[] joined to this sandbox; all56 target copies read back and hash-verified",
+      "random_sensitive": false,
+      "planned_captures": [
+        {
+          "native_cycle": 1,
+          "path": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\contacts\\captures\\contacts-original-cycle1.sim",
+          "actual_capture_exists": false
+        },
+        {
+          "native_cycle": 10,
+          "path": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\contacts\\captures\\contacts-original-cycle10.sim",
+          "actual_capture_exists": false
+        },
+        {
+          "native_cycle": 100,
+          "path": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\contacts\\captures\\contacts-original-cycle100.sim",
+          "actual_capture_exists": false
+        }
+      ],
+      "no_existing_overwrites": true,
+      "launched": false,
+      "actual_file_count": 58,
+      "only_expected_files_present": true
+    },
+    {
+      "case": "body",
+      "sandbox": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\body",
+      "executable": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\body\\Darwin2.48.32.exe",
+      "executable_sha256": "7F580D9CE8F1095A01FD162E9BCAC03FE437599E080786FD670B676671C31990",
+      "input": {
+        "path": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\body\\input.sim",
+        "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/body/input.sim",
+        "bytes": 11105,
+        "sha256": "0445D63EF499C785DB6A3678E03DD2F0C4B57D0CB2DDD3EC3BB9CA9DCB8565B5"
+      },
+      "settings": {
+        "path": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\body\\settings\\lastexit.set",
+        "bytes": 2011,
+        "sha256": "A0A483E962E6BC9B1AB90EBB5294B7A9DEA20FD30AE807CC81AB5D1C00A262A7",
+        "target_previously_absent": true
+      },
+      "captures_directory": {
+        "path": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\body\\captures",
+        "empty": true
+      },
+      "verified_template_files": 56,
+      "verified_runtime_files": 8,
+      "verified_robots": 48,
+      "verified_asset_set_sha256": "69389EC44467FE8E6D0FF6BE25A8A5F4ACEF76773B9C7FC756CBF626FCB03349",
+      "asset_hashes_reference": "assets[] joined to this sandbox; all56 target copies read back and hash-verified",
+      "random_sensitive": false,
+      "planned_captures": [
+        {
+          "native_cycle": 1,
+          "path": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\body\\captures\\body-original-cycle1.sim",
+          "actual_capture_exists": false
+        },
+        {
+          "native_cycle": 10,
+          "path": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\body\\captures\\body-original-cycle10.sim",
+          "actual_capture_exists": false
+        },
+        {
+          "native_cycle": 100,
+          "path": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\body\\captures\\body-original-cycle100.sim",
+          "actual_capture_exists": false
+        }
+      ],
+      "no_existing_overwrites": true,
+      "launched": false,
+      "actual_file_count": 58,
+      "only_expected_files_present": true
+    },
+    {
+      "case": "ties",
+      "sandbox": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\ties",
+      "executable": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\ties\\Darwin2.48.32.exe",
+      "executable_sha256": "7F580D9CE8F1095A01FD162E9BCAC03FE437599E080786FD670B676671C31990",
+      "input": {
+        "path": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\ties\\input.sim",
+        "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/ties/input.sim",
+        "bytes": 20489,
+        "sha256": "302DE657A38E7B88B1ABBB652ED567BCC3530345E16554AC2C63EAC5290D9FA3"
+      },
+      "settings": {
+        "path": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\ties\\settings\\lastexit.set",
+        "bytes": 2011,
+        "sha256": "A0A483E962E6BC9B1AB90EBB5294B7A9DEA20FD30AE807CC81AB5D1C00A262A7",
+        "target_previously_absent": true
+      },
+      "captures_directory": {
+        "path": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\ties\\captures",
+        "empty": true
+      },
+      "verified_template_files": 56,
+      "verified_runtime_files": 8,
+      "verified_robots": 48,
+      "verified_asset_set_sha256": "69389EC44467FE8E6D0FF6BE25A8A5F4ACEF76773B9C7FC756CBF626FCB03349",
+      "asset_hashes_reference": "assets[] joined to this sandbox; all56 target copies read back and hash-verified",
+      "random_sensitive": false,
+      "planned_captures": [
+        {
+          "native_cycle": 1,
+          "path": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\ties\\captures\\ties-original-cycle1.sim",
+          "actual_capture_exists": false
+        },
+        {
+          "native_cycle": 10,
+          "path": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\ties\\captures\\ties-original-cycle10.sim",
+          "actual_capture_exists": false
+        },
+        {
+          "native_cycle": 100,
+          "path": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\ties\\captures\\ties-original-cycle100.sim",
+          "actual_capture_exists": false
+        }
+      ],
+      "no_existing_overwrites": true,
+      "launched": false,
+      "actual_file_count": 58,
+      "only_expected_files_present": true
+    },
+    {
+      "case": "feeding",
+      "sandbox": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\feeding",
+      "executable": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\feeding\\Darwin2.48.32.exe",
+      "executable_sha256": "7F580D9CE8F1095A01FD162E9BCAC03FE437599E080786FD670B676671C31990",
+      "input": {
+        "path": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\feeding\\input.sim",
+        "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/feeding/input.sim",
+        "bytes": 20498,
+        "sha256": "A0AE7DFE9C75F8BBC6B7482106666C529F1DA96D91F7EE414D9F2E914B87C03D"
+      },
+      "settings": {
+        "path": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\feeding\\settings\\lastexit.set",
+        "bytes": 2011,
+        "sha256": "A0A483E962E6BC9B1AB90EBB5294B7A9DEA20FD30AE807CC81AB5D1C00A262A7",
+        "target_previously_absent": true
+      },
+      "captures_directory": {
+        "path": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\feeding\\captures",
+        "empty": true
+      },
+      "verified_template_files": 56,
+      "verified_runtime_files": 8,
+      "verified_robots": 48,
+      "verified_asset_set_sha256": "69389EC44467FE8E6D0FF6BE25A8A5F4ACEF76773B9C7FC756CBF626FCB03349",
+      "asset_hashes_reference": "assets[] joined to this sandbox; all56 target copies read back and hash-verified",
+      "random_sensitive": true,
+      "planned_captures": [
+        {
+          "native_cycle": 1,
+          "path": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\feeding\\captures\\feeding-original-cycle1.sim",
+          "actual_capture_exists": false
+        },
+        {
+          "native_cycle": 10,
+          "path": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\feeding\\captures\\feeding-original-cycle10.sim",
+          "actual_capture_exists": false
+        },
+        {
+          "native_cycle": 100,
+          "path": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\feeding\\captures\\feeding-original-cycle100.sim",
+          "actual_capture_exists": false
+        }
+      ],
+      "no_existing_overwrites": true,
+      "launched": false,
+      "actual_file_count": 58,
+      "only_expected_files_present": true
+    },
+    {
+      "case": "reproduction",
+      "sandbox": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\reproduction",
+      "executable": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\reproduction\\Darwin2.48.32.exe",
+      "executable_sha256": "7F580D9CE8F1095A01FD162E9BCAC03FE437599E080786FD670B676671C31990",
+      "input": {
+        "path": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\reproduction\\input.sim",
+        "source": "C:/Users/PC/AppData/Local/Temp/db24832-o54-804c458f/reproduction/input.sim",
+        "bytes": 11137,
+        "sha256": "60FD33C86E938B94D86C074AE9B8097B9D61159CCF5D35D066BAFFCB4BF18040"
+      },
+      "settings": {
+        "path": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\reproduction\\settings\\lastexit.set",
+        "bytes": 2011,
+        "sha256": "A0A483E962E6BC9B1AB90EBB5294B7A9DEA20FD30AE807CC81AB5D1C00A262A7",
+        "target_previously_absent": true
+      },
+      "captures_directory": {
+        "path": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\reproduction\\captures",
+        "empty": true
+      },
+      "verified_template_files": 56,
+      "verified_runtime_files": 8,
+      "verified_robots": 48,
+      "verified_asset_set_sha256": "69389EC44467FE8E6D0FF6BE25A8A5F4ACEF76773B9C7FC756CBF626FCB03349",
+      "asset_hashes_reference": "assets[] joined to this sandbox; all56 target copies read back and hash-verified",
+      "random_sensitive": true,
+      "planned_captures": [
+        {
+          "native_cycle": 1,
+          "path": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\reproduction\\captures\\reproduction-original-cycle1.sim",
+          "actual_capture_exists": false
+        },
+        {
+          "native_cycle": 10,
+          "path": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\reproduction\\captures\\reproduction-original-cycle10.sim",
+          "actual_capture_exists": false
+        },
+        {
+          "native_cycle": 100,
+          "path": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\reproduction\\captures\\reproduction-original-cycle100.sim",
+          "actual_capture_exists": false
+        }
+      ],
+      "no_existing_overwrites": true,
+      "launched": false,
+      "actual_file_count": 58,
+      "only_expected_files_present": true
+    }
+  ],
+  "verification": {
+    "case_count": 7,
+    "asset_copies_hash_verified": 392,
+    "input_copies_hash_verified": 7,
+    "settings_copies_hash_verified": 7,
+    "total_files": 406,
+    "files_per_case": 58,
+    "all_captures_empty": true,
+    "create_new_writes_only": true,
+    "no_existing_overwrites": true,
+    "only_expected_files_present": true
+  },
+  "excluded": [
+    "Restarter.exe",
+    "history files",
+    "Maindir.gset",
+    "restartmode/restart sidecars",
+    "im folder/content",
+    "Saves overrides",
+    "any other files beyond56 template assets plus input.sim and settings/lastexit.set"
+  ],
+  "launched": false,
+  "software_executed": false,
+  "ui_input_performed": false,
+  "restarter_copied": false,
+  "restarter_executed": false,
+  "product_cli_or_engine_executed": false,
+  "format_build_test_code_parser_git_gpu_browser_actions": false,
+  "launch_boundary": "Root only, later, one fresh process per case. Human is using the PC; do not launch any original runtime now. Existing idle/input/source/lease prerequisites remain in force.",
+  "protocol": "Planned genuine saved counters1/10/100 per case. Pause actual toolbar before Load; verify each saved native counter from bytes rather than filename/click count. Preserve prior captures. Original SIM omits global Rnd/Gauss; fresh-process protocol controls initialization, not arbitrary saved RNG history."
+}

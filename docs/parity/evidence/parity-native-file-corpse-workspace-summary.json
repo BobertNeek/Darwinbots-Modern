@@ -1,0 +1,599 @@
+{
+  "date": "2026-10-12",
+  "code_revision": "4e838600fee2519a37d88e5d3bb33ec1cbea1611",
+  "totals": {
+    "passed": 454,
+    "failed": 58,
+    "ignored": 0,
+    "filtered": 2
+  },
+  "failed_targets": [
+    {
+      "target": "Running tests\\db2_final_engine_world.rs (target\\release\\deps\\db2_final_engine_world-047b21415779c9cb.exe)",
+      "status": "FAILED",
+      "passed": 2,
+      "failed": 2,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\db2_vegetation.rs (target\\release\\deps\\db2_vegetation-f8a804865c6db50b.exe)",
+      "status": "FAILED",
+      "passed": 18,
+      "failed": 1,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\eco05_repopulation.rs (target\\release\\deps\\eco05_repopulation-8072f72b4bd2ef43.exe)",
+      "status": "FAILED",
+      "passed": 0,
+      "failed": 1,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\environment_world.rs (target\\release\\deps\\environment_world-9737d3b86148a216.exe)",
+      "status": "FAILED",
+      "passed": 7,
+      "failed": 6,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\mutation_advanced_248.rs (target\\release\\deps\\mutation_advanced_248-05706d3c1f5fe850.exe)",
+      "status": "FAILED",
+      "passed": 5,
+      "failed": 2,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\mutation_lifecycle.rs (target\\release\\deps\\mutation_lifecycle-7cfd7e12e54b5dcf.exe)",
+      "status": "FAILED",
+      "passed": 7,
+      "failed": 1,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\scheduler_housekeeping.rs (target\\release\\deps\\scheduler_housekeeping-e610e8050c913f24.exe)",
+      "status": "FAILED",
+      "passed": 2,
+      "failed": 1,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\sensing_compatibility.rs (target\\release\\deps\\sensing_compatibility-72f22b168c020fa7.exe)",
+      "status": "FAILED",
+      "passed": 1,
+      "failed": 1,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\spawn_placement.rs (target\\release\\deps\\spawn_placement-258a900e2ce083e6.exe)",
+      "status": "FAILED",
+      "passed": 0,
+      "failed": 1,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\species_ecology.rs (target\\release\\deps\\species_ecology-158301b8beae130b.exe)",
+      "status": "FAILED",
+      "passed": 15,
+      "failed": 26,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\sysvar_lifecycle_248.rs (target\\release\\deps\\sysvar_lifecycle_248-4ef305ac69ccea92.exe)",
+      "status": "FAILED",
+      "passed": 21,
+      "failed": 3,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\touch_taste_248.rs (target\\release\\deps\\touch_taste_248-a5d4cdc6b7ba37fd.exe)",
+      "status": "FAILED",
+      "passed": 4,
+      "failed": 4,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\world_systems.rs (target\\release\\deps\\world_systems-6ee9b56804d12464.exe)",
+      "status": "FAILED",
+      "passed": 4,
+      "failed": 8,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\zerobot_progression.rs (target\\release\\deps\\zerobot_progression-7b76cc743704bff0.exe)",
+      "status": "FAILED",
+      "passed": 0,
+      "failed": 1,
+      "ignored": 0,
+      "filtered": 0
+    }
+  ],
+  "all_targets": [
+    {
+      "target": "Running unittests src\\lib.rs (target\\release\\deps\\darwinbots_cli-0120b29cbca65ce9.exe)",
+      "status": "ok",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running unittests src\\main.rs (target\\release\\deps\\darwinbots_cli-47f16ce3baf82a13.exe)",
+      "status": "ok",
+      "passed": 0,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\commands.rs (target\\release\\deps\\commands-e2c7812906a53fef.exe)",
+      "status": "ok",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\db245_probes.rs (target\\release\\deps\\db245_probes-3bc7570ebaf70891.exe)",
+      "status": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running unittests src\\lib.rs (target\\release\\deps\\darwinbots_engine-924662590f448aca.exe)",
+      "status": "ok",
+      "passed": 55,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\advanced_mutation_costs.rs (target\\release\\deps\\advanced_mutation_costs-dfbec3c7634d84b0.exe)",
+      "status": "ok",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\canonical_cycle_248.rs (target\\release\\deps\\canonical_cycle_248-c5052bb3c2479d8f.exe)",
+      "status": "ok",
+      "passed": 14,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\contracts.rs (target\\release\\deps\\contracts-595b42ceeb087a23.exe)",
+      "status": "ok",
+      "passed": 33,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\core_state_contracts.rs (target\\release\\deps\\core_state_contracts-337eafb7cbb3f261.exe)",
+      "status": "ok",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\corpses_collisions.rs (target\\release\\deps\\corpses_collisions-173c2a07230713f9.exe)",
+      "status": "ok",
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\db24832_clean_defaults.rs (target\\release\\deps\\db24832_clean_defaults-279a9a08e0aa5267.exe)",
+      "status": "ok",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\db24832_starter_movement.rs (target\\release\\deps\\db24832_starter_movement-b081f0a80279a277.exe)",
+      "status": "ok",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\db2_final_engine_world.rs (target\\release\\deps\\db2_final_engine_world-047b21415779c9cb.exe)",
+      "status": "FAILED",
+      "passed": 2,
+      "failed": 2,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\db2_mutation_248.rs (target\\release\\deps\\db2_mutation_248-7510f4d6a4811776.exe)",
+      "status": "ok",
+      "passed": 18,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\db2_physics.rs (target\\release\\deps\\db2_physics-e40c5e7f21b35482.exe)",
+      "status": "ok",
+      "passed": 22,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\db2_projectiles.rs (target\\release\\deps\\db2_projectiles-ee84e8e160f439ad.exe)",
+      "status": "ok",
+      "passed": 23,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\db2_starter_ecology.rs (target\\release\\deps\\db2_starter_ecology-cee0061f44292d86.exe)",
+      "status": "ok",
+      "passed": 0,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1
+    },
+    {
+      "target": "Running tests\\db2_vegetation.rs (target\\release\\deps\\db2_vegetation-f8a804865c6db50b.exe)",
+      "status": "FAILED",
+      "passed": 18,
+      "failed": 1,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\db2_vision.rs (target\\release\\deps\\db2_vision-58a2905a48e79abf.exe)",
+      "status": "ok",
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\dna_runtime_248.rs (target\\release\\deps\\dna_runtime_248-830c77ecb5aca283.exe)",
+      "status": "ok",
+      "passed": 10,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\eco05_repopulation.rs (target\\release\\deps\\eco05_repopulation-8072f72b4bd2ef43.exe)",
+      "status": "FAILED",
+      "passed": 0,
+      "failed": 1,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\environment_world.rs (target\\release\\deps\\environment_world-9737d3b86148a216.exe)",
+      "status": "FAILED",
+      "passed": 7,
+      "failed": 6,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\extinct_species.rs (target\\release\\deps\\extinct_species-9fb5c0e1370beef8.exe)",
+      "status": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\final_state_persistence_248.rs (target\\release\\deps\\final_state_persistence_248-9ad9a4d56751e8fa.exe)",
+      "status": "ok",
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\gpu_ffi.rs (target\\release\\deps\\gpu_ffi-bbd5d3611acf1e5c.exe)",
+      "status": "ok",
+      "passed": 26,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\history_records.rs (target\\release\\deps\\history_records-b971ee30dde0f5c9.exe)",
+      "status": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\legacy_distribution.rs (target\\release\\deps\\legacy_distribution-38a05c280a92152f.exe)",
+      "status": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\legacy_transport.rs (target\\release\\deps\\legacy_transport-7b3700008e16cb6a.exe)",
+      "status": "ok",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\live_legacy_menu_settings.rs (target\\release\\deps\\live_legacy_menu_settings-e165b54953a8a4ca.exe)",
+      "status": "ok",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\local_modes.rs (target\\release\\deps\\local_modes-0eec3f2197226616.exe)",
+      "status": "ok",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\manual_tools.rs (target\\release\\deps\\manual_tools-9f75e87af9070579.exe)",
+      "status": "ok",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\mutation_advanced_248.rs (target\\release\\deps\\mutation_advanced_248-05706d3c1f5fe850.exe)",
+      "status": "FAILED",
+      "passed": 5,
+      "failed": 2,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\mutation_lifecycle.rs (target\\release\\deps\\mutation_lifecycle-7cfd7e12e54b5dcf.exe)",
+      "status": "FAILED",
+      "passed": 7,
+      "failed": 1,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\native_resource_precision.rs (target\\release\\deps\\native_resource_precision-b73e5e415e599cf9.exe)",
+      "status": "ok",
+      "passed": 9,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\occurrence_census_248.rs (target\\release\\deps\\occurrence_census_248-c56b5306cc52367c.exe)",
+      "status": "ok",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\parity_completion.rs (target\\release\\deps\\parity_completion-f3815db7238c924b.exe)",
+      "status": "ok",
+      "passed": 11,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\reproduction_heredity_248.rs (target\\release\\deps\\reproduction_heredity_248-958a0c968bb7af9d.exe)",
+      "status": "ok",
+      "passed": 25,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\robot_state_248.rs (target\\release\\deps\\robot_state_248-4d0969feff67b56a.exe)",
+      "status": "ok",
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\robot_tools.rs (target\\release\\deps\\robot_tools-27e6c4352f259317.exe)",
+      "status": "ok",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\scheduler_housekeeping.rs (target\\release\\deps\\scheduler_housekeeping-e610e8050c913f24.exe)",
+      "status": "FAILED",
+      "passed": 2,
+      "failed": 1,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\scheduler_shock.rs (target\\release\\deps\\scheduler_shock-6ea4cfa3d45a8661.exe)",
+      "status": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\sensing_compatibility.rs (target\\release\\deps\\sensing_compatibility-72f22b168c020fa7.exe)",
+      "status": "FAILED",
+      "passed": 1,
+      "failed": 1,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\shot_state.rs (target\\release\\deps\\shot_state-55cd849b3425631a.exe)",
+      "status": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\spawn_placement.rs (target\\release\\deps\\spawn_placement-258a900e2ce083e6.exe)",
+      "status": "FAILED",
+      "passed": 0,
+      "failed": 1,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\species_ecology.rs (target\\release\\deps\\species_ecology-158301b8beae130b.exe)",
+      "status": "FAILED",
+      "passed": 15,
+      "failed": 26,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\starter_ecology.rs (target\\release\\deps\\starter_ecology-3321dccecb6396d6.exe)",
+      "status": "ok",
+      "passed": 0,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1
+    },
+    {
+      "target": "Running tests\\sysvar_lifecycle_248.rs (target\\release\\deps\\sysvar_lifecycle_248-4ef305ac69ccea92.exe)",
+      "status": "FAILED",
+      "passed": 21,
+      "failed": 3,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\ties_multibot.rs (target\\release\\deps\\ties_multibot-f0d667f2ea62e8be.exe)",
+      "status": "ok",
+      "passed": 21,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\toroidal_world.rs (target\\release\\deps\\toroidal_world-5fa340c64ffe9d43.exe)",
+      "status": "ok",
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\touch_taste_248.rs (target\\release\\deps\\touch_taste_248-a5d4cdc6b7ba37fd.exe)",
+      "status": "FAILED",
+      "passed": 4,
+      "failed": 4,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\visual_phenotypes.rs (target\\release\\deps\\visual_phenotypes-23d38ae4f2372661.exe)",
+      "status": "ok",
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\vm.rs (target\\release\\deps\\vm-5ed1b5a0cdf9e7d4.exe)",
+      "status": "ok",
+      "passed": 8,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\vm_costs_telemetry.rs (target\\release\\deps\\vm_costs_telemetry-9ee7608817f328ab.exe)",
+      "status": "ok",
+      "passed": 8,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\vm_implicit_conditions.rs (target\\release\\deps\\vm_implicit_conditions-14bafe4ad8a2ec7b.exe)",
+      "status": "ok",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\w4_evolution_gpu.rs (target\\release\\deps\\w4_evolution_gpu-c2138b0d68ff0402.exe)",
+      "status": "ok",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\world_systems.rs (target\\release\\deps\\world_systems-6ee9b56804d12464.exe)",
+      "status": "FAILED",
+      "passed": 4,
+      "failed": 8,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Running tests\\zerobot_progression.rs (target\\release\\deps\\zerobot_progression-7b76cc743704bff0.exe)",
+      "status": "FAILED",
+      "passed": 0,
+      "failed": 1,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Doc-tests darwinbots_cli",
+      "status": "ok",
+      "passed": 0,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "Doc-tests darwinbots_engine",
+      "status": "ok",
+      "passed": 0,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    }
+  ],
+  "log": "parity-native-file-corpse-workspace-release.log"
+}

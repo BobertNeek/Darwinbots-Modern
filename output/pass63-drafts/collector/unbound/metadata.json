@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "batch": 63,
+  "state": "unbound_review_draft_awaiting_actual_artifact_identities",
+  "prepared_utc": "2026-10-17T14:05:34.569Z",
+  "operator_may_execute": false,
+  "operator_after_binding": "root_only_after_all94local_and_all7hosted_terminal_collected",
+  "active_source_modified": false,
+  "model": {
+    "file": "output/pass62-drafts/collector/bound/collect-native-roundtrip-pass62.mjs",
+    "sha256": "83D2BD1F282F1587C4DF97A8D61A385EB2859683BB07D0738983B6ACDA1F1B37",
+    "bytes": 50582
+  },
+  "model_metadata": {
+    "file": "output/pass62-drafts/collector/bound/metadata.json",
+    "sha256": "F71247E58B4D593DD04A9C83D7B52B0F58890B0D042FA4207F4B6733D72F37D2",
+    "bytes": 5287
+  },
+  "source_head": "61509e4c8424f751d20c5f34a83c35fc6d8be424",
+  "source_manifest": {
+    "file": "output/native-roundtrip-pass63-source.json",
+    "sha256": "6E6A0F44695062B4B453EDBA28E7E3A03224D10AE0D27F9ADF99071F80506860",
+    "bytes": 117714
+  },
+  "expected_source_pins": 686,
+  "expected_ordinary_outcomes": 94,
+  "expected_distinct_rust_targets": 68,
+  "expected_managed_test_counts": {
+    "core": 314,
+    "desktop": 214
+  },
+  "expected_genuine_controls": 25,
+  "expected_original_only_compared_fields": 55849,
+  "candidate": {
+    "file": "output/pass63-drafts/collector/unbound/collect-native-roundtrip-pass63.mjs",
+    "sha256": "FBFA7052314187174E414D06C310393A8B48C1826FBE147548D6CD6122E9B3CE",
+    "bytes": 49856
+  },
+  "pending_bindings": [
+    "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass63/cli-build-identity.json",
+    "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass63/native-dll-identity-before.json",
+    "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass63/native-dll-identity.json"
+  ],
+  "behavior": [
+    "Hard-fails before collector operations while unbound. All62 CLI/DLL and raw identity-receipt hashes are removed.",
+    "Final binding requires actual63 identity receipts and current CLI/DLL bytes, even if their hashes later equal62. Exactly two literal build-artifact/junction read exceptions remain permitted.",
+    "Existing strict source/proof/contained path guards and final same-byte evidence verification are unchanged.",
+    "Actual emitted Rust summaries determine the target/test census;68 and314/214 are expectations only. Compiler diagnostics remain separate from executed tests/assertion failures.",
+    "Collects94ordinary outcomes and25strict genuine controls without creating canonical admission, CPU-ready, hardware or port-complete claims.",
+    "Root alone reviews and executes the bound collector after terminal local/hosted gates and actual closed-session exit."
+  ],
+  "changes_from_reviewed_model": [
+    "63 source/head/manifest/path/state labels and686pin count.",
+    "Temporary explicit unbound throw and empty artifact binding allowlist; no source/test/collection algorithm change."
+  ],
+  "execution": {
+    "collector_executed": false,
+    "javascript_parser_executed": false,
+    "formatter_executed": false,
+    "build_or_tests_executed": false,
+    "product_or_ui_or_gpu_executed": false,
+    "git_invoked": false,
+    "current_evidence_sealed": false
+  },
+  "scope": "Preparation only. No batch63 passing-runtime or complete-corpus evidence is inferred from expected counts. The bound release will preserve this unbound candidate unchanged."
+}

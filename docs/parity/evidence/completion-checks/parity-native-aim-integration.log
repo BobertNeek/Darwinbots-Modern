@@ -1,0 +1,75 @@
+   Compiling darwinbots-engine v0.1.0 (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\engine)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 44.19s
+     Running tests\canonical_cycle_248.rs (target\debug\deps\canonical_cycle_248-2afe620a5fe5a704.exe)
+
+running 14 tests
+test a_new_tie_exchanges_resources_only_after_hardening ... ok
+test asexual_birth_side_effects_execute_in_commit_phase ... ok
+test births_and_deaths_commit_only_after_the_final_robot_pass ... ok
+test deleting_tie_still_applies_first_pass_spring_before_second_pass_delete ... ok
+test dna_and_observable_robot_visits_use_ascending_slot_order ... ok
+test dna_skips_corpse_and_dna_disabled_robots ... ok
+test one_tick_publishes_one_completed_cycle ... ok
+test post_dna_tie_write_precedes_shot_and_reproduction_consumption ... ok
+test shot_effect_occurs_after_dna_and_before_robot_passes ... ok
+test teleporter_relocation_precedes_same_cycle_senses ... ok
+test three_cycle_sensor_and_command_visibility_is_canonical ... ok
+test tie_data_can_change_a_later_tie_fire_command_in_the_same_cycle ... ok
+test trace_matches_the_complete_24832_phase_manifest ... ok
+test zero_cost_birth_does_not_emit_a_copy_charge_effect ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+
+     Running tests\db2_physics.rs (target\debug\deps\db2_physics-fb80da21d080f2fb.exe)
+
+running 22 tests
+test brownian_motion_rotates_aim_on_the_next_cycle ... ok
+test db2_gravity_is_applied_after_friction_on_the_first_tick ... ok
+test drag_reduces_retained_momentum_instead_of_replacing_it ... ok
+test edge_sense_matches_vb6_boundary_distance_calibration ... ok
+test elasticity_rebounds_colliding_bots_with_finite_velocity ... ok
+test fixed_and_corpse_flags_suppress_voluntary_motion_and_energy_cost ... ok
+test fixed_bot_radii_config_survives_save_and_uses_db2_half_radius ... ok
+test fluid_added_mass_reduces_acceleration_and_angular_damping_is_applied_in_tick ... ok
+test maximum_velocity_caps_total_velocity_after_environment_impulses ... ok
+test movement_command_adds_impulse_and_bot_coasts_without_new_thrust ... ok
+test newly_loaded_bots_start_with_db2_body_reserve ... ok
+test newmove_directive_is_preserved_by_legacy_dna ... ok
+test non_toroidal_border_collision_writes_edge_sense ... ok
+test phy04_cpu_engine_physics_contract ... ok
+test physical_radius_is_derived_from_body_like_db2 ... ok
+test pond_buoyancy_reverses_vertical_gravity_at_the_bottom ... ok
+test pond_full_buoyancy_sinks_shallow_but_floats_deep_when_raw_threshold_exceeds_one ... ok
+test pond_tides_modulate_vertical_gravity_over_the_configured_period ... ok
+test static_friction_blocks_impulses_below_the_breakaway_threshold ... ok
+test static_friction_is_applied_after_collisions_to_cancel_the_post_contact_impulse ... ok
+test voluntary_acceleration_is_clamped_before_efficiency_multiplier ... ok
+test voluntary_motion_cost_uses_the_clipped_acceleration_magnitude ... ok
+
+test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+
+     Running tests\db2_vision.rs (target\debug\deps\db2_vision-efd4813dc5f76e21.exe)
+
+running 4 tests
+test eye_direction_moves_detection_into_eye_five ... ok
+test eye_snapshot_contains_width_range_and_default_focus ... ok
+test focus_eye_publishes_and_resets_references_across_wrapped_targets ... ok
+test focus_eye_selects_reference_target ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests\native_resource_precision.rs (target\debug\deps\native_resource_precision-41d8636631cc84fd.exe)
+
+running 9 tests
+test birth_preserves_fractional_energy_then_applies_the_native_half_unit_death_threshold ... ok
+test birth_uses_native_double_percentage_expression_before_single_assignment ... ok
+test default_energy_ammunition_keeps_a_fraction_below_its_integer_value ... ok
+test dna_costs_round_the_native_store_after_each_instruction ... ok
+test fractional_material_transaction_cost_is_energy_and_waste ... ok
+test fractional_upkeep_changes_the_store_before_an_integer_readback_changes ... ok
+test genuine_reference_single_values_survive_modern_save_restore_exactly ... ok
+test unmaking_fractional_shell_spends_the_native_conversion_cost ... ok
+test v3_carried_fractions_are_absorbed_once_when_the_old_save_is_loaded ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+

@@ -1,0 +1,1104 @@
+{
+  "schema_version": 1,
+  "date_utc": "2026-10-25",
+  "scope": "Isolated UTF-8 parser allocation comparison; no live CPS, UI performance or GPU result",
+  "source_base_commit": "2ef65cc53ee9f018e84639ac8549b54c1d344e91",
+  "fixture": {
+    "db3s_sha256": "392516D0ABF047E730793F17F7E82EF634F6A492700D3222CFD2B346FFA53F1F",
+    "snapshot_bytes": 14133580,
+    "snapshot_sha256": "C8F627BB53673F94A650A8C08C0C6F44385E433CC0DBFF807DAF5F4CA735C512",
+    "tick": 3,
+    "population": 2338,
+    "description": "Native snapshot after three CPU cycles from the preserved recreated 2132-organism fixture, not the user evolved world"
+  },
+  "runs": [
+    {
+      "name": "parser-profile-first.json",
+      "result": {
+        "scope": "Isolated managed parsing of identical preserved UTF-8 bytes; no engine ticks, UI rendering or live CPS measurement",
+        "input_bytes": 14133580,
+        "input_sha256": "C8F627BB53673F94A650A8C08C0C6F44385E433CC0DBFF807DAF5F4CA735C512",
+        "complete_snapshot_bytes_equal": true,
+        "complete_snapshot_sha256": "DF05F45360D43F94515581AD937B2B4936653E0E67940BFFC8D520AE0D2FD2F5",
+        "Tick": 3,
+        "Population": 2338,
+        "warmups": 5,
+        "samples": 15,
+        "core_dll_sha256": "84651C4BC61924D5484C72304178A866709089B6305231085555409B3E828992",
+        "runtime": ".NET 10.0.13",
+        "baseline_decode_and_string_parse": {
+          "median_ms": 309.7685,
+          "median_allocated_bytes": 86385552,
+          "samples": [
+            {
+              "ElapsedMs": 309.7685,
+              "AllocatedBytes": 86385528
+            },
+            {
+              "ElapsedMs": 332.4728,
+              "AllocatedBytes": 86387000
+            },
+            {
+              "ElapsedMs": 339.3511,
+              "AllocatedBytes": 86385568
+            },
+            {
+              "ElapsedMs": 300.0422,
+              "AllocatedBytes": 86385528
+            },
+            {
+              "ElapsedMs": 297.8174,
+              "AllocatedBytes": 86385528
+            },
+            {
+              "ElapsedMs": 323.2634,
+              "AllocatedBytes": 86385528
+            },
+            {
+              "ElapsedMs": 323.4818,
+              "AllocatedBytes": 86390808
+            },
+            {
+              "ElapsedMs": 294.8925,
+              "AllocatedBytes": 86386976
+            },
+            {
+              "ElapsedMs": 308.8891,
+              "AllocatedBytes": 86385536
+            },
+            {
+              "ElapsedMs": 310.1796,
+              "AllocatedBytes": 86388600
+            },
+            {
+              "ElapsedMs": 335.2024,
+              "AllocatedBytes": 86385544
+            },
+            {
+              "ElapsedMs": 303.0838,
+              "AllocatedBytes": 86385552
+            },
+            {
+              "ElapsedMs": 332.5267,
+              "AllocatedBytes": 86390328
+            },
+            {
+              "ElapsedMs": 274.1961,
+              "AllocatedBytes": 86385528
+            },
+            {
+              "ElapsedMs": 271.7615,
+              "AllocatedBytes": 86385984
+            }
+          ]
+        },
+        "candidate_utf8_parse": {
+          "median_ms": 310.8773,
+          "median_allocated_bytes": 58118344,
+          "samples": [
+            {
+              "ElapsedMs": 333.0367,
+              "AllocatedBytes": 58118344
+            },
+            {
+              "ElapsedMs": 317.3006,
+              "AllocatedBytes": 58118344
+            },
+            {
+              "ElapsedMs": 273.1042,
+              "AllocatedBytes": 58118344
+            },
+            {
+              "ElapsedMs": 353.4585,
+              "AllocatedBytes": 58118344
+            },
+            {
+              "ElapsedMs": 351.6667,
+              "AllocatedBytes": 58118376
+            },
+            {
+              "ElapsedMs": 322.0095,
+              "AllocatedBytes": 58121208
+            },
+            {
+              "ElapsedMs": 295.1568,
+              "AllocatedBytes": 58118344
+            },
+            {
+              "ElapsedMs": 310.8773,
+              "AllocatedBytes": 58118360
+            },
+            {
+              "ElapsedMs": 276.854,
+              "AllocatedBytes": 58118344
+            },
+            {
+              "ElapsedMs": 331.3526,
+              "AllocatedBytes": 58119368
+            },
+            {
+              "ElapsedMs": 299.1245,
+              "AllocatedBytes": 58118344
+            },
+            {
+              "ElapsedMs": 311.7556,
+              "AllocatedBytes": 58121696
+            },
+            {
+              "ElapsedMs": 289.4862,
+              "AllocatedBytes": 58118344
+            },
+            {
+              "ElapsedMs": 265.5427,
+              "AllocatedBytes": 58118360
+            },
+            {
+              "ElapsedMs": 261.4065,
+              "AllocatedBytes": 58118344
+            }
+          ]
+        },
+        "json_string_deserialization_type_dispatch": {
+          "median_ms": 256.2377,
+          "median_allocated_bytes": 44311032,
+          "samples": [
+            {
+              "ElapsedMs": 267.2955,
+              "AllocatedBytes": 44311112
+            },
+            {
+              "ElapsedMs": 308.5662,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 220.3229,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 251.424,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 240.3248,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 255.5627,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 248.0572,
+              "AllocatedBytes": 44311056
+            },
+            {
+              "ElapsedMs": 285.5368,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 272.9914,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 256.2377,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 257.4379,
+              "AllocatedBytes": 44311040
+            },
+            {
+              "ElapsedMs": 238.5513,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 277.09,
+              "AllocatedBytes": 44311136
+            },
+            {
+              "ElapsedMs": 246.4978,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 260.4594,
+              "AllocatedBytes": 44311056
+            }
+          ]
+        },
+        "json_utf8_deserialization_type_dispatch": {
+          "median_ms": 243.9293,
+          "median_allocated_bytes": 44311032,
+          "samples": [
+            {
+              "ElapsedMs": 238.7264,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 283.7523,
+              "AllocatedBytes": 44311072
+            },
+            {
+              "ElapsedMs": 247.9983,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 229.3097,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 238.3962,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 332.4772,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 228.5062,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 315.2712,
+              "AllocatedBytes": 44311048
+            },
+            {
+              "ElapsedMs": 292.1629,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 269.7844,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 296.5419,
+              "AllocatedBytes": 44317456
+            },
+            {
+              "ElapsedMs": 207.12,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 238.18,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 207.4931,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 243.9293,
+              "AllocatedBytes": 44311048
+            }
+          ]
+        },
+        "dto_projection_reflection": {
+          "median_ms": 27.2376,
+          "median_allocated_bytes": 13807312,
+          "samples": [
+            {
+              "ElapsedMs": 13.9339,
+              "AllocatedBytes": 13807312
+            },
+            {
+              "ElapsedMs": 31.091,
+              "AllocatedBytes": 13807312
+            },
+            {
+              "ElapsedMs": 18.1799,
+              "AllocatedBytes": 13807312
+            },
+            {
+              "ElapsedMs": 24.6779,
+              "AllocatedBytes": 13807312
+            },
+            {
+              "ElapsedMs": 30.8501,
+              "AllocatedBytes": 13807312
+            },
+            {
+              "ElapsedMs": 27.2376,
+              "AllocatedBytes": 13807312
+            },
+            {
+              "ElapsedMs": 13.9426,
+              "AllocatedBytes": 13807312
+            },
+            {
+              "ElapsedMs": 79.2945,
+              "AllocatedBytes": 13807312
+            },
+            {
+              "ElapsedMs": 24.1771,
+              "AllocatedBytes": 13807312
+            },
+            {
+              "ElapsedMs": 13.8373,
+              "AllocatedBytes": 13807312
+            },
+            {
+              "ElapsedMs": 36.5259,
+              "AllocatedBytes": 13807312
+            },
+            {
+              "ElapsedMs": 62.6852,
+              "AllocatedBytes": 13807320
+            },
+            {
+              "ElapsedMs": 31.6658,
+              "AllocatedBytes": 13807312
+            },
+            {
+              "ElapsedMs": 31.8968,
+              "AllocatedBytes": 13807312
+            },
+            {
+              "ElapsedMs": 22.306,
+              "AllocatedBytes": 13807312
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "parser-profile-repeat.json",
+      "result": {
+        "scope": "Isolated managed parsing of identical preserved UTF-8 bytes; no engine ticks, UI rendering or live CPS measurement",
+        "input_bytes": 14133580,
+        "input_sha256": "C8F627BB53673F94A650A8C08C0C6F44385E433CC0DBFF807DAF5F4CA735C512",
+        "complete_snapshot_bytes_equal": true,
+        "complete_snapshot_sha256": "DF05F45360D43F94515581AD937B2B4936653E0E67940BFFC8D520AE0D2FD2F5",
+        "Tick": 3,
+        "Population": 2338,
+        "warmups": 5,
+        "samples": 15,
+        "core_dll_sha256": "84651C4BC61924D5484C72304178A866709089B6305231085555409B3E828992",
+        "runtime": ".NET 10.0.13",
+        "baseline_decode_and_string_parse": {
+          "median_ms": 288.1811,
+          "median_allocated_bytes": 86385528,
+          "samples": [
+            {
+              "ElapsedMs": 419.4265,
+              "AllocatedBytes": 86385584
+            },
+            {
+              "ElapsedMs": 317.9014,
+              "AllocatedBytes": 86385528
+            },
+            {
+              "ElapsedMs": 257.6742,
+              "AllocatedBytes": 86385528
+            },
+            {
+              "ElapsedMs": 295.571,
+              "AllocatedBytes": 86385568
+            },
+            {
+              "ElapsedMs": 295.6025,
+              "AllocatedBytes": 86385568
+            },
+            {
+              "ElapsedMs": 286.0434,
+              "AllocatedBytes": 86385528
+            },
+            {
+              "ElapsedMs": 260.4263,
+              "AllocatedBytes": 86385528
+            },
+            {
+              "ElapsedMs": 256.843,
+              "AllocatedBytes": 86385528
+            },
+            {
+              "ElapsedMs": 271.0542,
+              "AllocatedBytes": 86385528
+            },
+            {
+              "ElapsedMs": 268.6446,
+              "AllocatedBytes": 86385528
+            },
+            {
+              "ElapsedMs": 280.9688,
+              "AllocatedBytes": 86390648
+            },
+            {
+              "ElapsedMs": 288.1811,
+              "AllocatedBytes": 86387440
+            },
+            {
+              "ElapsedMs": 338.0274,
+              "AllocatedBytes": 86385528
+            },
+            {
+              "ElapsedMs": 378.5768,
+              "AllocatedBytes": 86385528
+            },
+            {
+              "ElapsedMs": 293.6443,
+              "AllocatedBytes": 86385528
+            }
+          ]
+        },
+        "candidate_utf8_parse": {
+          "median_ms": 265.7694,
+          "median_allocated_bytes": 58118344,
+          "samples": [
+            {
+              "ElapsedMs": 249.1904,
+              "AllocatedBytes": 58118344
+            },
+            {
+              "ElapsedMs": 284.535,
+              "AllocatedBytes": 58118384
+            },
+            {
+              "ElapsedMs": 265.7694,
+              "AllocatedBytes": 58118344
+            },
+            {
+              "ElapsedMs": 292.8203,
+              "AllocatedBytes": 58118352
+            },
+            {
+              "ElapsedMs": 262.3483,
+              "AllocatedBytes": 58118376
+            },
+            {
+              "ElapsedMs": 240.2186,
+              "AllocatedBytes": 58118344
+            },
+            {
+              "ElapsedMs": 257.8439,
+              "AllocatedBytes": 58118344
+            },
+            {
+              "ElapsedMs": 236.8318,
+              "AllocatedBytes": 58118344
+            },
+            {
+              "ElapsedMs": 261.5634,
+              "AllocatedBytes": 58118344
+            },
+            {
+              "ElapsedMs": 238.9997,
+              "AllocatedBytes": 58118344
+            },
+            {
+              "ElapsedMs": 273.9902,
+              "AllocatedBytes": 58118344
+            },
+            {
+              "ElapsedMs": 321.7013,
+              "AllocatedBytes": 58118440
+            },
+            {
+              "ElapsedMs": 275.1834,
+              "AllocatedBytes": 58118344
+            },
+            {
+              "ElapsedMs": 303.1321,
+              "AllocatedBytes": 58118600
+            },
+            {
+              "ElapsedMs": 437.4723,
+              "AllocatedBytes": 58122368
+            }
+          ]
+        },
+        "json_string_deserialization_type_dispatch": {
+          "median_ms": 276.0914,
+          "median_allocated_bytes": 44311040,
+          "samples": [
+            {
+              "ElapsedMs": 276.0914,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 254.7303,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 294.1806,
+              "AllocatedBytes": 44316864
+            },
+            {
+              "ElapsedMs": 283.1219,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 257.6537,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 273.8109,
+              "AllocatedBytes": 44311048
+            },
+            {
+              "ElapsedMs": 327.5829,
+              "AllocatedBytes": 44311056
+            },
+            {
+              "ElapsedMs": 238.8544,
+              "AllocatedBytes": 44312776
+            },
+            {
+              "ElapsedMs": 287.6406,
+              "AllocatedBytes": 44311072
+            },
+            {
+              "ElapsedMs": 285.5771,
+              "AllocatedBytes": 44311040
+            },
+            {
+              "ElapsedMs": 227.8227,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 226.3726,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 297.4242,
+              "AllocatedBytes": 44311040
+            },
+            {
+              "ElapsedMs": 245.4178,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 303.6509,
+              "AllocatedBytes": 44311056
+            }
+          ]
+        },
+        "json_utf8_deserialization_type_dispatch": {
+          "median_ms": 247.0437,
+          "median_allocated_bytes": 44311040,
+          "samples": [
+            {
+              "ElapsedMs": 266.2159,
+              "AllocatedBytes": 44311064
+            },
+            {
+              "ElapsedMs": 439.1515,
+              "AllocatedBytes": 44311056
+            },
+            {
+              "ElapsedMs": 220.5088,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 220.4168,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 247.0437,
+              "AllocatedBytes": 44314208
+            },
+            {
+              "ElapsedMs": 287.0054,
+              "AllocatedBytes": 44311040
+            },
+            {
+              "ElapsedMs": 210.3909,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 266.1361,
+              "AllocatedBytes": 44316160
+            },
+            {
+              "ElapsedMs": 262.0166,
+              "AllocatedBytes": 44311048
+            },
+            {
+              "ElapsedMs": 232.4295,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 213.0495,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 209.4063,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 250.94,
+              "AllocatedBytes": 44311040
+            },
+            {
+              "ElapsedMs": 234.8003,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 466.0465,
+              "AllocatedBytes": 44311048
+            }
+          ]
+        },
+        "dto_projection_reflection": {
+          "median_ms": 26.4685,
+          "median_allocated_bytes": 13807312,
+          "samples": [
+            {
+              "ElapsedMs": 24.8759,
+              "AllocatedBytes": 13807312
+            },
+            {
+              "ElapsedMs": 75.8694,
+              "AllocatedBytes": 13807312
+            },
+            {
+              "ElapsedMs": 37.0145,
+              "AllocatedBytes": 13807312
+            },
+            {
+              "ElapsedMs": 20.8955,
+              "AllocatedBytes": 13807312
+            },
+            {
+              "ElapsedMs": 24.5846,
+              "AllocatedBytes": 13807312
+            },
+            {
+              "ElapsedMs": 28.8754,
+              "AllocatedBytes": 13807312
+            },
+            {
+              "ElapsedMs": 20.924,
+              "AllocatedBytes": 13807312
+            },
+            {
+              "ElapsedMs": 24.615,
+              "AllocatedBytes": 13807312
+            },
+            {
+              "ElapsedMs": 31.4574,
+              "AllocatedBytes": 13807312
+            },
+            {
+              "ElapsedMs": 55.7785,
+              "AllocatedBytes": 13807736
+            },
+            {
+              "ElapsedMs": 16.2535,
+              "AllocatedBytes": 13807312
+            },
+            {
+              "ElapsedMs": 29.5655,
+              "AllocatedBytes": 13807312
+            },
+            {
+              "ElapsedMs": 34.8427,
+              "AllocatedBytes": 13807312
+            },
+            {
+              "ElapsedMs": 26.4685,
+              "AllocatedBytes": 13807312
+            },
+            {
+              "ElapsedMs": 19.4598,
+              "AllocatedBytes": 13807312
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "parser-profile-exact-package.json",
+      "result": {
+        "scope": "Isolated managed parsing of identical preserved UTF-8 bytes; no engine ticks, UI rendering or live CPS measurement",
+        "input_bytes": 14133580,
+        "input_sha256": "C8F627BB53673F94A650A8C08C0C6F44385E433CC0DBFF807DAF5F4CA735C512",
+        "complete_snapshot_bytes_equal": true,
+        "complete_snapshot_sha256": "DF05F45360D43F94515581AD937B2B4936653E0E67940BFFC8D520AE0D2FD2F5",
+        "Tick": 3,
+        "Population": 2338,
+        "warmups": 5,
+        "samples": 15,
+        "core_dll_sha256": "BEA7586B977179AFB492FF83BAB5AF247D73E3BE14BA190D4F58484A9F8D9D83",
+        "runtime": ".NET 10.0.13",
+        "baseline_decode_and_string_parse": {
+          "median_ms": 288.4622,
+          "median_allocated_bytes": 86385528,
+          "samples": [
+            {
+              "ElapsedMs": 244.3437,
+              "AllocatedBytes": 86385528
+            },
+            {
+              "ElapsedMs": 289.6822,
+              "AllocatedBytes": 86390200
+            },
+            {
+              "ElapsedMs": 320.0918,
+              "AllocatedBytes": 86385576
+            },
+            {
+              "ElapsedMs": 267.1704,
+              "AllocatedBytes": 86385528
+            },
+            {
+              "ElapsedMs": 301.3241,
+              "AllocatedBytes": 86385544
+            },
+            {
+              "ElapsedMs": 296.8625,
+              "AllocatedBytes": 86390296
+            },
+            {
+              "ElapsedMs": 278.5304,
+              "AllocatedBytes": 86385528
+            },
+            {
+              "ElapsedMs": 272.8195,
+              "AllocatedBytes": 86385528
+            },
+            {
+              "ElapsedMs": 258.7352,
+              "AllocatedBytes": 86385528
+            },
+            {
+              "ElapsedMs": 299.7459,
+              "AllocatedBytes": 86385528
+            },
+            {
+              "ElapsedMs": 329.0288,
+              "AllocatedBytes": 86385528
+            },
+            {
+              "ElapsedMs": 280.6683,
+              "AllocatedBytes": 86385528
+            },
+            {
+              "ElapsedMs": 305.0241,
+              "AllocatedBytes": 86385912
+            },
+            {
+              "ElapsedMs": 288.4622,
+              "AllocatedBytes": 86385664
+            },
+            {
+              "ElapsedMs": 282.8954,
+              "AllocatedBytes": 86385528
+            }
+          ]
+        },
+        "candidate_utf8_parse": {
+          "median_ms": 272.6598,
+          "median_allocated_bytes": 58118344,
+          "samples": [
+            {
+              "ElapsedMs": 369.9636,
+              "AllocatedBytes": 58118344
+            },
+            {
+              "ElapsedMs": 275.9425,
+              "AllocatedBytes": 58118360
+            },
+            {
+              "ElapsedMs": 272.6598,
+              "AllocatedBytes": 58118344
+            },
+            {
+              "ElapsedMs": 277.2861,
+              "AllocatedBytes": 58118384
+            },
+            {
+              "ElapsedMs": 300.0835,
+              "AllocatedBytes": 58118344
+            },
+            {
+              "ElapsedMs": 267.5187,
+              "AllocatedBytes": 58118344
+            },
+            {
+              "ElapsedMs": 309.5364,
+              "AllocatedBytes": 58118352
+            },
+            {
+              "ElapsedMs": 260.8038,
+              "AllocatedBytes": 58118344
+            },
+            {
+              "ElapsedMs": 232.4784,
+              "AllocatedBytes": 58118344
+            },
+            {
+              "ElapsedMs": 267.5646,
+              "AllocatedBytes": 58125328
+            },
+            {
+              "ElapsedMs": 265.3286,
+              "AllocatedBytes": 58118344
+            },
+            {
+              "ElapsedMs": 229.9835,
+              "AllocatedBytes": 58118344
+            },
+            {
+              "ElapsedMs": 237.012,
+              "AllocatedBytes": 58118344
+            },
+            {
+              "ElapsedMs": 359.9811,
+              "AllocatedBytes": 58118360
+            },
+            {
+              "ElapsedMs": 288.8308,
+              "AllocatedBytes": 58118656
+            }
+          ]
+        },
+        "json_string_deserialization_type_dispatch": {
+          "median_ms": 253.7825,
+          "median_allocated_bytes": 44311048,
+          "samples": [
+            {
+              "ElapsedMs": 225.1914,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 265.4136,
+              "AllocatedBytes": 44311352
+            },
+            {
+              "ElapsedMs": 208.0713,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 307.4747,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 268.3752,
+              "AllocatedBytes": 44311048
+            },
+            {
+              "ElapsedMs": 331.8834,
+              "AllocatedBytes": 44311048
+            },
+            {
+              "ElapsedMs": 247.5829,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 293.2078,
+              "AllocatedBytes": 44311048
+            },
+            {
+              "ElapsedMs": 204.5563,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 263.1383,
+              "AllocatedBytes": 44311080
+            },
+            {
+              "ElapsedMs": 253.5686,
+              "AllocatedBytes": 44311048
+            },
+            {
+              "ElapsedMs": 253.7825,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 203.8733,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 241.3204,
+              "AllocatedBytes": 44311080
+            },
+            {
+              "ElapsedMs": 282.1924,
+              "AllocatedBytes": 44315464
+            }
+          ]
+        },
+        "json_utf8_deserialization_type_dispatch": {
+          "median_ms": 241.4427,
+          "median_allocated_bytes": 44311032,
+          "samples": [
+            {
+              "ElapsedMs": 226.5292,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 227.4727,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 227.9661,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 235.7046,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 251.5083,
+              "AllocatedBytes": 44311040
+            },
+            {
+              "ElapsedMs": 267.4031,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 259.8621,
+              "AllocatedBytes": 44312952
+            },
+            {
+              "ElapsedMs": 273.3212,
+              "AllocatedBytes": 44316312
+            },
+            {
+              "ElapsedMs": 259.8678,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 241.4427,
+              "AllocatedBytes": 44311192
+            },
+            {
+              "ElapsedMs": 263.731,
+              "AllocatedBytes": 44311040
+            },
+            {
+              "ElapsedMs": 238.5363,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 212.3923,
+              "AllocatedBytes": 44311032
+            },
+            {
+              "ElapsedMs": 251.2604,
+              "AllocatedBytes": 44311072
+            },
+            {
+              "ElapsedMs": 221.5343,
+              "AllocatedBytes": 44311032
+            }
+          ]
+        },
+        "dto_projection_reflection": {
+          "median_ms": 27.7543,
+          "median_allocated_bytes": 13807312,
+          "samples": [
+            {
+              "ElapsedMs": 18.2023,
+              "AllocatedBytes": 13807312
+            },
+            {
+              "ElapsedMs": 30.5208,
+              "AllocatedBytes": 13807312
+            },
+            {
+              "ElapsedMs": 76.9425,
+              "AllocatedBytes": 13807344
+            },
+            {
+              "ElapsedMs": 17.0787,
+              "AllocatedBytes": 13807312
+            },
+            {
+              "ElapsedMs": 31.4615,
+              "AllocatedBytes": 13807312
+            },
+            {
+              "ElapsedMs": 29.0706,
+              "AllocatedBytes": 13807312
+            },
+            {
+              "ElapsedMs": 22.2106,
+              "AllocatedBytes": 13807312
+            },
+            {
+              "ElapsedMs": 14.5664,
+              "AllocatedBytes": 13807312
+            },
+            {
+              "ElapsedMs": 86.7007,
+              "AllocatedBytes": 13807320
+            },
+            {
+              "ElapsedMs": 27.7832,
+              "AllocatedBytes": 13807312
+            },
+            {
+              "ElapsedMs": 14.0349,
+              "AllocatedBytes": 13807312
+            },
+            {
+              "ElapsedMs": 27.7543,
+              "AllocatedBytes": 13807312
+            },
+            {
+              "ElapsedMs": 25.9313,
+              "AllocatedBytes": 13807312
+            },
+            {
+              "ElapsedMs": 15.3176,
+              "AllocatedBytes": 13807312
+            },
+            {
+              "ElapsedMs": 34.1619,
+              "AllocatedBytes": 13807312
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "package": {
+    "files": [
+      {
+        "file": "Darwinbots.Desktop.exe",
+        "sha256": "4DDBFB510384032D600F8A3BD91E55519A91EAE419E9CDEA27694754C54780A3"
+      },
+      {
+        "file": "Darwinbots.Desktop.dll",
+        "sha256": "8EDBD345997A9083095CFD9B60CEAD1FE85CB3571787BEFE6EF462A268E8EC73"
+      },
+      {
+        "file": "Darwinbots.Desktop.Core.dll",
+        "sha256": "BEA7586B977179AFB492FF83BAB5AF247D73E3BE14BA190D4F58484A9F8D9D83"
+      },
+      {
+        "file": "darwinbots_engine.dll",
+        "sha256": "BB8DBD3A1F6EDC6C34CE91C439F9006BDABE6B228B666D0DC14177E6D911B523"
+      }
+    ],
+    "smoke": {
+      "status": "passed",
+      "backend": "CPU",
+      "ticks": 13,
+      "population": 1,
+      "movement": true,
+      "save_resume": true,
+      "persistent_save_bytes_equal": true,
+      "inspection_history_boundary": true,
+      "bundled_bots": 48
+    },
+    "name": "win-x64-selected-overlay-performance-utf8-20261025",
+    "declared_assets": 33,
+    "missing_assets": 0,
+    "bundled_bots": 48,
+    "files_verified_identical": 87
+  },
+  "checks": {
+    "focused_parser_passed": 36,
+    "full_core_exact_package_passed": 325,
+    "full_rendered_exact_package_passed": 233,
+    "full_rendered_expected_profile_skipped": 1,
+    "full_rendered_failed": 0
+  },
+  "limits": [
+    "Native byte copy and native JSON serialization excluded from parser benchmark",
+    "Mixed elapsed-time results; no reliable latency speedup established",
+    "No live CPS or GPU qualification",
+    "Projection phase measured through reflection and JSON phases through type-based serializer dispatch",
+    "First two runs used a separately built same-source Core DLL; third used the exact package Core DLL"
+  ]
+}

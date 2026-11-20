@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-10-17T07:21:28.443Z",
+  "status": "PARTIAL_NATIVE_CONTROL; NO_NEW_CANONICAL_ACCEPTANCE",
+  "runtime": {
+    "version": "0.7.7",
+    "directory": "C:\\Users\\PC\\AppData\\Local\\OpenAI\\Codex\\runtimes\\cua_node\\a9ba6825a525118c\\bin\\node_modules\\@oai\\sky",
+    "helpers": [
+      {
+        "pid": 46348,
+        "module": "C:\\WINDOWS\\SYSTEM32\\version.dll"
+      },
+      {
+        "pid": 44500,
+        "module": "C:\\WINDOWS\\SYSTEM32\\VERSION.dll"
+      }
+    ],
+    "prior_repair": "Verified notes cover0.7.6/3dd31cfff853001c; that runtime directory is absent. Compatibility has not been established for0.7.7. No helper changed/restarted/killed."
+  },
+  "verified": [
+    "Original2.48.32 launch, normal toolbarLoad, savedC1 bytes, ordinary save/quit dialogs.",
+    "Screenshot-skill GDI captures of owned game windows.",
+    "PlayerBot visually unchecked in fixed/body controls.",
+    "Source-supported console opened through enabled Robot menu after hover settled before click."
+  ],
+  "failures": [
+    "WGC FrameArrived/window capture timed out.",
+    "Owned filename set_value reported not settable despite observed AX edit.",
+    "Fresh AX indexes sometimes unavailable from cachedappstate.",
+    "Coordinate guards rejected points over Explorer after some owner/window transitions; no bypass.",
+    "Owned console absent from returned list_windows; parent-targeted type_text changed window activation and no entered help text could be verified. Help was not submitted.",
+    "Toolbar click_count9/10 did not yield requestedcycles; actualsavedcounters governed exclusions."
+  ],
+  "controls": {
+    "long56_fixed_calibration": "output/native-original-night58-calibration.json",
+    "console59_body_calibration": "output/native-original-night58-body-calibration.json",
+    "new_canonical_accepted": 0
+  },
+  "prepared_console59": {
+    "receipt": "output/native-original-console59-prepared.json",
+    "launched_cases": [
+      "fixed",
+      "body"
+    ],
+    "closed_both_owned_instances": true,
+    "other_five_unlaunched": true,
+    "cycle_commands_executed": false
+  },
+  "remaining": "Ten missing original canonical checkpoints and paired modes/settings/selection/graphs need reliable targetable UI; GPU/capacity remains reserved forA-Life and CPUadmission.",
+  "source58_mutated": false
+}

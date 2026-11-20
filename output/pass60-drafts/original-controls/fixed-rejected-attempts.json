@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "status": "REJECTED_NOT_CANONICAL",
+  "recorded_utc": "2026-10-17T08:31:12.031Z",
+  "case": "fixed",
+  "attempts": [
+    {
+      "path": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-console59-9060ee6b-9427-4a54-8edc-39badc3114a1\\fixed\\captures\\fixed-original-overshot-pass60.sim",
+      "actual_cycle": 106,
+      "seed": 48032
+    },
+    {
+      "path": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-console59-9060ee6b-9427-4a54-8edc-39badc3114a1\\fixed\\captures\\fixed-original-cycle100-pass60.sim",
+      "actual_cycle": 101,
+      "seed": 48032,
+      "sha256": "9604C59FC3E119BD692D85F444BC2224B10BEFEE209EB6C1374E6BB08E316A44"
+    }
+  ],
+  "finding": "Original status counter is only updated by cyccaption; it can lag actual saved counter. Failed click batches may partially execute. No rejected output admitted to fixture/provenance.",
+  "port_executed": false,
+  "source_mutated": false
+}

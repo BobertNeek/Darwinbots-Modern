@@ -1,0 +1,692 @@
+﻿2026-10-17T13:18:11.9682993Z Current runner version: '2.337.0'
+2026-10-17T13:18:11.9707558Z ##[group]Runner Image Provisioner
+2026-10-17T13:18:11.9708508Z Hosted Compute Agent
+2026-10-17T13:18:11.9709200Z Version: 20261012.601
+2026-10-17T13:18:11.9709822Z Commit: f3dc54e1fb89da6852db922499a0233137369e1d
+2026-10-17T13:18:11.9710525Z Build Date: 2026-10-12T17:48:21Z
+2026-10-17T13:18:11.9711649Z Worker ID: {7f04acd7-a255-4ea1-9139-0d99b648dd11}
+2026-10-17T13:18:11.9712380Z Region: westus2
+2026-10-17T13:18:11.9712956Z Cloud: Azure
+2026-10-17T13:18:11.9714054Z ##[endgroup]
+2026-10-17T13:18:11.9715771Z ##[group]Operating System
+2026-10-17T13:18:11.9716531Z Ubuntu
+2026-10-17T13:18:11.9717055Z 24.04.5
+2026-10-17T13:18:11.9717641Z LTS
+2026-10-17T13:18:11.9718162Z ##[endgroup]
+2026-10-17T13:18:11.9718750Z ##[group]Runner Image
+2026-10-17T13:18:11.9719424Z Image: ubuntu-24.04
+2026-10-17T13:18:11.9719992Z Version: 20261012.334.1
+2026-10-17T13:18:11.9721290Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261012.334/images/ubuntu/Ubuntu2404-Readme.md
+2026-10-17T13:18:11.9722868Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261012.334
+2026-10-17T13:18:11.9724098Z ##[endgroup]
+2026-10-17T13:18:11.9725347Z ##[group]GITHUB_TOKEN Permissions
+2026-10-17T13:18:11.9727520Z Contents: read
+2026-10-17T13:18:11.9728130Z Metadata: read
+2026-10-17T13:18:11.9728705Z Packages: read
+2026-10-17T13:18:11.9729342Z ##[endgroup]
+2026-10-17T13:18:11.9731371Z Secret source: Actions
+2026-10-17T13:18:11.9732416Z Cache mode: write
+2026-10-17T13:18:11.9733124Z Prepare workflow directory
+2026-10-17T13:18:12.0069234Z Prepare all required actions
+2026-10-17T13:18:12.0152093Z Getting action download info
+2026-10-17T13:18:12.3781002Z Download action repository 'actions/checkout@v4' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+2026-10-17T13:18:12.4891693Z Download action repository 'dtolnay/rust-toolchain@stable' (SHA:b725eda525362e7cf34af9a7243cac1e3f01a7ec)
+2026-10-17T13:18:12.6464627Z Download action repository 'actions/setup-dotnet@v4' (SHA:67a3573c9a986a3f9c594539f4ab511d57bb3ce9)
+2026-10-17T13:18:12.9068317Z Download action repository 'actions/upload-artifact@v4' (SHA:ea165f8d65b6e75b540449e92b4886f43607fa02)
+2026-10-17T13:18:13.1614389Z Complete job name: verify-and-package (ubuntu-latest, linux-x64)
+2026-10-17T13:18:13.2401185Z ##[group]Run actions/checkout@v4
+2026-10-17T13:18:13.2402051Z with:
+2026-10-17T13:18:13.2402520Z   repository: BobertNeek/Darwinbots-Modern
+2026-10-17T13:18:13.2406554Z   token: ***
+2026-10-17T13:18:13.2406985Z   ssh-strict: true
+2026-10-17T13:18:13.2407418Z   ssh-user: git
+2026-10-17T13:18:13.2407864Z   persist-credentials: true
+2026-10-17T13:18:13.2408344Z   clean: true
+2026-10-17T13:18:13.2408788Z   sparse-checkout-cone-mode: true
+2026-10-17T13:18:13.2409305Z   fetch-depth: 1
+2026-10-17T13:18:13.2409726Z   fetch-tags: false
+2026-10-17T13:18:13.2410164Z   show-progress: true
+2026-10-17T13:18:13.2410600Z   lfs: false
+2026-10-17T13:18:13.2411010Z   submodules: false
+2026-10-17T13:18:13.2411471Z   set-safe-directory: true
+2026-10-17T13:18:13.2411977Z   allow-unsafe-pr-checkout: false
+2026-10-17T13:18:13.2412756Z ##[endgroup]
+2026-10-17T13:18:13.3420981Z Syncing repository: BobertNeek/Darwinbots-Modern
+2026-10-17T13:18:13.3424186Z ##[group]Getting Git version info
+2026-10-17T13:18:13.3425722Z Working directory is '/home/runner/work/Darwinbots-Modern/Darwinbots-Modern'
+2026-10-17T13:18:13.3427046Z [command]/usr/bin/git version
+2026-10-17T13:18:13.3509481Z git version 2.55.0
+2026-10-17T13:18:13.3536807Z ##[endgroup]
+2026-10-17T13:18:13.3554106Z Temporarily overriding HOME='/home/runner/work/_temp/93e9bf02-8f00-4fee-97f3-bb01ecdffac0' before making global git config changes
+2026-10-17T13:18:13.3556742Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-17T13:18:13.3560251Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/Darwinbots-Modern/Darwinbots-Modern
+2026-10-17T13:18:13.3621296Z Deleting the contents of '/home/runner/work/Darwinbots-Modern/Darwinbots-Modern'
+2026-10-17T13:18:13.3626306Z ##[group]Initializing the repository
+2026-10-17T13:18:13.3631607Z [command]/usr/bin/git init /home/runner/work/Darwinbots-Modern/Darwinbots-Modern
+2026-10-17T13:18:13.3753100Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-10-17T13:18:13.3755440Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-10-17T13:18:13.3836696Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-10-17T13:18:13.3838658Z hint: call:
+2026-10-17T13:18:13.3839797Z hint:
+2026-10-17T13:18:13.3840954Z hint: 	git config --global init.defaultBranch <name>
+2026-10-17T13:18:13.3841586Z hint:
+2026-10-17T13:18:13.3842182Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-10-17T13:18:13.3843113Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-10-17T13:18:13.3844679Z hint:
+2026-10-17T13:18:13.3845342Z hint: 	git branch -m <name>
+2026-10-17T13:18:13.3846115Z hint:
+2026-10-17T13:18:13.3847099Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-10-17T13:18:13.3848981Z Initialized empty Git repository in /home/runner/work/Darwinbots-Modern/Darwinbots-Modern/.git/
+2026-10-17T13:18:13.3851926Z [command]/usr/bin/git remote add origin https://github.com/BobertNeek/Darwinbots-Modern
+2026-10-17T13:18:13.3854845Z ##[endgroup]
+2026-10-17T13:18:13.3856073Z ##[group]Disabling automatic garbage collection
+2026-10-17T13:18:13.3857093Z [command]/usr/bin/git config --local gc.auto 0
+2026-10-17T13:18:13.3868482Z ##[endgroup]
+2026-10-17T13:18:13.3869772Z ##[group]Setting up auth
+2026-10-17T13:18:13.3876064Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-17T13:18:13.3910642Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-17T13:18:13.4301321Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-17T13:18:13.4342916Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-17T13:18:13.4563978Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-17T13:18:13.4600113Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-17T13:18:13.4821400Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-10-17T13:18:13.4861917Z ##[endgroup]
+2026-10-17T13:18:13.4863640Z ##[group]Fetching the repository
+2026-10-17T13:18:13.4873725Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +9d9321e4b86d76d18ef5e2c10f6c873ce0446089:refs/remotes/origin/codex/db24832-completion
+2026-10-17T13:18:15.9357185Z From https://github.com/BobertNeek/Darwinbots-Modern
+2026-10-17T13:18:15.9358667Z  * [new ref]         9d9321e4b86d76d18ef5e2c10f6c873ce0446089 -> origin/codex/db24832-completion
+2026-10-17T13:18:15.9363732Z ##[endgroup]
+2026-10-17T13:18:15.9364620Z ##[group]Determining the checkout info
+2026-10-17T13:18:15.9366290Z ##[endgroup]
+2026-10-17T13:18:15.9374348Z [command]/usr/bin/git sparse-checkout disable
+2026-10-17T13:18:15.9429865Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-10-17T13:18:15.9461435Z ##[group]Checking out the ref
+2026-10-17T13:18:15.9467962Z [command]/usr/bin/git checkout --progress --force -B codex/db24832-completion refs/remotes/origin/codex/db24832-completion
+2026-10-17T13:18:16.2951839Z Switched to a new branch 'codex/db24832-completion'
+2026-10-17T13:18:16.2956835Z branch 'codex/db24832-completion' set up to track 'origin/codex/db24832-completion'.
+2026-10-17T13:18:16.2982215Z ##[endgroup]
+2026-10-17T13:18:16.3036666Z [command]/usr/bin/git log -1 --format=%H
+2026-10-17T13:18:16.3065529Z 9d9321e4b86d76d18ef5e2c10f6c873ce0446089
+2026-10-17T13:18:16.3424430Z ##[group]Run dtolnay/rust-toolchain@stable
+2026-10-17T13:18:16.3424834Z with:
+2026-10-17T13:18:16.3425079Z   toolchain: stable
+2026-10-17T13:18:16.3425331Z ##[endgroup]
+2026-10-17T13:18:16.3506317Z ##[start-action display=Parse toolchain version;id=__dtolnay_rust-toolchain.parse]
+2026-10-17T13:18:16.3565948Z ##[group]Run if [[ -z $toolchain ]]; then
+2026-10-17T13:18:16.3566420Z [36;1mif [[ -z $toolchain ]]; then[0m
+2026-10-17T13:18:16.3567027Z [36;1m  # GitHub does not enforce `required: true` inputs itself. https://github.com/actions/runner/issues/1070[0m
+2026-10-17T13:18:16.3567646Z [36;1m  echo "'toolchain' is a required input" >&2[0m
+2026-10-17T13:18:16.3567992Z [36;1m  exit 1[0m
+2026-10-17T13:18:16.3568378Z [36;1melif [[ $toolchain =~ ^stable' '[0-9]+' '(year|month|week|day)s?' 'ago$ ]]; then[0m
+2026-10-17T13:18:16.3568878Z [36;1m  if [[ Linux == macOS ]]; then[0m
+2026-10-17T13:18:16.3569504Z [36;1m    echo "toolchain=1.$((($(date -v-$(sed 's/stable \([0-9]*\) \(.\).*/\1\2/' <<< $toolchain) +%s)/60/60/24-16569)/7/6))" >> $GITHUB_OUTPUT[0m
+2026-10-17T13:18:16.3570068Z [36;1m  else[0m
+2026-10-17T13:18:16.3570530Z [36;1m    echo "toolchain=1.$((($(date --date "${toolchain#stable }" +%s)/60/60/24-16569)/7/6))" >> $GITHUB_OUTPUT[0m
+2026-10-17T13:18:16.3571048Z [36;1m  fi[0m
+2026-10-17T13:18:16.3571424Z [36;1melif [[ $toolchain =~ ^stable' 'minus' '[0-9]+' 'releases?$ ]]; then[0m
+2026-10-17T13:18:16.3572014Z [36;1m  echo "toolchain=1.$((($(date +%s)/60/60/24-16569)/7/6-${toolchain//[^0-9]/}))" >> $GITHUB_OUTPUT[0m
+2026-10-17T13:18:16.3572540Z [36;1melif [[ $toolchain =~ ^1\.[0-9]+$ ]]; then[0m
+2026-10-17T13:18:16.3573111Z [36;1m  echo "toolchain=1.$((i=${toolchain#1.}, c=($(date +%s)/60/60/24-16569)/7/6, i+9*i*(10*i<=c)+90*i*(100*i<=c)))" >> $GITHUB_OUTPUT[0m
+2026-10-17T13:18:16.3573841Z [36;1melse[0m
+2026-10-17T13:18:16.3574096Z [36;1m  delimiter=EOF[0m
+2026-10-17T13:18:16.3574453Z [36;1m  while [[ $toolchain == *$delimiter* ]]; do delimiter+=_; done[0m
+2026-10-17T13:18:16.3575017Z [36;1m  printf 'toolchain<<%s\n%s\n%s\n' "$delimiter" "$toolchain" "$delimiter" >> $GITHUB_OUTPUT[0m
+2026-10-17T13:18:16.3575481Z [36;1mfi[0m
+2026-10-17T13:18:16.3848747Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-10-17T13:18:16.3849155Z env:
+2026-10-17T13:18:16.3849383Z   toolchain: stable
+2026-10-17T13:18:16.3849629Z ##[endgroup]
+2026-10-17T13:18:16.3982033Z ##[end-action id=__dtolnay_rust-toolchain.parse;outcome=success;conclusion=success;duration_ms=47]
+2026-10-17T13:18:16.3986627Z ##[start-action display=Set $CARGO_HOME;id=__dtolnay_rust-toolchain.__run]
+2026-10-17T13:18:16.4020045Z ##[group]Run echo CARGO_HOME=${CARGO_HOME:-"$HOME/.cargo"} >> $GITHUB_ENV
+2026-10-17T13:18:16.4020598Z [36;1mecho CARGO_HOME=${CARGO_HOME:-"$HOME/.cargo"} >> $GITHUB_ENV[0m
+2026-10-17T13:18:16.4080864Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-10-17T13:18:16.4081291Z ##[endgroup]
+2026-10-17T13:18:16.4171355Z ##[end-action id=__dtolnay_rust-toolchain.__run;outcome=success;conclusion=success;duration_ms=18]
+2026-10-17T13:18:16.4174103Z ##[start-action display=Install rustup if needed;id=__dtolnay_rust-toolchain.__run_2]
+2026-10-17T13:18:16.4202508Z ##[group]Run if ! command -v rustup &>/dev/null; then
+2026-10-17T13:18:16.4202929Z [36;1mif ! command -v rustup &>/dev/null; then[0m
+2026-10-17T13:18:16.4204097Z [36;1m  curl --proto '=https' --tlsv1.2 --retry 10 --retry-connrefused --location --silent --show-error --fail https://sh.rustup.rs | sh -s -- --default-toolchain none -y[0m
+2026-10-17T13:18:16.4204892Z [36;1m  echo "$CARGO_HOME/bin" >> $GITHUB_PATH[0m
+2026-10-17T13:18:16.4205220Z [36;1mfi[0m
+2026-10-17T13:18:16.4265335Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-10-17T13:18:16.4265732Z env:
+2026-10-17T13:18:16.4265984Z   CARGO_HOME: /home/runner/.cargo
+2026-10-17T13:18:16.4266457Z ##[endgroup]
+2026-10-17T13:18:16.4352867Z ##[end-action id=__dtolnay_rust-toolchain.__run_2;outcome=success;conclusion=success;duration_ms=17]
+2026-10-17T13:18:16.4355924Z ##[start-action display=Install rustup if needed on windows;id=__dtolnay_rust-toolchain.__run_3]
+2026-10-17T13:18:16.4362617Z ##[end-action id=__dtolnay_rust-toolchain.__run_3;outcome=skipped;conclusion=skipped;duration_ms=0]
+2026-10-17T13:18:16.4377593Z ##[start-action display=rustup toolchain install stable;id=__dtolnay_rust-toolchain.__run_4]
+2026-10-17T13:18:16.4398098Z ##[group]Run set -f  # split targets and components on commas and whitespace, without glob expansion
+2026-10-17T13:18:16.4398824Z [36;1mset -f  # split targets and components on commas and whitespace, without glob expansion[0m
+2026-10-17T13:18:16.4399321Z [36;1mflags=()[0m
+2026-10-17T13:18:16.4399649Z [36;1mfor t in ${targets//,/ }; do flags+=(--target "$t"); done[0m
+2026-10-17T13:18:16.4400108Z [36;1mfor c in ${components//,/ }; do flags+=(--component "$c"); done[0m
+2026-10-17T13:18:16.4400669Z [36;1mif [[ $toolchain == nightly && -n $components ]]; then flags+=(--allow-downgrade); fi[0m
+2026-10-17T13:18:16.4401141Z [36;1mlog=$(mktemp)[0m
+2026-10-17T13:18:16.4401423Z [36;1mtrap 'rm -f "$log"' EXIT[0m
+2026-10-17T13:18:16.4401733Z [36;1mfor attempt in 1 2 3 4 5; do[0m
+2026-10-17T13:18:16.4402351Z [36;1m  if rustup toolchain install "$toolchain" "${flags[@]}" --profile minimal --no-self-update --force-non-host 2>&1 | tee "$log"; then[0m
+2026-10-17T13:18:16.4402970Z [36;1m    break[0m
+2026-10-17T13:18:16.4403486Z [36;1m  else[0m
+2026-10-17T13:18:16.4403769Z [36;1m    status=$?[0m
+2026-10-17T13:18:16.4404027Z [36;1m  fi[0m
+2026-10-17T13:18:16.4404370Z [36;1m  if [[ $attempt == 5 ]] || ! grep -Fq 'checksum failed for ' "$log" \[0m
+2026-10-17T13:18:16.4404966Z [36;1m      || ! grep -Fq 'this is likely due to an ongoing update of the official release server' "$log"; then[0m
+2026-10-17T13:18:16.4405471Z [36;1m    exit "$status"[0m
+2026-10-17T13:18:16.4405758Z [36;1m  fi[0m
+2026-10-17T13:18:16.4406173Z [36;1m  echo "Retrying rustup toolchain install in 30 seconds (retry $attempt of 4)" >&2[0m
+2026-10-17T13:18:16.4406637Z [36;1m  sleep 30[0m
+2026-10-17T13:18:16.4406884Z [36;1mdone[0m
+2026-10-17T13:18:16.4467509Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-10-17T13:18:16.4467911Z env:
+2026-10-17T13:18:16.4468163Z   CARGO_HOME: /home/runner/.cargo
+2026-10-17T13:18:16.4468455Z   toolchain: stable
+2026-10-17T13:18:16.4468700Z   targets: 
+2026-10-17T13:18:16.4468945Z   components: 
+2026-10-17T13:18:16.4469194Z   RUSTUP_PERMIT_COPY_RENAME: 1
+2026-10-17T13:18:16.4469475Z ##[endgroup]
+2026-10-17T13:18:16.8844464Z info: syncing channel updates for stable-x86_64-unknown-linux-gnu
+2026-10-17T13:18:17.0971294Z info: latest update on 2026-10-15 for version 1.99.1 (58cf8f9c3 2026-10-13)
+2026-10-17T13:18:17.1178069Z info: removing previous version of component rustfmt
+2026-10-17T13:18:17.1198905Z info: removing previous version of component clippy
+2026-10-17T13:18:17.1212695Z info: removing previous version of component cargo
+2026-10-17T13:18:17.1264710Z info: removing previous version of component rust-std
+2026-10-17T13:18:17.1316069Z info: removing previous version of component rustc
+2026-10-17T13:18:17.1375297Z info: downloading 5 components
+2026-10-17T13:18:25.2636554Z 
+2026-10-17T13:18:25.2702707Z   stable-x86_64-unknown-linux-gnu updated - rustc 1.99.1 (58cf8f9c3 2026-10-13) (from rustc 1.99.0 (b940084d7 2026-09-28))
+2026-10-17T13:18:25.2703814Z 
+2026-10-17T13:18:25.2784115Z ##[end-action id=__dtolnay_rust-toolchain.__run_4;outcome=success;conclusion=success;duration_ms=8840]
+2026-10-17T13:18:25.2792557Z ##[start-action display=rustup default stable;id=__dtolnay_rust-toolchain.__run_5]
+2026-10-17T13:18:25.2814971Z ##[group]Run rustup default "$toolchain" --force-non-host
+2026-10-17T13:18:25.2815399Z [36;1mrustup default "$toolchain" --force-non-host[0m
+2026-10-17T13:18:25.2880240Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-10-17T13:18:25.2880832Z env:
+2026-10-17T13:18:25.2881044Z   CARGO_HOME: /home/runner/.cargo
+2026-10-17T13:18:25.2881465Z   toolchain: stable
+2026-10-17T13:18:25.2881690Z ##[endgroup]
+2026-10-17T13:18:25.3003552Z info: using existing install for stable-x86_64-unknown-linux-gnu
+2026-10-17T13:18:25.3010609Z info: default toolchain set to stable-x86_64-unknown-linux-gnu
+2026-10-17T13:18:25.3010923Z 
+2026-10-17T13:18:25.3071973Z   stable-x86_64-unknown-linux-gnu unchanged - rustc 1.99.1 (58cf8f9c3 2026-10-13)
+2026-10-17T13:18:25.3072359Z 
+2026-10-17T13:18:25.3088748Z ##[end-action id=__dtolnay_rust-toolchain.__run_5;outcome=success;conclusion=success;duration_ms=29]
+2026-10-17T13:18:25.3092712Z ##[start-action display=Create cachekey;id=__dtolnay_rust-toolchain.rustc-version]
+2026-10-17T13:18:25.3136947Z ##[group]Run DATE=$(rustc +"$toolchain" --version --verbose | sed -ne 's/^commit-date: \(20[0-9][0-9]\)-\([01][0-9]\)-\([0-3][0-9]\)$/\1\2\3/p')
+2026-10-17T13:18:25.3137839Z [36;1mDATE=$(rustc +"$toolchain" --version --verbose | sed -ne 's/^commit-date: \(20[0-9][0-9]\)-\([01][0-9]\)-\([0-3][0-9]\)$/\1\2\3/p')[0m
+2026-10-17T13:18:25.3138553Z [36;1mHASH=$(rustc +"$toolchain" --version --verbose | sed -ne 's/^commit-hash: //p')[0m
+2026-10-17T13:18:25.3139101Z [36;1mecho "cachekey=$(echo $DATE$HASH | head -c12)" >> $GITHUB_OUTPUT[0m
+2026-10-17T13:18:25.3203547Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-10-17T13:18:25.3203907Z env:
+2026-10-17T13:18:25.3204116Z   CARGO_HOME: /home/runner/.cargo
+2026-10-17T13:18:25.3204367Z   toolchain: stable
+2026-10-17T13:18:25.3204613Z ##[endgroup]
+2026-10-17T13:18:25.3533025Z ##[end-action id=__dtolnay_rust-toolchain.rustc-version;outcome=success;conclusion=success;duration_ms=41]
+2026-10-17T13:18:25.3536578Z ##[start-action display=Disable incremental compilation;id=__dtolnay_rust-toolchain.__run_6]
+2026-10-17T13:18:25.3557533Z ##[group]Run if [ -z "${CARGO_INCREMENTAL+set}" ]; then
+2026-10-17T13:18:25.3557931Z [36;1mif [ -z "${CARGO_INCREMENTAL+set}" ]; then[0m
+2026-10-17T13:18:25.3558278Z [36;1m  echo CARGO_INCREMENTAL=0 >> $GITHUB_ENV[0m
+2026-10-17T13:18:25.3558565Z [36;1mfi[0m
+2026-10-17T13:18:25.3627165Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-10-17T13:18:25.3627526Z env:
+2026-10-17T13:18:25.3627735Z   CARGO_HOME: /home/runner/.cargo
+2026-10-17T13:18:25.3627992Z ##[endgroup]
+2026-10-17T13:18:25.3716913Z ##[end-action id=__dtolnay_rust-toolchain.__run_6;outcome=success;conclusion=success;duration_ms=17]
+2026-10-17T13:18:25.3719025Z ##[start-action display=Enable colors in Cargo output;id=__dtolnay_rust-toolchain.__run_7]
+2026-10-17T13:18:25.3738087Z ##[group]Run if [ -z "${CARGO_TERM_COLOR+set}" ]; then
+2026-10-17T13:18:25.3738458Z [36;1mif [ -z "${CARGO_TERM_COLOR+set}" ]; then[0m
+2026-10-17T13:18:25.3738792Z [36;1m  echo CARGO_TERM_COLOR=always >> $GITHUB_ENV[0m
+2026-10-17T13:18:25.3739085Z [36;1mfi[0m
+2026-10-17T13:18:25.3799162Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-10-17T13:18:25.3799522Z env:
+2026-10-17T13:18:25.3799729Z   CARGO_HOME: /home/runner/.cargo
+2026-10-17T13:18:25.3799990Z   CARGO_INCREMENTAL: 0
+2026-10-17T13:18:25.3800211Z ##[endgroup]
+2026-10-17T13:18:25.3886111Z ##[end-action id=__dtolnay_rust-toolchain.__run_7;outcome=success;conclusion=success;duration_ms=16]
+2026-10-17T13:18:25.3889752Z ##[start-action display=Enable Cargo sparse registry;id=__dtolnay_rust-toolchain.__run_8]
+2026-10-17T13:18:25.3910624Z ##[group]Run # implemented in 1.66, stabilized in 1.68, made default in 1.70
+2026-10-17T13:18:25.3911151Z [36;1m# implemented in 1.66, stabilized in 1.68, made default in 1.70[0m
+2026-10-17T13:18:25.3911897Z [36;1mif [ -z "${CARGO_REGISTRIES_CRATES_IO_PROTOCOL+set}" -o -f "/home/runner/work/_temp"/.implicit_cargo_registries_crates_io_protocol ]; then[0m
+2026-10-17T13:18:25.3912671Z [36;1m  if rustc +"$toolchain" --version --verbose | grep -q '^release: 1\.6[89]\.'; then[0m
+2026-10-17T13:18:25.3913592Z [36;1m    touch "/home/runner/work/_temp"/.implicit_cargo_registries_crates_io_protocol || true[0m
+2026-10-17T13:18:25.3914371Z [36;1m    echo CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse >> $GITHUB_ENV[0m
+2026-10-17T13:18:25.3915042Z [36;1m  elif rustc +"$toolchain" --version --verbose | grep -q '^release: 1\.6[67]\.'; then[0m
+2026-10-17T13:18:25.3915679Z [36;1m    touch "/home/runner/work/_temp"/.implicit_cargo_registries_crates_io_protocol || true[0m
+2026-10-17T13:18:25.3916222Z [36;1m    echo CARGO_REGISTRIES_CRATES_IO_PROTOCOL=git >> $GITHUB_ENV[0m
+2026-10-17T13:18:25.3916575Z [36;1m  fi[0m
+2026-10-17T13:18:25.3916767Z [36;1mfi[0m
+2026-10-17T13:18:25.3977269Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-10-17T13:18:25.3977620Z env:
+2026-10-17T13:18:25.3977829Z   CARGO_HOME: /home/runner/.cargo
+2026-10-17T13:18:25.3978090Z   CARGO_INCREMENTAL: 0
+2026-10-17T13:18:25.3978313Z   CARGO_TERM_COLOR: always
+2026-10-17T13:18:25.3978537Z   toolchain: stable
+2026-10-17T13:18:25.3978739Z ##[endgroup]
+2026-10-17T13:18:25.4279937Z ##[end-action id=__dtolnay_rust-toolchain.__run_8;outcome=success;conclusion=success;duration_ms=38]
+2026-10-17T13:18:25.4284557Z ##[start-action display=Work around spurious network errors in curl 8.0;id=__dtolnay_rust-toolchain.__run_9]
+2026-10-17T13:18:25.4305443Z ##[group]Run # https://rust-lang.zulipchat.com/#narrow/stream/246057-t-cargo/topic/timeout.20investigation
+2026-10-17T13:18:25.4306205Z [36;1m# https://rust-lang.zulipchat.com/#narrow/stream/246057-t-cargo/topic/timeout.20investigation[0m
+2026-10-17T13:18:25.4306840Z [36;1mif rustc +"$toolchain" --version --verbose | grep -q '^release: 1\.7[01]\.'; then[0m
+2026-10-17T13:18:25.4307325Z [36;1m  echo CARGO_HTTP_MULTIPLEXING=false >> $GITHUB_ENV[0m
+2026-10-17T13:18:25.4307639Z [36;1mfi[0m
+2026-10-17T13:18:25.4375301Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-10-17T13:18:25.4375656Z env:
+2026-10-17T13:18:25.4375865Z   CARGO_HOME: /home/runner/.cargo
+2026-10-17T13:18:25.4376125Z   CARGO_INCREMENTAL: 0
+2026-10-17T13:18:25.4376362Z   CARGO_TERM_COLOR: always
+2026-10-17T13:18:25.4376594Z   toolchain: stable
+2026-10-17T13:18:25.4376804Z ##[endgroup]
+2026-10-17T13:18:25.4575099Z ##[end-action id=__dtolnay_rust-toolchain.__run_9;outcome=success;conclusion=success;duration_ms=28]
+2026-10-17T13:18:25.4580185Z ##[start-action display=rustc +stable --version --verbose;id=__dtolnay_rust-toolchain.__run_10]
+2026-10-17T13:18:25.4600759Z ##[group]Run rustc +"$toolchain" --version --verbose
+2026-10-17T13:18:25.4601138Z [36;1mrustc +"$toolchain" --version --verbose[0m
+2026-10-17T13:18:25.4666015Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-10-17T13:18:25.4666377Z env:
+2026-10-17T13:18:25.4666583Z   CARGO_HOME: /home/runner/.cargo
+2026-10-17T13:18:25.4666855Z   CARGO_INCREMENTAL: 0
+2026-10-17T13:18:25.4667091Z   CARGO_TERM_COLOR: always
+2026-10-17T13:18:25.4667333Z   toolchain: stable
+2026-10-17T13:18:25.4667546Z ##[endgroup]
+2026-10-17T13:18:25.4859130Z rustc 1.99.1 (58cf8f9c3 2026-10-13)
+2026-10-17T13:18:25.4860128Z binary: rustc
+2026-10-17T13:18:25.4861112Z commit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67
+2026-10-17T13:18:25.4862014Z commit-date: 2026-10-13
+2026-10-17T13:18:25.4862785Z host: x86_64-unknown-linux-gnu
+2026-10-17T13:18:25.4863930Z release: 1.99.1
+2026-10-17T13:18:25.4864728Z LLVM version: 23.1.1
+2026-10-17T13:18:25.4877637Z ##[end-action id=__dtolnay_rust-toolchain.__run_10;outcome=success;conclusion=success;duration_ms=29]
+2026-10-17T13:18:25.4967340Z ##[group]Run actions/setup-dotnet@v4
+2026-10-17T13:18:25.4967639Z with:
+2026-10-17T13:18:25.4967842Z   dotnet-version: 10.0.x
+2026-10-17T13:18:25.4968078Z   cache: false
+2026-10-17T13:18:25.4968275Z env:
+2026-10-17T13:18:25.4968470Z   CARGO_HOME: /home/runner/.cargo
+2026-10-17T13:18:25.4968720Z   CARGO_INCREMENTAL: 0
+2026-10-17T13:18:25.4968940Z   CARGO_TERM_COLOR: always
+2026-10-17T13:18:25.4969164Z ##[endgroup]
+2026-10-17T13:18:25.6362750Z (node:2429) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-10-17T13:18:25.6364124Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-10-17T13:18:25.6388765Z [command]/home/runner/work/_actions/actions/setup-dotnet/v4/externals/install-dotnet.sh --skip-non-versioned-files --runtime dotnet --channel LTS
+2026-10-17T13:18:25.9418280Z dotnet-install: Attempting to download using aka.ms link https://builds.dotnet.microsoft.com/dotnet/Runtime/10.0.13/dotnet-runtime-10.0.13-linux-x64.tar.gz
+2026-10-17T13:18:26.2248428Z dotnet-install: Remote file https://builds.dotnet.microsoft.com/dotnet/Runtime/10.0.13/dotnet-runtime-10.0.13-linux-x64.tar.gz size is 36648012 bytes.
+2026-10-17T13:18:26.2257626Z dotnet-install: Extracting archive from https://builds.dotnet.microsoft.com/dotnet/Runtime/10.0.13/dotnet-runtime-10.0.13-linux-x64.tar.gz
+2026-10-17T13:18:26.8632378Z dotnet-install: Downloaded file size is 36648012 bytes.
+2026-10-17T13:18:26.8636405Z dotnet-install: The remote and local file sizes are equal.
+2026-10-17T13:18:26.8929467Z dotnet-install: Installed version is 10.0.13
+2026-10-17T13:18:26.8986407Z dotnet-install: Adding to current process PATH: `/usr/share/dotnet`. Note: This change will be visible only when sourcing script.
+2026-10-17T13:18:26.8988035Z dotnet-install: Note that the script does not resolve dependencies during installation.
+2026-10-17T13:18:26.8989914Z dotnet-install: To check the list of dependencies, go to https://learn.microsoft.com/dotnet/core/install, select your operating system and check the "Dependencies" section.
+2026-10-17T13:18:26.9004584Z dotnet-install: Installation finished successfully.
+2026-10-17T13:18:26.9017355Z [command]/home/runner/work/_actions/actions/setup-dotnet/v4/externals/install-dotnet.sh --skip-non-versioned-files --channel 10.0
+2026-10-17T13:18:27.2168144Z dotnet-install: Attempting to download using aka.ms link https://builds.dotnet.microsoft.com/dotnet/Sdk/10.0.402/dotnet-sdk-10.0.402-linux-x64.tar.gz
+2026-10-17T13:18:28.1244231Z dotnet-install: Remote file https://builds.dotnet.microsoft.com/dotnet/Sdk/10.0.402/dotnet-sdk-10.0.402-linux-x64.tar.gz size is 240279509 bytes.
+2026-10-17T13:18:28.1246319Z dotnet-install: Extracting archive from https://builds.dotnet.microsoft.com/dotnet/Sdk/10.0.402/dotnet-sdk-10.0.402-linux-x64.tar.gz
+2026-10-17T13:18:32.8349104Z dotnet-install: Downloaded file size is 240279509 bytes.
+2026-10-17T13:18:32.8354559Z dotnet-install: The remote and local file sizes are equal.
+2026-10-17T13:18:33.2689250Z dotnet-install: Installed version is 10.0.402
+2026-10-17T13:18:33.2747307Z dotnet-install: Adding to current process PATH: `/usr/share/dotnet`. Note: This change will be visible only when sourcing script.
+2026-10-17T13:18:33.2754453Z dotnet-install: Note that the script does not resolve dependencies during installation.
+2026-10-17T13:18:33.2756329Z dotnet-install: To check the list of dependencies, go to https://learn.microsoft.com/dotnet/core/install, select your operating system and check the "Dependencies" section.
+2026-10-17T13:18:33.2758113Z dotnet-install: Installation finished successfully.
+2026-10-17T13:18:33.2892218Z ##[group]Run cargo test --release --workspace --no-fail-fast
+2026-10-17T13:18:33.2892677Z [36;1mcargo test --release --workspace --no-fail-fast[0m
+2026-10-17T13:18:33.2958405Z shell: /usr/bin/bash -e {0}
+2026-10-17T13:18:33.2958666Z env:
+2026-10-17T13:18:33.2958869Z   CARGO_HOME: /home/runner/.cargo
+2026-10-17T13:18:33.2959137Z   CARGO_INCREMENTAL: 0
+2026-10-17T13:18:33.2959364Z   CARGO_TERM_COLOR: always
+2026-10-17T13:18:33.2959611Z   DOTNET_ROOT: /usr/share/dotnet
+2026-10-17T13:18:33.2959855Z ##[endgroup]
+2026-10-17T13:18:33.3355269Z [1m[92m    Updating[0m crates.io index
+2026-10-17T13:18:33.8832474Z [1m[92m Downloading[0m crates ...
+2026-10-17T13:18:33.9537054Z [1m[92m  Downloaded[0m anstyle-query v1.1.5
+2026-10-17T13:18:33.9613869Z [1m[92m  Downloaded[0m anstyle v1.0.14
+2026-10-17T13:18:33.9640756Z [1m[92m  Downloaded[0m anstyle-parse v1.0.0
+2026-10-17T13:18:33.9654962Z [1m[92m  Downloaded[0m anstream v1.0.0
+2026-10-17T13:18:33.9669991Z [1m[92m  Downloaded[0m allocator-api2 v0.2.21
+2026-10-17T13:18:33.9699645Z [1m[92m  Downloaded[0m clap_lex v1.1.0
+2026-10-17T13:18:33.9712440Z [1m[92m  Downloaded[0m errno v0.3.14
+2026-10-17T13:18:33.9730166Z [1m[92m  Downloaded[0m cfg-if v1.0.4
+2026-10-17T13:18:33.9764444Z [1m[92m  Downloaded[0m colorchoice v1.0.5
+2026-10-17T13:18:33.9765033Z [1m[92m  Downloaded[0m dlib v0.5.3
+2026-10-17T13:18:33.9765647Z [1m[92m  Downloaded[0m equivalent v1.0.2
+2026-10-17T13:18:33.9785998Z [1m[92m  Downloaded[0m cfg_aliases v0.2.1
+2026-10-17T13:18:33.9787373Z [1m[92m  Downloaded[0m bytemuck_derive v1.11.0
+2026-10-17T13:18:33.9800371Z [1m[92m  Downloaded[0m foldhash v0.1.5
+2026-10-17T13:18:33.9811910Z [1m[92m  Downloaded[0m bit-set v0.9.1
+2026-10-17T13:18:33.9826366Z [1m[92m  Downloaded[0m autocfg v1.5.1
+2026-10-17T13:18:33.9845243Z [1m[92m  Downloaded[0m crossbeam-deque v0.8.7
+2026-10-17T13:18:33.9858792Z [1m[92m  Downloaded[0m either v1.16.0
+2026-10-17T13:18:33.9872950Z [1m[92m  Downloaded[0m fastrand v2.4.1
+2026-10-17T13:18:33.9886510Z [1m[92m  Downloaded[0m arrayvec v0.7.8
+2026-10-17T13:18:33.9907254Z [1m[92m  Downloaded[0m document-features v0.2.12
+2026-10-17T13:18:33.9918963Z [1m[92m  Downloaded[0m bit-vec v0.9.1
+2026-10-17T13:18:33.9935061Z [1m[92m  Downloaded[0m clap_derive v4.6.1
+2026-10-17T13:18:33.9956938Z [1m[92m  Downloaded[0m hexf-parse v0.2.1
+2026-10-17T13:18:33.9963017Z [1m[92m  Downloaded[0m scopeguard v1.2.0
+2026-10-17T13:18:33.9976543Z [1m[92m  Downloaded[0m wgpu-naga-bridge v29.0.4
+2026-10-17T13:18:33.9985683Z [1m[92m  Downloaded[0m bytemuck v1.25.1
+2026-10-17T13:18:34.0018505Z [1m[92m  Downloaded[0m codespan-reporting v0.13.1
+2026-10-17T13:18:34.0096016Z [1m[92m  Downloaded[0m crossbeam-utils v0.8.22
+2026-10-17T13:18:34.0122589Z [1m[92m  Downloaded[0m foldhash v0.2.0
+2026-10-17T13:18:34.0135594Z [1m[92m  Downloaded[0m khronos-egl v6.0.0
+2026-10-17T13:18:34.0157254Z [1m[92m  Downloaded[0m bitflags v2.13.0
+2026-10-17T13:18:34.0201764Z [1m[92m  Downloaded[0m clap v4.6.1
+2026-10-17T13:18:34.0297127Z [1m[92m  Downloaded[0m crossbeam-epoch v0.9.20
+2026-10-17T13:18:34.0321071Z [1m[92m  Downloaded[0m parking_lot v0.12.5
+2026-10-17T13:18:34.0345325Z [1m[92m  Downloaded[0m presser v0.3.1
+2026-10-17T13:18:34.0361928Z [1m[92m  Downloaded[0m thiserror v2.0.18
+2026-10-17T13:18:34.0426143Z [1m[92m  Downloaded[0m unicode-ident v1.0.24
+2026-10-17T13:18:34.0452790Z [1m[92m  Downloaded[0m utf8parse v0.2.2
+2026-10-17T13:18:34.0462457Z [1m[92m  Downloaded[0m rustc-hash v1.1.0
+2026-10-17T13:18:34.0471251Z [1m[92m  Downloaded[0m gpu-descriptor-types v0.2.0
+2026-10-17T13:18:34.0477890Z [1m[92m  Downloaded[0m pollster v0.4.0
+2026-10-17T13:18:34.0489865Z [1m[92m  Downloaded[0m strsim v0.11.1
+2026-10-17T13:18:34.0502346Z [1m[92m  Downloaded[0m profiling v1.0.18
+2026-10-17T13:18:34.0513964Z [1m[92m  Downloaded[0m wgpu-core-deps-windows-linux-android v29.0.4
+2026-10-17T13:18:34.0522502Z [1m[92m  Downloaded[0m heck v0.5.0
+2026-10-17T13:18:34.0535196Z [1m[92m  Downloaded[0m is_terminal_polyfill v1.70.2
+2026-10-17T13:18:34.0543854Z [1m[92m  Downloaded[0m itoa v1.0.18
+2026-10-17T13:18:34.0558245Z [1m[92m  Downloaded[0m ordered-float v5.3.0
+2026-10-17T13:18:34.0574579Z [1m[92m  Downloaded[0m wayland-sys v0.31.11
+2026-10-17T13:18:34.0586291Z [1m[92m  Downloaded[0m num-traits v0.2.19
+2026-10-17T13:18:34.0611685Z [1m[92m  Downloaded[0m renderdoc-sys v1.1.0
+2026-10-17T13:18:34.0620751Z [1m[92m  Downloaded[0m spirv v0.4.0+sdk-1.4.341.0
+2026-10-17T13:18:34.0632513Z [1m[92m  Downloaded[0m termcolor v1.4.1
+2026-10-17T13:18:34.0644571Z [1m[92m  Downloaded[0m pkg-config v0.3.33
+2026-10-17T13:18:34.0659775Z [1m[92m  Downloaded[0m quote v1.0.46
+2026-10-17T13:18:34.0691167Z [1m[92m  Downloaded[0m libloading v0.8.9
+2026-10-17T13:18:34.0715986Z [1m[92m  Downloaded[0m lock_api v0.4.14
+2026-10-17T13:18:34.0728752Z [1m[92m  Downloaded[0m raw-window-handle v0.6.2
+2026-10-17T13:18:34.0746406Z [1m[92m  Downloaded[0m thiserror-impl v2.0.18
+2026-10-17T13:18:34.0760446Z [1m[92m  Downloaded[0m gpu-descriptor v0.3.2
+2026-10-17T13:18:34.0768371Z [1m[92m  Downloaded[0m smallvec v1.15.2
+2026-10-17T13:18:34.0782700Z [1m[92m  Downloaded[0m once_cell v1.21.4
+2026-10-17T13:18:34.0807584Z [1m[92m  Downloaded[0m parking_lot_core v0.9.12
+2026-10-17T13:18:34.0828254Z [1m[92m  Downloaded[0m static_assertions v1.1.0
+2026-10-17T13:18:34.0842059Z [1m[92m  Downloaded[0m tempfile v3.27.0
+2026-10-17T13:18:34.0866763Z [1m[92m  Downloaded[0m zmij v1.0.21
+2026-10-17T13:18:34.0884157Z [1m[92m  Downloaded[0m getrandom v0.4.3
+2026-10-17T13:18:34.0921578Z [1m[92m  Downloaded[0m half v2.7.1
+2026-10-17T13:18:34.0947633Z [1m[92m  Downloaded[0m litrs v1.0.0
+2026-10-17T13:18:34.0976619Z [1m[92m  Downloaded[0m log v0.4.33
+2026-10-17T13:18:34.1000514Z [1m[92m  Downloaded[0m proc-macro2 v1.0.106
+2026-10-17T13:18:34.1029284Z [1m[92m  Downloaded[0m rayon-core v1.13.0
+2026-10-17T13:18:34.1065692Z [1m[92m  Downloaded[0m serde_derive v1.0.228
+2026-10-17T13:18:34.1095693Z [1m[92m  Downloaded[0m zerocopy-derive v0.8.54
+2026-10-17T13:18:34.1187874Z [1m[92m  Downloaded[0m gpu-allocator v0.28.0
+2026-10-17T13:18:34.1215366Z [1m[92m  Downloaded[0m serde_core v1.0.228
+2026-10-17T13:18:34.1243300Z [1m[92m  Downloaded[0m serde v1.0.228
+2026-10-17T13:18:34.1277568Z [1m[92m  Downloaded[0m indexmap v2.14.0
+2026-10-17T13:18:34.1319019Z [1m[92m  Downloaded[0m memchr v2.8.3
+2026-10-17T13:18:34.1373767Z [1m[92m  Downloaded[0m wgpu-types v29.0.4
+2026-10-17T13:18:34.1410730Z [1m[92m  Downloaded[0m glow v0.17.0
+2026-10-17T13:18:34.1455622Z [1m[92m  Downloaded[0m hashbrown v0.16.1
+2026-10-17T13:18:34.1505285Z [1m[92m  Downloaded[0m hashbrown v0.17.1
+2026-10-17T13:18:34.1557154Z [1m[92m  Downloaded[0m libm v0.2.16
+2026-10-17T13:18:34.1667484Z [1m[92m  Downloaded[0m serde_json v1.0.150
+2026-10-17T13:18:34.1738877Z [1m[92m  Downloaded[0m hashbrown v0.15.5
+2026-10-17T13:18:34.1786352Z [1m[92m  Downloaded[0m clap_builder v4.6.0
+2026-10-17T13:18:34.1848890Z [1m[92m  Downloaded[0m rayon v1.12.0
+2026-10-17T13:18:34.1942176Z [1m[92m  Downloaded[0m wgpu v29.0.4
+2026-10-17T13:18:34.2086871Z [1m[92m  Downloaded[0m unicode-width v0.2.2
+2026-10-17T13:18:34.2142243Z [1m[92m  Downloaded[0m syn v2.0.118
+2026-10-17T13:18:34.2245370Z [1m[92m  Downloaded[0m zerocopy v0.8.54
+2026-10-17T13:18:34.2460498Z [1m[92m  Downloaded[0m wgpu-core v29.0.4
+2026-10-17T13:18:34.2553151Z [1m[92m  Downloaded[0m rustix v1.1.4
+2026-10-17T13:18:34.2819058Z [1m[92m  Downloaded[0m wgpu-hal v29.0.4
+2026-10-17T13:18:34.2920144Z [1m[92m  Downloaded[0m ash v0.38.0+1.3.281
+2026-10-17T13:18:34.3068287Z [1m[92m  Downloaded[0m naga v29.0.4
+2026-10-17T13:18:34.3263383Z [1m[92m  Downloaded[0m libc v0.2.186
+2026-10-17T13:18:34.3658578Z [1m[92m  Downloaded[0m linux-raw-sys v0.12.1
+2026-10-17T13:18:34.4784143Z [1m[92m   Compiling[0m proc-macro2 v1.0.106
+2026-10-17T13:18:34.4784971Z [1m[92m   Compiling[0m quote v1.0.46
+2026-10-17T13:18:34.4787866Z [1m[92m   Compiling[0m unicode-ident v1.0.24
+2026-10-17T13:18:34.4788770Z [1m[92m   Compiling[0m cfg-if v1.0.4
+2026-10-17T13:18:34.5145309Z [1m[92m   Compiling[0m cfg_aliases v0.2.1
+2026-10-17T13:18:34.5307572Z [1m[92m   Compiling[0m bitflags v2.13.0
+2026-10-17T13:18:34.5440028Z [1m[92m   Compiling[0m libc v0.2.186
+2026-10-17T13:18:34.6384825Z [1m[92m   Compiling[0m autocfg v1.5.1
+2026-10-17T13:18:34.7245019Z [1m[92m   Compiling[0m libm v0.2.16
+2026-10-17T13:18:34.9314623Z [1m[92m   Compiling[0m num-traits v0.2.19
+2026-10-17T13:18:35.0644717Z [1m[92m   Compiling[0m libloading v0.8.9
+2026-10-17T13:18:35.2754605Z [1m[92m   Compiling[0m log v0.4.33
+2026-10-17T13:18:35.4051680Z [1m[92m   Compiling[0m syn v2.0.118
+2026-10-17T13:18:35.4254679Z [1m[92m   Compiling[0m thiserror v2.0.18
+2026-10-17T13:18:35.5784383Z [1m[92m   Compiling[0m equivalent v1.0.2
+2026-10-17T13:18:35.6069201Z [1m[92m   Compiling[0m zerocopy v0.8.54
+2026-10-17T13:18:35.8359314Z [1m[92m   Compiling[0m foldhash v0.2.0
+2026-10-17T13:18:35.9994932Z [1m[92m   Compiling[0m once_cell v1.21.4
+2026-10-17T13:18:36.1675048Z [1m[92m   Compiling[0m allocator-api2 v0.2.21
+2026-10-17T13:18:36.5115212Z [1m[92m   Compiling[0m hashbrown v0.16.1
+2026-10-17T13:18:36.6845025Z [1m[92m   Compiling[0m naga v29.0.4
+2026-10-17T13:18:36.8223973Z [1m[92m   Compiling[0m ash v0.38.0+1.3.281
+2026-10-17T13:18:36.8834861Z [1m[92m   Compiling[0m hashbrown v0.17.1
+2026-10-17T13:18:36.8944597Z [1m[92m   Compiling[0m pkg-config v0.3.33
+2026-10-17T13:18:37.2505729Z [1m[92m   Compiling[0m bit-vec v0.9.1
+2026-10-17T13:18:37.3114952Z [1m[92m   Compiling[0m unicode-width v0.2.2
+2026-10-17T13:18:37.4669444Z [1m[92m   Compiling[0m parking_lot_core v0.9.12
+2026-10-17T13:18:37.5095327Z [1m[92m   Compiling[0m codespan-reporting v0.13.1
+2026-10-17T13:18:37.5645397Z [1m[92m   Compiling[0m indexmap v2.14.0
+2026-10-17T13:18:37.5694330Z [1m[92m   Compiling[0m bit-set v0.9.1
+2026-10-17T13:18:37.6835128Z [1m[92m   Compiling[0m wayland-sys v0.31.11
+2026-10-17T13:18:37.7824750Z [1m[92m   Compiling[0m spirv v0.4.0+sdk-1.4.341.0
+2026-10-17T13:18:38.3995214Z [1m[92m   Compiling[0m arrayvec v0.7.8
+2026-10-17T13:18:38.4625024Z [1m[92m   Compiling[0m scopeguard v1.2.0
+2026-10-17T13:18:38.5120557Z [1m[92m   Compiling[0m hexf-parse v0.2.1
+2026-10-17T13:18:38.6285214Z [1m[92m   Compiling[0m smallvec v1.15.2
+2026-10-17T13:18:38.6434709Z [1m[92m   Compiling[0m raw-window-handle v0.6.2
+2026-10-17T13:18:38.8051023Z [1m[92m   Compiling[0m crossbeam-utils v0.8.22
+2026-10-17T13:18:38.8555240Z [1m[92m   Compiling[0m rustc-hash v1.1.0
+2026-10-17T13:18:38.8965364Z [1m[92m   Compiling[0m foldhash v0.1.5
+2026-10-17T13:18:38.9344897Z [1m[92m   Compiling[0m khronos-egl v6.0.0
+2026-10-17T13:18:38.9565091Z [1m[92m   Compiling[0m thiserror-impl v2.0.18
+2026-10-17T13:18:38.9974786Z [1m[92m   Compiling[0m zerocopy-derive v0.8.54
+2026-10-17T13:18:39.0475345Z [1m[92m   Compiling[0m bytemuck_derive v1.11.0
+2026-10-17T13:18:39.9886823Z [1m[92m   Compiling[0m hashbrown v0.15.5
+2026-10-17T13:18:39.9964483Z [1m[92m   Compiling[0m bytemuck v1.25.1
+2026-10-17T13:18:40.2275104Z [1m[92m   Compiling[0m wgpu-types v29.0.4
+2026-10-17T13:18:40.6386797Z [1m[92m   Compiling[0m lock_api v0.4.14
+2026-10-17T13:18:40.8354828Z [1m[92m   Compiling[0m dlib v0.5.3
+2026-10-17T13:18:40.8934966Z [1m[92m   Compiling[0m gpu-descriptor-types v0.2.0
+2026-10-17T13:18:41.0965203Z [1m[92m   Compiling[0m wgpu-hal v29.0.4
+2026-10-17T13:18:41.3055373Z [1m[92m   Compiling[0m presser v0.3.1
+2026-10-17T13:18:41.3805437Z [1m[92m   Compiling[0m crossbeam-epoch v0.9.20
+2026-10-17T13:18:41.4995285Z [1m[92m   Compiling[0m gpu-descriptor v0.3.2
+2026-10-17T13:18:42.2945187Z [1m[92m   Compiling[0m parking_lot v0.12.5
+2026-10-17T13:18:44.0634968Z [1m[92m   Compiling[0m ordered-float v5.3.0
+2026-10-17T13:18:44.1035327Z [1m[92m   Compiling[0m profiling v1.0.18
+2026-10-17T13:18:44.1358727Z [1m[92m   Compiling[0m crossbeam-deque v0.8.7
+2026-10-17T13:18:44.2535373Z [1m[92m   Compiling[0m half v2.7.1
+2026-10-17T13:18:44.2536784Z [1m[92m   Compiling[0m glow v0.17.0
+2026-10-17T13:18:44.2925477Z [1m[92m   Compiling[0m serde_core v1.0.228
+2026-10-17T13:18:44.4414809Z [1m[92m   Compiling[0m renderdoc-sys v1.1.0
+2026-10-17T13:18:44.9055176Z [1m[92m   Compiling[0m wgpu-core v29.0.4
+2026-10-17T13:18:45.1174660Z [1m[92m   Compiling[0m litrs v1.0.0
+2026-10-17T13:18:45.5454740Z [1m[92m   Compiling[0m getrandom v0.4.3
+2026-10-17T13:18:45.6444876Z [1m[92m   Compiling[0m rustix v1.1.4
+2026-10-17T13:18:45.8255370Z [1m[92m   Compiling[0m zmij v1.0.21
+2026-10-17T13:18:45.9375377Z [1m[92m   Compiling[0m rayon-core v1.13.0
+2026-10-17T13:18:46.1044873Z [1m[92m   Compiling[0m document-features v0.2.12
+2026-10-17T13:18:47.2215060Z [1m[92m   Compiling[0m wgpu v29.0.4
+2026-10-17T13:18:47.5845340Z [1m[92m   Compiling[0m serde_json v1.0.150
+2026-10-17T13:18:47.6665386Z [1m[92m   Compiling[0m serde v1.0.228
+2026-10-17T13:18:47.8005321Z [1m[92m   Compiling[0m linux-raw-sys v0.12.1
+2026-10-17T13:18:51.0905144Z [1m[92m   Compiling[0m serde_derive v1.0.228
+2026-10-17T13:18:51.2865659Z [1m[92m   Compiling[0m gpu-allocator v0.28.0
+2026-10-17T13:18:52.5914907Z [1m[92m   Compiling[0m itoa v1.0.18
+2026-10-17T13:18:52.7740095Z [1m[92m   Compiling[0m static_assertions v1.1.0
+2026-10-17T13:18:52.8042039Z [1m[92m   Compiling[0m memchr v2.8.3
+2026-10-17T13:18:53.5245207Z [1m[92m   Compiling[0m either v1.16.0
+2026-10-17T13:18:53.6815183Z [1m[92m   Compiling[0m fastrand v2.4.1
+2026-10-17T13:18:53.9085065Z [1m[92m   Compiling[0m tempfile v3.27.0
+2026-10-17T13:18:54.0204846Z [1m[92m   Compiling[0m rayon v1.12.0
+2026-10-17T13:18:54.7775548Z [1m[92m   Compiling[0m pollster v0.4.0
+2026-10-17T13:18:54.8514904Z [1m[92m   Compiling[0m utf8parse v0.2.2
+2026-10-17T13:18:54.8935176Z [1m[92m   Compiling[0m wgpu-naga-bridge v29.0.4
+2026-10-17T13:18:56.5434890Z [1m[92m   Compiling[0m anstyle-parse v1.0.0
+2026-10-17T13:18:56.6754664Z [1m[92m   Compiling[0m anstyle-query v1.1.5
+2026-10-17T13:18:56.7234977Z [1m[92m   Compiling[0m is_terminal_polyfill v1.70.2
+2026-10-17T13:18:56.7614812Z [1m[92m   Compiling[0m anstyle v1.0.14
+2026-10-17T13:18:56.9555423Z [1m[92m   Compiling[0m colorchoice v1.0.5
+2026-10-17T13:18:57.0034977Z [1m[92m   Compiling[0m anstream v1.0.0
+2026-10-17T13:18:57.4224764Z [1m[92m   Compiling[0m heck v0.5.0
+2026-10-17T13:18:57.5465747Z [1m[92m   Compiling[0m strsim v0.11.1
+2026-10-17T13:18:58.1594930Z [1m[92m   Compiling[0m clap_lex v1.1.0
+2026-10-17T13:18:58.3575036Z [1m[92m   Compiling[0m clap_builder v4.6.0
+2026-10-17T13:18:58.4155007Z [1m[92m   Compiling[0m clap_derive v4.6.1
+2026-10-17T13:19:00.0815223Z [1m[92m   Compiling[0m wgpu-core-deps-windows-linux-android v29.0.4
+2026-10-17T13:19:13.2954844Z [1m[92m   Compiling[0m clap v4.6.1
+2026-10-17T13:19:25.3563084Z [1m[92m   Compiling[0m darwinbots-engine v0.1.0 (/home/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/engine)
+2026-10-17T13:19:26.3708622Z [1m[91merror[E0433][0m[1m: cannot find `NativeRecordFile` in the crate root[0m
+2026-10-17T13:19:26.3709965Z   [1m[94m--> [0mmodern/engine/src/world/native_reproduction.rs:43:32
+2026-10-17T13:19:26.3710818Z    [1m[94m|[0m
+2026-10-17T13:19:26.3714890Z [1m[94m43[0m [1m[94m|[0m         let mut input = crate::NativeRecordFile::decode(REPRODUCTION_START).unwrap();
+2026-10-17T13:19:26.3716474Z    [1m[94m|[0m                                [1m[91m^^^^^^^^^^^^^^^^[0m [1m[91mcould not find `NativeRecordFile` in the crate root[0m
+2026-10-17T13:19:26.3717371Z    [1m[94m|[0m
+2026-10-17T13:19:26.3718119Z [1m[96mhelp[0m: consider importing this struct
+2026-10-17T13:19:26.3718776Z    [1m[94m|[0m
+2026-10-17T13:19:26.3719704Z [1m[94m36[0m [92m+ [0m    [92muse crate::native_binary::NativeRecordFile;[0m
+2026-10-17T13:19:26.3720582Z    [1m[94m|[0m
+2026-10-17T13:19:26.3721680Z [1m[96mhelp[0m: if you import `NativeRecordFile`, refer to it directly
+2026-10-17T13:19:26.3722428Z    [1m[94m|[0m
+2026-10-17T13:19:26.3724123Z [1m[94m43[0m [91m- [0m        let mut input = [91mcrate::[0mNativeRecordFile::decode(REPRODUCTION_START).unwrap();
+2026-10-17T13:19:26.3725600Z [1m[94m43[0m [92m+ [0m        let mut input = NativeRecordFile::decode(REPRODUCTION_START).unwrap();
+2026-10-17T13:19:26.3726644Z    [1m[94m|[0m
+2026-10-17T13:19:26.3726869Z 
+2026-10-17T13:19:26.3837449Z [1m[91merror[E0433][0m[1m: cannot find `NativeSimulationTail` in the crate root[0m
+2026-10-17T13:19:26.3838462Z   [1m[94m--> [0mmodern/engine/src/world/native_reproduction.rs:45:31
+2026-10-17T13:19:26.3839322Z    [1m[94m|[0m
+2026-10-17T13:19:26.3840440Z [1m[94m45[0m [1m[94m|[0m         let mut tail = crate::NativeSimulationTail::decode(&input.tail).unwrap();
+2026-10-17T13:19:26.3841971Z    [1m[94m|[0m                               [1m[91m^^^^^^^^^^^^^^^^^^^^[0m [1m[91mcould not find `NativeSimulationTail` in the crate root[0m
+2026-10-17T13:19:26.3843492Z    [1m[94m|[0m
+2026-10-17T13:19:26.3844176Z [1m[96mhelp[0m: consider importing this struct
+2026-10-17T13:19:26.3844916Z    [1m[94m|[0m
+2026-10-17T13:19:26.3845907Z [1m[94m36[0m [92m+ [0m    [92muse crate::native_binary::NativeSimulationTail;[0m
+2026-10-17T13:19:26.3846761Z    [1m[94m|[0m
+2026-10-17T13:19:26.3847560Z [1m[96mhelp[0m: if you import `NativeSimulationTail`, refer to it directly
+2026-10-17T13:19:26.3848304Z    [1m[94m|[0m
+2026-10-17T13:19:26.3849467Z [1m[94m45[0m [91m- [0m        let mut tail = [91mcrate::[0mNativeSimulationTail::decode(&input.tail).unwrap();
+2026-10-17T13:19:26.3850972Z [1m[94m45[0m [92m+ [0m        let mut tail = NativeSimulationTail::decode(&input.tail).unwrap();
+2026-10-17T13:19:26.3851878Z    [1m[94m|[0m
+2026-10-17T13:19:26.3852120Z 
+2026-10-17T13:19:26.3965122Z [1m[91merror[E0433][0m[1m: cannot find `NativeValue` in the crate root[0m
+2026-10-17T13:19:26.3966431Z   [1m[94m--> [0mmodern/engine/src/world/native_reproduction.rs:51:42
+2026-10-17T13:19:26.3967194Z    [1m[94m|[0m
+2026-10-17T13:19:26.3968272Z [1m[94m51[0m [1m[94m|[0m             tail.set_value(field, crate::NativeValue::Word(value))
+2026-10-17T13:19:26.3969656Z    [1m[94m|[0m                                          [1m[91m^^^^^^^^^^^[0m [1m[91mcould not find `NativeValue` in the crate root[0m
+2026-10-17T13:19:26.3970574Z    [1m[94m|[0m
+2026-10-17T13:19:26.3971228Z [1m[96mhelp[0m: consider importing this enum
+2026-10-17T13:19:26.3971858Z    [1m[94m|[0m
+2026-10-17T13:19:26.3972781Z [1m[94m36[0m [92m+ [0m    [92muse crate::native_binary::NativeValue;[0m
+2026-10-17T13:19:26.3973758Z    [1m[94m|[0m
+2026-10-17T13:19:26.3974387Z [1m[96mhelp[0m: if you import `NativeValue`, refer to it directly
+2026-10-17T13:19:26.3974975Z    [1m[94m|[0m
+2026-10-17T13:19:26.3975811Z [1m[94m51[0m [91m- [0m            tail.set_value(field, [91mcrate::[0mNativeValue::Word(value))
+2026-10-17T13:19:26.3976942Z [1m[94m51[0m [92m+ [0m            tail.set_value(field, NativeValue::Word(value))
+2026-10-17T13:19:26.3977576Z    [1m[94m|[0m
+2026-10-17T13:19:26.3977836Z 
+2026-10-17T13:19:28.3079541Z [1m[91merror[E0616][0m[1m: field `free_slots` of struct `projectile::ProjectilePool` is private[0m
+2026-10-17T13:19:28.3080728Z    [1m[94m--> [0mmodern/engine/src/world/native_shots.rs:491:48
+2026-10-17T13:19:28.3081370Z     [1m[94m|[0m
+2026-10-17T13:19:28.3082212Z [1m[94m491[0m [1m[94m|[0m             let free_slots = world.projectiles.free_slots.clone();
+2026-10-17T13:19:28.3083823Z     [1m[94m|[0m                                                [1m[91m^^^^^^^^^^[0m [1m[91mprivate field[0m
+2026-10-17T13:19:28.3084372Z 
+2026-10-17T13:19:28.3092965Z [1m[91merror[E0616][0m[1m: field `free_slots` of struct `projectile::ProjectilePool` is private[0m
+2026-10-17T13:19:28.3094326Z    [1m[94m--> [0mmodern/engine/src/world/native_shots.rs:516:46
+2026-10-17T13:19:28.3095031Z     [1m[94m|[0m
+2026-10-17T13:19:28.3096301Z [1m[94m516[0m [1m[94m|[0m                 assert_eq!(state.projectiles.free_slots, expected_free);
+2026-10-17T13:19:28.3097497Z     [1m[94m|[0m                                              [1m[91m^^^^^^^^^^[0m [1m[91mprivate field[0m
+2026-10-17T13:19:28.3098045Z 
+2026-10-17T13:19:28.3105579Z [1m[91merror[E0616][0m[1m: field `free_slots` of struct `projectile::ProjectilePool` is private[0m
+2026-10-17T13:19:28.3107003Z    [1m[94m--> [0mmodern/engine/src/world/native_shots.rs:524:52
+2026-10-17T13:19:28.3107916Z     [1m[94m|[0m
+2026-10-17T13:19:28.3108825Z [1m[94m524[0m [1m[94m|[0m                 let free_slots = state.projectiles.free_slots.clone();
+2026-10-17T13:19:28.3110067Z     [1m[94m|[0m                                                    [1m[91m^^^^^^^^^^[0m [1m[91mprivate field[0m
+2026-10-17T13:19:28.3110603Z 
+2026-10-17T13:19:28.3111474Z [1m[91merror[E0616][0m[1m: field `free_slots` of struct `projectile::ProjectilePool` is private[0m
+2026-10-17T13:19:28.3112857Z    [1m[94m--> [0mmodern/engine/src/world/native_shots.rs:526:46
+2026-10-17T13:19:28.3113797Z     [1m[94m|[0m
+2026-10-17T13:19:28.3114665Z [1m[94m526[0m [1m[94m|[0m                 assert_eq!(state.projectiles.free_slots, free_slots);
+2026-10-17T13:19:28.3115751Z     [1m[94m|[0m                                              [1m[91m^^^^^^^^^^[0m [1m[91mprivate field[0m
+2026-10-17T13:19:28.3116283Z 
+2026-10-17T13:19:28.3747662Z [1m[91merror[E0063][0m[1m: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`[0m
+2026-10-17T13:19:28.3749207Z    [1m[94m--> [0mmodern/engine/src/world/native_energy.rs:257:13
+2026-10-17T13:19:28.3749993Z     [1m[94m|[0m
+2026-10-17T13:19:28.3750776Z [1m[94m257[0m [1m[94m|[0m             NativeProcessCaches {
+2026-10-17T13:19:28.3751866Z     [1m[94m|[0m             [1m[91m^^^^^^^^^^^^^^^^^^^[0m [1m[91mmissing `repopulation_counter`[0m
+2026-10-17T13:19:28.3752547Z 
+2026-10-17T13:19:28.3754184Z [1m[91merror[E0063][0m[1m: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`[0m
+2026-10-17T13:19:28.3755462Z    [1m[94m--> [0mmodern/engine/src/world/native_energy.rs:263:13
+2026-10-17T13:19:28.3756103Z     [1m[94m|[0m
+2026-10-17T13:19:28.3756763Z [1m[94m263[0m [1m[94m|[0m             NativeProcessCaches {
+2026-10-17T13:19:28.3757903Z     [1m[94m|[0m             [1m[91m^^^^^^^^^^^^^^^^^^^[0m [1m[91mmissing `repopulation_counter`[0m
+2026-10-17T13:19:28.3758463Z 
+2026-10-17T13:19:28.3760280Z [1m[91merror[E0063][0m[1m: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`[0m
+2026-10-17T13:19:28.3761588Z    [1m[94m--> [0mmodern/engine/src/world/native_energy.rs:269:13
+2026-10-17T13:19:28.3762239Z     [1m[94m|[0m
+2026-10-17T13:19:28.3762907Z [1m[94m269[0m [1m[94m|[0m             NativeProcessCaches {
+2026-10-17T13:19:28.3764176Z     [1m[94m|[0m             [1m[91m^^^^^^^^^^^^^^^^^^^[0m [1m[91mmissing `repopulation_counter`[0m
+2026-10-17T13:19:28.3764729Z 
+2026-10-17T13:19:28.3765825Z [1m[91merror[E0063][0m[1m: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`[0m
+2026-10-17T13:19:28.3767086Z    [1m[94m--> [0mmodern/engine/src/world/native_energy.rs:275:13
+2026-10-17T13:19:28.3767756Z     [1m[94m|[0m
+2026-10-17T13:19:28.3768424Z [1m[94m275[0m [1m[94m|[0m             NativeProcessCaches {
+2026-10-17T13:19:28.3769375Z     [1m[94m|[0m             [1m[91m^^^^^^^^^^^^^^^^^^^[0m [1m[91mmissing `repopulation_counter`[0m
+2026-10-17T13:19:28.3769914Z 
+2026-10-17T13:19:28.3770978Z [1m[91merror[E0063][0m[1m: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`[0m
+2026-10-17T13:19:28.3772204Z    [1m[94m--> [0mmodern/engine/src/world/native_energy.rs:284:13
+2026-10-17T13:19:28.3772857Z     [1m[94m|[0m
+2026-10-17T13:19:28.3774076Z [1m[94m284[0m [1m[94m|[0m             NativeProcessCaches {
+2026-10-17T13:19:28.3775078Z     [1m[94m|[0m             [1m[91m^^^^^^^^^^^^^^^^^^^[0m [1m[91mmissing `repopulation_counter`[0m
+2026-10-17T13:19:28.3775627Z 
+2026-10-17T13:19:28.3776716Z [1m[91merror[E0063][0m[1m: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`[0m
+2026-10-17T13:19:28.3777945Z    [1m[94m--> [0mmodern/engine/src/world/native_energy.rs:293:13
+2026-10-17T13:19:28.3778593Z     [1m[94m|[0m
+2026-10-17T13:19:28.3779236Z [1m[94m293[0m [1m[94m|[0m             NativeProcessCaches {
+2026-10-17T13:19:28.3780193Z     [1m[94m|[0m             [1m[91m^^^^^^^^^^^^^^^^^^^[0m [1m[91mmissing `repopulation_counter`[0m
+2026-10-17T13:19:28.3780740Z 
+2026-10-17T13:19:33.2124181Z [1mSome errors have detailed explanations: E0063, E0433, E0616.[0m
+2026-10-17T13:19:33.2125469Z [1mFor more information about an error, try `rustc --explain E0063`.[0m
+2026-10-17T13:19:33.2242330Z [1m[91merror[0m: could not compile `darwinbots-engine` (lib test) due to 13 previous errors
+2026-10-17T13:19:33.2244205Z [1m[33mwarning[0m: build failed, waiting for other jobs to finish...
+2026-10-17T13:19:59.4787146Z ##[error]Process completed with exit code 101.
+2026-10-17T13:19:59.4864526Z ##[group]Run actions/upload-artifact@v4
+2026-10-17T13:19:59.4864900Z with:
+2026-10-17T13:19:59.4865168Z   name: darwinbots-gui-audit-linux-x64
+2026-10-17T13:19:59.4865568Z   path: artifacts/gui-audit/linux-x64
+artifacts/test-results/linux-x64
+
+2026-10-17T13:19:59.4865955Z   if-no-files-found: ignore
+2026-10-17T13:19:59.4866198Z   compression-level: 6
+2026-10-17T13:19:59.4866422Z   overwrite: false
+2026-10-17T13:19:59.4866636Z   include-hidden-files: false
+2026-10-17T13:19:59.4866869Z env:
+2026-10-17T13:19:59.4867069Z   CARGO_HOME: /home/runner/.cargo
+2026-10-17T13:19:59.4867314Z   CARGO_INCREMENTAL: 0
+2026-10-17T13:19:59.4867532Z   CARGO_TERM_COLOR: always
+2026-10-17T13:19:59.4867773Z   DOTNET_ROOT: /usr/share/dotnet
+2026-10-17T13:19:59.4868022Z ##[endgroup]
+2026-10-17T13:19:59.6533682Z (node:4690) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-10-17T13:19:59.6534658Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-10-17T13:19:59.6575840Z Multiple search paths detected. Calculating the least common ancestor of all paths
+2026-10-17T13:19:59.6585598Z The least common ancestor is /home/runner/work/Darwinbots-Modern/Darwinbots-Modern/artifacts. This will be the root directory of the artifact
+2026-10-17T13:19:59.6587045Z No files were found with the provided path: artifacts/gui-audit/linux-x64
+2026-10-17T13:19:59.6588063Z artifacts/test-results/linux-x64. No artifacts will be uploaded.
+2026-10-17T13:19:59.6817105Z Post job cleanup.
+2026-10-17T13:19:59.7709918Z [command]/usr/bin/git version
+2026-10-17T13:19:59.7754037Z git version 2.55.0
+2026-10-17T13:19:59.7792201Z Temporarily overriding HOME='/home/runner/work/_temp/761fc188-88b5-486c-a62e-3aac8a147639' before making global git config changes
+2026-10-17T13:19:59.7793828Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-17T13:19:59.7798007Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/Darwinbots-Modern/Darwinbots-Modern
+2026-10-17T13:19:59.7837312Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-17T13:19:59.7877370Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-17T13:19:59.8131953Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-17T13:19:59.8197464Z http.https://github.com/.extraheader
+2026-10-17T13:19:59.8209730Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-10-17T13:19:59.8255532Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-17T13:19:59.8536714Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-17T13:19:59.8576202Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-17T13:19:59.8975913Z Cleaning up orphan processes
+2026-10-17T13:19:59.9260746Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4, actions/setup-dotnet@v4, actions/upload-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

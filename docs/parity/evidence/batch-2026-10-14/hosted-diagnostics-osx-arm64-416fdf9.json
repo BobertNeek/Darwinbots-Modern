@@ -1,0 +1,33 @@
+{
+  "source_head": "416fdf930690dcd1cb90b8e1b65e42791f0f273d",
+  "run": 38748035572,
+  "job": 116466773318,
+  "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/38748035572/job/116466773318",
+  "platform": "osx-arm64",
+  "total": 119,
+  "executed": 119,
+  "passed": 117,
+  "failed": 2,
+  "error": 0,
+  "timeout": 0,
+  "aborted": 0,
+  "inconclusive": 0,
+  "passedButRunAborted": 0,
+  "notRunnable": 0,
+  "notExecuted": 0,
+  "disconnected": 0,
+  "warning": 0,
+  "completed": 0,
+  "inProgress": 0,
+  "pending": 0,
+  "previous_checkbox_case": {
+    "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.RuntimeRenderedControlsDispatchThroughVisualTree",
+    "outcome": "Passed"
+  },
+  "failed_cases": [
+    "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.MainWindowRenderedSettingsWalkthroughCoversShellMenuRunEnergyAndMutation",
+    "Darwinbots.Desktop.Tests.DnaExportRenderedTests.MainWindowSelectedOrganismExportsExactDnaAndKeepsCanceledRouteInert"
+  ],
+  "draft_fixes": "UI completion and initial modal layout changes in current unqualified pass34",
+  "current_draft_proven": false
+}

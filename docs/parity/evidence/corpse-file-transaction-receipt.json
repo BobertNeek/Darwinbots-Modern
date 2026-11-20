@@ -1,0 +1,43 @@
+{
+  "date": "2026-10-13",
+  "code_revision": "cb8641de1950ad22e2ecd79e44e85af2cafeb28f",
+  "branch": "codex/db24832-completion",
+  "changes": [
+    {
+      "revision": "a11a0ba",
+      "behavior": "Claim incoming files under recoverable names; stage outputs until cycle success; restore files and world after GPU failure; preserve the active backend through candidate import",
+      "checks": "82 library, 50 integration checks and strict Clippy passed; real GPU failure and successful retry both verified"
+    },
+    {
+      "revision": "cb8641de1950ad22e2ecd79e44e85af2cafeb28f",
+      "behavior": "Natural corpses stay in their robot slots with memory, genome, momentum and ties; occupy record capacity; classify as dead animals in live counters and snapshots; native decay retains owner/radius/range/energy; body feeding uses native eight-percent body-point damage and fourfold corpse power; explicit lethal shot flags and packet cap match source; ReStart deletes records without making corpses",
+      "checks": "185 targeted debug checks passed; follow-up corpse/plant readback 7/7; strict Clippy; complete Debug desktop 104/104 and core 134/134"
+    }
+  ],
+  "limits": [
+    "Counts overlap; do not sum separate runs.",
+    "The latest complete Rust Release workspace remains 495 passed, 44 failed, 2 filtered at e751707, before these changes.",
+    "Current desktop gates are Debug; previous complete Release desktop is historical at 3a70763.",
+    "Older modern archived corpses still need physical/tie migration; partial legacy corpse data cannot recover missing state.",
+    "External readers and process-crash consistency of multi-file transfers remain unqualified.",
+    "New corpse/feeding behavior is checked against pinned VB6 source and tests; matching original executable trajectories remain unqualified.",
+    "Original returned fixture advances to 655 with one birth and one explicit shot death, leaving 543 live robots; the old 544 expectation came from earlier port behavior.",
+    "Internet Mode is excluded."
+  ],
+  "source": [
+    "Robots.bas:1300-1336,1529-1644",
+    "Shots.bas:457-491,527-715,725-763,833",
+    "Master.bas:441-466"
+  ],
+  "logs": [
+    "completion-checks/parity-file-transaction-library.log",
+    "completion-checks/parity-file-transaction-integration.log",
+    "completion-checks/parity-file-transaction-clippy.log",
+    "completion-checks/parity-corpse-feeding-source-final.log",
+    "completion-checks/parity-corpse-plant-readback-final.log",
+    "completion-checks/parity-corpse-final-clippy.log",
+    "completion-checks/parity-corpse-desktop-source-final.log",
+    "completion-checks/parity-corpse-core-source-final.log"
+  ],
+  "image": "native-arena-corpse.png"
+}

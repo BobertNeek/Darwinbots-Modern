@@ -1,0 +1,91 @@
+{
+  "cases": [
+    {
+      "case": "movement",
+      "checkpoint_cycles": [
+        1,
+        10,
+        100
+      ],
+      "oracle": "Save from original Darwin2.48.32.exe at each exact cycle",
+      "random_sensitive": false,
+      "start_cycle": 0,
+      "start_sim": "movement-start.sim"
+    },
+    {
+      "case": "fixed",
+      "checkpoint_cycles": [
+        1,
+        10,
+        100
+      ],
+      "oracle": "Save from original Darwin2.48.32.exe at each exact cycle",
+      "random_sensitive": false,
+      "start_cycle": 0,
+      "start_sim": "fixed-start.sim"
+    },
+    {
+      "case": "contacts",
+      "checkpoint_cycles": [
+        1,
+        10,
+        100
+      ],
+      "oracle": "Save from original Darwin2.48.32.exe at each exact cycle",
+      "random_sensitive": false,
+      "start_cycle": 0,
+      "start_sim": "contacts-start.sim"
+    },
+    {
+      "case": "body",
+      "checkpoint_cycles": [
+        1,
+        10,
+        100
+      ],
+      "oracle": "Save from original Darwin2.48.32.exe at each exact cycle",
+      "random_sensitive": false,
+      "start_cycle": 0,
+      "start_sim": "body-start.sim"
+    },
+    {
+      "case": "ties",
+      "checkpoint_cycles": [
+        1,
+        10,
+        100
+      ],
+      "oracle": "Save from original Darwin2.48.32.exe at each exact cycle",
+      "random_sensitive": false,
+      "start_cycle": 0,
+      "start_sim": "ties-start.sim"
+    },
+    {
+      "case": "feeding",
+      "checkpoint_cycles": [
+        1,
+        10,
+        100
+      ],
+      "oracle": "Save from original Darwin2.48.32.exe at each exact cycle",
+      "random_sensitive": true,
+      "start_cycle": 0,
+      "start_sim": "feeding-start.sim"
+    },
+    {
+      "case": "reproduction",
+      "checkpoint_cycles": [
+        1,
+        10,
+        100
+      ],
+      "oracle": "Save from original Darwin2.48.32.exe at each exact cycle",
+      "random_sensitive": true,
+      "start_cycle": 0,
+      "start_sim": "reproduction-start.sim"
+    }
+  ],
+  "rng_boundary": "Original .sim files omit VB6 Rnd/Gauss state. Matching deterministic cases is evidence for their compared fields only; random trajectories need an independently captured RNG state.",
+  "source_version": "2.48.32",
+  "status": "prepared; no original-runtime comparison has run"
+}

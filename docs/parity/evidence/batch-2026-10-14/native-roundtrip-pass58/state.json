@@ -1,0 +1,19 @@
+{
+  "status": "needs_repair",
+  "step": "all",
+  "pid": 10304,
+  "utc": "2026-10-17T07:23:34.7677673Z",
+  "source_parent": "8018c200690ea20d07c2d243138eb7d8f8fc0e7d",
+  "comparison_base": "f2a42877fdc15ad8a332dd041c0ce8c6a9bd0d69",
+  "source_manifest_sha256": "102DC7BE8C4E3676015012F593CEB92A95DB598196661BAF80F817C6A4B8566C",
+  "expected_managed_test_counts": {
+    "core": 307,
+    "desktop": 197
+  },
+  "details": {
+    "failed_steps": [
+      "packaged-native-desktop"
+    ],
+    "scope": "All available ordinary CPU outcomes collected; root seals counts, summary and admission separately."
+  }
+}

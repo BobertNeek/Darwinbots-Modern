@@ -1,0 +1,168 @@
+{
+  "state": "21currentRustcheckpoints prepared;0genuineoriginalcheckpointcomparisons",
+  "source_manifest": "native-roundtrip-pass39/source.json",
+  "compiled_engine_source_manifest": "native-roundtrip-pass38/source.json",
+  "unchanged_production_proof": "native-roundtrip-pass39/production-projection.json",
+  "cli_sha256": "F49F0C4E7FA8C44A71E8D3E5D7C1DD0E8897E06703D0315876BFE2FD7F4B71A7",
+  "original_executable_sha256": "7F580D9CE8F1095A01FD162E9BCAC03FE437599E080786FD670B676671C31990",
+  "isolated_original_app": "output/native-original-qualification-app39/Darwin2.48.32.exe",
+  "prepared_cases_directory": "output/native-oracle-candidate39",
+  "genuine_original_compared": 0,
+  "checkpoints": [
+    {
+      "case": "movement",
+      "cycle": 1,
+      "input_sha256": "6678CDD874314AED26D738B29897EE8CEE4E269DA6BEFDB55BEC47292F19E52E",
+      "rust_output_sha256": "3F0D20F10364B3D6D8C18BB5D125096B0E6043E0956DE326E9EA13862D7D41D4",
+      "random_sensitive": false
+    },
+    {
+      "case": "movement",
+      "cycle": 10,
+      "input_sha256": "6678CDD874314AED26D738B29897EE8CEE4E269DA6BEFDB55BEC47292F19E52E",
+      "rust_output_sha256": "2161851931E90B918BDB9578D8E9A25FE38C79F6A3B3AAFB1B38653EBC66667C",
+      "random_sensitive": false
+    },
+    {
+      "case": "movement",
+      "cycle": 100,
+      "input_sha256": "6678CDD874314AED26D738B29897EE8CEE4E269DA6BEFDB55BEC47292F19E52E",
+      "rust_output_sha256": "A5C31105024623C763CB087639ACD17BBE7F0E15303BBA5EB6ADFAFAA79EA813",
+      "random_sensitive": false
+    },
+    {
+      "case": "fixed",
+      "cycle": 1,
+      "input_sha256": "94C32DA0BDB409DF42C7DF7CB43B59A3DEA70E08D0D53631B8FEE0FDEAD41BE6",
+      "rust_output_sha256": "04EA4F4EE8567AF207497C7BA270A00E811DC6283A7F2D463D85923301E94D90",
+      "random_sensitive": false
+    },
+    {
+      "case": "fixed",
+      "cycle": 10,
+      "input_sha256": "94C32DA0BDB409DF42C7DF7CB43B59A3DEA70E08D0D53631B8FEE0FDEAD41BE6",
+      "rust_output_sha256": "D3963B1FE9DE28AB9AB801B454D1A7F2C70C84E7F2C617970A57093CDBE15F8E",
+      "random_sensitive": false
+    },
+    {
+      "case": "fixed",
+      "cycle": 100,
+      "input_sha256": "94C32DA0BDB409DF42C7DF7CB43B59A3DEA70E08D0D53631B8FEE0FDEAD41BE6",
+      "rust_output_sha256": "E41094A3B34094D620C3F1CB13342A75A69BA37162AF63EC41905653440AE28A",
+      "random_sensitive": false
+    },
+    {
+      "case": "contacts",
+      "cycle": 1,
+      "input_sha256": "4AF50D8B78BD75723DDF36E47C3A80B9DE64636FBC1A9501E16C7FCBFF9F0C72",
+      "rust_output_sha256": "04FACA0BBE22DE1BF7ED22980E8387EA6C44D59F01C3ACE46BE4863C93723116",
+      "random_sensitive": false
+    },
+    {
+      "case": "contacts",
+      "cycle": 10,
+      "input_sha256": "4AF50D8B78BD75723DDF36E47C3A80B9DE64636FBC1A9501E16C7FCBFF9F0C72",
+      "rust_output_sha256": "2A7F5BB3E88C35A92C558FB06AE576FBBFAEBA6FCEA0C2ADEC707ED47090DCF5",
+      "random_sensitive": false
+    },
+    {
+      "case": "contacts",
+      "cycle": 100,
+      "input_sha256": "4AF50D8B78BD75723DDF36E47C3A80B9DE64636FBC1A9501E16C7FCBFF9F0C72",
+      "rust_output_sha256": "454967FF3CA381412466415719E2425F6F51DFDB566C621C8C16F408ACF510C7",
+      "random_sensitive": false
+    },
+    {
+      "case": "body",
+      "cycle": 1,
+      "input_sha256": "0445D63EF499C785DB6A3678E03DD2F0C4B57D0CB2DDD3EC3BB9CA9DCB8565B5",
+      "rust_output_sha256": "BF127B0E641B7F077F94732CD7BBF336F152DD5B2EFF35A732F52D2722E56D89",
+      "random_sensitive": false
+    },
+    {
+      "case": "body",
+      "cycle": 10,
+      "input_sha256": "0445D63EF499C785DB6A3678E03DD2F0C4B57D0CB2DDD3EC3BB9CA9DCB8565B5",
+      "rust_output_sha256": "9F23CDD65791C77A0B15F9B864D83F43360482B698DA3B15C26AC8CBCEABE119",
+      "random_sensitive": false
+    },
+    {
+      "case": "body",
+      "cycle": 100,
+      "input_sha256": "0445D63EF499C785DB6A3678E03DD2F0C4B57D0CB2DDD3EC3BB9CA9DCB8565B5",
+      "rust_output_sha256": "55E14D491215D461BC59B10F4BD3C55033B874B8035C4CDE459E5638A7499AD6",
+      "random_sensitive": false
+    },
+    {
+      "case": "ties",
+      "cycle": 1,
+      "input_sha256": "302DE657A38E7B88B1ABBB652ED567BCC3530345E16554AC2C63EAC5290D9FA3",
+      "rust_output_sha256": "4D4A1EAC7782014990D2C35D3F46D6AF8B6CEF169CAF0E103142CC8D294331AE",
+      "random_sensitive": false
+    },
+    {
+      "case": "ties",
+      "cycle": 10,
+      "input_sha256": "302DE657A38E7B88B1ABBB652ED567BCC3530345E16554AC2C63EAC5290D9FA3",
+      "rust_output_sha256": "2E46DCB5E086983568333FE59E644194B038F82B2A98FF264596E39C5AF2927C",
+      "random_sensitive": false
+    },
+    {
+      "case": "ties",
+      "cycle": 100,
+      "input_sha256": "302DE657A38E7B88B1ABBB652ED567BCC3530345E16554AC2C63EAC5290D9FA3",
+      "rust_output_sha256": "446ED217EFD77D3BA6E042372F9401D12A25B13998CD832F06018860416CD7B9",
+      "random_sensitive": false
+    },
+    {
+      "case": "feeding",
+      "cycle": 1,
+      "input_sha256": "A0AE7DFE9C75F8BBC6B7482106666C529F1DA96D91F7EE414D9F2E914B87C03D",
+      "rust_output_sha256": "8B7946B9951496174E963EDEF8B09404B20AD3D770F5E713BADCDEF435C0F651",
+      "random_sensitive": true
+    },
+    {
+      "case": "feeding",
+      "cycle": 10,
+      "input_sha256": "A0AE7DFE9C75F8BBC6B7482106666C529F1DA96D91F7EE414D9F2E914B87C03D",
+      "rust_output_sha256": "42FECEAB7DC8F4D123013E0D36056575D443B75EF38C27EDEDA7875BC1B78926",
+      "random_sensitive": true
+    },
+    {
+      "case": "feeding",
+      "cycle": 100,
+      "input_sha256": "A0AE7DFE9C75F8BBC6B7482106666C529F1DA96D91F7EE414D9F2E914B87C03D",
+      "rust_output_sha256": "85CCCA3234855C0E2987BA2C75CD1A2ABAD6E399D879D21A57E29617B43A4276",
+      "random_sensitive": true
+    },
+    {
+      "case": "reproduction",
+      "cycle": 1,
+      "input_sha256": "60FD33C86E938B94D86C074AE9B8097B9D61159CCF5D35D066BAFFCB4BF18040",
+      "rust_output_sha256": "5AB3CD1EF34ED95F32E8E469B1A95C3D5F3DF92E6C683815D5DAE2ACD2C150B9",
+      "random_sensitive": true
+    },
+    {
+      "case": "reproduction",
+      "cycle": 10,
+      "input_sha256": "60FD33C86E938B94D86C074AE9B8097B9D61159CCF5D35D066BAFFCB4BF18040",
+      "rust_output_sha256": "F57C1B97671F3199559FD2FD457BEC8C1B40DA715A74420D3CA0A225BB0DC15D",
+      "random_sensitive": true
+    },
+    {
+      "case": "reproduction",
+      "cycle": 100,
+      "input_sha256": "60FD33C86E938B94D86C074AE9B8097B9D61159CCF5D35D066BAFFCB4BF18040",
+      "rust_output_sha256": "02047FAA4156319B4791A6B988FFCCC4931CDD519A58EFAB39BC7BF70488FDD5",
+      "random_sensitive": true
+    }
+  ],
+  "activity_gate": {
+    "last_checked_utc": "2026-10-15T19:34:21.5595224Z",
+    "session": 1,
+    "idle_seconds": 1.125,
+    "required_idle_seconds": 300,
+    "visible_app_and_gpu_held": true
+  },
+  "rng_boundary": "sim omits global VB6 Rnd/Gauss state; random trajectory equality not established"
+}

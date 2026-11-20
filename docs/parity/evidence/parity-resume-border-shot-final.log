@@ -1,0 +1,217 @@
+   Compiling darwinbots-engine v0.1.0 (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\engine)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1m 03s
+     Running unittests src\lib.rs (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\target\debug\deps\darwinbots_engine-d5cc0d4745fb374f.exe)
+
+running 25 tests
+test corpse::tests::energy_decay_packet_uses_original_body_conversion_and_rejects_empty_body ... ok
+test physics::collision::projectile_motion_tests::original_shot_collision_accounts_for_motion_and_excludes_cycle_endpoints ... ok
+test robot_state::tests::robot_arena_deref_exposes_only_slot_slice ... ok
+test corpse::tests::no_shot_decay_dissipates_body_and_fractional_period_survives_resume ... ok
+test senses::tests::direction_thresholds_are_strict ... ok
+test ffi::tests::ffi_guard_converts_panics_to_structured_engine_errors ... ok
+test senses::tests::relative_angle_selects_all_four_aim_relative_quadrants ... ok
+test shot::projectile::tests::db24832_impact_decay_uses_age_before_the_current_tick_increment ... ok
+test shot::projectile::tests::feeding_power_uses_fixed_or_proportional_original_settings_without_changing_toxins ... ok
+test robot_state::tests::stale_physics_batch_id_does_not_partially_mutate_earlier_robot ... ok
+test vm::memory_persistence_tests::addressed_memory_restores_independently_of_serialized_order ... ok
+test vm::memory_persistence_tests::ambiguous_or_invalid_saved_memory_is_rejected ... ok
+test shot::projectile::tests::db2_pool_grows_by_ten_percent_and_compacts_below_seventy_percent ... ok
+test world::tests::eco03_photosynthesis_pond_sun_conversion_population_and_bounds_contract ... ok
+test world::tests::exhausted_corpse_is_removed_when_energy_remains ... ok
+test ffi::tests::legacy_save_emits_db2s_payload_for_file_command ... ok
+test world::tests::all_dna_finishes_before_the_after_dna_clear_pass ... ok
+test world::tests::native_border_respawn_moves_the_whole_multibot_from_its_nearest_cell ... ok
+test world::tests::db24832_minus_six_body_feed_contract ... ok
+test ffi::tests::invalid_find_best_weight_preserves_the_entire_command_batch ... ok
+test world::tests::runtime_gpu_failure_retries_on_cpu_and_records_reason ... ok
+test world::tests::gpu_in_backend_failure_allows_later_tick_with_trace ... ok
+test world::tests::gpu_in_backend_failure_keeps_tick_many_iterations_atomic ... ok
+test world::tests::gpu_failure_does_not_partially_advance_the_cycle ... ok
+test world::tests::runtime_gpu_failure_is_fatal_when_fallback_is_disabled ... ok
+
+test result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.44s
+
+     Running tests\contracts.rs (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\target\debug\deps\contracts-15d8523ccda91f2b.exe)
+
+running 33 tests
+test db2_defaults_are_exposed_by_engine_config ... ok
+test batch_spawn_publishes_one_complete_population_snapshot ... ok
+test db3s_v2_migrates_every_existing_robot_field ... ok
+test db3s_v3_old_save_defaults_standard_mutation_profile ... ok
+test db3s_v3_older_save_defaults_asexual_heredity_and_identity_fields ... ok
+test db3s_v3_rejects_malformed_standard_mutation_profile ... ok
+test db3s_v2_accepts_parent_defaulted_field_omissions ... ok
+test db3s_v3_round_trip_preserves_complete_phase1_state ... ok
+test engine_uses_vm_flow_semantics_for_movement_intents ... ok
+test imports_legacy_dna_and_preserves_user_variables ... ok
+test db3s_v3_missing_toxin_projectile_fields_default_to_aligned_empty_payloads ... ok
+test db3s_v3_round_trip_preserves_nondefault_standard_mutation_profile ... ok
+test invariant_checker_accepts_slot_reuse_and_seeded_ticks ... ok
+test db3s_v3_round_trip_preserves_in_flight_toxin_payload ... ok
+test db3s_v3_round_trip_preserves_asexual_birth_state ... ok
+test parser_compiles_symbolic_memory_operands_to_numeric_addresses ... ok
+test mutation_free_save_disables_saved_mutations_without_changing_live_engine ... ok
+test db3s_v3_round_trip_preserves_mid_effect_toxin_state ... ok
+test save_files_are_versioned_and_round_trip_reference_state ... ok
+test in_flight_toxin_uses_frozen_species_after_owner_species_change ... ok
+test newborn_and_reused_slots_start_without_toxin_effects ... ok
+test snapshot_v2_exposes_phase1_telemetry ... ok
+test save_version_one_is_rejected_after_db2_state_upgrade ... ok
+test later_toxin_hit_caps_fractional_duration_at_32000 ... ok
+test unavailable_gpu_falls_back_to_cpu_when_allowed ... ok
+test unavailable_gpu_is_an_error_when_fallback_is_disabled ... ok
+test unknown_legacy_instruction_becomes_zero_with_location_warning ... ok
+test core_06_seeded_repeatability_save_resume_and_atomicity_contract ... ok
+test save_round_trip_preserves_pre_refactor_robot_state_fields ... ok
+test tick_many_advances_a_batch_and_publishes_the_final_state ... ok
+test seeded_cpu_ticks_are_reproducible_and_publish_snapshots ... ok
+test review_projection_db3s_v3_resumes_exact_mid_soft_tie_lifecycle ... ok
+test db3s_v3_configuration_groups_default_missing_fields_round_trip_and_reject_invalid_atomically ... ok
+
+test result: ok. 33 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.16s
+
+     Running tests\corpses_collisions.rs (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\target\debug\deps\corpses_collisions-12f0b017fb07b1f1.exe)
+
+running 7 tests
+test energy_below_configured_corpse_threshold_becomes_corpse_after_age_zero ... ok
+test overlapping_organisms_are_separated_without_non_finite_motion ... ok
+test energy_feeding_cannot_extract_energy_from_ordinary_corpses ... ok
+test body_feeding_shots_multiply_corpse_damage_and_return_a_packet ... ok
+test configured_corpse_decay_changes_authoritative_lifecycle_state_after_tick ... ok
+test energy_donation_does_not_revive_or_feed_a_corpse ... ok
+test energy_death_leaves_a_decayable_corpse_in_world_state ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.81s
+
+     Running tests\db2_physics.rs (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\target\debug\deps\db2_physics-6be20966215a49cb.exe)
+
+running 22 tests
+test elasticity_rebounds_colliding_bots_with_finite_velocity ... ok
+test brownian_motion_rotates_aim_on_the_next_cycle ... ok
+test drag_reduces_retained_momentum_instead_of_replacing_it ... ok
+test newly_loaded_bots_start_with_db2_body_reserve ... ok
+test maximum_velocity_caps_total_velocity_after_environment_impulses ... ok
+test newmove_directive_is_preserved_by_legacy_dna ... ok
+test movement_command_adds_impulse_and_bot_coasts_without_new_thrust ... ok
+test non_toroidal_border_collision_writes_edge_sense ... ok
+test fluid_added_mass_reduces_acceleration_and_angular_damping_is_applied_in_tick ... ok
+test pond_buoyancy_reverses_vertical_gravity_at_the_bottom ... ok
+test pond_full_buoyancy_sinks_shallow_but_floats_deep_when_raw_threshold_exceeds_one ... ok
+test physical_radius_is_derived_from_body_like_db2 ... ok
+test static_friction_blocks_impulses_below_the_breakaway_threshold ... ok
+test db2_gravity_is_applied_after_friction_on_the_first_tick ... ok
+test static_friction_is_applied_after_collisions_to_cancel_the_post_contact_impulse ... ok
+test fixed_bot_radii_config_survives_save_and_uses_db2_half_radius ... ok
+test phy04_cpu_engine_physics_contract ... ok
+test pond_tides_modulate_vertical_gravity_over_the_configured_period ... ok
+test voluntary_acceleration_is_clamped_before_efficiency_multiplier ... ok
+test voluntary_motion_cost_uses_the_clipped_acceleration_magnitude ... ok
+test edge_sense_matches_vb6_boundary_distance_calibration ... ok
+test fixed_and_corpse_flags_suppress_voluntary_motion_and_energy_cost ... ok
+
+test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests\db2_projectiles.rs (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\target\debug\deps\db2_projectiles-5c957e0170b7a547.exe)
+
+running 23 tests
+test energy_ammunition_is_capped_to_the_senders_available_energy ... ok
+test db24832_shootval_positive_power_and_negative_range_are_applied_to_spawn ... ok
+test energy_packet_applies_db24832_transfer_without_a_live_packet_owner ... ok
+test direct_poff_command_does_not_create_a_projectile ... ok
+test firing_creates_a_moving_projectile_instead_of_an_instant_hit_line ... ok
+test delgene_information_shot_is_inert_without_defensive_poison_return ... ok
+test direct_minus_seven_command_does_not_emit_a_virus ... ok
+test energy_feeding_request_extracts_target_resources_and_returns_energy_packet ... ok
+test information_shots_cannot_bypass_sexual_reproduction_requirements ... ok
+test newborn_is_immune_to_parent_stream_for_one_tick ... ok
+test lethal_projectile_hit_cannot_be_undone_by_same_tick_photosynthesis ... ok
+test obstacle_intercepts_projectile_before_target ... ok
+test positive_memory_shot_writes_the_target_address ... ok
+test negative_and_zero_information_values_reach_the_requested_memory_address ... ok
+test shot_velocity_inherits_the_firers_actual_velocity ... ok
+test moving_robot_obstacle_edge_preserves_collision_shot_and_drift_invariants ... ok
+test pass_through_shape_allows_a_projectile_to_reach_the_target ... ok
+test sperm_shot_fertilizes_without_forcing_reproduction ... ok
+test swept_collision_hits_a_bot_between_projectile_endpoints ... ok
+test shot_formation_spends_the_original_flat_boost_and_ammunition_costs ... ok
+test reproductive_projectiles_use_staged_virus_and_sperm_gates ... ok
+test projectile_moves_once_per_tick_and_expires_after_range ... ok
+test shot_01_projectile_corpus_covers_moving_target_edges_and_range_decay_boundaries ... ok
+
+test result: ok. 23 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests\gpu_ffi.rs (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\target\debug\deps\gpu_ffi-33763a4cd59e524e.exe)
+
+running 25 tests
+test cpu_physics_integrates_and_clamps_world_bounds ... ok
+test engine_can_switch_backends_while_preserving_live_state ... ok
+test cpu_and_gpu_match_native_border_overshoot_and_next_cycle_respawn ... ok
+test cpu_and_gpu_emit_identical_nontiming_cycle_traces ... ok
+test cpu_and_gpu_match_toxin_state_memory_and_position ... ok
+test engine_retains_gpu_backend_and_uses_it_for_tick_physics ... ok
+test cpu_and_gpu_match_tie_lifecycle_spring_and_hardening ... ok
+test ffi_adds_and_removes_live_environment_features ... ok
+test ffi_environment_updates_preserve_optional_db2_settings ... ok
+test ffi_binary_save_load_round_trip_replaces_engine_atomically ... ok
+test ffi_v1_consumers_accept_the_additive_snapshot ... ok
+test ffi_import_accepts_known_sysvars_without_inert_warnings ... ok
+test ffi_manual_tools_return_ids_and_exported_dna ... ok
+test ffi_imports_a_configured_species_as_one_command ... ok
+test ffi_rejects_unknown_batch_versions_with_owned_structured_error ... ok
+test fused_gpu_sensing_and_motion_match_cpu_contract_when_adapter_is_available ... ok
+test ffi_executes_versioned_command_batches_and_reports_capabilities ... ok
+test cpu_and_gpu_match_gameplay_state_within_existing_physics_tolerance ... ok
+test physical_gpu_fuses_grid_sensing_integration_and_render_preparation ... ok
+test gpu_sensing_and_rendering_do_not_reintegrate_db2_positions_when_adapter_is_available ... ok
+test gpu_builds_spatial_grid_before_neighborhood_queries_when_adapter_is_available ... ok
+test gpu_sensing_matches_nearest_neighbor_contract_when_adapter_is_available ... ok
+test gpu_physics_matches_cpu_when_an_adapter_is_available ... ok
+test gpu_prepares_render_instances_with_integrated_positions ... ok
+test ffi_versioned_public_abi_failures_are_atomic_and_valid_batch_commits_once ... ok
+
+test result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 7.47s
+
+     Running tests\reproduction_heredity_248.rs (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\target\debug\deps\reproduction_heredity_248-5b5141649e0e8deb.exe)
+
+running 25 tests
+test birth_tie_uses_source_asymmetric_ports_and_lifetime_100 ... ok
+test birth_tie_transfers_one_staged_cell_per_early_age_without_overwrite ... ok
+test child_generation_saturates_at_32000 ... ok
+test absolute_identity_allocator_survives_child_deletion_and_save_round_trip ... ok
+test buoyancy_command_readback_and_birth_inheritance_round_trip ... ok
+test blocked_birth_preserves_parent_pending_heredity ... ok
+test child_inherits_parent_program_profile_species_and_birth_identity ... ok
+test delayed_heredity_requires_the_surviving_birth_tie ... ok
+test newborn_clears_ordinary_memory_and_stages_only_delayed_heredity ... ok
+test blocked_birth_charges_no_five_block_dna_copy_cost ... ok
+test later_normal_tie_uses_first_free_child_record_after_birth_tie ... ok
+test competing_births_commit_in_parent_slot_order_and_leave_loser_unchanged ... ok
+test collision_uses_radius_stored_before_same_cycle_body_feed ... ok
+test body_split_uses_vb6_cint_round_to_even_without_minimums ... ok
+test non_toroidal_birth_bounds_include_parent_radius_and_smudge_50 ... ok
+test repro_125_transfers_twenty_five_percent_of_db2_resources ... ok
+test positive_energy_below_201_remains_eligible_for_reproduction ... ok
+test repro_with_zero_effective_percentage_does_not_birth_or_consume_request ... ok
+test ties_disabled_allows_birth_but_gates_staged_transfer ... ok
+test post_birth_mass_and_previous_energy_match_source_bookkeeping ... ok
+test successful_birth_charges_parent_only_for_five_block_dna_copy ... ok
+test successful_birth_clears_parent_pending_heredity_after_staging_child_memory ... ok
+test occupied_forward_placement_is_atomic_and_keeps_repro_pending ... ok
+test toroidal_birth_uses_unwrapped_candidate_and_obstacle_segment ... ok
+test full_parent_tie_capacity_allows_birth_without_birth_tie_or_staged_transfer ... ok
+
+test result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.14s
+
+     Running tests\toroidal_world.rs (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\target\debug\deps\toroidal_world-8d61a83145b32a70.exe)
+
+running 7 tests
+test wrapped_axis_applies_border_smudge_before_integration ... ok
+test organism_motion_wraps_across_the_world_edge ... ok
+test shot_inherits_shortest_toroidal_firer_displacement ... ok
+test an_interior_robot_is_not_moved_into_the_border_smudge_band ... ok
+test topology_wraps_x_but_bounds_y_inside_robot_radius_and_smudge ... ok
+test projectile_wrap_preserves_its_travel_segment ... ok
+test wrapped_motion_overshoots_then_respawns_on_the_next_cycle_after_save_restore ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+

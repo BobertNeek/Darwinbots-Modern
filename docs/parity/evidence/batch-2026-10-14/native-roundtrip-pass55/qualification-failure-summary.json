@@ -1,0 +1,123 @@
+{
+  "schema_version": 1,
+  "batch": 55,
+  "sealed_utc": "2026-10-17T03:57:57.2557054Z",
+  "state": "needs_repair",
+  "ordinary_outcomes_complete": true,
+  "source_head": "1b059f4dc18ca1d19952b35576bfbb840809e020",
+  "source_manifest_sha256": "3E1E0C67173084E3F8D98583C07BDA8E7EA258B643380BE77C9B472C87F076DB",
+  "format_passed": true,
+  "strict_clippy_passed": true,
+  "rust": {
+    "passed": 941,
+    "failed": 17,
+    "ignored": 0,
+    "measured": 0,
+    "filtered_out": 27
+  },
+  "rust_targets": 68,
+  "rust_failed_targets": 7,
+  "managed": {
+    "core": {
+      "passed": 285,
+      "failed": 0,
+      "total": 285,
+      "skipped": 0,
+      "trx_sha256": "45DAE3C52D4BC1085B297D8990E1FECA3E672094DC2A20F33D0D6C635C2EAEE4"
+    },
+    "desktop": {
+      "passed": 189,
+      "failed": 0,
+      "total": 189,
+      "skipped": 0,
+      "trx_sha256": "DC4403A9C2C0D5BE90C17E85938BF8600F1FA92952C1DCB511591F89C8ECF41A"
+    }
+  },
+  "genuine": {
+    "controls": 10,
+    "passed": 7,
+    "failed": 3,
+    "tolerance": 0,
+    "feeding_c10_failed_union_fields": 3297,
+    "feeding_c10_original_only_fields": 3090,
+    "field_census_receipt": "output/pass56-reference-self-projection/receipt.json"
+  },
+  "raw_zero": {
+    "compared_fields": 393316,
+    "differences": 980,
+    "passed": false
+  },
+  "package": {
+    "published": true,
+    "smoke": {
+      "status": "passed",
+      "backend": "CPU",
+      "ticks": 13,
+      "population": 1,
+      "movement": true,
+      "save_resume": true,
+      "bundled_bots": 48
+    },
+    "assets": 48,
+    "asset_mismatches": 0,
+    "native_dll_identity_matched": true
+  },
+  "failed_steps": [
+    "cpu-rust-workspace",
+    "original-zero-cycle-compare",
+    "original-zero-cycle-field-coverage",
+    "genuine-chloroplast-1-compare",
+    "genuine-chloroplast-1-field-coverage",
+    "genuine-chloroplast-10-compare",
+    "genuine-chloroplast-10-field-coverage",
+    "genuine-feeding-10-compare",
+    "genuine-feeding-10-field-coverage",
+    "genuine-additional-checkpoints-completeness"
+  ],
+  "admission_created": false,
+  "gpu_or_capacity_executed": false,
+  "batch56_code_executed": false,
+  "evidence": [
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass55/source.json",
+      "sha256": "3E1E0C67173084E3F8D98583C07BDA8E7EA258B643380BE77C9B472C87F076DB"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass55/state.json",
+      "sha256": "5A06CAA124FE55C5915D1D62E61BFCE105CBDC2B81325530D3C23F419EEE60D4"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass55/results.json",
+      "sha256": "EDFE60F34F700F9D7B57D07743037152BD43DC990C518B3B583FED269DA26491"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass55/rust-target-results.json",
+      "sha256": "451A9A1F13FA0661AC8D860103B450B710F0EB97E87B4F3105C75788C14403FB"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass55/genuine-movement-comparisons.json",
+      "sha256": "F2EEA03D86E46DDA387EAB097E0D02600CCA31D71D2E27FF86F047D4317AC8AA"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass55/genuine-additional-comparisons.json",
+      "sha256": "80FB27A802107BA0208328B56AA8D5CC0E9E7B05E95E04BE9279E48A987F5220"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass55/package-smoke.json",
+      "sha256": "DE7F7EEE107116C1F2E5C68F942EC3C80535AE6D039F2B9FCDB2AE32CE972B79"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass55/package-assets.json",
+      "sha256": "882741E870837C486D54938151D4818A0118C84828FF719DF93EDDBCD856F6F8"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass55/native-dll-identity.json",
+      "sha256": "A0F5010A34744B52AC93E4E9490E4BCB44E101FC5E69F9C912246318B78AFF6A"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass55/preserved-wip-image.json",
+      "sha256": "452634C182E385790B95FFC1321105A66E70966ACD74F9A4B9419C4DB7EE2917"
+    }
+  ],
+  "boundary": "Fresh complete ordinary local55 outcomes only. Rust and three genuine controls failed; no CPU qualification or hardware admission. Original files self-projected separately for reference census, not port parity. Batch56 drafts remain unapplied and unexecuted."
+}

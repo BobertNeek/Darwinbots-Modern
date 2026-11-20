@@ -1,0 +1,268 @@
+{
+  "schema_version": 1,
+  "batch": 60,
+  "created_utc": "2026-10-17T09:23:46.995Z",
+  "all34_applied_before_formatter_and_any_checks": true,
+  "source_parent": "ff50b1a735ef61c6d5d282358da76f2734f64099",
+  "authoring_plan": {
+    "file": "output/pass60-authoring-plan-final.json",
+    "sha256": "B087D9C9198A1B8003D2FCA8E7312E379226D0F66A73D16373B86B795829989C"
+  },
+  "application_receipt": {
+    "file": "output/pass60-application-receipt.json",
+    "sha256": "D25C64D41E2CB3A910C3D42551A83229466AAE76C1D0A424B817C78010D12DB8"
+  },
+  "format_exit": 0,
+  "powershell_parser_errors": 0,
+  "format_only_changed_files": [
+    "modern/engine/src/world/staged_evolution.rs",
+    "modern/engine/src/ffi.rs",
+    "modern/engine/src/world.rs",
+    "modern/engine/tests/gpu_ffi.rs",
+    "modern/engine/src/world/native_fitness.rs",
+    "modern/engine/tests/db24832_genuine_load_transients.rs",
+    "modern/engine/tests/db24832_genuine_feeding.rs"
+  ],
+  "files": [
+    {
+      "file": "modern/engine/src/world/staged_evolution.rs",
+      "sha256": "F5953DC665030239CCE55EB1518C11C1BA4094B1CD60C963350A5F25473B98A0",
+      "candidate_sha256": "4879D008F0CEEEBB8A1329A92CEF6D25273B4570379C258679C67DAA00E5613B",
+      "formatted": true,
+      "bytes": 73257
+    },
+    {
+      "file": "modern/engine/src/ffi.rs",
+      "sha256": "7CEB12A51A17E943967BA2AB50A75B4623C38D59F600F0E2109397033FAC5F8F",
+      "candidate_sha256": "80BEF85CB5F99486BAE7BEC2A1571232746C22BC4468D0248F8A22D00200089E",
+      "formatted": true,
+      "bytes": 89741
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/LocalMode.cs",
+      "sha256": "9EC8342387AB8F72B932D5418C63D99DEE180B6429EBB6467F5239FDE48E655F",
+      "candidate_sha256": "9EC8342387AB8F72B932D5418C63D99DEE180B6429EBB6467F5239FDE48E655F",
+      "formatted": false,
+      "bytes": 5787
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/IEngineClient.cs",
+      "sha256": "DE26C232704EE8398F1E72662492FAF305706BC9AE7B452C5C2EB0F1B9F46C07",
+      "candidate_sha256": "DE26C232704EE8398F1E72662492FAF305706BC9AE7B452C5C2EB0F1B9F46C07",
+      "formatted": false,
+      "bytes": 5017
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/SimulationSession.cs",
+      "sha256": "086C20DB57C8FD00DDC17DF688982CBD8E06AA3CD9E60C526987F646990B7D73",
+      "candidate_sha256": "086C20DB57C8FD00DDC17DF688982CBD8E06AA3CD9E60C526987F646990B7D73",
+      "formatted": false,
+      "bytes": 22800
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/NativeSnapshotParser.cs",
+      "sha256": "D4CA5A717DA1240F78B2E0C927E072E1B51FF98BFAC93359C8A727B99F893076",
+      "candidate_sha256": "D4CA5A717DA1240F78B2E0C927E072E1B51FF98BFAC93359C8A727B99F893076",
+      "formatted": false,
+      "bytes": 55496
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/NativeEngineClient.cs",
+      "sha256": "E2D27190B2165631BA158DF08EE0AB6FB338209D125BC4B76CCEC760D3428A43",
+      "candidate_sha256": "E2D27190B2165631BA158DF08EE0AB6FB338209D125BC4B76CCEC760D3428A43",
+      "formatted": false,
+      "bytes": 49426
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml.cs",
+      "sha256": "AAFC0115476B2D750B0D79D1CA707060E0C948DA9031873E7439874D11CFE788",
+      "candidate_sha256": "AAFC0115476B2D750B0D79D1CA707060E0C948DA9031873E7439874D11CFE788",
+      "formatted": false,
+      "bytes": 141951
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/StagedEvolutionTests.cs",
+      "sha256": "400223C79262FB215116BE97599E4A1F127B257E2E22014E0EE95E06652B76A4",
+      "candidate_sha256": "400223C79262FB215116BE97599E4A1F127B257E2E22014E0EE95E06652B76A4",
+      "formatted": false,
+      "bytes": 3122
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/SimulationSessionTests.cs",
+      "sha256": "65A27AE865E29CC875A49BA89A7C9262766FE23FECCB93062A7508C8878B6952",
+      "candidate_sha256": "65A27AE865E29CC875A49BA89A7C9262766FE23FECCB93062A7508C8878B6952",
+      "formatted": false,
+      "bytes": 26957
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/CommunityLeagueNativeTests.cs",
+      "sha256": "7D69BDB02B6DE1762BCB88655263AD81DE3862DD24BD3F45FF694A4B7D119416",
+      "candidate_sha256": "7D69BDB02B6DE1762BCB88655263AD81DE3862DD24BD3F45FF694A4B7D119416",
+      "formatted": false,
+      "bytes": 42165
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs",
+      "sha256": "BA9367A954232B4AC355C463F2043182C87C312E49094465857BB13030BB4BD3",
+      "candidate_sha256": "BA9367A954232B4AC355C463F2043182C87C312E49094465857BB13030BB4BD3",
+      "formatted": false,
+      "bytes": 135216
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/FindBestRenderedTests.cs",
+      "sha256": "34154B207147B3B87BA67461F210F42790275D4E26C8E393E01E143F1B6D1E0F",
+      "candidate_sha256": "34154B207147B3B87BA67461F210F42790275D4E26C8E393E01E143F1B6D1E0F",
+      "formatted": false,
+      "bytes": 6547
+    },
+    {
+      "file": "modern/engine/src/world.rs",
+      "sha256": "B7E47C7761B1D5E04324F31BADEEAC73930C083FBE40C9123F74961AE79F5551",
+      "candidate_sha256": "77E1DF0753E5942B031EA7C4CD901C29844341ED9A54590C8B803C368D302579",
+      "formatted": true,
+      "bytes": 580507
+    },
+    {
+      "file": "modern/engine/tests/gpu_ffi.rs",
+      "sha256": "C958E040507008CB8B8A38F1D4FF06286643764A46B10483B1C7946D50BF16C8",
+      "candidate_sha256": "24B2D1B535282E31C755B010B04109C67F3EB08C0365CA4C50F3BE1787E83FAA",
+      "formatted": true,
+      "bytes": 64197
+    },
+    {
+      "file": "output/qualify-native-roundtrip-pass60.ps1",
+      "sha256": "A6F540D22A3A9C2B071B506DCA0092628920FB2B6E838324BF5AFB1B6A84A20C",
+      "candidate_sha256": "A6F540D22A3A9C2B071B506DCA0092628920FB2B6E838324BF5AFB1B6A84A20C",
+      "formatted": false,
+      "bytes": 57673
+    },
+    {
+      "file": "modern/engine/src/world/native_fitness.rs",
+      "sha256": "82F837BCB5EDA8E986FE1B4DC06FC16F3C4954D277E09F8DCDE64C1017587803",
+      "candidate_sha256": "F4238D6914E3A562058A1CAF897E6D9EDC1437E45A6A90DD6EE79CE8E1CB8336",
+      "formatted": true,
+      "bytes": 10251
+    },
+    {
+      "file": "modern/engine/tests/db24832_genuine_load_transients.rs",
+      "sha256": "D203975F7A74E364C25B2AA4111A1923FBF59A3BFF0BEA2622A548A1E01C18CA",
+      "candidate_sha256": "598151C5D10F186FBB0EBE6B7DEB7BE4D54291638B390700D066861FBCAF47A8",
+      "formatted": true,
+      "bytes": 18090
+    },
+    {
+      "file": "modern/engine/tests/db24832_genuine_feeding.rs",
+      "sha256": "47EB47AD5D5241527180926B8695FE1AB8A15BA34AB1AC8BBDBED4C764169793",
+      "candidate_sha256": "7A32384D89B391BDFE6073F6422097BB30DD8BB34B98ACD4FB2D03E853C3E04B",
+      "formatted": true,
+      "bytes": 28435
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-capture-provenance.json",
+      "sha256": "07D3F4A73466694DB00B54F9324C5CA27EB97992ACB8D425521928C8895FDC4F",
+      "candidate_sha256": "07D3F4A73466694DB00B54F9324C5CA27EB97992ACB8D425521928C8895FDC4F",
+      "formatted": false,
+      "bytes": 18144
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-fixed-cycle10-20261017.sim",
+      "sha256": "051F845860338E6D1B21572A73EE60867D1AD6EC2981016A1E3E6BEC11450A44",
+      "candidate_sha256": "051F845860338E6D1B21572A73EE60867D1AD6EC2981016A1E3E6BEC11450A44",
+      "formatted": false,
+      "bytes": 17068
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-fixed-cycle100-20261017.sim",
+      "sha256": "792BE4607BA33883184F260092646E673FFBED263AFDD1915C045B34E71C1ACA",
+      "candidate_sha256": "792BE4607BA33883184F260092646E673FFBED263AFDD1915C045B34E71C1ACA",
+      "formatted": false,
+      "bytes": 17068
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-body-cycle10-20261017.sim",
+      "sha256": "B3373F593FBFB6C60D7A0F9BDB2D3F0936C274567655E8F0029F809189246E95",
+      "candidate_sha256": "B3373F593FBFB6C60D7A0F9BDB2D3F0936C274567655E8F0029F809189246E95",
+      "formatted": false,
+      "bytes": 17054
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-body-cycle100-20261017.sim",
+      "sha256": "9657E8D3917AAFD3DE87E3B409D90EBEFA1F811356EF0DA9225BAEFD18CB89C9",
+      "candidate_sha256": "9657E8D3917AAFD3DE87E3B409D90EBEFA1F811356EF0DA9225BAEFD18CB89C9",
+      "formatted": false,
+      "bytes": 17054
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-contacts-cycle10-20261017.sim",
+      "sha256": "DE73B60672D17B3C5C8FADCF1DD37F2C917B9D63C3F161BA26978FC989249453",
+      "candidate_sha256": "DE73B60672D17B3C5C8FADCF1DD37F2C917B9D63C3F161BA26978FC989249453",
+      "formatted": false,
+      "bytes": 35764
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-ties-cycle10-20261017.sim",
+      "sha256": "1065E95C9F8B3BDE99773ABB90AD8C37D5DE3D8B56351C32EAE531A7F5959AD0",
+      "candidate_sha256": "1065E95C9F8B3BDE99773ABB90AD8C37D5DE3D8B56351C32EAE531A7F5959AD0",
+      "formatted": false,
+      "bytes": 26443
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-ties-cycle100-20261017.sim",
+      "sha256": "6AC8CA1E1ACC3FBE443DC6D9006BAA3A615D402362D1495CC57E37EEC3EE5D00",
+      "candidate_sha256": "6AC8CA1E1ACC3FBE443DC6D9006BAA3A615D402362D1495CC57E37EEC3EE5D00",
+      "formatted": false,
+      "bytes": 26443
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-movement-cycle100-20261017.sim",
+      "sha256": "D1F078B57BC1DDF4690DBEF24CC5945FC925755293060A8561FB7E82A1100202",
+      "candidate_sha256": "D1F078B57BC1DDF4690DBEF24CC5945FC925755293060A8561FB7E82A1100202",
+      "formatted": false,
+      "bytes": 17062
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-feeding-cycle100-20261017.sim",
+      "sha256": "32537482FDB46360B18219BECDB33D99D02B2ACEFDC41E68A9E929A3C5B2CB4F",
+      "candidate_sha256": "32537482FDB46360B18219BECDB33D99D02B2ACEFDC41E68A9E929A3C5B2CB4F",
+      "formatted": false,
+      "bytes": 18512
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-reproduction-cycle100-20261017.sim",
+      "sha256": "DEFBB6F511E8753F44B4FD5BC6D1629FFFCA3CEBEA1E6D7BA81D175AEC3BA234",
+      "candidate_sha256": "DEFBB6F511E8753F44B4FD5BC6D1629FFFCA3CEBEA1E6D7BA81D175AEC3BA234",
+      "formatted": false,
+      "bytes": 26475
+    },
+    {
+      "file": "output/native-qualification-admission53.ps1",
+      "sha256": "B3E9D15B0BD1B6EC6E3FAFCC789FFC6E4546F3C0863882F8A3A34E0E0F39145B",
+      "candidate_sha256": "B3E9D15B0BD1B6EC6E3FAFCC789FFC6E4546F3C0863882F8A3A34E0E0F39145B",
+      "formatted": false,
+      "bytes": 39477
+    },
+    {
+      "file": "output/test-native-admission60.ps1",
+      "sha256": "80EDF97A2FB6076FC584B38ACA98DE6502F0C1ED180352AF5FBC1DD104C9CD94",
+      "candidate_sha256": "80EDF97A2FB6076FC584B38ACA98DE6502F0C1ED180352AF5FBC1DD104C9CD94",
+      "formatted": false,
+      "bytes": 14168
+    },
+    {
+      "file": "docs/parity/db24832-parity-report-2026-10-14.html",
+      "sha256": "C4EE836CBB75C94967E24809F13408178B2319116682A9DA9E84FC4853B291F3",
+      "candidate_sha256": "C4EE836CBB75C94967E24809F13408178B2319116682A9DA9E84FC4853B291F3",
+      "formatted": false,
+      "bytes": 535992
+    },
+    {
+      "file": "docs/parity/evidence/continuation-handoff-2026-10-13.md",
+      "sha256": "513516AB291EF71DB93C3617BD1704C0FDC6FDF0F17410F1444183F75E21EFD9",
+      "candidate_sha256": "513516AB291EF71DB93C3617BD1704C0FDC6FDF0F17410F1444183F75E21EFD9",
+      "formatted": false,
+      "bytes": 394927
+    }
+  ],
+  "prior_unintended_pins_unchanged": true,
+  "product_tests_or_builds_executed": false
+}

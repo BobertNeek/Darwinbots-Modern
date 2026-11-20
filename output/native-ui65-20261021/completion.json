@@ -1,0 +1,193 @@
+{
+  "schema_version": 1,
+  "completed_utc": "2026-10-21T10:04:02.032798+00:00",
+  "scope": "Functional offline port: working menus, UI and intended features. Internet Mode excluded; offline exchange included. Incidental VB6 bugs and arbitrary random trajectories excluded.",
+  "all_known_code_changes_done": true,
+  "engine_qualified_code": "73e350297f54e88a7a690c435517ebb13615f953",
+  "desktop_repair_code": "0e57519e809e38736ce5090cae84e13c24951b44",
+  "engine_and_desktop_core_source_unchanged_since_qualified_code": true,
+  "native_package": "artifacts/win-x64-native-ui66-final",
+  "engine_dll_sha256": "EB13AA54BC6456A30F7F3CD5F8AA56CDC4ECE43CECD27B67066F19E4FFEF6C1E",
+  "managed_desktop_dll_sha256": "3555F7BE066C88247AE7316E133A5C21BB5162C374D48CA6BCE0BB4BB366D729",
+  "capture_repair": {
+    "sky_version": "0.7.7",
+    "runtime": "a9ba6825a525118c",
+    "baseline_error": "FrameArrived timed out: timed out waiting on channel",
+    "helper_sha256": "D36AE6626BDCED7AE07935D1A91BE14425E8F6CE7C9B5C69F2D8D7DF0C130D83",
+    "compatibility_dll_sha256": "808EF9445594F0A40FE82675532E340658DB365CE7F692C4C1ACBDD0A817DC78",
+    "notepad_capture_passed": true,
+    "coordinate_format_menu_passed": true,
+    "preexisting_helper_54072_untouched": true
+  },
+  "native_observations": {
+    "setup": "Species, General, Physics/Costs, Mutations, Restart/League surfaces available; small CPU world created with 12 organisms.",
+    "settings_file_roundtrip": {
+      "file": "walkthrough.set",
+      "seed_before_save": 1,
+      "seed_changed_to": 42,
+      "seed_after_load": 1,
+      "backend": "Cpu",
+      "initial_counts": [
+        8,
+        4
+      ],
+      "global_graph_updates": 2,
+      "safe_mode_disabled_for_test": true,
+      "maximum_velocity_initial": 50
+    },
+    "global_settings_reopened": {
+      "graph_updates": 2,
+      "safe_mode": false
+    },
+    "transport": {
+      "created_population": 12,
+      "step_reached_cycle": 0,
+      "run_pause_reached_cycle": 110,
+      "intentional_movement_events": 130
+    },
+    "simulation_file_roundtrip": {
+      "file": "cycle110.db3s",
+      "saved_cycle": 110,
+      "advanced_cycle": 111,
+      "loaded_cycle": 110,
+      "saved_and_loaded_population": 32,
+      "saved_and_loaded_total_energy": 63166,
+      "status": "LOADED",
+      "save_sha256": "CE45FF63D6C69F438396FE797B5D3CA3398222E5E332D814BC95629A83EA0535"
+    },
+    "live_physics": {
+      "before": 50,
+      "edited_to": 40,
+      "apply_status": "LIVE SETTINGS APPLIED",
+      "reopened_value": 40
+    },
+    "mode": {
+      "kind": "SimpleSurvival",
+      "cycle_limit": 100,
+      "population_cap": 40,
+      "configured": true,
+      "started": true,
+      "automatic_rounds": true,
+      "final_package_completed_label": "ROUND 5 / 5",
+      "final_package_restart_label": "ROUND 1 / 5",
+      "restart_status": "LOCAL MODE RESTARTED"
+    },
+    "graph": {
+      "suite_and_individual_graph_rendered": true,
+      "csv_export": true,
+      "sample_ticks": [
+        200,
+        400,
+        600
+      ],
+      "sample_population": [
+        20,
+        20,
+        20
+      ]
+    },
+    "tray": {
+      "native_hide_observed": true,
+      "native_restore_observed": false,
+      "limit": "Sky returned no targetable taskbar/tray window. Tray restore and six live information bindings retain automated coverage; no native restore claim."
+    },
+    "official_original": {
+      "restarter_sha256": "F0C87579E91AA65728ACE0FF04564CA46941ECC8FBBAAE2F3BFDC35770C54791",
+      "exe_sha256": "7F580D9CE8F1095A01FD162E9BCAC03FE437599E080786FD670B676671C31990",
+      "launch_with_exact_isolated_target": true,
+      "continue_last_world_declined": true,
+      "normal_shell_and_new_simulation_settings_visible": true,
+      "closed_without_saving_settings": true
+    }
+  },
+  "repairs": [
+    "Full-width mode values, selectors and action labels in the scrollable sidebar.",
+    "Full-width setup dimensions and seed; START NEW action wraps without clipping.",
+    "Survival round count uses the engine effective minimum/cap; contest readback identifies the win target or adaptive finish."
+  ],
+  "focused_verification": {
+    "passed": 13,
+    "failed": 0,
+    "skipped": 0,
+    "classes": [
+      "ModeSettingsRenderedTests",
+      "LocalModeWorkflowTests"
+    ],
+    "trx": "output/native-ui65-20261021/tests/focused-final.trx",
+    "trx_sha256": "9E2134085DA6C27CF85A4479FD82B4BBAF972E85FB11ECAD4C5313CB249C6BA9",
+    "package_smoke": {
+      "stderr": "",
+      "exit_code": 0,
+      "result": {
+        "status": "passed",
+        "backend": "CPU",
+        "ticks": 13,
+        "population": 1,
+        "movement": true,
+        "save_resume": true,
+        "bundled_bots": 48
+      }
+    },
+    "all_48_bots_exact_source_bytes": true,
+    "native_build": "Managed desktop only using private MSBuild override and the exact already-qualified engine DLL. No engine rebuild or new GPU run."
+  },
+  "retained_engine_verification": {
+    "cpu_steps": 94,
+    "rust": 1049,
+    "core": 314,
+    "desktop_before_ui_repair": 215,
+    "hosted_platforms": 4,
+    "strict_gpu_groups": 6,
+    "original_controls": 25,
+    "projected_fields": 55849,
+    "strict_original_world_cycles": 10000,
+    "sustained_gpu_populations": [
+      1000,
+      4000,
+      8000,
+      32000
+    ],
+    "note": "These immutable results qualify code73 and the unchanged native engine, not a rerun at the later UI/documentation commits."
+  },
+  "profile": {
+    "all_7_original_file_hashes_restored": true,
+    "extra_files": [],
+    "owned_test_processes_closed": true,
+    "test_changed_last_start_preserved_privately": true
+  },
+  "other_work": "No A-Life/Bob stop, input, GPU seizure or cross-chat messaging. Existing shared helper left running; only owned newly-created helper instances restarted for capture repair.",
+  "limitations": [
+    "Native Windows walkthrough covers critical workflows, not a manual click of every catalog action.",
+    "Native tray restore and Linux/macOS window-manager walkthroughs were not observed.",
+    "All 74 original main-menu actions are represented; three Internet actions stay disabled by agreed scope."
+  ],
+  "latest_hosted_ui_run": {
+    "source_head": "0e57519e809e38736ce5090cae84e13c24951b44",
+    "main_run_id": 39572329105,
+    "platforms_passed": 4,
+    "core_each": 314,
+    "desktop_each": 221,
+    "rust_each": 1064,
+    "rust_targets_each": 68,
+    "hardware_ignored_each": 12,
+    "package_publish_and_smoke_steps": "passed on all four platforms",
+    "initial_diagnostics_run_id": 39572329089,
+    "initial_diagnostics_outcome": "ARM/Linux221 passed; Intel220 passed/1 display-only fixture race failed; immutable original receipt preserved",
+    "collected_receipt": "output/native-ui65-20261021/hosted-initial-collected.json"
+  },
+  "test_fixture_repair": {
+    "source_head": "5f0f7d800adc2439e0dd09bc2bd913f0bca4b494",
+    "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/RuntimeControlSurfaceTests.cs",
+    "failure": "Graphics-off deliberately starts turbo. A timer batch ran after the queued save but before snapshot assertions on the slower Intel dispatcher (tick0->100).",
+    "repair": "Assert turbo starts, pause via actual Pause control, assert stopped, yield40ms, retain exact save/snapshot/command assertions.",
+    "product_source_or_package_changes": false,
+    "focused_local_passed": 15,
+    "focused_local_failed": 0,
+    "trx_sha256": "A40B064C6F23950B432781D76D8C3232FC5B656FD186045E073AFBA6940D93D1",
+    "fresh_diagnostics_run_id": 39579819052,
+    "fresh_diagnostics_status": "passed: all three platforms, 221/0/0 each",
+    "collected_receipt": "output/native-ui65-20261021/hosted-fixture-collected.json"
+  },
+  "authorized_work_complete": true,
+  "remaining_required_code_changes": []
+}

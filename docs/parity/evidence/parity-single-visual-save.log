@@ -1,0 +1,15 @@
+   Compiling darwinbots-engine v0.1.0 (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\engine)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.95s
+     Running tests\visual_phenotypes.rs (target\debug\deps\visual_phenotypes-37a468be8a7de608.exe)
+
+running 7 tests
+test generated_skin_is_stable_and_inside_the_bot ... ok
+test autotroph_mutations_remain_green ... ok
+test real_mutation_drifts_color_but_zero_changes_do_not ... ok
+test speciation_changes_one_skin_point_and_resets_distance ... ok
+test child_inherits_phenotype_then_mutation_drifts_only_the_child ... ok
+test crossing_speciation_threshold_changes_skin_once ... ok
+test phenotype_round_trips_through_version_four_save ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+

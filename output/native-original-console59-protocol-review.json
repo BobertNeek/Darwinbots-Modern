@@ -1,0 +1,291 @@
+{
+  "schema_version": 1,
+  "status": "static_protocol_review_only",
+  "created_utc": "2026-10-17T07:06:20.075Z",
+  "source_engine_context": {
+    "head": "8018c200690ea20d07c2d243138eb7d8f8fc0e7d",
+    "manifest_sha256": "102DC7BE8C4E3676015012F593CEB92A95DB598196661BAF80F817C6A4B8566C",
+    "pins": 540,
+    "engine_or_source_mutation": false
+  },
+  "original_reference": {
+    "version": "2.48.32",
+    "source_revision": "467a8a0c1564db2071cf65efe39dcfefc5ab7a0c",
+    "executable_sha256": "7F580D9CE8F1095A01FD162E9BCAC03FE437599E080786FD670B676671C31990",
+    "source_files": [
+      {
+        "file": "Darwinbots2/console.frm",
+        "sha256": "1CE6D7315FC2AFBD44C8479916A7CED15D1F9FDD7E5647A983C7562E0B221780",
+        "bytes": 15547
+      },
+      {
+        "file": "Darwinbots2/MDIForm1.frm",
+        "sha256": "7CE8CDEBEA42396A2371E22E6FDE5D568B6FF26AE89720F5DC107C008F155D95",
+        "bytes": 115170
+      },
+      {
+        "file": "Darwinbots2/main.frm",
+        "sha256": "87924F9881813672CE603E70DA44AE2FF876C2C010C2065E1953216E99CE5765",
+        "bytes": 104816
+      },
+      {
+        "file": "Darwinbots2/DNA.bas",
+        "sha256": "6905D4A3E235F0BC88306CE47654E7A4EDE9D6016E44A46983DD63D89C6F4652",
+        "bytes": 36426
+      },
+      {
+        "file": "Darwinbots2/Master.bas",
+        "sha256": "D46C737105A0DDACD46BE56BB73D5747317B4D2928D058DE2D5D67BFE48FEA1A",
+        "bytes": 21415
+      },
+      {
+        "file": "Darwinbots2/Quads.bas",
+        "sha256": "AA1320E82BC054E246A1F1410B02E1F9700E182B25FDD15AB4FED9288474604A",
+        "bytes": 44469
+      },
+      {
+        "file": "Darwinbots2/Robots.bas",
+        "sha256": "9EF9C3F61B8CBD1206259F408335195F073153403A36A7563389FEE2E4201FB3",
+        "bytes": 116735
+      },
+      {
+        "file": "Darwinbots2/NeoMutations.bas",
+        "sha256": "2B1CBE31401987DAC6D0F49E601C0ADEA37F78304FCFAD0282D1A1BDC9B00EE3",
+        "bytes": 42010
+      },
+      {
+        "file": "Darwinbots2/HDRoutines.bas",
+        "sha256": "E767C9CFF585E0ABEF6DD56F46C69CC076DC89B012A21875A7290DE2456939A3",
+        "bytes": 82909
+      },
+      {
+        "file": "Darwinbots2/Module1.bas",
+        "sha256": "18B528AB33807361DE9252F661837E7EA4BC8383C7A8C0BD5935683C9EEDF04E",
+        "bytes": 12931
+      },
+      {
+        "file": "Darwinbots2/Class1.cls",
+        "sha256": "76D0B6190E740E701B9AC42E98C17B81F4F81D1D1F2F5345CA67B0E19DA0E7E5",
+        "bytes": 622
+      }
+    ]
+  },
+  "prepared_runtime": {
+    "receipt": "output/native-original-console59-prepared.json",
+    "receipt_sha256": "94A6CB1BDEF5D0F249F5A14C804D6087B54AEE9EFBA2770C5DE49F6F9174A338",
+    "root": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-console59-9060ee6b-9427-4a54-8edc-39badc3114a1",
+    "cases": [
+      {
+        "case": "movement",
+        "file": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-console59-9060ee6b-9427-4a54-8edc-39badc3114a1\\movement\\input.sim",
+        "sha256": "6678CDD874314AED26D738B29897EE8CEE4E269DA6BEFDB55BEC47292F19E52E",
+        "bytes": 11113,
+        "declared_cycle": 0,
+        "declared_seed": 48032,
+        "root_framed_zero_velocity_selection_exact": true,
+        "framing_proof_boundary": "Root performed the data-only framed decode; this reviewer independently reverified raw input identity but did not execute an engine or reproduce the binary decoder."
+      },
+      {
+        "case": "fixed",
+        "file": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-console59-9060ee6b-9427-4a54-8edc-39badc3114a1\\fixed\\input.sim",
+        "sha256": "94C32DA0BDB409DF42C7DF7CB43B59A3DEA70E08D0D53631B8FEE0FDEAD41BE6",
+        "bytes": 11119,
+        "declared_cycle": 0,
+        "declared_seed": 48032,
+        "root_framed_zero_velocity_selection_exact": true,
+        "framing_proof_boundary": "Root performed the data-only framed decode; this reviewer independently reverified raw input identity but did not execute an engine or reproduce the binary decoder."
+      },
+      {
+        "case": "contacts",
+        "file": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-console59-9060ee6b-9427-4a54-8edc-39badc3114a1\\contacts\\input.sim",
+        "sha256": "4AF50D8B78BD75723DDF36E47C3A80B9DE64636FBC1A9501E16C7FCBFF9F0C72",
+        "bytes": 29805,
+        "declared_cycle": 0,
+        "declared_seed": 48032,
+        "root_framed_zero_velocity_selection_exact": true,
+        "framing_proof_boundary": "Root performed the data-only framed decode; this reviewer independently reverified raw input identity but did not execute an engine or reproduce the binary decoder."
+      },
+      {
+        "case": "body",
+        "file": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-console59-9060ee6b-9427-4a54-8edc-39badc3114a1\\body\\input.sim",
+        "sha256": "0445D63EF499C785DB6A3678E03DD2F0C4B57D0CB2DDD3EC3BB9CA9DCB8565B5",
+        "bytes": 11105,
+        "declared_cycle": 0,
+        "declared_seed": 48032,
+        "root_framed_zero_velocity_selection_exact": true,
+        "framing_proof_boundary": "Root performed the data-only framed decode; this reviewer independently reverified raw input identity but did not execute an engine or reproduce the binary decoder."
+      },
+      {
+        "case": "ties",
+        "file": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-console59-9060ee6b-9427-4a54-8edc-39badc3114a1\\ties\\input.sim",
+        "sha256": "302DE657A38E7B88B1ABBB652ED567BCC3530345E16554AC2C63EAC5290D9FA3",
+        "bytes": 20489,
+        "declared_cycle": 0,
+        "declared_seed": 48032,
+        "root_framed_zero_velocity_selection_exact": true,
+        "framing_proof_boundary": "Root performed the data-only framed decode; this reviewer independently reverified raw input identity but did not execute an engine or reproduce the binary decoder."
+      },
+      {
+        "case": "feeding",
+        "file": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-console59-9060ee6b-9427-4a54-8edc-39badc3114a1\\feeding\\input.sim",
+        "sha256": "A0AE7DFE9C75F8BBC6B7482106666C529F1DA96D91F7EE414D9F2E914B87C03D",
+        "bytes": 20498,
+        "declared_cycle": 0,
+        "declared_seed": 48032,
+        "root_framed_zero_velocity_selection_exact": true,
+        "framing_proof_boundary": "Root performed the data-only framed decode; this reviewer independently reverified raw input identity but did not execute an engine or reproduce the binary decoder."
+      },
+      {
+        "case": "reproduction",
+        "file": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-console59-9060ee6b-9427-4a54-8edc-39badc3114a1\\reproduction\\input.sim",
+        "sha256": "60FD33C86E938B94D86C074AE9B8097B9D61159CCF5D35D066BAFFCB4BF18040",
+        "bytes": 11137,
+        "declared_cycle": 0,
+        "declared_seed": 48032,
+        "root_framed_zero_velocity_selection_exact": true,
+        "framing_proof_boundary": "Root performed the data-only framed decode; this reviewer independently reverified raw input identity but did not execute an engine or reproduce the binary decoder."
+      }
+    ],
+    "preparation_snapshot_executed": false,
+    "boundary": "Prepared receipt is a prior immutable snapshot. This review makes no claim about current root-owned UI/process state and performed no launch or UI input."
+  },
+  "conclusion": {
+    "console_batching_is_source_supported": true,
+    "canonical_projected_comparisons_remain_valid_under_documented_conditions": true,
+    "actual_cycle_capture_or_engine_parity_proven": false,
+    "unselected_slot_zero_console_not_available_via_normal_menu": true
+  },
+  "protocol": [
+    {
+      "step": 1,
+      "action": "Use one fresh isolated original process for each case from the prepared seven-case root. Preserve all earlier calibration captures; do not continue a prior C3 calibration as C0."
+    },
+    {
+      "step": 2,
+      "action": "Use the real toolbar Pause, then toolbar Load exact input.sim. Verify the saved/input native tail counter is C0 and UserSeed48032. Do not start a new simulation or use menuLoad/FindBest."
+    },
+    {
+      "step": 3,
+      "action": "Verify PlayerBot is OFF through the actual UI. Keep Details and Gene Activations windows closed. Select one real bot once at C0 with a plain click and no movement while a button is held."
+    },
+    {
+      "step": 4,
+      "action": "Open the real enabled Open Console route(Ctrl+Y). Use lowercase single-space commands in its command textbox; do not use debug,execrob,energy,set,play or settings changes."
+    },
+    {
+      "step": 5,
+      "action": "Submit cycle1 as text `cycle 1` then Enter. Wait for the textbox to clear after synchronous command completion. Save to a new C1 capture through the real save route; decode actual savedcounter1 and seed48032 before labeling it C1."
+    },
+    {
+      "step": 6,
+      "action": "Submit `cycle 9`, wait for textbox clear, save a new C10 capture, and validate actualcounter10/seed48032."
+    },
+    {
+      "step": 7,
+      "action": "Submit `cycle 90`, wait for textbox clear, save a new C100 capture, and validate actualcounter100/seed48032. If a console command is ignored because its target console reference vanished, preserve the attempt and use actual savedcounter; never infer advancement solely from requested count."
+    },
+    {
+      "step": 8,
+      "action": "Record the chosen selector/C0/inputhashes/console1-9-90 protocol and actual saved counters. Preserve screenshots/logs as observation evidence, without replacing actual savecounter validation. A10-90 branch is also source-valid when intentionally beginning atC0 and onlyC10/C100 are needed; label that branch explicitly."
+    }
+  ],
+  "source_anchors": [
+    {
+      "file": "Darwinbots2/MDIForm1.frm",
+      "lines": "682-685,1930-1932,2858-2887",
+      "rule": "Ctrl+Y invokes Open Console, but DisableRobotsMenu sets cons.Enabled=False without a selected bot; no forced slot0 invocation is part of this protocol."
+    },
+    {
+      "file": "Darwinbots2/MDIForm1.frm",
+      "lines": "1761-1773",
+      "rule": "Toolbar stop explicitly clears DisplayActivations and Form1.Active, disables SecTimer, sets pausefix. Toolbar singlecycle invokes Consoleform.cycle1."
+    },
+    {
+      "file": "Darwinbots2/console.frm",
+      "lines": "293-325,334-351,395,461-487",
+      "rule": "Console is attached to the selected slot. Its documented cycleN command invokes the same cycle routine, performing exactlyN UpdateSim+Redraw calls with DoEvents.10/90 fit the Integer loop count."
+    },
+    {
+      "file": "Darwinbots2/console.frm",
+      "lines": "251-260",
+      "rule": "Text2 clears only after Parse and the synchronous event.fire call returns; clear command text is a useful completion indication."
+    },
+    {
+      "file": "Darwinbots2/Class1.cls",
+      "lines": "19-23",
+      "rule": "cevent.fire directly RaiseEvents textentered; it does not queue an independent simulation batch."
+    },
+    {
+      "file": "Darwinbots2/console.frm",
+      "lines": "475-479",
+      "rule": "Visible cyclecaption is updated only when Int(Timer) changes; it can lag actual simulationcounter."
+    },
+    {
+      "file": "Darwinbots2/main.frm",
+      "lines": "1590-1619,1666-1678,1708-1719,1848-1899",
+      "rule": "Hit selection temporarily subtracts then restores velocity-minus-actvel. Root-framed C0 inputs have both vectorszero and integerpositions, so that arithmetic is exact. Held-button MouseMove can instead move bots and zero velocity; ordinary MouseUp clears dragging."
+    },
+    {
+      "file": "Darwinbots2/DNA.bas",
+      "lines": "75-81,152,1181,1245-1269",
+      "rule": "Focus/console allocates/populates only ga() activation diagnostics. ExecRobs still executes all eligible living noncorpse/non-disabled actors; DisplayActivations is read only for console text output."
+    },
+    {
+      "file": "Darwinbots2/Master.bas",
+      "lines": "49-50,332-360",
+      "rule": "UpdateSim increments originalcycle and executes all bots. The actual focus-dependent gameplay branch is PlayerBot: when enabled it overwrites selected/highlighted bot memory. This is why PlayerBotOFF is semantically necessary."
+    },
+    {
+      "file": "Darwinbots2/Quads.bas",
+      "lines": "19,933",
+      "rule": "Focus-only eyeDistance is a displaycache. Its possible main.frm1044-1045 display read is commented; it is not a VM memory/resource input."
+    },
+    {
+      "file": "Darwinbots2/Robots.bas",
+      "lines": "2387,2821,2980-3015",
+      "rule": "Focus can mark offspring highlight and clear/move focus on death. Highlight is gameplay-relevant only under PlayerBot control; console death text/focus bookkeeping does not change birth fees/population/energy."
+    },
+    {
+      "file": "Darwinbots2/Module1.bas",
+      "lines": "413-431",
+      "rule": "exechighlight only draws the activation grid; it does not execute DNA again."
+    },
+    {
+      "file": "Darwinbots2/NeoMutations.bas",
+      "lines": "1072-1085",
+      "rule": "Selected robfocus can supply DNA length for explicit mutation-editor/default-loading normalization. That path is not invoked merely by these console cycle commands; avoid editor commands in the capture protocol."
+    },
+    {
+      "file": "Darwinbots2/HDRoutines.bas",
+      "lines": "2009-2256",
+      "rule": "SaveRobotBody emits no robot console object,ga() activationarray or robot highlight field. The .highlight serialization elsewhere in this file belongs to teleporters."
+    }
+  ],
+  "semantic_effects": {
+    "display_activations": "Console cycle sets True for printing activation lines and resets False afterward. All other source references set/reset the flag; no read changes RNG,resources,reproduction or population.",
+    "focus": "Changes diagnostic activation tracking, eye-viewer cache, selection/rendering and child highlight. PlayerBotOFF prevents the actual focused-memory override. Explicit mutation-editor commands are outside protocol.",
+    "selection_c0": "The prepared exact input bytes were independently rehashed by this reviewer; zero-velocity/actvel and integerposition framing was performed by root and is declared in its prepared receipt. No engine was run to establish these facts.",
+    "per_cycle_redraw": "Toolbar singlecycle and console batches both call the same cycle routine with one Redraw per UpdateSim. This does not prove arbitrary GUI timing/history is bit-identical outside the declared projected-field comparisons.",
+    "time_and_do_events": "Console output and UI event pumping affect wall-clock/UI observations. DoEvents permits handling a save while a batch is still running, so command submission or a stale caption is not a sufficient counter proof."
+  },
+  "explicit_limits": [
+    "Static source review plus exact input raw-hash verification only; no executable,engine,CLI,test,parser,build,UI orGPU was run by the reviewer.",
+    "This authorizes a documented observation protocol, not a claim that a real command/capture succeeded. Actual saved nativecounter and seed remain authoritative.",
+    "Do not reuse or rename calibrationC3,old invalidC10 or any other observedcounter as a planned checkpoint.",
+    "Keep PlayerBotOFF,no held drag,noDetails,noNewSimulation,noFindBest/noediting,mode0/F1-off preparedinputs and freshprocess per case. These are protocol controls; no invented blanket ban on the original console is imposed.",
+    "The nativeSIM omits arbitrary historical Rnd/Gauss state. Fresh seed-controlled captures can support their exact compared fields; no arbitrary original trajectory or completedport claim follows.",
+    "No root-owned UI action is performed or duplicated by this review. No previous receipt,capture or frozen pin is modified."
+  ],
+  "engine_parity_claim": false,
+  "comparison_run": false,
+  "hardware_admission": false,
+  "execution": {
+    "software_launched": false,
+    "ui_input": false,
+    "native_helper_actions": false,
+    "engine_or_cli": false,
+    "tests_or_builds": false,
+    "git_mutation": false,
+    "pinned_file_mutation": false
+  }
+}

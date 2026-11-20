@@ -1,0 +1,7 @@
+  Determining projects to restore...
+  Restored C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\desktop\src\Darwinbots.Desktop.Core\Darwinbots.Desktop.Core.csproj (in 212 ms).
+  Restored C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\desktop\src\Darwinbots.Desktop\Darwinbots.Desktop.csproj (in 482 ms).
+  Darwinbots.Desktop.Core -> C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\desktop\src\Darwinbots.Desktop.Core\bin\Release\net10.0\Darwinbots.Desktop.Core.dll
+  Darwinbots.Desktop -> C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\desktop\src\Darwinbots.Desktop\bin\Release\net10.0\win-x64\Darwinbots.Desktop.dll
+      Finished `release` profile [optimized] target(s) in 0.58s
+  Darwinbots.Desktop -> C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\artifacts\win-x64-native-roundtrip-pass31\

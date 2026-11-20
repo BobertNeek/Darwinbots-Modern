@@ -1,0 +1,144 @@
+{
+  "schema_version": 1,
+  "batch": 58,
+  "status": "authored_unapplied_released",
+  "base_source_head": "f2a42877fdc15ad8a332dd041c0ce8c6a9bd0d69",
+  "classification": "Six stale native serial-return timing fixtures; no production repair or profile switch warranted by these existing diagnostics/source.",
+  "source_log": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass57/cpu-rust-workspace.log",
+  "source_log_target_summary": {
+    "passed": 35,
+    "failed": 6,
+    "ignored": 0,
+    "filtered_out": 0
+  },
+  "failures": [
+    {
+      "test": "body_feeding_shots_use_body_coefficients_and_return_energy_from_target",
+      "panic_log_line": 1491,
+      "assertion_line": 796,
+      "actual": "1095",
+      "expected": "1000",
+      "cause": "Native later free return slot already delivers95 from packet100 in the primary impact cycle."
+    },
+    {
+      "test": "conspecific_defensive_poison_adds_to_store_without_forced_effect",
+      "panic_log_line": 1500,
+      "assertion_line": 1358,
+      "actual": "2 impacts",
+      "expected": "1 impact",
+      "cause": "Conspecific poison is returned and absorbed during the same serial shot loop."
+    },
+    {
+      "test": "defensive_poison_uses_db2_information_and_feeding_equality_rules",
+      "panic_log_line": 1508,
+      "assertion_line": 1113,
+      "actual": "2 impacts",
+      "expected": "1 impact",
+      "cause": "Information equality sends poison while feeding equality sends energy; both later packets can already deliver."
+    },
+    {
+      "test": "heterospecific_poison_ignores_shell_and_forces_payload_for_power_over_one_point_five",
+      "panic_log_line": 1519,
+      "assertion_line": 1424,
+      "actual": "2 impacts",
+      "expected": "1 impact",
+      "cause": "Returned poison applies before the same cycle robot poison forcing and countdown decrement."
+    },
+    {
+      "test": "information_defense_applies_vb_cint_to_reversed_velocity",
+      "panic_log_line": 1528,
+      "assertion_line": 983,
+      "actual": "None for unflashed -5 packet",
+      "expected": "unflashed return",
+      "cause": "The expected returned packet is already flashed after its same-cycle hit; retain exact CInt velocity/range/energy."
+    },
+    {
+      "test": "release_energy_defense_applies_vb_cint_after_target_velocity_formula",
+      "panic_log_line": 1538,
+      "assertion_line": 1062,
+      "actual": "None for unflashed -5 packet",
+      "expected": "unflashed return",
+      "cause": "The expected returned packet is already flashed after its same-cycle hit; retain exact target-velocity formula."
+    }
+  ],
+  "files": [
+    {
+      "target": "modern/engine/tests/species_ecology.rs",
+      "draft": "output/pass58-drafts/species-ecology-serial-returns/modern/engine/tests/species_ecology.rs",
+      "raw_before": "output/pass58-drafts/species-ecology-serial-returns/before/modern/engine/tests/species_ecology.rs",
+      "base_raw_sha256": "8879A93020058E60912EAB37AC19865E9697FC2298250DA6DC863D590BEC6E62",
+      "base_bytes": 75275,
+      "candidate_raw_sha256": "8B36B61C47A15AF1BDF3A5B7440293F45C4083490C9DF4A3430F15F57F14F0FE",
+      "candidate_bytes": 77784,
+      "new_test_rows": 0
+    }
+  ],
+  "source_evidence": [
+    {
+      "path": "Darwinbots2/Shots.bas",
+      "lines": "305-410",
+      "meaning": "Capture initial pool bound and visit mutable slots serially, including new later free slots; hit flashes; Euler/age follows; flash clears at next visit."
+    },
+    {
+      "path": "Darwinbots2/Shots.bas",
+      "lines": "205-244",
+      "meaning": "createshot uses Long position, Integer velocity, zero initial age, source Range+41 integer division and Single energy, CInt value."
+    },
+    {
+      "path": "Darwinbots2/Shots.bas",
+      "lines": "350-364,534-588,599-716,720-751,829-855",
+      "meaning": "Information versus feeding poison equality; reflected packet formulas; body extraction and95% energy receipt; conspecific absorption versus forced poison."
+    },
+    {
+      "path": "Darwinbots2/Robots.bas",
+      "lines": "1115-1135",
+      "meaning": "Poison payload is forced and countdown decremented once in the same cycle before publishing Int countdown."
+    }
+  ],
+  "exact_controls": [
+    "Body target energy-20/body-8 retained; attacker now exactly+95 in same impact cycle, with2impacts/2effects/2native visits and correctly owned flashed packet100.",
+    "Both velocity tests retain all exact incoming/returned velocities, ranges12/23 and energy481/921; returned packet must have value220, correct defender owner, age1 and flash after second hit.",
+    "All three equality branches retain exact poison/waste/energy and memory rules; assert2impacts/2effects/2visits, correct returned poison owner/flash, and reject any -5 packet for feeding equality.",
+    "Conspecific case proves delivered flashed packet20 already causes no poisoning before preserving next-cycle count and poison-absorption checks.",
+    "Heterospecific case proves returned packet15 already forces memory77 and publishes poison countdown9 at the first impact cycle; next cycle must publish8 while exact energy/shell remain unchanged. Source packetnrg921/range23 yields power15.0163 and timer10.0108 before the two explicit decrements."
+  ],
+  "static_review": {
+    "target_rows_before": 41,
+    "target_rows_after": 41,
+    "changed_existing_test_bodies": [
+      "body_feeding_shots_use_body_coefficients_and_return_energy_from_target",
+      "information_defense_applies_vb_cint_to_reversed_velocity",
+      "release_energy_defense_applies_vb_cint_after_target_velocity_formula",
+      "defensive_poison_uses_db2_information_and_feeding_equality_rules",
+      "conspecific_defensive_poison_adds_to_store_without_forced_effect",
+      "heterospecific_poison_ignores_shell_and_forces_payload_for_power_over_one_point_five"
+    ],
+    "other35_test_bodies_unchanged": true,
+    "ordinary_native_profile_preserved": true,
+    "legacy_profile_flips": 0,
+    "tolerance_changes": 0,
+    "production_changes": 0
+  },
+  "test_census": {
+    "new_test_rows": 0,
+    "existing_rows_before": 41,
+    "existing_rows_after": 41,
+    "cumulative_net_new_rust_rows_vs55": 62,
+    "expected_distinct_rust_targets": 68
+  },
+  "integration": "One additional intended test-file target only. No world/nativeShots/nativeEnergy candidate overlap; retain latest constructor4E85/Reflect45837/energy2DEB releases. Parent must extend final58 plan and backup without editing old sealed receipts.",
+  "execution": {
+    "data_reads": true,
+    "static_review": true,
+    "active_source_edits": false,
+    "formatter": false,
+    "parser": false,
+    "build": false,
+    "tests": false,
+    "engine_or_cli": false,
+    "git_command": false,
+    "git_mutation": false,
+    "ui": false,
+    "gpu": false
+  }
+}

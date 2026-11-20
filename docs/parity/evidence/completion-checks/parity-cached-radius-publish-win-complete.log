@@ -1,0 +1,9 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  Darwinbots.Desktop.Core -> C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\desktop\src\Darwinbots.Desktop.Core\bin\Release\net10.0\Darwinbots.Desktop.Core.dll
+C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\desktop\src\Darwinbots.Desktop\Controls\WorldViewport.cs(53,41): warning CS0067: The event 'WorldViewport.OrganismDragCompleted' is never used [C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\desktop\src\Darwinbots.Desktop\Darwinbots.Desktop.csproj]
+C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\desktop\src\Darwinbots.Desktop\Views/SetupWindow.axaml(103,26,103,26): Avalonia warning AVLN5001: 'TextBox.Watermark' is obsolete: Use PlaceholderText instead. [C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\desktop\src\Darwinbots.Desktop\Darwinbots.Desktop.csproj]
+C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\desktop\src\Darwinbots.Desktop\Views/DeleteConfirmationWindow.axaml : Avalonia warning AVLN3001: XAML resource "avares://Darwinbots.Desktop/Views/DeleteConfirmationWindow.axaml" won't be reachable via runtime loader, as no public constructor was found [C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\desktop\src\Darwinbots.Desktop\Darwinbots.Desktop.csproj]
+  Darwinbots.Desktop -> C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\desktop\src\Darwinbots.Desktop\bin\Release\net10.0\win-x64\Darwinbots.Desktop.dll
+      Finished `release` profile [optimized] target(s) in 0.59s
+  Darwinbots.Desktop -> C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\artifacts\cached-radius-win-x64\

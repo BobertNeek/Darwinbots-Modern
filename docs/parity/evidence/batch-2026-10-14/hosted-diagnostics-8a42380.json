@@ -1,0 +1,709 @@
+{
+  "schema_version": 2,
+  "batch": 61,
+  "sealed_utc": "2026-10-17T11:35:47.130Z",
+  "source_head": "8a42380d2096bb97d5028a0c3cfc03b96420fdcd",
+  "source_manifest": {
+    "file": "output/native-roundtrip-pass61-source.json",
+    "sha256": "4AD7E8553AAF90EBDE8C5B73172F38B67D97C76B8A4D239F99074E2C580408A0",
+    "pinned_files": 636
+  },
+  "workflow": "Desktop platform diagnostics",
+  "workflow_file": ".github/workflows/modern-desktop-diagnostics.yml",
+  "run": {
+    "id": 39028588881,
+    "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39028588881",
+    "event": "push",
+    "run_attempt": 1,
+    "status": "completed",
+    "conclusion": "failure",
+    "created_at": "2026-10-17T11:24:42Z",
+    "updated_at": "2026-10-17T11:31:51Z",
+    "head_sha": "8a42380d2096bb97d5028a0c3cfc03b96420fdcd"
+  },
+  "all_jobs_terminal": true,
+  "jobs": [
+    {
+      "job_id": 117384366887,
+      "name": "rendered-desktop (macos-15-intel, osx-x64)",
+      "platform": "osx-x64",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-17T11:24:46Z",
+      "completed_at": "2026-10-17T11:31:51Z",
+      "steps": [
+        {
+          "number": 1,
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T11:24:47Z",
+          "completed_at": "2026-10-17T11:24:50Z"
+        },
+        {
+          "number": 2,
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T11:24:50Z",
+          "completed_at": "2026-10-17T11:24:55Z"
+        },
+        {
+          "number": 3,
+          "name": "Run dtolnay/rust-toolchain@stable",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T11:24:55Z",
+          "completed_at": "2026-10-17T11:25:08Z"
+        },
+        {
+          "number": 4,
+          "name": "Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T11:25:08Z",
+          "completed_at": "2026-10-17T11:25:23Z"
+        },
+        {
+          "number": 5,
+          "name": "Diagnose rendered desktop controls",
+          "status": "completed",
+          "conclusion": "failure",
+          "started_at": "2026-10-17T11:25:23Z",
+          "completed_at": "2026-10-17T11:31:44Z"
+        },
+        {
+          "number": 6,
+          "name": "Preserve diagnostic receipts",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T11:31:44Z",
+          "completed_at": "2026-10-17T11:31:47Z"
+        },
+        {
+          "number": 11,
+          "name": "Post Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "skipped",
+          "started_at": "2026-10-17T11:31:47Z",
+          "completed_at": "2026-10-17T11:31:47Z"
+        },
+        {
+          "number": 12,
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T11:31:47Z",
+          "completed_at": "2026-10-17T11:31:48Z"
+        },
+        {
+          "number": 13,
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T11:31:48Z",
+          "completed_at": "2026-10-17T11:31:49Z"
+        }
+      ],
+      "rust": {
+        "test_targets_executed": 0,
+        "native_library_build": "Ordinary Desktop test-project native release build ran on the exact checkout; no Rust test corpus is part of this workflow.",
+        "native_library_digest": "Not emitted in the diagnostic artifact; no exact DLL/dylib/so digest is inferred."
+      },
+      "managed": {
+        "project": "Darwinbots.Desktop.Tests",
+        "expected_cases": 213,
+        "total": 213,
+        "executed": 213,
+        "passed": 212,
+        "failed": 1,
+        "skipped": 0,
+        "result_rows": 213,
+        "unique_execution_ids": 213,
+        "result_rows_match_counters": true,
+        "full_expected_suite_completed": true,
+        "all_tests_passed": false,
+        "failed_tests": [
+          {
+            "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.ExistingDeathParticlesUseArgbPointsWhileCreationIsDisabledAndCorpsesRemainVisible",
+            "outcome": "Failed",
+            "message": "A saved white energy shot used the old green fallback.",
+            "stack_trace": "   at Darwinbots.Desktop.Tests.WorldShotRenderedTests.<>c.<ExistingDeathParticlesUseArgbPointsWhileCreationIsDisabledAndCorpsesRemainVisible>b__1_0() in /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/WorldShotRenderedTests.cs:line 168\n   at Avalonia.Headless.HeadlessUnitTestSession.<>c__DisplayClass9_0.<Dispatch>b__0()\n   at Avalonia.Headless.HeadlessUnitTestSession.<>c__DisplayClass12_0`1.<DispatchCore>b__0()\n--- End of stack trace from previous location ---\n   at Darwinbots.Desktop.Tests.WorldShotRenderedTests.ExistingDeathParticlesUseArgbPointsWhileCreationIsDisabledAndCorpsesRemainVisible() in /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/WorldShotRenderedTests.cs:line 94\n--- End of stack trace from previous location ---"
+          }
+        ],
+        "trx": {
+          "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-x64/test-results/rendered-controls.trx",
+          "sha256": "546FE64A1FCDF759DF1E0CB83092BC688C58A626C5D821578FFFA44BEFB39286",
+          "bytes": 346103
+        },
+        "selected_cases": [
+          {
+            "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.RuntimeHeaderRemainsClickableWithWiderFontMetricsAndBackendLabels(width: 1500)",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.ManualFindBestUsesLiveZerobotWeightWithoutChangingTheReadOnlyQueryContract",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: True)",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.RuntimeHeaderRemainsClickableWithWiderFontMetricsAndBackendLabels(width: 1280)",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: False)",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.ExistingDeathParticlesUseArgbPointsWhileCreationIsDisabledAndCorpsesRemainVisible",
+            "outcome": "Failed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.LegacySettingsNativeTests.OriginalExecutableContinuationOfThePortExportLoadsAndSteps",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.AccessibilityRouteRenderedTests.RobotMenuFindBestDispatchesThroughRenderedSurfaceAndWritesReceipt",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.NativeFlashPaletteUsesPreviousPositionAndDisablingImpactsStillDrawsLiveShots",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.DeathParticlePolicyRoundTripsAndOnlyConnectedDeletionSuppressesItsOwnParticles",
+            "outcome": "Passed"
+          }
+        ]
+      },
+      "abort": {
+        "occurred": false,
+        "log_inactivity_abort": false
+      },
+      "artifacts": {
+        "file_count": 36,
+        "png_count": 35,
+        "trx_count": 1,
+        "failed_fact_screenshot_emitted": false,
+        "failed_fact_screenshot_note": "world-death-particle-colours.png is saved after all assertions; line168 failed before line174 frame.Save. No failing pixel frame exists in this artifact."
+      },
+      "log": {
+        "file": "output/hosted-diagnostics-8a42380-agent/logs/osx-x64-completed.log",
+        "sha256": "1DAD5C42F530DE83076724B9F62C3060DC0F0584AB877B63C7D31FBC1E2AF2D4",
+        "bytes": 68907
+      },
+      "not_run": [
+        "Rust workspace tests (not part of this diagnostic workflow)",
+        "Desktop Core test project (not part of this diagnostic workflow)",
+        "Published package, package smoke and package identity (not part of this workflow)",
+        "Physical GPU, capacity, original application and visible desktop acceptance"
+      ]
+    },
+    {
+      "job_id": 117384367007,
+      "name": "rendered-desktop (ubuntu-latest, linux-x64)",
+      "platform": "linux-x64",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-17T11:24:46Z",
+      "completed_at": "2026-10-17T11:28:51Z",
+      "steps": [
+        {
+          "number": 1,
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T11:24:47Z",
+          "completed_at": "2026-10-17T11:24:48Z"
+        },
+        {
+          "number": 2,
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T11:24:48Z",
+          "completed_at": "2026-10-17T11:24:51Z"
+        },
+        {
+          "number": 3,
+          "name": "Run dtolnay/rust-toolchain@stable",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T11:24:51Z",
+          "completed_at": "2026-10-17T11:25:01Z"
+        },
+        {
+          "number": 4,
+          "name": "Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T11:25:01Z",
+          "completed_at": "2026-10-17T11:25:11Z"
+        },
+        {
+          "number": 5,
+          "name": "Diagnose rendered desktop controls",
+          "status": "completed",
+          "conclusion": "failure",
+          "started_at": "2026-10-17T11:25:11Z",
+          "completed_at": "2026-10-17T11:28:47Z"
+        },
+        {
+          "number": 6,
+          "name": "Preserve diagnostic receipts",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T11:28:47Z",
+          "completed_at": "2026-10-17T11:28:48Z"
+        },
+        {
+          "number": 11,
+          "name": "Post Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "skipped",
+          "started_at": "2026-10-17T11:28:48Z",
+          "completed_at": "2026-10-17T11:28:48Z"
+        },
+        {
+          "number": 12,
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T11:28:48Z",
+          "completed_at": "2026-10-17T11:28:49Z"
+        },
+        {
+          "number": 13,
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T11:28:49Z",
+          "completed_at": "2026-10-17T11:28:49Z"
+        }
+      ],
+      "rust": {
+        "test_targets_executed": 0,
+        "native_library_build": "Ordinary Desktop test-project native release build ran on the exact checkout; no Rust test corpus is part of this workflow.",
+        "native_library_digest": "Not emitted in the diagnostic artifact; no exact DLL/dylib/so digest is inferred."
+      },
+      "managed": {
+        "project": "Darwinbots.Desktop.Tests",
+        "expected_cases": 213,
+        "total": 213,
+        "executed": 213,
+        "passed": 212,
+        "failed": 1,
+        "skipped": 0,
+        "result_rows": 213,
+        "unique_execution_ids": 213,
+        "result_rows_match_counters": true,
+        "full_expected_suite_completed": true,
+        "all_tests_passed": false,
+        "failed_tests": [
+          {
+            "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.ExistingDeathParticlesUseArgbPointsWhileCreationIsDisabledAndCorpsesRemainVisible",
+            "outcome": "Failed",
+            "message": "A saved white energy shot used the old green fallback.",
+            "stack_trace": "   at Darwinbots.Desktop.Tests.WorldShotRenderedTests.<>c.<ExistingDeathParticlesUseArgbPointsWhileCreationIsDisabledAndCorpsesRemainVisible>b__1_0() in /home/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/WorldShotRenderedTests.cs:line 168\n   at Avalonia.Headless.HeadlessUnitTestSession.<>c__DisplayClass9_0.<Dispatch>b__0()\n   at Avalonia.Headless.HeadlessUnitTestSession.<>c__DisplayClass12_0`1.<DispatchCore>b__0()\n--- End of stack trace from previous location ---\n   at Darwinbots.Desktop.Tests.WorldShotRenderedTests.ExistingDeathParticlesUseArgbPointsWhileCreationIsDisabledAndCorpsesRemainVisible() in /home/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/WorldShotRenderedTests.cs:line 94\n--- End of stack trace from previous location ---"
+          }
+        ],
+        "trx": {
+          "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-linux-x64/test-results/rendered-controls.trx",
+          "sha256": "FFEB30C8251635CC7456FD3179A49282896DECB14363189D16C8CDA58CE5B5C3",
+          "bytes": 335257
+        },
+        "selected_cases": [
+          {
+            "name": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: False)",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.AccessibilityRouteRenderedTests.RobotMenuFindBestDispatchesThroughRenderedSurfaceAndWritesReceipt",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.RuntimeHeaderRemainsClickableWithWiderFontMetricsAndBackendLabels(width: 1500)",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.ExistingDeathParticlesUseArgbPointsWhileCreationIsDisabledAndCorpsesRemainVisible",
+            "outcome": "Failed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.NativeFlashPaletteUsesPreviousPositionAndDisablingImpactsStillDrawsLiveShots",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.ManualFindBestUsesLiveZerobotWeightWithoutChangingTheReadOnlyQueryContract",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.LegacySettingsNativeTests.OriginalExecutableContinuationOfThePortExportLoadsAndSteps",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: True)",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.RuntimeHeaderRemainsClickableWithWiderFontMetricsAndBackendLabels(width: 1280)",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.DeathParticlePolicyRoundTripsAndOnlyConnectedDeletionSuppressesItsOwnParticles",
+            "outcome": "Passed"
+          }
+        ]
+      },
+      "abort": {
+        "occurred": false,
+        "log_inactivity_abort": false
+      },
+      "artifacts": {
+        "file_count": 36,
+        "png_count": 35,
+        "trx_count": 1,
+        "failed_fact_screenshot_emitted": false,
+        "failed_fact_screenshot_note": "world-death-particle-colours.png is saved after all assertions; line168 failed before line174 frame.Save. No failing pixel frame exists in this artifact."
+      },
+      "log": {
+        "file": "output/hosted-diagnostics-8a42380-agent/logs/linux-x64-completed.log",
+        "sha256": "DBC845DDA104220DE55563EBC8534B95A0FC4EED5A145B54E2774F6D9CA39497",
+        "bytes": 68369
+      },
+      "not_run": [
+        "Rust workspace tests (not part of this diagnostic workflow)",
+        "Desktop Core test project (not part of this diagnostic workflow)",
+        "Published package, package smoke and package identity (not part of this workflow)",
+        "Physical GPU, capacity, original application and visible desktop acceptance"
+      ]
+    },
+    {
+      "job_id": 117384367014,
+      "name": "rendered-desktop (macos-latest, osx-arm64)",
+      "platform": "osx-arm64",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-17T11:24:51Z",
+      "completed_at": "2026-10-17T11:29:55Z",
+      "steps": [
+        {
+          "number": 1,
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T11:24:51Z",
+          "completed_at": "2026-10-17T11:24:53Z"
+        },
+        {
+          "number": 2,
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T11:24:53Z",
+          "completed_at": "2026-10-17T11:24:57Z"
+        },
+        {
+          "number": 3,
+          "name": "Run dtolnay/rust-toolchain@stable",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T11:24:57Z",
+          "completed_at": "2026-10-17T11:25:06Z"
+        },
+        {
+          "number": 4,
+          "name": "Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T11:25:06Z",
+          "completed_at": "2026-10-17T11:25:17Z"
+        },
+        {
+          "number": 5,
+          "name": "Diagnose rendered desktop controls",
+          "status": "completed",
+          "conclusion": "failure",
+          "started_at": "2026-10-17T11:25:17Z",
+          "completed_at": "2026-10-17T11:29:48Z"
+        },
+        {
+          "number": 6,
+          "name": "Preserve diagnostic receipts",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T11:29:48Z",
+          "completed_at": "2026-10-17T11:29:49Z"
+        },
+        {
+          "number": 11,
+          "name": "Post Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "skipped",
+          "started_at": "2026-10-17T11:29:49Z",
+          "completed_at": "2026-10-17T11:29:49Z"
+        },
+        {
+          "number": 12,
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T11:29:49Z",
+          "completed_at": "2026-10-17T11:29:50Z"
+        },
+        {
+          "number": 13,
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T11:29:50Z",
+          "completed_at": "2026-10-17T11:29:52Z"
+        }
+      ],
+      "rust": {
+        "test_targets_executed": 0,
+        "native_library_build": "Ordinary Desktop test-project native release build ran on the exact checkout; no Rust test corpus is part of this workflow.",
+        "native_library_digest": "Not emitted in the diagnostic artifact; no exact DLL/dylib/so digest is inferred."
+      },
+      "managed": {
+        "project": "Darwinbots.Desktop.Tests",
+        "expected_cases": 213,
+        "total": 213,
+        "executed": 213,
+        "passed": 212,
+        "failed": 1,
+        "skipped": 0,
+        "result_rows": 213,
+        "unique_execution_ids": 213,
+        "result_rows_match_counters": true,
+        "full_expected_suite_completed": true,
+        "all_tests_passed": false,
+        "failed_tests": [
+          {
+            "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.ExistingDeathParticlesUseArgbPointsWhileCreationIsDisabledAndCorpsesRemainVisible",
+            "outcome": "Failed",
+            "message": "A saved white energy shot used the old green fallback.",
+            "stack_trace": "   at Darwinbots.Desktop.Tests.WorldShotRenderedTests.<>c.<ExistingDeathParticlesUseArgbPointsWhileCreationIsDisabledAndCorpsesRemainVisible>b__1_0() in /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/WorldShotRenderedTests.cs:line 168\n   at Avalonia.Headless.HeadlessUnitTestSession.<>c__DisplayClass9_0.<Dispatch>b__0()\n   at Avalonia.Headless.HeadlessUnitTestSession.<>c__DisplayClass12_0`1.<DispatchCore>b__0()\n--- End of stack trace from previous location ---\n   at Darwinbots.Desktop.Tests.WorldShotRenderedTests.ExistingDeathParticlesUseArgbPointsWhileCreationIsDisabledAndCorpsesRemainVisible() in /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/WorldShotRenderedTests.cs:line 94\n--- End of stack trace from previous location ---"
+          }
+        ],
+        "trx": {
+          "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-arm64/test-results/rendered-controls.trx",
+          "sha256": "9378608753AD38F349DB6AA308E4F54E40E365222FB29DA2E832C5C6684E54C8",
+          "bytes": 346103
+        },
+        "selected_cases": [
+          {
+            "name": "Darwinbots.Desktop.Tests.LegacySettingsNativeTests.OriginalExecutableContinuationOfThePortExportLoadsAndSteps",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.NativeFlashPaletteUsesPreviousPositionAndDisablingImpactsStillDrawsLiveShots",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.AccessibilityRouteRenderedTests.RobotMenuFindBestDispatchesThroughRenderedSurfaceAndWritesReceipt",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.RuntimeHeaderRemainsClickableWithWiderFontMetricsAndBackendLabels(width: 1280)",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.DeathParticlePolicyRoundTripsAndOnlyConnectedDeletionSuppressesItsOwnParticles",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.RuntimeHeaderRemainsClickableWithWiderFontMetricsAndBackendLabels(width: 1500)",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: True)",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: False)",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.ExistingDeathParticlesUseArgbPointsWhileCreationIsDisabledAndCorpsesRemainVisible",
+            "outcome": "Failed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.ManualFindBestUsesLiveZerobotWeightWithoutChangingTheReadOnlyQueryContract",
+            "outcome": "Passed"
+          }
+        ]
+      },
+      "abort": {
+        "occurred": false,
+        "log_inactivity_abort": false
+      },
+      "artifacts": {
+        "file_count": 36,
+        "png_count": 35,
+        "trx_count": 1,
+        "failed_fact_screenshot_emitted": false,
+        "failed_fact_screenshot_note": "world-death-particle-colours.png is saved after all assertions; line168 failed before line174 frame.Save. No failing pixel frame exists in this artifact."
+      },
+      "log": {
+        "file": "output/hosted-diagnostics-8a42380-agent/logs/osx-arm64-completed.log",
+        "sha256": "AD8D175396B95216F1C24D9797C54332087A6EAA18186631FBBFA4734F47C221",
+        "bytes": 69066
+      },
+      "not_run": [
+        "Rust workspace tests (not part of this diagnostic workflow)",
+        "Desktop Core test project (not part of this diagnostic workflow)",
+        "Published package, package smoke and package identity (not part of this workflow)",
+        "Physical GPU, capacity, original application and visible desktop acceptance"
+      ]
+    }
+  ],
+  "aggregate": {
+    "platforms": 3,
+    "successful_jobs": 0,
+    "failed_jobs": 3,
+    "actual_executed_desktop_tests": 639,
+    "actual_passed_test_rows": 636,
+    "actual_failed_test_rows": 3,
+    "actual_skipped_test_rows": 0,
+    "expected_desktop_tests_per_platform": 213,
+    "full_expected_corpus_completed": true,
+    "all_tests_passed": false,
+    "compiler_failures": 0
+  },
+  "failure_diagnosis": {
+    "actual_test": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.ExistingDeathParticlesUseArgbPointsWhileCreationIsDisabledAndCorpsesRemainVisible",
+    "source_file": "modern/desktop/tests/Darwinbots.Desktop.Tests/WorldShotRenderedTests.cs",
+    "source_line": 168,
+    "message": "A saved white energy shot used the old green fallback.",
+    "scope": "Same assertion failed on all three platforms. Earlier red/blue/black particle assertions in this Fact were reached and passed; the following corpse assertion was not reached. No test or production repair was authored during collection.",
+    "pixel_evidence_limit": "The failing Fact saves its screenshot only after the failed assertion. All105 actually emitted PNGs are preserved and indexed, including flash-palette/impacts-off frames; no missing failing screenshot is represented as captured."
+  },
+  "artifacts": {
+    "index": {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifact-file-hashes.json",
+      "sha256": "9D9DBCC4965C80A7CAE9CA822C3B2CBA4545DD856631D54D61BB70C68FA5D61D",
+      "bytes": 34497
+    },
+    "server_artifacts": [
+      {
+        "id": 12099497729,
+        "name": "desktop-diagnostics-linux-x64",
+        "size_in_bytes": 2527513,
+        "digest": "sha256:c0d3dd5454bc09bee8cb4d998f101a3586c390a2c2328fb9c1e9eab876d47aa8",
+        "expired": false,
+        "source_head": "8a42380d2096bb97d5028a0c3cfc03b96420fdcd"
+      },
+      {
+        "id": 12099488043,
+        "name": "desktop-diagnostics-osx-x64",
+        "size_in_bytes": 3129531,
+        "digest": "sha256:7211a9b5d956b9516b4740129badf61e2b1637afe56da43a7e0613a1a6751d73",
+        "expired": false,
+        "source_head": "8a42380d2096bb97d5028a0c3cfc03b96420fdcd"
+      },
+      {
+        "id": 12099328295,
+        "name": "desktop-diagnostics-osx-arm64",
+        "size_in_bytes": 3127587,
+        "digest": "sha256:768650b43162850d6758a81801e344aefd6486089e81acdf0bd5c77038effb47",
+        "expired": false,
+        "source_head": "8a42380d2096bb97d5028a0c3cfc03b96420fdcd"
+      }
+    ],
+    "downloaded_artifact_count": 3,
+    "file_count": 108,
+    "trx_files": 3,
+    "png_files": 105,
+    "published_package_count": 0,
+    "published_package_identity": null
+  },
+  "evidence": [
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/api/artifacts-20261017T113344484Z.json",
+      "sha256": "5927396F66EB8CECACB2DE01EBE06D0A3A2CC0A420FEA2BBD635A84BC022E2DE",
+      "bytes": 2236
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/api/jobs-20261017T112635592Z.json",
+      "sha256": "28CDC98E8F68ABAAA14FF63F25548D471F7280B08E47C8AB4D9F088753841F5E",
+      "bytes": 6527
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/api/jobs-20261017T113344484Z.json",
+      "sha256": "03F19139ABEFFB42FA2FE70D73532C600EA0FB46074D32ED9820B739ED4FCCDF",
+      "bytes": 7502
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/api/run-20261017T112635592Z.json",
+      "sha256": "799932663963000628FF08666E36579498B7DA670A86DA61F8DB32092074B0E3",
+      "bytes": 13149
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/api/run-20261017T113344484Z.json",
+      "sha256": "CF4F3E3904F87CE28DA2389C105956719DBDB4CAAE08F27E710306821E39B1CF",
+      "bytes": 13152
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/logs/linux-x64-completed.log",
+      "sha256": "DBC845DDA104220DE55563EBC8534B95A0FC4EED5A145B54E2774F6D9CA39497",
+      "bytes": 68369
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/logs/osx-arm64-completed.log",
+      "sha256": "AD8D175396B95216F1C24D9797C54332087A6EAA18186631FBBFA4734F47C221",
+      "bytes": 69066
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/logs/osx-x64-completed.log",
+      "sha256": "1DAD5C42F530DE83076724B9F62C3060DC0F0584AB877B63C7D31FBC1E2AF2D4",
+      "bytes": 68907
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/trx-summary-verified.json",
+      "sha256": "730A922BF8D0947097C2DF011E74F631509BDCBB3C5146BC3F1E8FB8028FA966",
+      "bytes": 11912
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifact-file-hashes.json",
+      "sha256": "9D9DBCC4965C80A7CAE9CA822C3B2CBA4545DD856631D54D61BB70C68FA5D61D",
+      "bytes": 34497
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-linux-x64/test-results/rendered-controls.trx",
+      "sha256": "FFEB30C8251635CC7456FD3179A49282896DECB14363189D16C8CDA58CE5B5C3",
+      "bytes": 335257
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-arm64/test-results/rendered-controls.trx",
+      "sha256": "9378608753AD38F349DB6AA308E4F54E40E365222FB29DA2E832C5C6684E54C8",
+      "bytes": 346103
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-x64/test-results/rendered-controls.trx",
+      "sha256": "546FE64A1FCDF759DF1E0CB83092BC688C58A626C5D821578FFFA44BEFB39286",
+      "bytes": 346103
+    }
+  ],
+  "collector_actions": {
+    "github_reads_and_artifact_downloads_only": true,
+    "workflow_dispatch": false,
+    "rerun": false,
+    "cancel": false,
+    "source_edits": false,
+    "git_mutations": false,
+    "local_build_or_test": false,
+    "ui_or_gpu": false,
+    "all_terminal_outcomes_collected_before_repairs": true
+  },
+  "qualification_passed": false,
+  "boundary": [
+    "This is an exact-source hosted diagnostic receipt, not the local combined qualification or MAIN receipt.",
+    "All639 expected Desktop rows executed;636 passed and3 failed. Expected counts were checked against actual TRX counters, unique execution IDs and result outcomes.",
+    "No Rust test corpus, Core suite, published package, hardware/GPU/capacity, visible desktop or original executable acceptance is established by this workflow.",
+    "No CPU admission is established. Source, runners and manifests remained frozen during collection."
+  ]
+}

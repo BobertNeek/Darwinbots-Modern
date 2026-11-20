@@ -1,0 +1,17 @@
+   Compiling darwinbots-engine v0.1.0 (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\engine)
+   Compiling darwinbots-cli v0.1.0 (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\cli)
+    Finished `release` profile [optimized] target(s) in 5m 57s
+     Running unittests src\lib.rs (target\release\deps\darwinbots_cli-19b2f1d2dddc4ec7.exe)
+
+running 8 tests
+test dna_source::tests::actual_file_loader_uses_engine_native_boundary_and_retains_exact_ansi_input ... ok
+test dna_source::tests::original_ansi_and_strict_bom_decoding_preserve_source_without_guessing ... ok
+test native_comparison::tests::zero_cycle_original_round_trip_preserves_all_compared_live_fields ... ok
+test probe::tests::extinction_compaction_does_not_turn_unrelated_plants_into_candidates ... ok
+test probe::tests::oversized_combined_populations_fail_before_loading_bot_files ... ok
+test probe::tests::population_arithmetic_overflow_fails_before_loading_bot_files ... ok
+test probe::tests::run_accepts_full_native_robot_capacity_without_an_extra_birth_slot ... ok
+test probe::tests::surviving_candidate_and_its_child_remain_tracked_when_species_indices_shift ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 8.86s
+

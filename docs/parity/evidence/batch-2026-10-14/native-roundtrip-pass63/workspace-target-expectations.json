@@ -1,0 +1,25 @@
+{
+  "source_head": "61509e4c8424f751d20c5f34a83c35fc6d8be424",
+  "source_manifest_sha256": "6E6A0F44695062B4B453EDBA28E7E3A03224D10AE0D27F9ADF99071F80506860",
+  "metadata": "output/pass63-workspace-metadata.json",
+  "metadata_sha256": "B805F4B22730F3C4116476017F0AFCA39989DD7718AA2A4348820070546C8D23",
+  "expected_distinct_rust_targets": 68,
+  "metadata_distinct_rust_targets": 68,
+  "expected_managed_test_counts": {
+    "core": 314,
+    "desktop": 214
+  },
+  "packages": [
+    {
+      "package": "darwinbots-engine",
+      "test_targets": 60,
+      "doc_test_targets": 1
+    },
+    {
+      "package": "darwinbots-cli",
+      "test_targets": 6,
+      "doc_test_targets": 1
+    }
+  ],
+  "scope": "Expected targets derived from pinned metadata. Actual emitted results are sealed independently after the fresh no-fail-fast run."
+}

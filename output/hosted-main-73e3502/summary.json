@@ -1,0 +1,171 @@
+{
+  "schema_version": 1,
+  "source_head": "73e350297f54e88a7a690c435517ebb13615f953",
+  "run_id": 39220119048,
+  "sealed_utc": "2026-10-19T09:57:15.778Z",
+  "all_four_jobs_terminal": true,
+  "qualification_passed": true,
+  "platforms": [
+    {
+      "id": 117953192972,
+      "name": "verify-and-package (windows-latest, win-x64)",
+      "conclusion": "success",
+      "rust": {
+        "targets": 68,
+        "passed": 1064,
+        "failed": 0,
+        "ignored": 12
+      },
+      "core": {
+        "passed": 314,
+        "failed": 0,
+        "skipped": 0,
+        "total": 314
+      },
+      "desktop": {
+        "passed": 215,
+        "failed": 0,
+        "skipped": 0,
+        "total": 215
+      },
+      "smoke": {
+        "status": "passed",
+        "backend": "CPU",
+        "ticks": 13,
+        "population": 1,
+        "movement": true,
+        "save_resume": true,
+        "bundled_bots": 48
+      }
+    },
+    {
+      "id": 117953193136,
+      "name": "verify-and-package (ubuntu-latest, linux-x64)",
+      "conclusion": "success",
+      "rust": {
+        "targets": 68,
+        "passed": 1064,
+        "failed": 0,
+        "ignored": 12
+      },
+      "core": {
+        "passed": 314,
+        "failed": 0,
+        "skipped": 0,
+        "total": 314
+      },
+      "desktop": {
+        "passed": 215,
+        "failed": 0,
+        "skipped": 0,
+        "total": 215
+      },
+      "smoke": {
+        "status": "passed",
+        "backend": "CPU",
+        "ticks": 13,
+        "population": 1,
+        "movement": true,
+        "save_resume": true,
+        "bundled_bots": 48
+      }
+    },
+    {
+      "id": 117953193203,
+      "name": "verify-and-package (macos-latest, osx-arm64)",
+      "conclusion": "success",
+      "rust": {
+        "targets": 68,
+        "passed": 1064,
+        "failed": 0,
+        "ignored": 12
+      },
+      "core": {
+        "passed": 314,
+        "failed": 0,
+        "skipped": 0,
+        "total": 314
+      },
+      "desktop": {
+        "passed": 215,
+        "failed": 0,
+        "skipped": 0,
+        "total": 215
+      },
+      "smoke": {
+        "status": "passed",
+        "backend": "CPU",
+        "ticks": 13,
+        "population": 1,
+        "movement": true,
+        "save_resume": true,
+        "bundled_bots": 48
+      }
+    },
+    {
+      "id": 117953193235,
+      "name": "verify-and-package (macos-15-intel, osx-x64)",
+      "conclusion": "success",
+      "rust": {
+        "targets": 68,
+        "passed": 1064,
+        "failed": 0,
+        "ignored": 12
+      },
+      "core": {
+        "passed": 314,
+        "failed": 0,
+        "skipped": 0,
+        "total": 314
+      },
+      "desktop": {
+        "passed": 215,
+        "failed": 0,
+        "skipped": 0,
+        "total": 215
+      },
+      "smoke": {
+        "status": "passed",
+        "backend": "CPU",
+        "ticks": 13,
+        "population": 1,
+        "movement": true,
+        "save_resume": true,
+        "bundled_bots": 48
+      }
+    }
+  ],
+  "evidence": [
+    {
+      "file": "output/hosted-main-73e3502/job-117953192972.log",
+      "sha256": "F54CCE11CB6FA6714F80ADF2FBFC6BD45A4BFF831238B2903DC54F3CE68408D1",
+      "bytes": 374424
+    },
+    {
+      "file": "output/hosted-main-73e3502/job-117953193136.log",
+      "sha256": "6B35ECEB5EFBFE462CCE21171153BE799D5F06D2552B13E12CAAE47E81277B15",
+      "bytes": 370513
+    },
+    {
+      "file": "output/hosted-main-73e3502/job-117953193203.log",
+      "sha256": "4BA92F02B9E1CDD51F5F224086EFA603AB2AF1C7F8D218FCC54439F1E30B860C",
+      "bytes": 370401
+    },
+    {
+      "file": "output/hosted-main-73e3502/job-117953193235.log",
+      "sha256": "7A4AB67B14C6862DF5E0147E17429199A910443BD9B05B78D8C43C6770E20EEF",
+      "bytes": 374557
+    },
+    {
+      "file": "output/hosted-main-73e3502/jobs.json",
+      "sha256": "80FFCE91C5709D453F5A1716D5BBF944E0E6CA40A4165B9892FFEAEA8E893723",
+      "bytes": 13308
+    },
+    {
+      "file": "output/hosted-main-73e3502/run.json",
+      "sha256": "4EB4D420999C34D462BF57110B3FAC7FE1E196FD6FC5C33C0A72CEF6B63679D6",
+      "bytes": 13139
+    }
+  ],
+  "boundary": "Actual current-source terminal job logs, four platforms. Ignored hardware tests are not physical GPU evidence. Hosted package asset byte hashes not separately recollected; smoke verifies48 count. Fresh local65 verifies all48 exact hashes."
+}

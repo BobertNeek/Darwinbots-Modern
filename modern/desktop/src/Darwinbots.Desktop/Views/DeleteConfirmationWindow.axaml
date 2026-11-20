@@ -1,0 +1,13 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Darwinbots.Desktop.Views.DeleteConfirmationWindow"
+        Title="Confirm deletion" Width="400" Height="190"
+        WindowStartupLocation="CenterOwner" Background="#F4F0E6">
+  <Grid RowDefinitions="*,Auto" Margin="18" RowSpacing="14">
+    <TextBlock x:Name="MessageText" TextWrapping="Wrap" VerticalAlignment="Center" />
+    <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+      <Button x:Name="CancelButton" Content="CANCEL" Click="Cancel_Click" />
+      <Button x:Name="ConfirmButton" Content="DELETE" Background="#9A3F32" Foreground="White" Click="Confirm_Click" />
+    </StackPanel>
+  </Grid>
+</Window>

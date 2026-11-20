@@ -1,0 +1,3085 @@
+{
+  "schema_version": 2,
+  "batch": 61,
+  "prepared_for_batch62_staging": true,
+  "created_utc": "2026-10-17T13:00:34.322Z",
+  "source_head": "8a42380d2096bb97d5028a0c3cfc03b96420fdcd",
+  "workspace": "C:/Users/PC/.codex/worktrees/db24832-completion/Darwinbots 2",
+  "scope": "Explicit sealed61 evidence plus31root-pinned causal diagnostic files. Full local receipt evidence,25fresh candidate outputs, hosted curated/API/log/census/TRX pins, and only individually indexed actual PNG captures are selected. No source/package directory sweep; root is the sole Git stager. This inventory does not qualify batch61 or the unfinished batch62.",
+  "total_files": 343,
+  "total_bytes": 19627923,
+  "groups": {
+    "local_sealed_proof": {
+      "files": 147,
+      "bytes": 5533234
+    },
+    "local_captured_png_proof": {
+      "files": 35,
+      "bytes": 1987134
+    },
+    "local_trx": {
+      "files": 2,
+      "bytes": 836908
+    },
+    "fresh_native_candidates61": {
+      "files": 25,
+      "bytes": 578015
+    },
+    "hosted_receipts": {
+      "files": 2,
+      "bytes": 86764
+    },
+    "hosted_curated_pinned_references": {
+      "files": 29,
+      "bytes": 3353563
+    },
+    "hosted_individually_indexed_png_proof": {
+      "files": 105,
+      "bytes": 8987818
+    },
+    "hosted_individually_indexed_trx": {
+      "files": 3,
+      "bytes": 1027463
+    },
+    "collector61_evidence": {
+      "files": 4,
+      "bytes": 103799
+    },
+    "batch61_causal_diagnostic_not_qualification": {
+      "files": 31,
+      "bytes": 984730
+    }
+  },
+  "groups_overlap_by_role": true,
+  "roots": [
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/qualification-summary.json",
+      "sha256": "0F30E4B269E8183A04FFECA509E47A206CC2D41A61674E6D1DF2103406A9A764",
+      "bytes": 116819
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/rust-target-results.json",
+      "sha256": "140004E81F7D8F63B3781179195CBDB2740186DDBCF04593F82F2042D87AD568",
+      "bytes": 64299
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/hosted-main-8a42380.json",
+      "sha256": "31AF8394F5C60D2A638BD9CC5A619D5E362CD0B8B709B197919041FA25EA6DD8",
+      "bytes": 55568
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/hosted-diagnostics-8a42380.json",
+      "sha256": "0479C194C87FFC92616B24B9BDA4CC093F8AF6E2AA5568F09D0778A226D370B4",
+      "bytes": 31196
+    }
+  ],
+  "source_identity": {
+    "known_source_head": "8a42380d2096bb97d5028a0c3cfc03b96420fdcd",
+    "current_and_proof_manifest_sha256": "4AD7E8553AAF90EBDE8C5B73172F38B67D97C76B8A4D239F99074E2C580408A0",
+    "declared_source_pins": 636,
+    "source_head_and_raw_manifest_consistent_with_sealed_receipts": true,
+    "live_git_head_queried": false,
+    "all636source_inputs_requalified_by_inventory": false,
+    "boundary": "Known source8a42380d and frozen manifests are evidence identity. This no-Git inventory rehashes only explicitly selected evidence, not a new CPU qualification."
+  },
+  "diagnostic_authority": {
+    "metadata_file": "output/pass62-drafts/source-authority/metadata.json",
+    "metadata_sha256": "91F45263FD67C8367C785A96C1518D17840BBC1198799A55EE1F130655A45B73",
+    "candidate_file": "output/pass62-drafts/source-authority/candidate/docs/parity/evidence/batch-2026-10-14/native-repopulation-source-authority62.json",
+    "candidate_sha256": "97644B73CD942239E98B6C9A3335C69B3931CF82EE87D0077DD01DF8477900E4",
+    "intended_target": "docs/parity/evidence/batch-2026-10-14/native-repopulation-source-authority62.json",
+    "selected_diagnostic_files": 31,
+    "diagnostic_active_fields": 1684,
+    "diagnostic_active_differences": 0,
+    "parsed_retained_death_particles": 20,
+    "parsed_retained_particle_differences": 0,
+    "qualification": false,
+    "metadata_and_source_authority_are_separate_batch62_authoring_allowlist_not_selected_payloads": true
+  },
+  "collector_deduplication": {
+    "selected_collector_paths": [
+      "output/pass61-drafts/collector/collect-native-roundtrip-pass61.mjs",
+      "output/pass61-drafts/collector/metadata.json",
+      "output/pass61-drafts/collector/artifact-junction-amendment/collect-native-roundtrip-pass61.mjs",
+      "output/pass61-drafts/collector/artifact-junction-amendment/metadata.json"
+    ],
+    "role": "collector61_evidence",
+    "root_should_deduplicate_against_explicit62_authoring_allowlist_by_case_insensitive_file_path": true
+  },
+  "validation": {
+    "case_insensitive_unique_paths": 343,
+    "case_insensitive_unique_realpaths": 343,
+    "all_explicit_pins_match_raw_hash_and_size": true,
+    "pin_mismatches": [],
+    "contained_lexical_and_real_paths": true,
+    "regular_files_only": true,
+    "external_junction_read_exception_used": false,
+    "compiled_executable_or_library_files": 0,
+    "archive_files": 0,
+    "live_lease_files": 0,
+    "protected_unrelated_png_selected": false,
+    "local_captured_pngs": 35,
+    "hosted_indexed_captured_pngs": 105,
+    "hosted_indexed_trx": 3,
+    "fresh_native_candidate_files": 25,
+    "known_source61_receipt_hashes_exact": true
+  },
+  "files": [
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/hosted-diagnostics-8a42380.json",
+      "roles": [
+        "sealed_hosted61_diagnostics_receipt"
+      ],
+      "sha256": "0479C194C87FFC92616B24B9BDA4CC093F8AF6E2AA5568F09D0778A226D370B4",
+      "bytes": 31196
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/hosted-main-8a42380.json",
+      "roles": [
+        "sealed_hosted61_main_receipt"
+      ],
+      "sha256": "31AF8394F5C60D2A638BD9CC5A619D5E362CD0B8B709B197919041FA25EA6DD8",
+      "bytes": 55568
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-body-1.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "3C073BE2C11191E5CA7EF8FEC6E164AAEF2C8D27A600EAAD9397674406853FB4",
+      "bytes": 468
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-body-10.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "6FB54C5F488655EE356EDD076EEE68AD842BF5F605D8570916156FE444AD664B",
+      "bytes": 472
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-body-100.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "27D1B4C1B7563281100EB4ACD5849F9C63B8A9DC5ACA1AA96188411206B30297",
+      "bytes": 476
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-checkpoints.json",
+      "roles": [
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "00ACB86BCF4558E2E70EB7E57C3758DF18C43A307FB111F6CE0AAA7AC75E0757",
+      "bytes": 11838
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-chloroplast-1.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "53DF9FC789B11A1314C2CA5270ECD79F116A9AB6FB297A2CB9D382D27C3BB7F3",
+      "bytes": 475
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-chloroplast-10.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "1327CD7F84E0A8B18ED8EA0D8B48416B84E0AF4F3571CE824BF1CF05F93BBEDF",
+      "bytes": 479
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-contacts-1.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "5F92A4ADDC2B971252D168FF0B5A4FD1E58D5CBD765DF69BBE56BDE0EE0CAA82",
+      "bytes": 472
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-contacts-10.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "BACA1EEE50C17F8C621E8CC5F701E2B264E66A2361C976457A26FB9630988626",
+      "bytes": 476
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-contacts-100.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "4766E43C626E2EBCE805B195C04DB5D91E251B4CE54F41778259A043E1598749",
+      "bytes": 480
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-contacts-11.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "D629D50724195B7DB8A867C62B136A1FBBC9A14683D906C047923625FA5B0B03",
+      "bytes": 476
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-feeding-1.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "33B5D7838DF8B586C43D2D053F66B890B8A2B03667D52DF6403EE67589C39CE9",
+      "bytes": 471
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-feeding-10.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "58B370AC5A31538B129DB07DEC004EED4C96FDFEF5ED2DD703CB86E011AD0A39",
+      "bytes": 475
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-feeding-100.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "9ACC9332D005F3534D6809C3BB1A419F87627C23D68AD46D5981E2BC4317EEAA",
+      "bytes": 479
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-fixed-1.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "42808E140E9B4660F033971E253C94CF72CFFC1703FD97C8C445069DED3FDD29",
+      "bytes": 469
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-fixed-10.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "8AFF18F3A9111B20C459DE47637BE18EC5145EB1ECBBC2E62AF24D2A69DA4F60",
+      "bytes": 473
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-fixed-100.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "26CB6878618A46767F2CA37FBE6AEF29DAE2C013344F5AEBA85FB5AE907B1884",
+      "bytes": 477
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-inputs.json",
+      "roles": [
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "BE58C839D2AD6D978180D9981DDDFF234F1D40F48B3439FA1944FF07EE46E56F",
+      "bytes": 3050
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-movement-1.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "FC7B21487385908D740256A0A8E47B5C84E34791653CA523FC841B42DD69DA36",
+      "bytes": 472
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-movement-10.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "35A0BE0A00A632CA5F67EEE4886CB5E7A16BC94E1D7DAF30BE9801DCA7EE1E4E",
+      "bytes": 476
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-movement-100.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "07DC999ECF66D538467F8C7DB364AF4750163DF37BA0F923984098894932C58C",
+      "bytes": 480
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-movement-102.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "9F6D2721F60B47278857C327705AA1ABE365EE545302654F83A614FE20FD6C57",
+      "bytes": 480
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-reproduction-1.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "35E312AA7A3D957AC63D4F05FF423CB8EC8A5F9DC99C29EF9E2EC20247DAA943",
+      "bytes": 476
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-reproduction-10.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "CB80607C6C8C5E929FFEF15088CACE09673CB23A6761961D1B1E7D1445D805F6",
+      "bytes": 480
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-reproduction-100.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "5C54193C870C83625A3B1F7F43ADF4332E44977F86E5757D4526C79434937A92",
+      "bytes": 484
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-ties-1.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "57E1D097BEFD5F4493D3EA6FB32C02D50784BD9A1992D9AA8C2EFAF444760CF7",
+      "bytes": 468
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-ties-10.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "B72C6DAA1CC9A72BEFBC2FB68E9C80666641B80057EBF02EE97E740A39248D0C",
+      "bytes": 472
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-ties-100.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "A36FCCC03CD9446A29A936D21039929FDF40E9F8236C694EE5F30A817F797746",
+      "bytes": 476
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/cli-build-identity.json",
+      "roles": [
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "1A01DC1242D0AD7B792283BFB95ACE72A598D5DDED45BDA4CE0939D459E5B50A",
+      "bytes": 143
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/cli-build.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "ECAA2636DEA4C89C69F7CB36EA3BC82BB4F5B12C4B28BB1ECE38189B5EF076A8",
+      "bytes": 63
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/core.trx",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "local61_trx"
+      ],
+      "sha256": "9B3804B21E257E77702B4114C3C1832EFDD275D9F5D389F114BCF49708458084",
+      "bytes": 496769
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/cpu-rust-workspace.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "98CF65135905A7B818F1F79002FFA0CE4C6B40ACE999FD2A62AF079E5957F45E",
+      "bytes": 129071
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/desktop-core.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "45BE4E053FE21D9B0A057F97E4BE713AFF5DA754E455FB31EA19B42FEC3CDC60",
+      "bytes": 2152
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/desktop-test-build.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "CB315A53E7DF0A618427A6C804EA332CE6C947C1F166380808E53DA50499581F",
+      "bytes": 34061
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/desktop.trx",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "local61_trx"
+      ],
+      "sha256": "24D8A334C4FC93A235E9450B12A0C8ECB5934A2F6A46FC4A2C38BB2DBF56FEE2",
+      "bytes": 340139
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/format-check.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-additional-candidate-checkpoints.json",
+      "roles": [
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "9168EE793F2B6CBC5F5E36EDBF3E675054A10E1C6D3579C599A0792231E409FF",
+      "bytes": 1821
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-additional-comparisons.json",
+      "roles": [
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "C1A6DD8ACB21CA8B9A6F05F4DF91FEACC0586E38C911BA8F61BEB5B304E99331",
+      "bytes": 18137
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-body-1-compare.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "E651F1636DA4A22023FC0BEF86E2660F4C7E64E8EA02B697CE865C0DC66D86DE",
+      "bytes": 623
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-body-1-compare.stderr.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-body-10-compare.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "E651F1636DA4A22023FC0BEF86E2660F4C7E64E8EA02B697CE865C0DC66D86DE",
+      "bytes": 623
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-body-10-compare.stderr.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-body-100-compare.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "E651F1636DA4A22023FC0BEF86E2660F4C7E64E8EA02B697CE865C0DC66D86DE",
+      "bytes": 623
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-body-100-compare.stderr.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-chloroplast-1-compare.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "E651F1636DA4A22023FC0BEF86E2660F4C7E64E8EA02B697CE865C0DC66D86DE",
+      "bytes": 623
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-chloroplast-1-compare.stderr.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-chloroplast-10-compare.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "E651F1636DA4A22023FC0BEF86E2660F4C7E64E8EA02B697CE865C0DC66D86DE",
+      "bytes": 623
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-chloroplast-10-compare.stderr.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-contacts-1-compare.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "FA8CAEA09ECA0F1734ADDA00A096DEC82E65EA510F534665F4E465F57271081A",
+      "bytes": 623
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-contacts-1-compare.stderr.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-contacts-10-compare.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "FA8CAEA09ECA0F1734ADDA00A096DEC82E65EA510F534665F4E465F57271081A",
+      "bytes": 623
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-contacts-10-compare.stderr.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-contacts-100-compare.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "FA8CAEA09ECA0F1734ADDA00A096DEC82E65EA510F534665F4E465F57271081A",
+      "bytes": 623
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-contacts-100-compare.stderr.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-contacts-11-compare.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "FA8CAEA09ECA0F1734ADDA00A096DEC82E65EA510F534665F4E465F57271081A",
+      "bytes": 623
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-contacts-11-compare.stderr.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-feeding-1-compare.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "316AB540FABEBFBE4DAFBDB2759BFB13EFFBC9F7C7B136AD392E004C84E5DC9A",
+      "bytes": 623
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-feeding-1-compare.stderr.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-feeding-10-compare.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "38ABB2EE6505243886CB98849AFC27A00C5590CA9FD2FE08B8AA71661E0FBFE8",
+      "bytes": 623
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-feeding-10-compare.stderr.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-feeding-100-compare.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "E102F5C1060B6CA002AAD9B7FC7E64179DBCFB76DF5EB498E474C86576B7D2A7",
+      "bytes": 6910
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-feeding-100-compare.stderr.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "7BFB4BD82811A6312624B345C9E6FB25F42B1971FB31B92933AF7F36BB0E2168",
+      "bytes": 66
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-fixed-1-compare.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "28BC38001BD910746704B8098D84A4325CB9E8F74FC3DC1EE270D963F8309DA9",
+      "bytes": 623
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-fixed-1-compare.stderr.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-fixed-10-compare.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "28BC38001BD910746704B8098D84A4325CB9E8F74FC3DC1EE270D963F8309DA9",
+      "bytes": 623
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-fixed-10-compare.stderr.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-fixed-100-compare.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "28BC38001BD910746704B8098D84A4325CB9E8F74FC3DC1EE270D963F8309DA9",
+      "bytes": 623
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-fixed-100-compare.stderr.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-movement-1-compare.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "E651F1636DA4A22023FC0BEF86E2660F4C7E64E8EA02B697CE865C0DC66D86DE",
+      "bytes": 623
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-movement-1-compare.stderr.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-movement-10-compare.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "E651F1636DA4A22023FC0BEF86E2660F4C7E64E8EA02B697CE865C0DC66D86DE",
+      "bytes": 623
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-movement-10-compare.stderr.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-movement-100-compare.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "E651F1636DA4A22023FC0BEF86E2660F4C7E64E8EA02B697CE865C0DC66D86DE",
+      "bytes": 623
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-movement-100-compare.stderr.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-movement-102-compare.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "E651F1636DA4A22023FC0BEF86E2660F4C7E64E8EA02B697CE865C0DC66D86DE",
+      "bytes": 623
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-movement-102-compare.stderr.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-movement-comparisons.json",
+      "roles": [
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "D595C3887BA30425658AF8F12B365573B1E8536A409FA86D7CD1DEB90E995DDA",
+      "bytes": 3711
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-reference-provenance.json",
+      "roles": [
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "721F8E66102DD8350EFA68B37FEBBFF004897A1A5DE40AF5CF5922DBFDDF226D",
+      "bytes": 11661
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-reproduction-1-compare.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "0096252C5112563F6EF42EFBDB54B49586BF684A3B3E7194B0540209108F9C78",
+      "bytes": 623
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-reproduction-1-compare.stderr.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-reproduction-10-compare.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "A2CC03A8209561A163A2F919147A35373FE1EE77F75DE2171D13B2E076A526FF",
+      "bytes": 623
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-reproduction-10-compare.stderr.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-reproduction-100-compare.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "A2CC03A8209561A163A2F919147A35373FE1EE77F75DE2171D13B2E076A526FF",
+      "bytes": 623
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-reproduction-100-compare.stderr.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-ties-1-compare.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "E2F793860C50A0FA938D1C1EC1824A6F9E075F59ABD10694F1AD1B158157DB6B",
+      "bytes": 623
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-ties-1-compare.stderr.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-ties-10-compare.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "E2F793860C50A0FA938D1C1EC1824A6F9E075F59ABD10694F1AD1B158157DB6B",
+      "bytes": 623
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-ties-10-compare.stderr.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-ties-100-compare.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "E2F793860C50A0FA938D1C1EC1824A6F9E075F59ABD10694F1AD1B158157DB6B",
+      "bytes": 623
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-ties-100-compare.stderr.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/accessibility-preferences.png",
+      "roles": [
+        "captured_local61_png",
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "ADF7CB154537371AF1024E65D05F27FB448DDE6267F88ED39D3E1C5A9F0EC95B",
+      "bytes": 79783
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/advanced-initial.png",
+      "roles": [
+        "captured_local61_png",
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "EFC4CBDB17AB87F60999F7817D9D496A43DEFF7C084711FCF2749376DE33221E",
+      "bytes": 56309
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/db24832-world06-shape-editor.png",
+      "roles": [
+        "captured_local61_png",
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "44B7419EC76B825F1C307A284BD14A607DC975C1C410857F41A6A66C1E57FAE9",
+      "bytes": 26541
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/dna-exercised.png",
+      "roles": [
+        "captured_local61_png",
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "297705B85067242A818BD613438FC2BC63D21306990078BC88EBB344858FCEAE",
+      "bytes": 11938
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/dna-initial.png",
+      "roles": [
+        "captured_local61_png",
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "EF9FC8ED05D412C321D3CCB42596709609D7A4460B4591F11E341DA858978C99",
+      "bytes": 9264
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/feeding-settings-controls.png",
+      "roles": [
+        "captured_local61_png",
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "5AC7CC75EFE5B4E4CF68D1A0ECF61E23A9F06ED27C4343B1C04F4A4253B770C6",
+      "bytes": 48561
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/final-tools-visual.png",
+      "roles": [
+        "captured_local61_png",
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "4A2C707748B131DA57FA0752CF6597086D842FDB100FB3B6DE4B10B738364FDB",
+      "bytes": 17732
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/global-settings-find-best-weight.png",
+      "roles": [
+        "captured_local61_png",
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "51BCB137FDDF146E802193664973D44D114A06CFFC3E2D37845900D0D4BE7888",
+      "bytes": 48214
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/global-settings-four-tabs.png",
+      "roles": [
+        "captured_local61_png",
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "708F87E0A9C331183634187481A5E6CFA7B38270A99456ACEB3F585518E81181",
+      "bytes": 48228
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/global-settings-recognition-fudging.png",
+      "roles": [
+        "captured_local61_png",
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "AA0FFBF8F6832DEE93980AE1418534FDE71C233D00F6C9700EA4AACB4B11F096",
+      "bytes": 36672
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/graph-inline-history.png",
+      "roles": [
+        "captured_local61_png",
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "39A1E883663A6233F0BB00602233263562362BB23991E7848E42C68B5392314E",
+      "bytes": 136418
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/io05-autosave-safemode-recovery.png",
+      "roles": [
+        "captured_local61_png",
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "DAEC25263D751C29BB39581420FFA9E4B8AC79C8AFA657A9617B997BC3FE4EB4",
+      "bytes": 92448
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/menu-05-robot-find-best.png",
+      "roles": [
+        "captured_local61_png",
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "0B865FBAFB7CFC047D6C605CCB923CE2ECE779C05181CDEF7692119E72F783F6",
+      "bytes": 86876
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/native-arena-corpse.png",
+      "roles": [
+        "captured_local61_png",
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "C5D49133465335587B719D8FEBEEDBAF34C877F63278CFF6C57A75079A793ABE",
+      "bytes": 3939
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/native-species-graph.png",
+      "roles": [
+        "captured_local61_png",
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "D9892EC6DA6605D1E21EBB06DFAAFD1B837C80C22488BDECAD27B19038BD024F",
+      "bytes": 12602
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/native-vision-full-range.png",
+      "roles": [
+        "captured_local61_png",
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "686B7F33D2897A9683D3150DDD62F7C9D90FB0D19FBD5291C46422AF7647035D",
+      "bytes": 6460
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/native-vision-observed-range.png",
+      "roles": [
+        "captured_local61_png",
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "D8C9D45FA8445B336F2A16C247A1907E3377C0EB7116E65E4225838350BC3008",
+      "bytes": 5939
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/robot-details.png",
+      "roles": [
+        "captured_local61_png",
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "C3315D810C6A8B0D0FAA3FF178AB052B3CB6081399F979A0FB8C4315881D8B1A",
+      "bytes": 71526
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/run-01-classic-reset.png",
+      "roles": [
+        "captured_local61_png",
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "44DAAEF5AD2368F2A9FC96F02615B77AB706DFC7BBD66CB066604540F33E1D3A",
+      "bytes": 87817
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/runtime-before-kill.png",
+      "roles": [
+        "captured_local61_png",
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "8C3B3074BA0497EB2B89C272933DC27F0E9257DD21872692F8DC8A7FB5900555",
+      "bytes": 90485
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/runtime-exercised.png",
+      "roles": [
+        "captured_local61_png",
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "EE6FEF1196B73969369325FF91489E4F59A1B39DDCFF245F73AF6D8959C67B13",
+      "bytes": 115954
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/runtime-header-wide-1280.png",
+      "roles": [
+        "captured_local61_png",
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "014D689DB26A265368CB288EC20E0259F865EDADB3C61969BED9799851629773",
+      "bytes": 88789
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/runtime-header-wide-1500.png",
+      "roles": [
+        "captured_local61_png",
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "C5128FB9C4A6E4B8CFC84534D51FB13560FBA9324B57C56B418A4266CC3728B1",
+      "bytes": 90893
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/runtime-initial.png",
+      "roles": [
+        "captured_local61_png",
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "AB1575F014D7D9DADBB7E67203126802FCBD20E982E8F96C7F3FE7B56CBBFC3C",
+      "bytes": 89697
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/set-01-setup-working-copy.png",
+      "roles": [
+        "captured_local61_png",
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "92B44129C39B714C97FFB4EFEA10C43871558F50236C92FFD728503B4809A7CC",
+      "bytes": 70444
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/set07-restart-league.png",
+      "roles": [
+        "captured_local61_png",
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "FF17B130D56DD5B64925B5918FCF78B15523163B583959058BBA343A529EB4BF",
+      "bytes": 103635
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/setup-exercised.png",
+      "roles": [
+        "captured_local61_png",
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "5962D934C8C2C3D97F91DCC0A36270C0E2799E466BBE9434558C8850C4DC3CC2",
+      "bytes": 75373
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/setup-initial.png",
+      "roles": [
+        "captured_local61_png",
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "855E7C9F54701B816673D25CFA929E423F7ECC5462E8B1D1E4F1590BB256169E",
+      "bytes": 69932
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/shell-dashboard-1500x900.png",
+      "roles": [
+        "captured_local61_png",
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "8F85E39256FC64C533B88D56BC5E0A5C3581B5C18E61EABE229BB224B9FB1B5C",
+      "bytes": 85980
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/teleporter-editor-exercised.png",
+      "roles": [
+        "captured_local61_png",
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "60B3450BA1D7F4E105DE5F0AB33486779F22CE3EBCE588D60D2FAE91994D9CC7",
+      "bytes": 39299
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/toolbar-1280x900.png",
+      "roles": [
+        "captured_local61_png",
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "C74B0E83ED650DC2D7E6D277F220BF095AC4C3B8D978BF02527E2F784FAD693F",
+      "bytes": 87429
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/world-insertion-exercised.png",
+      "roles": [
+        "captured_local61_png",
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "B5889EFCF63D738F097718C189532F49F60D554B3F5EF25E8752D6C15FA6F974",
+      "bytes": 78133
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/world-shot-flash-palette.png",
+      "roles": [
+        "captured_local61_png",
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "EC14F0CCF5E0530B7D7BB8E36377D978C744EA21EC8BEB61043C12E4146EB7BC",
+      "bytes": 6982
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/world-shot-impacts-off-retains-shots.png",
+      "roles": [
+        "captured_local61_png",
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "C8DD3F98D3D9CC3F618D90FD9A9E2F962425CC63F8C1FF7C1FCE9E68EBE955FE",
+      "bytes": 3590
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/world-shot-owner-colour.png",
+      "roles": [
+        "captured_local61_png",
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "D33C73D74E9CC7EE2FD27DF617901A2C4E24F68895EFFB553EB651DEB1759497",
+      "bytes": 3252
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/native-dll-identity-before.json",
+      "roles": [
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "FDB3B1B044159F70FB7E0C48CA04FA2667BC7F66A5F67AC45530A58234FA9356",
+      "bytes": 258
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/native-dll-identity.json",
+      "roles": [
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "FDB3B1B044159F70FB7E0C48CA04FA2667BC7F66A5F67AC45530A58234FA9356",
+      "bytes": 258
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/original-zero-cycle-compare.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "2C265516068DEB8904D8FE81DC04A21E169507D1A3ABA4849857932E41F3DE38",
+      "bytes": 625
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/original-zero-cycle-compare.stderr.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/original-zero-cycle-raw-preservation.json",
+      "roles": [
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "A77FCFCE2E14D60EFBC86F889A5E2A3412F582E57F63659BE8C00E2A9BF1C6BD",
+      "bytes": 970
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/original-zero-cycle-replay.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "7A9FFCDB2D93296D8AD2B7AABA49074CFF95C2EC9BF2FBD7F11379B83E0FD54D",
+      "bytes": 505
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/package-assets.json",
+      "roles": [
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "882741E870837C486D54938151D4818A0118C84828FF719DF93EDDBCD856F6F8",
+      "bytes": 17538
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/package-smoke.json",
+      "roles": [
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "DE7F7EEE107116C1F2E5C68F942EC3C80535AE6D039F2B9FCDB2AE32CE972B79",
+      "bytes": 116
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/package-smoke.stderr.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/packaged-native-desktop.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "24FE90E8395DFD7C643D8F4385AD52C95981048FEF4BDE2F7BB042B3659C87CF",
+      "bytes": 1908
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/preserved-wip-image-before.json",
+      "roles": [
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "58E1EACA812EB424217D86D5C882D61981D961E0711D321E8B33F5C55B338C33",
+      "bytes": 124
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/preserved-wip-image.json",
+      "roles": [
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "452634C182E385790B95FFC1321105A66E70966ACD74F9A4B9419C4DB7EE2917",
+      "bytes": 479
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/qualification-summary.json",
+      "roles": [
+        "sealed_local61_summary"
+      ],
+      "sha256": "0F30E4B269E8183A04FFECA509E47A206CC2D41A61674E6D1DF2103406A9A764",
+      "bytes": 116819
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/results.json",
+      "roles": [
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "15DB53B4E944FA70097C1B63FCFF62FE708E271500750FB69DE46F888182383A",
+      "bytes": 48627
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/runner-identity.json",
+      "roles": [
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "C542568C046C6DC03229E46F4488E1019660F0FC254ADB08B63692C7922BF8DE",
+      "bytes": 741
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/rust-target-results.json",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "sealed_local61_rust_census"
+      ],
+      "sha256": "140004E81F7D8F63B3781179195CBDB2740186DDBCF04593F82F2042D87AD568",
+      "bytes": 64299
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/source-check.stderr.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/source.json",
+      "roles": [
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "4AD7E8553AAF90EBDE8C5B73172F38B67D97C76B8A4D239F99074E2C580408A0",
+      "bytes": 109886
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/state.json",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "sealed_terminal61_state_not_live_process_file"
+      ],
+      "sha256": "EE64AAF22D456969882FDE3FBDEB0F27B5915B1A85A2967218E3A611FBA80241",
+      "bytes": 787
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/strict-clippy.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "6DA1793768D7DA459259115DEFF58D826F43770EA4AE4381B9B2370FDE581DC7",
+      "bytes": 290
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/user-rust-cycle281.sim",
+      "roles": [
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "09B77B6EAF0A1A8FFC09C601A8869FE37C4FC4E21860EBF379519FDBFCE8A55E",
+      "bytes": 2091837
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/windows-publish.log",
+      "roles": [
+        "local61_receipt_pinned_evidence",
+        "ordinary61_runtime_log"
+      ],
+      "sha256": "BB2E7000ED75CA50FE5B27ADE372DDB646BA51C0205180032B2548E8E033738D",
+      "bytes": 2752
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/workspace-target-expectations.json",
+      "roles": [
+        "local61_receipt_pinned_evidence"
+      ],
+      "sha256": "8157D021E9FED67C621F1BBA982175B1A59CD447DE9532E68D58D73855B6C53B",
+      "bytes": 855
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/api/artifacts-20261017T113344484Z.json",
+      "roles": [
+        "hosted61_diagnostics_pinned_reference"
+      ],
+      "sha256": "5927396F66EB8CECACB2DE01EBE06D0A3A2CC0A420FEA2BBD635A84BC022E2DE",
+      "bytes": 2236
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/api/jobs-20261017T112635592Z.json",
+      "roles": [
+        "hosted61_diagnostics_pinned_reference"
+      ],
+      "sha256": "28CDC98E8F68ABAAA14FF63F25548D471F7280B08E47C8AB4D9F088753841F5E",
+      "bytes": 6527
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/api/jobs-20261017T113344484Z.json",
+      "roles": [
+        "hosted61_diagnostics_pinned_reference"
+      ],
+      "sha256": "03F19139ABEFFB42FA2FE70D73532C600EA0FB46074D32ED9820B739ED4FCCDF",
+      "bytes": 7502
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/api/run-20261017T112635592Z.json",
+      "roles": [
+        "hosted61_diagnostics_pinned_reference"
+      ],
+      "sha256": "799932663963000628FF08666E36579498B7DA670A86DA61F8DB32092074B0E3",
+      "bytes": 13149
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/api/run-20261017T113344484Z.json",
+      "roles": [
+        "hosted61_diagnostics_pinned_reference"
+      ],
+      "sha256": "CF4F3E3904F87CE28DA2389C105956719DBDB4CAAE08F27E710306821E39B1CF",
+      "bytes": 13152
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifact-file-hashes.json",
+      "roles": [
+        "hosted61_diagnostics_pinned_reference"
+      ],
+      "sha256": "9D9DBCC4965C80A7CAE9CA822C3B2CBA4545DD856631D54D61BB70C68FA5D61D",
+      "bytes": 34497
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/accessibility-preferences.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "C173AC10BDAAA7D385D25743ED650F287FA31FC430AEFB05EFD4CBE76CAAFD92",
+      "bytes": 91067
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/advanced-initial.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "4A36C1B10776E68203D149028570F23A5D6B37E5FD7C6814851AC771E6AE28B1",
+      "bytes": 80426
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/db24832-world06-shape-editor.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "583924F2569A119D31BC806B4813495B5DCDED59B5C1F9B49B47D87275FBC881",
+      "bytes": 37339
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/dna-exercised.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "7A8CCC6DE37F012152D5DBF1A56794664A1129C8820C5ECFBD39964FBAC10BA7",
+      "bytes": 13943
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/dna-initial.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "2784F40EA11C6A661439068A911B05259AA7B766603158CD1141CECE1DDA7544",
+      "bytes": 11203
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/feeding-settings-controls.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "0798CCAFA8CD2427DF74573435FC834A8A1010C353EC789FBF00094BB36EB955",
+      "bytes": 67991
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/final-tools-visual.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "6087274381261C19FB838016132B63DB44AA0D5C92B357C953A626A217714A61",
+      "bytes": 17906
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/global-settings-find-best-weight.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "CB88B8611A9B7D6B52FFFD6FE72B78E061F490828D5B6214B390A9C0D6FFF21D",
+      "bytes": 67530
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/global-settings-four-tabs.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "BDDFF8B47F4C2FD544EC63472B2E0D0C8997A6AEE23A8CBEE9FCBBAA4FF4A9B3",
+      "bytes": 67556
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/global-settings-recognition-fudging.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "CBC8CE6CEB4DED5439FA2DFD3A4FB75B9B8C7AD706A7BA6C83948E3356757CE3",
+      "bytes": 53611
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/graph-inline-history.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "AC9B1061A24230D0519C72D6A43C7F813CAD0748EEB29C1F4860E813D67EF4E4",
+      "bytes": 166989
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/io05-autosave-safemode-recovery.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "4BD1C6610123CA70A78DA61097222601F5A5D85A4AE50EE651B816352C9DAACF",
+      "bytes": 119339
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/menu-05-robot-find-best.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "C679E6EB5A602982B0385632F3492A2E4F0C51ABF5A59EB17AA2D93DBC0A4B90",
+      "bytes": 111126
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/native-arena-corpse.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "C5D49133465335587B719D8FEBEEDBAF34C877F63278CFF6C57A75079A793ABE",
+      "bytes": 3939
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/native-species-graph.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "375187FFED9F17672F3243CD84AA728A98EF12ED8A1CA1A4AA8363C278A98964",
+      "bytes": 12568
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/native-vision-full-range.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "686B7F33D2897A9683D3150DDD62F7C9D90FB0D19FBD5291C46422AF7647035D",
+      "bytes": 6460
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/native-vision-observed-range.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "D8C9D45FA8445B336F2A16C247A1907E3377C0EB7116E65E4225838350BC3008",
+      "bytes": 5939
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/robot-details.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "5D90A23A981AEDD44219FDBD2B767E1FE742BB12C1B893E34D4051D7769392FA",
+      "bytes": 108649
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/run-01-classic-reset.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "241A9276FDA9235939DD64E7B5DDFCFBF8937E9B374362308EDBEC0CCBEFA6DE",
+      "bytes": 112255
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/runtime-before-kill.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "625FA3209B18A903708C1A80794326006D0FB8BD53B701DA63C2BC856884C258",
+      "bytes": 118771
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/runtime-exercised.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "401D533EF3A6FC6219CAEF7964D2D3DC9AEF36FF6ACE8B320C2BAC51D584C29F",
+      "bytes": 152615
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/runtime-header-wide-1280.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "8597466681CEE60CC35C86B5976A112326B22B7883090F7BAFA71CA2F9C58E06",
+      "bytes": 112275
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/runtime-header-wide-1500.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "2467CBF322D8E23739AF220D55823F3E06760A53532DA6624EE3FD86FC0C0BA5",
+      "bytes": 116447
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/runtime-initial.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "13BBD68272AD7DBA5CCADA5106B1F8CDA9DB831DD1D7E09584D92DFC8127AECF",
+      "bytes": 114815
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/set-01-setup-working-copy.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "B5143AE3B1AB471D4456B6B760699C3682C556672706264FDF46E58949C2793D",
+      "bytes": 97690
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/set07-restart-league.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "D68E67782EB937F4C341038718EB0FC408617B3BF0C07A13E5F62F533F1CA178",
+      "bytes": 132229
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/setup-exercised.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "E6FBC5392BBDB75E8C37C2CB978B1F4AFD5627208A0C85D1550DD08F41D0A145",
+      "bytes": 103081
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/setup-initial.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "D0572D6C6E1A7A5023D2923C600475D3C7280A52A7C6EFB6B77D4A30A84491A4",
+      "bytes": 96919
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/shell-dashboard-1500x900.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "F3FE358E471A246E3A25373F1F2FFFE0E37BD45B9B059344D35423F60199800A",
+      "bytes": 110557
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/teleporter-editor-exercised.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "ACE5F1F8CAE43C3536F546F5FCD26922AB50568C29252E6B59482AF6557AB98F",
+      "bytes": 57138
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/toolbar-1280x900.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "F6C04DF47907769762650FC372E61176D80667E41063211038DF0D362DBAF272",
+      "bytes": 111947
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/world-insertion-exercised.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "DC8EDC17B1CC81D4ADF3E4E2BB79BE8050DDDD5D6CE5BC762B0B55257EED1ECA",
+      "bytes": 99926
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/world-shot-flash-palette.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "EC14F0CCF5E0530B7D7BB8E36377D978C744EA21EC8BEB61043C12E4146EB7BC",
+      "bytes": 6982
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/world-shot-impacts-off-retains-shots.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "C8DD3F98D3D9CC3F618D90FD9A9E2F962425CC63F8C1FF7C1FCE9E68EBE955FE",
+      "bytes": 3590
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/world-shot-owner-colour.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "D33C73D74E9CC7EE2FD27DF617901A2C4E24F68895EFFB553EB651DEB1759497",
+      "bytes": 3252
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-linux-x64/test-results/rendered-controls.trx",
+      "roles": [
+        "hosted61_diagnostics_pinned_reference",
+        "hosted61_trx_explicit_index_pin"
+      ],
+      "sha256": "FFEB30C8251635CC7456FD3179A49282896DECB14363189D16C8CDA58CE5B5C3",
+      "bytes": 335257
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/accessibility-preferences.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "55F15BBE4FC46306DCFF8D40937143E506465A0E4FAB1E24AB36E3F5648578A2",
+      "bytes": 104065
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/advanced-initial.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "480D6AAE70CF52B51F1E262E3AC0DB99C761380338AB35418B460C2ED3BF4B75",
+      "bytes": 104047
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/db24832-world06-shape-editor.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "329FEB69C57583B0E0CD8586D757B2BD7E1E8FF46A091A344135129E6E461EB3",
+      "bytes": 44377
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/dna-exercised.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "01E8CB70826E827711F4CD0303ED91565374B9FD7581934D627A6B99B9BF0F29",
+      "bytes": 16754
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/dna-initial.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "BDE83FB707A5BB68DF529EA840B9E69D39A99810A6EA266DFFBEF5992FA34E3E",
+      "bytes": 12638
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/feeding-settings-controls.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "B129FFF6DAF7C92F46536CD5A904BEA9701F349B417698455A14D40A54A3CF13",
+      "bytes": 89622
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/final-tools-visual.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "B2C3DBD09CF0B1F2289D9E363075247196D23D84857C597AE48DE4D24ED2451B",
+      "bytes": 18188
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/global-settings-find-best-weight.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "BB3A47A6C7A9F0ABA33C2FEAA2B4F0ABBA03A51E208AB6C03637AA01EDD42788",
+      "bytes": 83772
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/global-settings-four-tabs.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "4FEA497585347C978B68DD8D97B9E43B52C8192A37FF93C4B1DE29B6062E721E",
+      "bytes": 83747
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/global-settings-recognition-fudging.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "061FB58BBC4151D4C4BD07F4F96ECB7A663197CD2829543A917E447F6A3F4DD3",
+      "bytes": 65342
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/graph-inline-history.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "148870843CE97A61581DD95662D53F689DD78F1B3E5105BC19AC2D78B7D1E90F",
+      "bytes": 195866
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/io05-autosave-safemode-recovery.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "BC30926EA709AFFE687F8798A49CD04F3D3B8547B14C13071CB5C957ED8D446D",
+      "bytes": 146973
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/menu-05-robot-find-best.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "4C7778BFEF3F0E22E8E4504668E16B24E09C1FE9761717DB3C004D40924E09FF",
+      "bytes": 135614
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/native-arena-corpse.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "C5D49133465335587B719D8FEBEEDBAF34C877F63278CFF6C57A75079A793ABE",
+      "bytes": 3939
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/native-species-graph.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "90E422230A39E8CC035A6AB7707084BE63D76DAFDE050B3A071F1E5F3F78A830",
+      "bytes": 7989
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/native-vision-full-range.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "686B7F33D2897A9683D3150DDD62F7C9D90FB0D19FBD5291C46422AF7647035D",
+      "bytes": 6460
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/native-vision-observed-range.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "D8C9D45FA8445B336F2A16C247A1907E3377C0EB7116E65E4225838350BC3008",
+      "bytes": 5939
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/robot-details.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "C42651B4FFE3338771F775E86C463498149FD166B821F9E735C4B873105A8BE1",
+      "bytes": 135920
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/run-01-classic-reset.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "40B8098F6F3B1A7635B50EA3CF0F6E522EDBEB9047C05BF8111EBE63C5CDB5E5",
+      "bytes": 136913
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/runtime-before-kill.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "548F891B11E441097F44159F2BF841CFA6E1E08348598ADCA1EB7C0B6D15E709",
+      "bytes": 152410
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/runtime-exercised.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "99FB1440BBA68C0BAEF8D5C0E59ABA92BDB50AB990D517A0DFAC1E242994187B",
+      "bytes": 195486
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/runtime-header-wide-1280.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "CA9BEE57BD35DFC3B5AA7A6A730E8A38ED5C57993E9A4C0083996291032AAF57",
+      "bytes": 138400
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/runtime-header-wide-1500.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "1371A700C366FC2676277C25BF8D5F6A52E3B358371F3538C541D16B3FF9F66D",
+      "bytes": 144287
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/runtime-initial.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "53FA2EA25246FB79D4B9BAA2CFBE3A165D26C45EC7C87A7442E76415273E2023",
+      "bytes": 142077
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/set-01-setup-working-copy.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "745D7185F4AE241579113A0994B7E58BFE5546C288E92A5B70AD2BC64FF013EA",
+      "bytes": 122166
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/set07-restart-league.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "E16DE13283544C9D1ADAC2ED15F9ACA992D9976CF7F7CBF3A8A929E992FD6803",
+      "bytes": 167915
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/setup-exercised.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "37008F455A78FED0AC49AC9B866E472AE68816545059D2B2AA1CBC6F184C02D9",
+      "bytes": 131997
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/setup-initial.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "04DC802E1043172D807A1CABFDE786A51A99181AA75DC0A5BAB995C63A6E0B7B",
+      "bytes": 120614
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/shell-dashboard-1500x900.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "F90C109AE564463ED48F58A61B1949BACBBA11266C13ABBE39A7394BF46B9884",
+      "bytes": 138098
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/teleporter-editor-exercised.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "EFF8967727C3BD5C07EA396A4622528D5C4E9757CB7E0EF991B1CBBDE15EBE32",
+      "bytes": 73211
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/toolbar-1280x900.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "56D21BA28CFD1342EDB80E18C44A3959D118499DFA6BBF862FAB358760DC50ED",
+      "bytes": 137034
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/world-insertion-exercised.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "D77EBFD97A4C907954AAA1C2221BA198D841A7134724A5332FC544BBC6B56291",
+      "bytes": 120284
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/world-shot-flash-palette.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "EC14F0CCF5E0530B7D7BB8E36377D978C744EA21EC8BEB61043C12E4146EB7BC",
+      "bytes": 6982
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/world-shot-impacts-off-retains-shots.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "C8DD3F98D3D9CC3F618D90FD9A9E2F962425CC63F8C1FF7C1FCE9E68EBE955FE",
+      "bytes": 3590
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/world-shot-owner-colour.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "D33C73D74E9CC7EE2FD27DF617901A2C4E24F68895EFFB553EB651DEB1759497",
+      "bytes": 3252
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-arm64/test-results/rendered-controls.trx",
+      "roles": [
+        "hosted61_diagnostics_pinned_reference",
+        "hosted61_trx_explicit_index_pin"
+      ],
+      "sha256": "9378608753AD38F349DB6AA308E4F54E40E365222FB29DA2E832C5C6684E54C8",
+      "bytes": 346103
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/accessibility-preferences.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "9FE1DE2D545FCA3C1F547FADE4306F792D1DEF7948D10734EAA0272188762DC7",
+      "bytes": 103859
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/advanced-initial.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "19D32976059EC4DC26D34F2143C70058BBD4E56BADD3986BBF0FB615518034B1",
+      "bytes": 104038
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/db24832-world06-shape-editor.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "B690E822B750068D63FC5D34FA9216C9A70C3212C5001EB658E563606A5F2A6A",
+      "bytes": 44359
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/dna-exercised.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "65E77C071902ECED5C2124551590FF92DE5532A7C490E3B184A24623AB25D27D",
+      "bytes": 16722
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/dna-initial.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "2C2832CA80924999EBC4B545E1E3738C29A3C758FBAE1836C30E782CFCCD3031",
+      "bytes": 12645
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/feeding-settings-controls.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "1927C28229A831D70D4E77B5D2AC0DDF1E4863D05FD9D3C299A10C2B53D133A4",
+      "bytes": 89612
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/final-tools-visual.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "B2C3DBD09CF0B1F2289D9E363075247196D23D84857C597AE48DE4D24ED2451B",
+      "bytes": 18188
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/global-settings-find-best-weight.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "AB0ADDA7A58F6EE8A7677E088280C9A0C5E168E685055E79AAD67FB839FAE05B",
+      "bytes": 83766
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/global-settings-four-tabs.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "B991BCEECFED1F90D63E58EF52FC8AE0A58962849B57460B0279071BD86BBE0B",
+      "bytes": 83737
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/global-settings-recognition-fudging.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "10380EF39C6613F5CCF0B7EB197C498DE595658700C81D0A63040BE17BE3C618",
+      "bytes": 65298
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/graph-inline-history.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "6224A42E5020C4ADD19169E2526992EEB034EF27CD216D5180519EB486005BE7",
+      "bytes": 195599
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/io05-autosave-safemode-recovery.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "B1C49A536DC1E0B182CD99C9CD6D6A09627CAD4BBC581550C1000F8A85A67BAC",
+      "bytes": 146924
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/menu-05-robot-find-best.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "A09655D84B98CB8F889A8335FF9ECFAB769A66A852A82F73C69D7B4CEBF9075E",
+      "bytes": 136176
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/native-arena-corpse.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "C5D49133465335587B719D8FEBEEDBAF34C877F63278CFF6C57A75079A793ABE",
+      "bytes": 3939
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/native-species-graph.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "C94F0A61316279E48831070D2ACC7DFDEAE3DF6385BFE37067E144F97FB5C18C",
+      "bytes": 7989
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/native-vision-full-range.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "686B7F33D2897A9683D3150DDD62F7C9D90FB0D19FBD5291C46422AF7647035D",
+      "bytes": 6460
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/native-vision-observed-range.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "D8C9D45FA8445B336F2A16C247A1907E3377C0EB7116E65E4225838350BC3008",
+      "bytes": 5939
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/robot-details.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "4835790972FC49A6740AC3F3760033F8332494888E64F1596933729FE37BF628",
+      "bytes": 135929
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/run-01-classic-reset.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "FC89A1842CAB777151F628F2AFB290B435BDB5992BB40FC8404E1D71DD1A0321",
+      "bytes": 138505
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/runtime-before-kill.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "FDCA75D4E1C4D933EFD34257BDC395504BB1BEB0FFEFC6E5F1F665A5261DCD30",
+      "bytes": 152165
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/runtime-exercised.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "70D3CECDF4EDEAB49E51F80F1FF8658950D1184564F6FC854D755CF8E30FE64D",
+      "bytes": 195487
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/runtime-header-wide-1280.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "5BAC8AFF02355C5D1965E8361F6455DC6B0D02B34223E9DDD522C8F5EB61733A",
+      "bytes": 138181
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/runtime-header-wide-1500.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "222648B1CF718F703FAA73990C8C4DA0F3639E5D6C7B9FFF5D6F4A4471A92B53",
+      "bytes": 144183
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/runtime-initial.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "1670AAF5843234ECC16AF4D0C104E6747ADD8C4C0758FB61616657D2279C7FD0",
+      "bytes": 142112
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/set-01-setup-working-copy.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "93B299F4BFFF7D3047494C83FA7B6779E25EFEFBA2BD29C4CDF11E63EFA971E2",
+      "bytes": 122112
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/set07-restart-league.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "7A7E2AC69E0453A75EC2A9C5B83D54219C6458DF668FCC7939529183AE873ACF",
+      "bytes": 167872
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/setup-exercised.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "AAAE0AC7D229FA3FEA781F0199E0D82F9B06FCBC03672EC382E0FE828C8C4F34",
+      "bytes": 131908
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/setup-initial.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "65DD42B4ABA1DE90A4E863AD9415C3C522E9D1419ED8F6368509618EEEC419D9",
+      "bytes": 120564
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/shell-dashboard-1500x900.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "A477970045158481BF66C45BE58CAB47D651D2C4B078E3684BEBF12A6119C8AC",
+      "bytes": 138133
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/teleporter-editor-exercised.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "BB0B705B17AA50D9262EBDCF332573A13E220D21E83A78430EEB118DC6D930A8",
+      "bytes": 73199
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/toolbar-1280x900.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "053AEFC19CEC4584A5D8954C4C6E99C8708E49AC40D9E28B0273158973F1F06F",
+      "bytes": 138122
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/world-insertion-exercised.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "24CF1C70D84BA9D9876997AFE9D9A03A88BF8F39C4BAA127A5DC9AB7AE51EBC4",
+      "bytes": 120234
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/world-shot-flash-palette.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "EC14F0CCF5E0530B7D7BB8E36377D978C744EA21EC8BEB61043C12E4146EB7BC",
+      "bytes": 6982
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/world-shot-impacts-off-retains-shots.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "C8DD3F98D3D9CC3F618D90FD9A9E2F962425CC63F8C1FF7C1FCE9E68EBE955FE",
+      "bytes": 3590
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/world-shot-owner-colour.png",
+      "roles": [
+        "captured_hosted61_png_explicit_index_pin"
+      ],
+      "sha256": "D33C73D74E9CC7EE2FD27DF617901A2C4E24F68895EFFB553EB651DEB1759497",
+      "bytes": 3252
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-x64/test-results/rendered-controls.trx",
+      "roles": [
+        "hosted61_diagnostics_pinned_reference",
+        "hosted61_trx_explicit_index_pin"
+      ],
+      "sha256": "546FE64A1FCDF759DF1E0CB83092BC688C58A626C5D821578FFFA44BEFB39286",
+      "bytes": 346103
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/logs/linux-x64-completed.log",
+      "roles": [
+        "hosted61_diagnostics_pinned_reference"
+      ],
+      "sha256": "DBC845DDA104220DE55563EBC8534B95A0FC4EED5A145B54E2774F6D9CA39497",
+      "bytes": 68369
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/logs/osx-arm64-completed.log",
+      "roles": [
+        "hosted61_diagnostics_pinned_reference"
+      ],
+      "sha256": "AD8D175396B95216F1C24D9797C54332087A6EAA18186631FBBFA4734F47C221",
+      "bytes": 69066
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/logs/osx-x64-completed.log",
+      "roles": [
+        "hosted61_diagnostics_pinned_reference"
+      ],
+      "sha256": "1DAD5C42F530DE83076724B9F62C3060DC0F0584AB877B63C7D31FBC1E2AF2D4",
+      "bytes": 68907
+    },
+    {
+      "file": "output/hosted-diagnostics-8a42380-agent/trx-summary-verified.json",
+      "roles": [
+        "hosted61_diagnostics_pinned_reference"
+      ],
+      "sha256": "730A922BF8D0947097C2DF011E74F631509BDCBB3C5146BC3F1E8FB8028FA966",
+      "bytes": 11912
+    },
+    {
+      "file": "output/hosted-main-8a42380-agent/api/committed-tree.json",
+      "roles": [
+        "hosted61_main_pinned_reference"
+      ],
+      "sha256": "5DB165580E4CC13C3CD50B5C37216DD6CC5A0EADF2865DA5E90BB102368063DF",
+      "bytes": 502003
+    },
+    {
+      "file": "output/hosted-main-8a42380-agent/api/final-artifacts.json",
+      "roles": [
+        "hosted61_main_pinned_reference"
+      ],
+      "sha256": "E338FB10E6740E1E43CDBE137DA3A22EC09F95D8097C5F247E751DE5F81F87B4",
+      "bytes": 34
+    },
+    {
+      "file": "output/hosted-main-8a42380-agent/api/final-jobs.json",
+      "roles": [
+        "hosted61_main_pinned_reference"
+      ],
+      "sha256": "30C3E26AA7AA6E1775A8406CC2D2297BA9BB5D9405A4881FC9601B6B5AEBBA33",
+      "bytes": 13310
+    },
+    {
+      "file": "output/hosted-main-8a42380-agent/api/final-run.json",
+      "roles": [
+        "hosted61_main_pinned_reference"
+      ],
+      "sha256": "28C5FEA47AEDC59F0EB9DC674173FC020815F0A927911AB4002D836BB834AA33",
+      "bytes": 13141
+    },
+    {
+      "file": "output/hosted-main-8a42380-agent/logs/linux-x64-completed.log",
+      "roles": [
+        "hosted61_main_pinned_reference"
+      ],
+      "sha256": "0A407DAF4A86387B1D2FC2FAEEEEFD790BE7742F200CB5B560E3AC5F54296C63",
+      "bytes": 210701
+    },
+    {
+      "file": "output/hosted-main-8a42380-agent/logs/osx-arm64-completed.log",
+      "roles": [
+        "hosted61_main_pinned_reference"
+      ],
+      "sha256": "528BBA4987C6A59BBF5BB44F0088E7CC57DC25DBFCCF2831C8822B414167AECB",
+      "bytes": 211320
+    },
+    {
+      "file": "output/hosted-main-8a42380-agent/logs/osx-x64-completed.log",
+      "roles": [
+        "hosted61_main_pinned_reference"
+      ],
+      "sha256": "D3BC3BEFC4A0C3AE50997B12861DB0C91CD3F563F69CE6E3CE901E078C2CD168",
+      "bytes": 212964
+    },
+    {
+      "file": "output/hosted-main-8a42380-agent/logs/win-x64-completed.log",
+      "roles": [
+        "hosted61_main_pinned_reference"
+      ],
+      "sha256": "AE8232D47D8568634DFA217773C2E43744B33CEF7FBEA90D1CBB917FD4A8C4EB",
+      "bytes": 212716
+    },
+    {
+      "file": "output/hosted-main-8a42380-agent/platform-linux-x64-job-check.json",
+      "roles": [
+        "hosted61_main_pinned_reference"
+      ],
+      "sha256": "776A031D4B774A7E36B7DEC3224F2F2398D2E706B85ADB813F17A08BED0AC6DD",
+      "bytes": 61929
+    },
+    {
+      "file": "output/hosted-main-8a42380-agent/platform-osx-arm64-job-check.json",
+      "roles": [
+        "hosted61_main_pinned_reference"
+      ],
+      "sha256": "ABD982A4D3372699F8801A253D04313451666F1F6B5AC80135B2A93F9FFD4B99",
+      "bytes": 61930
+    },
+    {
+      "file": "output/hosted-main-8a42380-agent/platform-osx-x64-job-check.json",
+      "roles": [
+        "hosted61_main_pinned_reference"
+      ],
+      "sha256": "A1C686DA2361355DACB64FC1F636CD65128055BD497F2D8A4C9FB92F268BEEC1",
+      "bytes": 61943
+    },
+    {
+      "file": "output/hosted-main-8a42380-agent/platform-win-x64-job-check.json",
+      "roles": [
+        "hosted61_main_pinned_reference"
+      ],
+      "sha256": "229605F40455FC1B9DC4EE531EA7CF2B43E6F774613271AB77E79FB57BA7B51C",
+      "bytes": 62475
+    },
+    {
+      "file": "output/hosted-main-8a42380-agent/rust-target-results.json",
+      "roles": [
+        "hosted61_main_pinned_reference"
+      ],
+      "sha256": "BE57E2E046BE0A0487EB28AB7BA995BD0A9745D505A87501E11DFE080B04F41E",
+      "bytes": 240457
+    },
+    {
+      "file": "output/hosted-main-8a42380-agent/windows-source-bots.json",
+      "roles": [
+        "hosted61_main_pinned_reference"
+      ],
+      "sha256": "FDE42020C7D86E4FE47CBC1256EDEE1613798465767978F88C9BE00F7A4FEF1F",
+      "bytes": 34329
+    },
+    {
+      "file": "output/native-oracle-candidate61/body-rust-cycle1.sim",
+      "roles": [
+        "fresh_native_candidate61",
+        "genuine_control_body_C1"
+      ],
+      "sha256": "26C4B93B9BDDC7700163A8FD3A1FC3C1C462B620F21A5B0A863884598FDE99D3",
+      "bytes": 17410
+    },
+    {
+      "file": "output/native-oracle-candidate61/body-rust-cycle10.sim",
+      "roles": [
+        "fresh_native_candidate61",
+        "genuine_control_body_C10"
+      ],
+      "sha256": "6634CE9C8842B7535CFD9ED47669359DC2CDA29D1DEA85FF549AFD417A766087",
+      "bytes": 17410
+    },
+    {
+      "file": "output/native-oracle-candidate61/body-rust-cycle100.sim",
+      "roles": [
+        "fresh_native_candidate61",
+        "genuine_control_body_C100"
+      ],
+      "sha256": "73D549B77E206F9A659E29CAE933C899A4F223A25B84BA2B5E4A82BA43957DCC",
+      "bytes": 17410
+    },
+    {
+      "file": "output/native-oracle-candidate61/chloroplast-rust-cycle1.sim",
+      "roles": [
+        "fresh_native_candidate61",
+        "genuine_control_chloroplast_C1"
+      ],
+      "sha256": "5A2ADDA715E640293EDF86C4E4F8BFAA23200E2A1D44BA7ABBA8ADB6EB030858",
+      "bytes": 17418
+    },
+    {
+      "file": "output/native-oracle-candidate61/chloroplast-rust-cycle10.sim",
+      "roles": [
+        "fresh_native_candidate61",
+        "genuine_control_chloroplast_C10"
+      ],
+      "sha256": "1D4BDC51CEA523E4B478E208EC2FFB1A5E137221BEDF0219089B8BF6E91A7931",
+      "bytes": 17418
+    },
+    {
+      "file": "output/native-oracle-candidate61/contacts-rust-cycle1.sim",
+      "roles": [
+        "fresh_native_candidate61",
+        "genuine_control_contacts_C1"
+      ],
+      "sha256": "D3EC1618739E836D61386E0322CFDB9B3A104655DDA61EB0B6C1A001FA490693",
+      "bytes": 36120
+    },
+    {
+      "file": "output/native-oracle-candidate61/contacts-rust-cycle10.sim",
+      "roles": [
+        "fresh_native_candidate61",
+        "genuine_control_contacts_C10"
+      ],
+      "sha256": "DEDC038BA1A09ED5CCF48331749B1B31E0498E103B28520787A13627089337A0",
+      "bytes": 36120
+    },
+    {
+      "file": "output/native-oracle-candidate61/contacts-rust-cycle100.sim",
+      "roles": [
+        "fresh_native_candidate61",
+        "genuine_control_contacts_C100"
+      ],
+      "sha256": "9CB0493E1247CA477C0D08C75A16BDC012B0F2F93DB318E248DCD1C1AEA58742",
+      "bytes": 36120
+    },
+    {
+      "file": "output/native-oracle-candidate61/contacts-rust-cycle11.sim",
+      "roles": [
+        "fresh_native_candidate61",
+        "genuine_control_contacts_C11"
+      ],
+      "sha256": "8F7B5742EC5C6ACA9C950C298E27CEBA3321B53267A0DEC319F3394F55305CF5",
+      "bytes": 36120
+    },
+    {
+      "file": "output/native-oracle-candidate61/feeding-rust-cycle1.sim",
+      "roles": [
+        "fresh_native_candidate61",
+        "genuine_control_feeding_C1"
+      ],
+      "sha256": "509885D0168AEDB2E11A604A00BBD9CF6DDEFBC903DE55CD8F5B693D61F01E3C",
+      "bytes": 26844
+    },
+    {
+      "file": "output/native-oracle-candidate61/feeding-rust-cycle10.sim",
+      "roles": [
+        "fresh_native_candidate61",
+        "genuine_control_feeding_C10"
+      ],
+      "sha256": "587B9C6F9D9D3B0A5E58BC4EC6529BF2F7C85CDB039C9FB36C19EB52D6B57363",
+      "bytes": 27312
+    },
+    {
+      "file": "output/native-oracle-candidate61/feeding-rust-cycle100.sim",
+      "roles": [
+        "fresh_native_candidate61",
+        "genuine_control_feeding_C100"
+      ],
+      "sha256": "43398EF63DEEBF083F9C8163679C1CF1E3441DDE4094556BAAEBC4B847EDBD18",
+      "bytes": 18868
+    },
+    {
+      "file": "output/native-oracle-candidate61/fixed-rust-cycle1.sim",
+      "roles": [
+        "fresh_native_candidate61",
+        "genuine_control_fixed_C1"
+      ],
+      "sha256": "80155DF55842FA4B5B60A42240CD85B8C1184D6F07D85C3B5E68EC3599922A9A",
+      "bytes": 17424
+    },
+    {
+      "file": "output/native-oracle-candidate61/fixed-rust-cycle10.sim",
+      "roles": [
+        "fresh_native_candidate61",
+        "genuine_control_fixed_C10"
+      ],
+      "sha256": "742EE79F3FB9CFC4F3E0C46E609C838A5E744BE7B47619A41E90F06D14E440F6",
+      "bytes": 17424
+    },
+    {
+      "file": "output/native-oracle-candidate61/fixed-rust-cycle100.sim",
+      "roles": [
+        "fresh_native_candidate61",
+        "genuine_control_fixed_C100"
+      ],
+      "sha256": "AB0F80F9BC1259BFE4FDEFAFBAC0121CA5F19B926F2360E35D6752C98D9FFA86",
+      "bytes": 17424
+    },
+    {
+      "file": "output/native-oracle-candidate61/movement-rust-cycle1.sim",
+      "roles": [
+        "fresh_native_candidate61",
+        "genuine_control_movement_C1"
+      ],
+      "sha256": "F0C94224D60926F863DD015FC884AC93EFAB8E6392F9ED6C501C8245A09D7173",
+      "bytes": 17418
+    },
+    {
+      "file": "output/native-oracle-candidate61/movement-rust-cycle10.sim",
+      "roles": [
+        "fresh_native_candidate61",
+        "genuine_control_movement_C10"
+      ],
+      "sha256": "66E473E595BBE146893F1722B15863107365859EA4113896747C1EA7F818CDAA",
+      "bytes": 17418
+    },
+    {
+      "file": "output/native-oracle-candidate61/movement-rust-cycle100.sim",
+      "roles": [
+        "fresh_native_candidate61",
+        "genuine_control_movement_C100"
+      ],
+      "sha256": "E7C255272824FAEA49E4DEE0B69B165CB543DED93809CA45D7AA00C24578B309",
+      "bytes": 17418
+    },
+    {
+      "file": "output/native-oracle-candidate61/movement-rust-cycle102.sim",
+      "roles": [
+        "fresh_native_candidate61",
+        "genuine_control_movement_C102"
+      ],
+      "sha256": "36F3840B0DBB16E5218BDEDDC347598F63F19DF8B53182D935A15AC5A6F32F1A",
+      "bytes": 17418
+    },
+    {
+      "file": "output/native-oracle-candidate61/reproduction-rust-cycle1.sim",
+      "roles": [
+        "fresh_native_candidate61",
+        "genuine_control_reproduction_C1"
+      ],
+      "sha256": "37429C80EF7DA7F705CD346D3D1A89280AB2B6B0272DB91A60C16177733180F0",
+      "bytes": 17442
+    },
+    {
+      "file": "output/native-oracle-candidate61/reproduction-rust-cycle10.sim",
+      "roles": [
+        "fresh_native_candidate61",
+        "genuine_control_reproduction_C10"
+      ],
+      "sha256": "E044B22B876B725588E7547E95F39DF32A537D9B506E8E46730BDB547ED29A15",
+      "bytes": 26831
+    },
+    {
+      "file": "output/native-oracle-candidate61/reproduction-rust-cycle100.sim",
+      "roles": [
+        "fresh_native_candidate61",
+        "genuine_control_reproduction_C100"
+      ],
+      "sha256": "A360D600504785E888F18B63B2B1522F81610B03CC91EA3C482329AFC62144A2",
+      "bytes": 26831
+    },
+    {
+      "file": "output/native-oracle-candidate61/ties-rust-cycle1.sim",
+      "roles": [
+        "fresh_native_candidate61",
+        "genuine_control_ties_C1"
+      ],
+      "sha256": "3B20F2240B2A1D4DEEB83A2C6D4DAEAB91F7B57592ABA16F2F5D8CEE35BE4559",
+      "bytes": 26799
+    },
+    {
+      "file": "output/native-oracle-candidate61/ties-rust-cycle10.sim",
+      "roles": [
+        "fresh_native_candidate61",
+        "genuine_control_ties_C10"
+      ],
+      "sha256": "07CCD34BFF33BD1CC88F2EBD45F028C2FB316335A4FB84BA81CDE948DDCF91E1",
+      "bytes": 26799
+    },
+    {
+      "file": "output/native-oracle-candidate61/ties-rust-cycle100.sim",
+      "roles": [
+        "fresh_native_candidate61",
+        "genuine_control_ties_C100"
+      ],
+      "sha256": "027FEC065539EFD7A52195B14A801D31CFEEDA2352EB84473640A7A628A04A62",
+      "bytes": 26799
+    },
+    {
+      "file": "output/native-roundtrip-pass61-source.json",
+      "roles": [
+        "hosted61_main_pinned_reference"
+      ],
+      "sha256": "4AD7E8553AAF90EBDE8C5B73172F38B67D97C76B8A4D239F99074E2C580408A0",
+      "bytes": 109886
+    },
+    {
+      "file": "output/pass61-c100-diagnostic-20261017T1246/counterfactual-compare.json",
+      "roles": [
+        "batch61_causal_diagnostic_not_qualification"
+      ],
+      "sha256": "4C10D12E20C9115B274279B2FA62B1D59C390D558B146389E416DA5A5CE47E87",
+      "bytes": 623
+    },
+    {
+      "file": "output/pass61-c100-diagnostic-20261017T1246/counterfactual-compare.stderr.log",
+      "roles": [
+        "batch61_causal_diagnostic_not_qualification"
+      ],
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "output/pass61-c100-diagnostic-20261017T1246/counterfactual-cycle100.sim",
+      "roles": [
+        "batch61_causal_diagnostic_not_qualification"
+      ],
+      "sha256": "A0F5C86CBEAFD6B9B6FA7A24A443AF8FB5D8E38E260AC1992C9D269A676146C1",
+      "bytes": 18868
+    },
+    {
+      "file": "output/pass61-c100-diagnostic-20261017T1246/counterfactual-initial-delay.db3s",
+      "roles": [
+        "batch61_causal_diagnostic_not_qualification"
+      ],
+      "sha256": "A2432240AB72FEC5ADC2D9B8ACEED0D346D5D065AEBD240C122213D7B32431FB",
+      "bytes": 83424
+    },
+    {
+      "file": "output/pass61-c100-diagnostic-20261017T1246/counterfactual-provenance.json",
+      "roles": [
+        "batch61_causal_diagnostic_not_qualification"
+      ],
+      "sha256": "BB79102B327785B1D4B090B5F596C30FCA4821F04E08CA751E2F9CE81E1F1FAD",
+      "bytes": 552
+    },
+    {
+      "file": "output/pass61-c100-diagnostic-20261017T1246/counterfactual-restored-period-cycle21.db3s",
+      "roles": [
+        "batch61_causal_diagnostic_not_qualification"
+      ],
+      "sha256": "8B51236AF9C9506D5027E5C88BBD03915AB19D6AC566F1D0B93EAD82986EA7AE",
+      "bytes": 90055
+    },
+    {
+      "file": "output/pass61-c100-diagnostic-20261017T1246/cycle20.log",
+      "roles": [
+        "batch61_causal_diagnostic_not_qualification"
+      ],
+      "sha256": "6E50E884A26386D79F696A6D1BB706B3B63631F6DE1253A522520BD541F13E30",
+      "bytes": 411
+    },
+    {
+      "file": "output/pass61-c100-diagnostic-20261017T1246/cycle25.log",
+      "roles": [
+        "batch61_causal_diagnostic_not_qualification"
+      ],
+      "sha256": "C0AA50F6F5E9740CD785C5989D2270536553AC73D24391CCE4AAAA1D6F42670F",
+      "bytes": 411
+    },
+    {
+      "file": "output/pass61-c100-diagnostic-20261017T1246/cycle26.log",
+      "roles": [
+        "batch61_causal_diagnostic_not_qualification"
+      ],
+      "sha256": "D2111E925CA8E669D6FB85E413FAF0462075D1D7C6D0961CB5AA3252D0FA4D36",
+      "bytes": 411
+    },
+    {
+      "file": "output/pass61-c100-diagnostic-20261017T1246/cycle27.log",
+      "roles": [
+        "batch61_causal_diagnostic_not_qualification"
+      ],
+      "sha256": "11C3339D1353B543A389D01D8CF97D1449976713EBC063206B678EF7BFDFFA02",
+      "bytes": 411
+    },
+    {
+      "file": "output/pass61-c100-diagnostic-20261017T1246/cycle28.log",
+      "roles": [
+        "batch61_causal_diagnostic_not_qualification"
+      ],
+      "sha256": "5F667AE63B43066B1925949B99A1894453584471F65DB093CCC0EF51388C6BCF",
+      "bytes": 411
+    },
+    {
+      "file": "output/pass61-c100-diagnostic-20261017T1246/cycle29.log",
+      "roles": [
+        "batch61_causal_diagnostic_not_qualification"
+      ],
+      "sha256": "BE845C2C267E2F7FA70366B29CF03C4FB22FFEBCAD16A873AD9E349DAB548A69",
+      "bytes": 411
+    },
+    {
+      "file": "output/pass61-c100-diagnostic-20261017T1246/cycle30.log",
+      "roles": [
+        "batch61_causal_diagnostic_not_qualification"
+      ],
+      "sha256": "E92CBF029A666FAE2E924AFE51991C1EF422A2C9CB0AE13F2AD5209661AEF280",
+      "bytes": 411
+    },
+    {
+      "file": "output/pass61-c100-diagnostic-20261017T1246/cycle31.log",
+      "roles": [
+        "batch61_causal_diagnostic_not_qualification"
+      ],
+      "sha256": "31AD88FC7885B695D8E48500514FF3DAD91FE7F5D5B23A42B9577EB8B194A225",
+      "bytes": 411
+    },
+    {
+      "file": "output/pass61-c100-diagnostic-20261017T1246/cycle32.log",
+      "roles": [
+        "batch61_causal_diagnostic_not_qualification"
+      ],
+      "sha256": "0ADE8B3398F2512FCBC4D2D256EC206C6ED041A6A4DD0448E7C6D1B788BC9E2C",
+      "bytes": 411
+    },
+    {
+      "file": "output/pass61-c100-diagnostic-20261017T1246/feeding-cycle20.sim",
+      "roles": [
+        "batch61_causal_diagnostic_not_qualification"
+      ],
+      "sha256": "92A34CB674EB691E22E2B3847E36542EA7E738313D215B4BB82F6C2FFBEB337D",
+      "bytes": 27852
+    },
+    {
+      "file": "output/pass61-c100-diagnostic-20261017T1246/feeding-cycle25.sim",
+      "roles": [
+        "batch61_causal_diagnostic_not_qualification"
+      ],
+      "sha256": "55AF9DA9175BAA12B8FC21CF5DF47FEDB74C704C32B7F74F198C8F89BEAB8484",
+      "bytes": 28122
+    },
+    {
+      "file": "output/pass61-c100-diagnostic-20261017T1246/feeding-cycle26.sim",
+      "roles": [
+        "batch61_causal_diagnostic_not_qualification"
+      ],
+      "sha256": "CD2A87DC880A2A68C5371F9F007CFD19DF6B4017CB526E99BEEDFBF954F06204",
+      "bytes": 28176
+    },
+    {
+      "file": "output/pass61-c100-diagnostic-20261017T1246/feeding-cycle27.sim",
+      "roles": [
+        "batch61_causal_diagnostic_not_qualification"
+      ],
+      "sha256": "DC3C7EDDE565EC9C50ACDC41BB7F4F1B8E97FE0D9C606E07C7BFF468E1212FA8",
+      "bytes": 28230
+    },
+    {
+      "file": "output/pass61-c100-diagnostic-20261017T1246/feeding-cycle28.sim",
+      "roles": [
+        "batch61_causal_diagnostic_not_qualification"
+      ],
+      "sha256": "6FF9B5207CB597E7E74FFECC28D8C287DBF72A67D6D5B25DA7F8B5D0027ED679",
+      "bytes": 28284
+    },
+    {
+      "file": "output/pass61-c100-diagnostic-20261017T1246/feeding-cycle29.sim",
+      "roles": [
+        "batch61_causal_diagnostic_not_qualification"
+      ],
+      "sha256": "F93DF50755DF56406788406B4A24DE693138C0E0AA9FB923643B6E61ABFB93CA",
+      "bytes": 18868
+    },
+    {
+      "file": "output/pass61-c100-diagnostic-20261017T1246/feeding-cycle30.sim",
+      "roles": [
+        "batch61_causal_diagnostic_not_qualification"
+      ],
+      "sha256": "3B1D6C516CD22ED96712732935344D3ECE1DDA1B88C1C22E88BD176CC3FA88B4",
+      "bytes": 18868
+    },
+    {
+      "file": "output/pass61-c100-diagnostic-20261017T1246/feeding-cycle31.sim",
+      "roles": [
+        "batch61_causal_diagnostic_not_qualification"
+      ],
+      "sha256": "09CF7965112BE502C1A4940E4D20CFBAC07E85224E24307B5E334CB47B168089",
+      "bytes": 18868
+    },
+    {
+      "file": "output/pass61-c100-diagnostic-20261017T1246/feeding-cycle32.sim",
+      "roles": [
+        "batch61_causal_diagnostic_not_qualification"
+      ],
+      "sha256": "5C4C6619373E29638B574E94A1DA9FDF16D30FC0C89D8DE218F94A19C70C52BF",
+      "bytes": 18868
+    },
+    {
+      "file": "output/pass61-c100-diagnostic-20261017T1246/ffi-cycle0.db3s",
+      "roles": [
+        "batch61_causal_diagnostic_not_qualification"
+      ],
+      "sha256": "56CA4BA0CFFAC795F9FC0420CB0A8D8F67A2B6EFB2C275153BBE49B3D5BC9A9C",
+      "bytes": 83424
+    },
+    {
+      "file": "output/pass61-c100-diagnostic-20261017T1246/ffi-cycle10.db3s",
+      "roles": [
+        "batch61_causal_diagnostic_not_qualification"
+      ],
+      "sha256": "A094F8C2FC3EB5237969BC256504CCEAD7DEC0A1B66E34018B51B42A0C5B313B",
+      "bytes": 86904
+    },
+    {
+      "file": "output/pass61-c100-diagnostic-20261017T1246/ffi-cycle20.db3s",
+      "roles": [
+        "batch61_causal_diagnostic_not_qualification"
+      ],
+      "sha256": "C01A59BD550E987248EF125D3B25BF7A4A901D7F36A9CD1940934EC3E97318F6",
+      "bytes": 89518
+    },
+    {
+      "file": "output/pass61-c100-diagnostic-20261017T1246/ffi-cycle28.db3s",
+      "roles": [
+        "batch61_causal_diagnostic_not_qualification"
+      ],
+      "sha256": "0E78E8BC88F5CB58CBAD7172157F5E08F88CB53C163DAED666D01BC01257A042",
+      "bytes": 91913
+    },
+    {
+      "file": "output/pass61-c100-diagnostic-20261017T1246/ffi-cycle29.db3s",
+      "roles": [
+        "batch61_causal_diagnostic_not_qualification"
+      ],
+      "sha256": "0B645D6754094DDBC4A6C2BE8AF4336C30C4A286E50F3DDD7F2F00ED46CCFAEB",
+      "bytes": 86522
+    },
+    {
+      "file": "output/pass61-c100-diagnostic-20261017T1246/ffi-cycle32.db3s",
+      "roles": [
+        "batch61_causal_diagnostic_not_qualification"
+      ],
+      "sha256": "02539AC4F4DE07195E3170A615FE18590E14A70F2D0F0FC86D566CD02DA4F9BE",
+      "bytes": 86246
+    },
+    {
+      "file": "output/pass61-c100-diagnostic-20261017T1246/ffi-rng-trace.json",
+      "roles": [
+        "batch61_causal_diagnostic_not_qualification"
+      ],
+      "sha256": "2FCCFB2F2B3533B58458EBC8B8E379683671FB148937FADB9AF81C26A6B47241",
+      "bytes": 46846
+    },
+    {
+      "file": "output/pass61-drafts/collector/artifact-junction-amendment/collect-native-roundtrip-pass61.mjs",
+      "roles": [
+        "collector61_evidence"
+      ],
+      "sha256": "D50EC31975DC5977272AA33D6D13C0F97D5A34B4D486475559B1F64D9961F443",
+      "bytes": 48226
+    },
+    {
+      "file": "output/pass61-drafts/collector/artifact-junction-amendment/metadata.json",
+      "roles": [
+        "collector61_evidence"
+      ],
+      "sha256": "D55BB71642E1E3705388776443C14EE8D6AEDC53A88EA42D881C303090F96CEB",
+      "bytes": 6225
+    },
+    {
+      "file": "output/pass61-drafts/collector/collect-native-roundtrip-pass61.mjs",
+      "roles": [
+        "collector61_evidence"
+      ],
+      "sha256": "B5178915DA7F5014B0BDA6890C19530F88AA54B9D3428DB3359C3054AFEE6724",
+      "bytes": 44606
+    },
+    {
+      "file": "output/pass61-drafts/collector/metadata.json",
+      "roles": [
+        "collector61_evidence"
+      ],
+      "sha256": "897753A8A6CDA31F8C0E5C9574A8A8C5D28473EA2D8360777F66A2137639B3CB",
+      "bytes": 4742
+    },
+    {
+      "file": "output/pass61-workspace-metadata.json",
+      "roles": [
+        "hosted61_main_pinned_reference"
+      ],
+      "sha256": "B805F4B22730F3C4116476017F0AFCA39989DD7718AA2A4348820070546C8D23",
+      "bytes": 21645
+    }
+  ],
+  "excluded": [
+    {
+      "file": "docs/parity/receipts/db24832-world06-shape-editor.png",
+      "sha256": "44B7419EC76B825F1C307A284BD14A607DC975C1C410857F41A6A66C1E57FAE9",
+      "reason": "Unrelated protected WIP; never stage/restore/overwrite. The separately pinned local proof/gui PNG is a distinct captured evidence path, even when its bytes match."
+    },
+    {
+      "files": [
+        "target/release/darwinbots-cli.exe",
+        "target/release/darwinbots_engine.dll"
+      ],
+      "reason": "Compiled binaries behind the target junction are not selected or opened by this task. Their actual61 identities remain in sealed receipts."
+    },
+    {
+      "scope": "artifacts/win-x64-native-roundtrip-pass61 compiled/package payloads and Desktop bin/obj binaries",
+      "reason": "Identity/smoke/assets receipts and logs are selected; compiled product payloads are excluded."
+    },
+    {
+      "scope": "Hosted ZIP/PNG archives and all unindexed artifact contents",
+      "reason": "Only the sealed diagnostics index explicitly named105actualPNG and3TRX files are selected individually; no archive or directory-wide sweep."
+    },
+    {
+      "scope": "run.lock, native qualification shared leases, STOP markers and live process/control files",
+      "reason": "No live lease/control file selected; terminal61state.json is included only because the sealed receipt pins it as evidence."
+    },
+    {
+      "scope": "Unreferenced output histories, unrelated WIP and batch62 report/runner candidates",
+      "reason": "Outside this bounded61 evidence task; report candidates remain immutable and final62 counts are pending."
+    },
+    {
+      "scope": "Original source fixtures/assets and remaining636source pins",
+      "reason": "Existing source authority is retained through the frozen source/proof manifests; this inventory does not expand every source pin into new staging payload."
+    },
+    {
+      "files": [
+        "output/pass62-drafts/source-authority/metadata.json",
+        "output/pass62-drafts/source-authority/candidate/docs/parity/evidence/batch-2026-10-14/native-repopulation-source-authority62.json",
+        "docs/parity/evidence/batch-2026-10-14/native-repopulation-source-authority62.json"
+      ],
+      "reason": "The metadata/candidate/intended source-authority target are handled by root separate62 authoring allowlist. Only their31hash-pinned diagnostic files are selected here."
+    }
+  ],
+  "executionNoGit": true,
+  "execution": {
+    "git_commands": false,
+    "git_mutations": false,
+    "source_mutations": false,
+    "ordinary_proof_or_receipt_writes": false,
+    "collector_writes": false,
+    "report_candidate_writes": false,
+    "tests": false,
+    "builds": false,
+    "product_parser_or_execution": false,
+    "ui": false,
+    "gpu": false,
+    "only_new_inventory_written": true
+  }
+}

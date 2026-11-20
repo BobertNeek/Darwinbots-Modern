@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "batch": 58,
+  "status": "authored_unapplied_released",
+  "base_source_head": "f2a42877fdc15ad8a332dd041c0ce8c6a9bd0d69",
+  "classification": "production fresh-constructor serialization/idempotence bug; no double-precision cost difference",
+  "failure": {
+    "test": "native_continuation_qualification::modern_save_preserves_double_precision_cost_values_without_a_tick",
+    "assertion_line": 63,
+    "evidence": "output/pass58-drafts/fresh-native-stats/existing-log-diff.json",
+    "evidence_sha256": "2C122E5A0E16858D197E004906FB3A0C480DFD584CC4DC3A2967B258ED48E4BE",
+    "differing_json_paths": [
+      "$.stats.native_energy_displayed",
+      "$.stats.native_energy_delta"
+    ],
+    "before": "missing",
+    "after": 0,
+    "all_other_paths_equal": true,
+    "raw_payload_inverse_equals_left": true
+  },
+  "cause": "Engine::new returns direct default stats, while Engine::restore publishes and projects native Some(0) energy fields. Thus a freshly constructed zero-tick engine changes saved bytes on first decode.",
+  "repair": "Construct mutable engine, run existing profile-aware project_native_energy_stats exactly once, copy stats into initial snapshot, then return. No full publication, backend reselection, cycle advance, RNG draw, process reset, or legacy migration is added.",
+  "files": [
+    {
+      "target": "modern/engine/src/world.rs",
+      "draft": "output/pass58-drafts/fresh-native-stats/modern/engine/src/world.rs",
+      "raw_before": "output/pass58-drafts/fresh-native-stats/before/modern/engine/src/world.rs",
+      "base_raw_sha256": "DB85822E2E30622CA907FEA2BA80727086F6AA0C55B3D9072573A6E7552EDAC2",
+      "base_bytes": 578163,
+      "derived_from": "output/pass58-drafts/shape-policy/modern/engine/src/world.rs",
+      "derived_from_sha256": "8816512B1AC6CC7253F163EA7E1BA1428E5D9A4D98635AA833E0A309FDD61E7C",
+      "candidate_raw_sha256": "4E85AD2535C6446968A84CC294657D837EE5B9EC6C85B042E8C8A5A37964ED33",
+      "candidate_bytes": 579862,
+      "new_test_rows": 0
+    },
+    {
+      "target": "modern/engine/tests/native_continuation_qualification.rs",
+      "draft": "output/pass58-drafts/fresh-native-stats/modern/engine/tests/native_continuation_qualification.rs",
+      "raw_before": "output/pass58-drafts/fresh-native-stats/before/modern/engine/tests/native_continuation_qualification.rs",
+      "base_raw_sha256": "452548B699D0B9564B8FCCBA38CD3486EEE1A6D179537622B44941827D39CD9C",
+      "base_bytes": 7576,
+      "derived_from": "modern/engine/tests/native_continuation_qualification.rs",
+      "derived_from_sha256": "452548B699D0B9564B8FCCBA38CD3486EEE1A6D179537622B44941827D39CD9C",
+      "candidate_raw_sha256": "789A032ED4EB4058D038FAAC2C3EA1C00D2CD418DB6696CB24F55C93A7FC8CE7",
+      "candidate_bytes": 8495,
+      "new_test_rows": 0
+    }
+  ],
+  "test_census": {
+    "existing_test_target_rows_before": 3,
+    "existing_test_target_rows_after": 3,
+    "new_test_rows": 0,
+    "cumulative_net_new_rust_rows_vs55": 62,
+    "expected_distinct_rust_targets": 68
+  },
+  "test_assertions": [
+    "Fresh snapshot publication count remains0; fresh and decoded snapshot tick0 and both native energy fieldsSome0.",
+    "Serialized stats fields explicitly0 in fresh and decoded bytes.",
+    "High-precision configured cost is tested by exact f64 bit equality.",
+    "Full before==after saved-byte assertion retained; second decode/encode also must equal original full bytes."
+  ],
+  "ancestry": {
+    "world_inverse_equals": "8816512B1AC6CC7253F163EA7E1BA1428E5D9A4D98635AA833E0A309FDD61E7C",
+    "retains": [
+      "early native-energy restore validation EF1CD0",
+      "all final Reflect additions world881651"
+    ],
+    "does_not_supersede": [
+      "native-energy-validation native_energy.rs2DEBC72890B56366913C46C266AF6CFD4FB6A9BB17B68BD253B8F45D7CEE9DC6",
+      "shape-policy native_shots.rs45837A2442A8ADC444D392D7A5FA961984513D4A1B41C645C5C92C281899DEAD"
+    ]
+  },
+  "promotion": "Supersedes only world.rs candidate from shape-policy release and adds native_continuation_qualification.rs as a new intended target; parent must amend sealed plan/backup. Prior B77F/A6F plan/backup and all previous releases left untouched.",
+  "performed": {
+    "existing_log_data_decode": true,
+    "static_review": true,
+    "active_source_edits": false,
+    "formatter": false,
+    "product_parser": false,
+    "build": false,
+    "tests": false,
+    "engine_or_cli": false,
+    "git_command": false,
+    "git_mutation": false,
+    "ui": false,
+    "gpu": false
+  }
+}

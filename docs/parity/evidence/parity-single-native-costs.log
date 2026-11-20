@@ -1,0 +1,77 @@
+   Compiling darwinbots-engine v0.1.0 (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\engine)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 33.55s
+     Running tests\canonical_cycle_248.rs (target\debug\deps\canonical_cycle_248-0386f6ddacb265f2.exe)
+
+running 14 tests
+test one_tick_publishes_one_completed_cycle ... ok
+test dna_and_observable_robot_visits_use_ascending_slot_order ... ok
+test births_and_deaths_commit_only_after_the_final_robot_pass ... ok
+test deleting_tie_still_applies_first_pass_spring_before_second_pass_delete ... ok
+test post_dna_tie_write_precedes_shot_and_reproduction_consumption ... ok
+test shot_effect_occurs_after_dna_and_before_robot_passes ... ok
+test teleporter_relocation_precedes_same_cycle_senses ... ok
+test trace_matches_the_complete_24832_phase_manifest ... ok
+test three_cycle_sensor_and_command_visibility_is_canonical ... ok
+test tie_data_can_change_a_later_tie_fire_command_in_the_same_cycle ... ok
+test asexual_birth_side_effects_execute_in_commit_phase ... ok
+test zero_cost_birth_does_not_emit_a_copy_charge_effect ... ok
+test dna_skips_corpse_and_dna_disabled_robots ... ok
+test a_new_tie_exchanges_resources_only_after_hardening ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests\native_resource_precision.rs (target\debug\deps\native_resource_precision-9110688f77e9583c.exe)
+
+running 8 tests
+test dna_costs_round_the_native_store_after_each_instruction ... ok
+test birth_preserves_fractional_energy_then_applies_the_native_half_unit_death_threshold ... ok
+test unmaking_fractional_shell_spends_the_native_conversion_cost ... ok
+test fractional_material_transaction_cost_is_energy_and_waste ... ok
+test fractional_upkeep_changes_the_store_before_an_integer_readback_changes ... ok
+test default_energy_ammunition_keeps_a_fraction_below_its_integer_value ... ok
+test genuine_reference_single_values_survive_modern_save_restore_exactly ... ok
+test v3_carried_fractions_are_absorbed_once_when_the_old_save_is_loaded ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests\ties_multibot.rs (target\debug\deps\ties_multibot-be8a7c78ee7429bc.exe)
+
+running 21 tests
+test dragging_one_member_moves_the_tied_organism_and_clears_momentum ... ok
+test hardened_shell_share_marks_only_the_forward_tie_endpoint ... ok
+test multibot_amplifies_feeding_shot_and_virtual_body_range ... ok
+test hardened_tie_group_follows_teleporter_relocation ... ok
+test fixang_command_applies_canonical_tie_torque ... ok
+test fixlen_command_changes_the_authoritative_tie_spring_response ... ok
+test slime_is_consumed_to_resist_new_ties ... ok
+test review_projection_create_save_load_break_tracks_one_canonical_tie ... ok
+test soft_tie_uses_twenty_unit_deadband ... ok
+test new_tie_hardens_on_db2_cycle ... ok
+test review_projection_hardened_removal_clears_state_before_reused_slot_dna ... ok
+test successful_tie_attack_consumes_twenty_slime ... ok
+test tie_breaks_when_surface_gap_exceeds_one_thousand ... ok
+test tie_formation_skips_existing_pair_for_next_eligible_target ... ok
+test stifftie_command_changes_hardened_tie_force ... ok
+test structural_tie_torque_rotates_both_members_in_opposite_directions ... ok
+test eleventh_endpoint_tie_is_rejected_at_ten_tie_capacity ... ok
+test sharing_requires_hardening ... ok
+test tie_cluster_spans_addressed_readbacks_torque_hardening_traversal_and_breakage ... ok
+test legacy_tie_torque_calibration_table_covers_signed_deadband_stiffness_and_clamping ... ok
+test negative_tieloc_resource_exchange_runs_in_engine_tick ... ok
+
+test result: ok. 21 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.19s
+
+     Running tests\vm_costs_telemetry.rs (target\debug\deps\vm_costs_telemetry-6f0061f2a10667e3.exe)
+
+running 8 tests
+test gene_numbers_conditions_and_activations_match_flow ... ok
+test zero_destination_store_has_zero_store_cost ... ok
+test token_and_relative_store_costs_are_charged_exactly ... ok
+test console_dna_execution_does_not_also_run_world_upkeep ... ok
+test normal_tick_publishes_vm_activation_telemetry_for_live_diagnostics ... ok
+test world_upkeep_is_charged_once_and_still_applies_when_dna_is_disabled ... ok
+test fractional_costs_settle_directly_into_positive_and_negative_energy ... ok
+test engine_tick_dna06_cost_table_covers_tokens_store_copy_and_consumption ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+

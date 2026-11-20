@@ -1,0 +1,27 @@
+{
+  "fetched_at_utc": "2026-10-15T02:33:12.5031187Z",
+  "sources": [
+    {
+      "sha256": "19BA802DBF07392EFDA640443B67FDC65904365ED3EF727748374A3ACD486A7F",
+      "establishes": "SG is listed as another name for the short bot league.",
+      "url": "http://wiki.darwinbots.com/index.php?title=League&oldid=4374",
+      "revision": 4374
+    },
+    {
+      "sha256": "C5FDD172B195C1146E476CC8F6DC77C6D84BDE5D141E4DB49CEDB765CD43731F",
+      "establishes": "Short bot entrants have at most six genes.",
+      "url": "http://wiki.darwinbots.com/index.php?title=Short_Bot_League&oldid=3444",
+      "revision": 3444
+    },
+    {
+      "sha256": "A1FB2D21384755C1DA209DA2023BAEDBC01323B71A3D2A0830E073923C678055",
+      "establishes": "SS permits one store command, with inc and dec included.",
+      "url": "http://wiki.darwinbots.com/index.php?title=Single_Store_league&oldid=4373",
+      "revision": 4373
+    }
+  ],
+  "retrieval": "Original HTTP URLs; the forum board redirects to the wiki and HTTPS access failed.",
+  "implementation": "Validate startup genomes of participating animal species on configure, start and restart. Count executable VM store sites; arithmetic stores belong to the same store instruction class. Food species are exempt. The saved single_gene token remains supported as the documented SG alias.",
+  "qualification": "Four engine admission tests and four desktop native cases passed; corrected mode label rendered test passed separately.",
+  "source_checkpoint": "da5d64b529c7625e75bd4bff8daecc48ba1e0679"
+}

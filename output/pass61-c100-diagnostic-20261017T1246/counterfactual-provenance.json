@@ -1,0 +1,10 @@
+{
+  "scope": "Causal diagnostic only, using unchanged61 DLL and modified temporary input; not qualification or production fix",
+  "dll_sha256": "958AE431D1AF44D0F529F87945E29B1D655941A81D33AF8CCB2528959536562A",
+  "initial_cooldown": 20,
+  "cooldown_after_cycle21": 10,
+  "source_rule": "main.frm1507 negative initial cooldown, first loaded cycle guard, then10 eligible visits to reach zero and10more to first attempt",
+  "output_sha256": "A0F5C86CBEAFD6B9B6FA7A24A443AF8FB5D8E38E260AC1992C9D269A676146C1",
+  "output_bytes": 18868,
+  "CPU_only": true
+}

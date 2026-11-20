@@ -3,11 +3,15 @@ use darwinbots_engine::{Engine, EngineConfig, LegacyDna, SaveFile};
 #[test]
 fn fired_shots_publish_visible_persisted_world_state() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
-    let attacker = engine.spawn_at(
-        LegacyDna::parse("start\n-1 .shoot store\n40 .shootval store\nstop").unwrap(),
-        [100.0, 100.0],
-    ).unwrap();
-    engine.spawn_at(LegacyDna::parse("start\nstop").unwrap(), [120.0, 100.0]).unwrap();
+    let attacker = engine
+        .spawn_at(
+            LegacyDna::parse("start\n-1 .shoot store\n40 .shootval store\nstop").unwrap(),
+            [100.0, 100.0],
+        )
+        .unwrap();
+    engine
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [120.0, 100.0])
+        .unwrap();
 
     engine.tick().unwrap();
 
@@ -23,10 +27,19 @@ fn fired_shots_publish_visible_persisted_world_state() {
     let restored = SaveFile::decode(&SaveFile::encode(&engine).unwrap()).unwrap();
     assert_eq!(restored.snapshot().shots, engine.snapshot().shots);
 
-    engine.replace_dna(attacker, LegacyDna::parse("start\nstop").unwrap()).unwrap();
+    engine
+        .replace_dna(attacker, LegacyDna::parse("start\nstop").unwrap())
+        .unwrap();
     engine.tick().unwrap();
-    assert_eq!(engine.snapshot().shots.len(), 1);
-    assert!(engine.snapshot().shots[0].age > saved_age);
+    // The feeding impact can add its returning energy packet in this cycle.
+    let fired = engine
+        .snapshot()
+        .shots
+        .iter()
+        .find(|shot| shot.owner == attacker && shot.kind == -1)
+        .unwrap();
+    assert!(fired.age > saved_age);
+    assert!(engine.snapshot().shots.iter().any(|shot| shot.kind == -2));
 
     engine.tick_many(20).unwrap();
     assert!(engine.snapshot().shots.is_empty());

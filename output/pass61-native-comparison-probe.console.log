@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "batch": 61,
+  "status": "passed",
+  "cases_passed": 4,
+  "created_utc": "2026-10-17T11:20:55.5486188Z",
+  "runner_sha256": "FD5AC09FE6BA7C6B986C96E875BEA8DEAB5331D1CFBA40AE388129652E0AC730",
+  "runner": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\qualify-native-roundtrip-pass61.ps1",
+  "scratch": "C:\\Users\\PC\\AppData\\Local\\Temp\\db61-comparison-probe-537104c4-2eb0-4693-9f93-bfc51a06dcb8",
+  "cases": [
+    {
+      "case": "passed-json",
+      "passed": true,
+      "observed_exit": 0,
+      "fields": 1684,
+      "differences": 0
+    },
+    {
+      "case": "failed-json",
+      "passed": true,
+      "observed_exit": 1,
+      "fields": 1983,
+      "differences": 598
+    },
+    {
+      "case": "invalid-json",
+      "passed": true,
+      "observed_exit": 2,
+      "invalid_stdout_rejected": true
+    },
+    {
+      "case": "ordinary",
+      "passed": true,
+      "observed_exit": 0,
+      "merged_streams_preserved": true
+    }
+  ],
+  "command_results": [
+    {
+      "step": "passed-json",
+      "exit_code": 0,
+      "seconds": 0.1479548,
+      "executable": "C:\\Program Files\\nodejs\\node.exe",
+      "arguments": [
+        "native-compare",
+        "ok"
+      ],
+      "log": "passed-json.log",
+      "invocation_error": null,
+      "stderr_log": "passed-json.stderr.log"
+    },
+    {
+      "step": "failed-json",
+      "exit_code": 1,
+      "seconds": 0.1125401,
+      "executable": "C:\\Program Files\\nodejs\\node.exe",
+      "arguments": [
+        "native-compare",
+        "different"
+      ],
+      "log": "failed-json.log",
+      "invocation_error": null,
+      "stderr_log": "failed-json.stderr.log"
+    },
+    {
+      "step": "invalid-json",
+      "exit_code": 2,
+      "seconds": 0.0870231,
+      "executable": "C:\\Program Files\\nodejs\\node.exe",
+      "arguments": [
+        "native-compare",
+        "invalid"
+      ],
+      "log": "invalid-json.log",
+      "invocation_error": null,
+      "stderr_log": "invalid-json.stderr.log"
+    },
+    {
+      "step": "ordinary",
+      "exit_code": 0,
+      "seconds": 0.0839292,
+      "executable": "C:\\Program Files\\nodejs\\node.exe",
+      "arguments": [
+        "ordinary-native",
+        "ordinary"
+      ],
+      "log": "ordinary.log",
+      "invocation_error": null,
+      "stderr_log": null
+    }
+  ],
+  "boundary": "Isolated tests of actual runner stdout/stderr separation and failure retention. Stub Node processes only; no port tests, original oracle, package qualification or admission claimed."
+}

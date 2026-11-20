@@ -30,13 +30,27 @@ public sealed class OrganismVisualGeometryTests
     [Fact]
     public void HeadingPointUsesDb2AimUnits()
     {
-        var forward = OrganismVisualGeometry.HeadingPoint(radius: 8, aim: 0);
-        var right = OrganismVisualGeometry.HeadingPoint(radius: 8, aim: 314);
+        var east = OrganismVisualGeometry.HeadingPoint(radius: 8, aim: 0);
+        var north = OrganismVisualGeometry.HeadingPoint(radius: 8, aim: 314);
 
-        Assert.InRange(forward.X, -0.01f, 0.01f);
-        Assert.InRange(forward.Y, 7.99f, 8.01f);
-        Assert.InRange(right.X, 7.99f, 8.01f);
-        Assert.InRange(right.Y, -0.01f, 0.01f);
+        Assert.InRange(east.X, 7.99f, 8.01f);
+        Assert.InRange(east.Y, -0.01f, 0.01f);
+        Assert.InRange(north.X, -0.01f, 0.01f);
+        Assert.InRange(north.Y, 7.99f, 8.01f);
+    }
+
+    [Fact]
+    public void NativeForwardSkinAndHeadingAgreeAndEyesUsePublishedAngles()
+    {
+        var skin = OrganismVisualGeometry.SkinPoints([new(1, 314)], radius: 8, aim: 0);
+        var heading = OrganismVisualGeometry.HeadingPoint(radius: 8, aim: 0);
+        Assert.Equal(heading, skin[0]);
+        var eyes = VisionSnapshot.Default.Eyes.ToArray();
+        eyes[4] = eyes[4] with { CenterRadians = 0.321f, HalfWidthRadians = 0.0025f };
+        var vision = VisionSnapshot.Default with { Eyes = eyes };
+        var sectors = OrganismVisualGeometry.EyeSectors(vision, aim: 0, radius: 8);
+        Assert.InRange(sectors[4].StartRadians + sectors[4].SweepRadians / 2f, 0.3209f, 0.3211f);
+        Assert.InRange(sectors[4].SweepRadians, 0.00499f, 0.00501f);
     }
 
     [Fact]

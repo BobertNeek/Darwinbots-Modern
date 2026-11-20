@@ -1,0 +1,25 @@
+{
+  "revision": "043b946d94e82626bde9c093daae6eff183d4ebe",
+  "run_id": 38683074876,
+  "job_id": 116251730886,
+  "platform": "macos-arm64",
+  "rust": {
+    "passed": 671,
+    "failed": 0,
+    "ignored": 9
+  },
+  "rust_target_summaries": 64,
+  "desktop_core": {
+    "passed": 157,
+    "failed": 0
+  },
+  "desktop_rendered": {
+    "passed": 112,
+    "failed": 1,
+    "failing_test": "RuntimeRenderedControlsDispatchThroughVisualTree",
+    "message": "LoadButton was obscured at 1314.7394366197184, 62.098591549295776; input hit TextBlock"
+  },
+  "newline_repair_core_passed": true,
+  "qualification_complete": false,
+  "job_log": "parity-batch-ci-newline-macos-arm64-failure.log"
+}

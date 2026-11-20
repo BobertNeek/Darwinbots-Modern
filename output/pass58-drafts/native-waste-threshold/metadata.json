@@ -1,0 +1,142 @@
+{
+  "schema_version": 1,
+  "batch": 58,
+  "status": "authored_unapplied_released",
+  "base_source_head": "f2a42877fdc15ad8a332dd041c0ce8c6a9bd0d69",
+  "scope": "Native waste threshold import, disabled intent encoding, signed Integer boundary and fixed defecation representability; no runtime/profile or schema changes.",
+  "policy": {
+    "native_sim_import": "Read signed bad_waste; zero becomes400 immediately per HDRoutines.ReadSim1281, positive/negative preserved. Defecation threshold remains native32000.",
+    "raw_origin": "NativeRecordFile source including raw0 remains exact in native_origin; loaded canonicalC0 has400. No delayed fallback flag/schema is introduced.",
+    "native_sim_export": "Modern Alzheimer zero means disabled and is encoded as−1; other values pass through existing signed16-bit number validation. Nondefault modern defecation threshold rejects before bytes.",
+    "native_set_export": "Modern Alzheimer zero encodes−1, signed16-bit range validated before fields/bytes; nondefault defecation threshold rejects. Modern JSON and modern extension retain exact original zero/custom values.",
+    "modern_runtime": "Existing modern zero-disabled policy and custom defecation behavior are unchanged; no blanket native runtime fallback. Seeding separately owns source feedveg2/waste phase timing."
+  },
+  "source_evidence": [
+    {
+      "path": "Darwinbots2/SimOptions.bas",
+      "lines": "154",
+      "finding": "BadWastelevel As Integer."
+    },
+    {
+      "path": "Darwinbots2/HDRoutines.bas",
+      "lines": "1279-1281",
+      "finding": "ReadSim gets signed threshold then immediately maps0to400 beforeC0."
+    },
+    {
+      "path": "Darwinbots2/OptionsForm.frm",
+      "lines": "4136-4140",
+      "finding": "Original CustomWaste UI maps zero to−1, supporting modern disabled-zero native encoding."
+    },
+    {
+      "path": "Darwinbots2/OptionsForm.frm",
+      "lines": "5240,5582-5583",
+      "finding": "SaveSett/LoadSett preserve the signed threshold; native default−1."
+    },
+    {
+      "path": "Darwinbots2/Robots.bas",
+      "lines": "1185-1194,1623-1626",
+      "finding": "Positive threshold gates Alzheimer writes; negative disables; defecation is hardcodedWaste>32000. HandleWaste zero fallback is distinct from ReadSim fallback."
+    }
+  ],
+  "files": [
+    {
+      "target": "modern/engine/src/world/native_io.rs",
+      "draft": "output/pass58-drafts/native-waste-threshold/modern/engine/src/world/native_io.rs",
+      "raw_before": "output/pass58-drafts/native-waste-threshold/before/modern/engine/src/world/native_io.rs",
+      "base_raw_sha256": "B21F676C436C13DC3F1F396F3CFF16FCB16389B7FB36A9D6580747B2FAD84A40",
+      "base_bytes": 61514,
+      "derived_from": "output/pass58-drafts/shape-policy/modern/engine/src/world/native_io.rs",
+      "derived_from_sha256": "E2F03EE8066DC1202182D5902A061429490AD6598ADECB3B3772C81F16DFBCED",
+      "candidate_raw_sha256": "BA53098AC7C7651F261F414892E82E366D65483AAE2EBD9977CD8E24D4526EBB",
+      "candidate_bytes": 61809,
+      "is_new": false
+    },
+    {
+      "target": "modern/engine/src/world/native_sim_export.rs",
+      "draft": "output/pass58-drafts/native-waste-threshold/modern/engine/src/world/native_sim_export.rs",
+      "raw_before": "output/pass58-drafts/native-waste-threshold/before/modern/engine/src/world/native_sim_export.rs",
+      "base_raw_sha256": "986CCF84ACC33D613FC063E37552550F51A0C1BF5F50C5D2C0213FE53AD55C63",
+      "base_bytes": 55058,
+      "derived_from": "output/pass58-drafts/shape-policy/modern/engine/src/world/native_sim_export.rs",
+      "derived_from_sha256": "510526EC99024960989A6F7C94016FAFB968623B08CF99368E57DC81CEDAB86E",
+      "candidate_raw_sha256": "B1EDBC1019A78D72B919969CCE81D480F1B3BCC4C99EC361E2EA6825C9EDA084",
+      "candidate_bytes": 63171,
+      "is_new": false
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop.Core/LegacySettingsAdapter.cs",
+      "draft": "output/pass58-drafts/native-waste-threshold/modern/desktop/src/Darwinbots.Desktop.Core/LegacySettingsAdapter.cs",
+      "raw_before": "output/pass58-drafts/native-waste-threshold/before/modern/desktop/src/Darwinbots.Desktop.Core/LegacySettingsAdapter.cs",
+      "base_raw_sha256": "0096A155BCA0F07558074DCCCD11535BB58CB5251C19632FCC9D6161293B3CCD",
+      "base_bytes": 21940,
+      "derived_from": "output/pass58-drafts/managed-reflect/modern/desktop/src/Darwinbots.Desktop.Core/LegacySettingsAdapter.cs",
+      "derived_from_sha256": "83A49251A427B17A98C06A56FB8EF1B45D8AAB7CABD1A7B83A1AC7456B1B74DA",
+      "candidate_raw_sha256": "EA6037C8D782A8F8BC48D966B982DBD8FFB3603D7BAAEBEB47CD75183D186D41",
+      "candidate_bytes": 23001,
+      "is_new": false
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/NativeWasteThresholdSettingsTests.cs",
+      "draft": "output/pass58-drafts/native-waste-threshold/modern/desktop/tests/Darwinbots.Desktop.Core.Tests/NativeWasteThresholdSettingsTests.cs",
+      "raw_before": null,
+      "base_raw_sha256": null,
+      "base_bytes": 0,
+      "derived_from": null,
+      "derived_from_sha256": null,
+      "candidate_raw_sha256": "01DEA95EE01443AF8F6FD7542F20C28EA6171676F2EA83CBDC5C1CAD8C400B2F",
+      "candidate_bytes": 2738,
+      "is_new": true
+    }
+  ],
+  "test_census": {
+    "rust": {
+      "new_rows": 1,
+      "native_export_module_before": 13,
+      "native_export_module_after": 14,
+      "native_io_module_rows_unchanged": 12,
+      "existing_68_target_count_unchanged": true
+    },
+    "core": {
+      "facts": 1,
+      "theories": 2,
+      "inline_data_rows": 8,
+      "new_rows": 9,
+      "previous_expected_rows": 298,
+      "next_expected_rows": 307
+    },
+    "desktop": {
+      "new_rows": 0,
+      "expected_rows_unchanged": 197
+    }
+  },
+  "test_controls": [
+    "One new Rust row checks raw native thresholds0/1/1234/−1/−32768/32767, canonicalC0 and raw-origin bytes, DB3S roundtrip and native re-export; positive1234vsnegative−1 drive/skip Alzheimer RNG with chloroplasts0 and waste1238.",
+    "Rust verifies modern0 DB3S remains0 while native output−1 reimportsdisabled; signed min−1/max+1 fail controlled with unchanged source saved bytes.",
+    "Rust rejects custom defecation0/200/32001/i32MAX atomically; original source threshold32000 stays supported.",
+    "Six Core theory rows cover modern0/negative/positive/boundaries and exactnative field172 with zero species; modern JSON/extension keeps source intent.",
+    "Two Core rows reject −32769/32768 at native boundary, one Fact rejects four custom defecation controls while preserving modern JSON."
+  ],
+  "ancestry": {
+    "native_io": "E2F03EE8066DC1202182D5902A061429490AD6598ADECB3B3772C81F16DFBCED",
+    "native_export": "510526EC99024960989A6F7C94016FAFB968623B08CF99368E57DC81CEDAB86E",
+    "managed_adapter": "83A49251A427B17A98C06A56FB8EF1B45D8AAB7CABD1A7B83A1AC7456B1B74DA",
+    "retains": "All original Reflect/PassThrough/owner fixes in those three candidates. No world/native_waste ownership overlap."
+  },
+  "promotion": "Supersedes only three listed candidates; adds one Core file/new intended target. Parent must revise final58 plan/backup. All old releases preserved.",
+  "execution": {
+    "active_source_edits": false,
+    "formatter": false,
+    "parser": false,
+    "build": false,
+    "tests": false,
+    "engine_or_cli": false,
+    "git_command": false,
+    "git_mutation": false,
+    "ui": false,
+    "gpu": false
+  },
+  "limitations": [
+    "Source-authoring/static evidence only; no original runtime capture or new qualification claimed.",
+    "Native .set decoding already retains threshold; this repair changes only representability/disabled encoding at native .set export."
+  ]
+}
