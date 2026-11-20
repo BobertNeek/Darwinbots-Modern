@@ -230,6 +230,7 @@ public static class Db2GenomeRecordFile
         var lines = normalized.Split('\n');
         if (lines.Length == 0 || !string.Equals(lines[0], Header, StringComparison.Ordinal))
             throw new InvalidDataException("DB2 genome record header is invalid.");
+        var hasLegacySeparators = normalized.StartsWith(Header + "\n\n\n", StringComparison.Ordinal);
 
         var records = new List<Db2GenomeRecord>();
         for (var lineIndex = 1; lineIndex < lines.Length;)
@@ -252,6 +253,9 @@ public static class Db2GenomeRecordFile
                 payload.Add(lines[lineIndex]);
                 lineIndex++;
             }
+            if (hasLegacySeparators && lineIndex < lines.Length && payload.Count >= 2
+                && payload[^1].Length == 0 && payload[^2].Length == 0)
+                payload.RemoveRange(payload.Count - 2, 2);
             records.Add(record with { Dna = string.Join("\n", payload) });
         }
 
@@ -367,6 +371,8 @@ public static class Db2GenomeRecordFile
 
     private static void Append(StringBuilder builder, Db2GenomeRecord record)
     {
+        // Snapshot Search splits on three CRLFs. The header or preceding DNA already ends with one.
+        builder.Append("\r\n\r\n");
         builder.Append(string.Join(",", new[]
         {
             record.Id.ToString(CultureInfo.InvariantCulture),
@@ -384,8 +390,8 @@ public static class Db2GenomeRecordFile
             record.Energy.ToString(CultureInfo.InvariantCulture),
             record.Chloroplasts.ToString(CultureInfo.InvariantCulture),
         })).Append("\r\n");
-        builder.Append(record.Dna);
-        if (!record.Dna.EndsWith('\n')) builder.Append("\r\n");
+        var dna = record.Dna.TrimEnd('\r', '\n').ReplaceLineEndings("\r\n");
+        if (dna.Length != 0) builder.Append(dna).Append("\r\n");
     }
 
     private static string Csv(string value) =>

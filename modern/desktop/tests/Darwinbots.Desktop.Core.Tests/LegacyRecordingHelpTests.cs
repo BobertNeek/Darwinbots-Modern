@@ -49,7 +49,7 @@ public sealed class LegacyRecordingHelpTests
         Assert.Equal("snp", livingSelection.Extension);
         var living = LegacyRecordingSerializer.SerializeLiving(snapshot, dna, livingSelection.Format);
         Assert.StartsWith(Db2GenomeRecordFile.Header + "\r\n", living);
-        Assert.Contains("7003,0,Fixture,3,0,19,0,0,2,0,0,885,885,0\r\nstart\nstop\r\n", living);
+        Assert.Contains("7003,0,Fixture,3,0,19,0,0,2,0,0,885,885,0\r\nstart\r\nstop\r\n", living);
 
         var deadSelection = LegacyRecordingSerializer.Select(LegacyCommandId.RecordingDeadEnable);
         var dead = LegacyRecordingSerializer.SerializeDead(
