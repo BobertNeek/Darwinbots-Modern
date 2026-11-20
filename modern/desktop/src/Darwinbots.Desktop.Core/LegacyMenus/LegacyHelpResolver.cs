@@ -17,11 +17,6 @@ public static class LegacyHelpResolver
             "Legacy DNA quick reference",
             "Darwinbots DNA is plain text. Conditions appear between cond and start; actions appear between start and stop. Values are pushed onto the stack, sysvars are read with * and written with store.\n\nExample:\ncond\n*.eye5 0 >\nstart\n30 .up store\nstop\nend\n\nApostrophes begin comments. Imported bot files keep the historical .txt format and sysvar names."),
         new(
-            LegacyCommandId.HelpRobotTagInformation,
-            "Robot Tag Information",
-            "Species and lineage identity",
-            "A robot retains a stable slot:generation identity while alive. Species name identifies its imported DNA family. Lineage color drifts only when automatic speciation creates a descendant lineage, allowing related organisms to be recognized visually.\n\nAutotroph species use green hues. Heterotroph species use the remaining palette."),
-        new(
             LegacyCommandId.HelpSurvivalInfo,
             "Survival Info",
             "Reading the ecosystem",
