@@ -8,10 +8,44 @@ use darwinbots_engine::{
         db_engine_tick, db_last_error_json,
     },
 };
+use std::{fmt::Display, io::Write};
 
 const TOXIN_SOURCE_POSITION: [f32; 2] = [250.0, 500.0];
 const TOXIN_TARGET_POSITION: [f32; 2] = [500.0, 500.0];
 const DEFAULT_ROBOT_RADII_SUM: f32 = 228.56;
+
+struct CaseTrace(bool);
+
+impl CaseTrace {
+    fn begin() -> Self {
+        let trace =
+            Self(std::env::var_os("DARWINBOTS_GPU_FFI_TRACE").is_some_and(|value| value == "1"));
+        trace.record("start");
+        trace
+    }
+
+    fn record(&self, event: impl Display) {
+        if !self.0 {
+            return;
+        }
+        let thread = std::thread::current();
+        let name = thread.name().unwrap_or("<unnamed test>");
+        // Write directly so libtest capture cannot hide the last event after a native crash.
+        let mut stderr = std::io::stderr().lock();
+        let _ = writeln!(stderr, "gpu_ffi {name} {event}");
+        let _ = stderr.flush();
+    }
+}
+
+impl Drop for CaseTrace {
+    fn drop(&mut self) {
+        self.record(if std::thread::panicking() {
+            "panic"
+        } else {
+            "finish"
+        });
+    }
+}
 
 fn create_cpu_ffi_engine() -> *mut Engine {
     // Auto probes the GPU before selecting CPU. Keep these ABI fixtures on CPU.
@@ -31,6 +65,7 @@ fn create_cpu_ffi_engine() -> *mut Engine {
 
 #[test]
 fn ffi_loads_genuine_native_sim_and_preserves_the_world_after_rejected_load() {
+    let _case = CaseTrace::begin();
     let config = serde_json::to_vec(&EngineConfig::testing()).unwrap();
     let mut engine = std::ptr::null_mut();
     assert_eq!(
@@ -85,6 +120,7 @@ fn remove_wall_clock_timings(value: &mut serde_json::Value) {
 
 #[test]
 fn cpu_physics_integrates_and_clamps_world_bounds() {
+    let _case = CaseTrace::begin();
     let mut batch = PhysicsBatch {
         positions: vec![[4.0, 8.0], [99.0, 1.0]],
         velocities: vec![[2.0, -3.0], [5.0, -5.0]],
@@ -100,9 +136,13 @@ fn cpu_physics_integrates_and_clamps_world_bounds() {
 
 #[test]
 fn gpu_physics_matches_cpu_when_an_adapter_is_available() {
+    let case = CaseTrace::begin();
+    case.record("creating adapter and compute pipelines");
     let Ok(mut gpu) = GpuPhysicsBackend::new() else {
+        case.record("adapter unavailable");
         return;
     };
+    case.record(format_args!("adapter ready {:?}", gpu.adapter_receipt()));
     let source = PhysicsBatch {
         positions: (0..257)
             .map(|index| [index as f32, (index % 31) as f32])
@@ -119,7 +159,11 @@ fn gpu_physics_matches_cpu_when_an_adapter_is_available() {
         expected.apply_world_bounds = apply_world_bounds;
         let mut actual = expected.clone();
         CpuPhysicsBackend.step(&mut expected).unwrap();
+        case.record(format_args!(
+            "dispatch and readback with bounds={apply_world_bounds}"
+        ));
         gpu.step(&mut actual).unwrap();
+        case.record("readback complete");
         for (cpu, gpu) in expected.positions.iter().zip(actual.positions.iter()) {
             assert!((cpu[0] - gpu[0]).abs() <= 0.0001);
             assert!((cpu[1] - gpu[1]).abs() <= 0.0001);
@@ -129,6 +173,7 @@ fn gpu_physics_matches_cpu_when_an_adapter_is_available() {
 
 #[test]
 fn cpu_and_gpu_match_native_border_overshoot_and_next_cycle_respawn() {
+    let _case = CaseTrace::begin();
     let Ok(adapter) = GpuPhysicsBackend::new() else {
         return;
     };
@@ -173,6 +218,7 @@ fn cpu_and_gpu_match_native_border_overshoot_and_next_cycle_respawn() {
 
 #[test]
 fn gpu_sensing_matches_nearest_neighbor_contract_when_adapter_is_available() {
+    let _case = CaseTrace::begin();
     let Ok(gpu) = GpuPhysicsBackend::new() else {
         return;
     };
@@ -192,6 +238,7 @@ fn gpu_sensing_matches_nearest_neighbor_contract_when_adapter_is_available() {
 
 #[test]
 fn gpu_builds_spatial_grid_before_neighborhood_queries_when_adapter_is_available() {
+    let _case = CaseTrace::begin();
     let Ok(gpu) = GpuPhysicsBackend::new() else {
         return;
     };
@@ -210,6 +257,7 @@ fn gpu_builds_spatial_grid_before_neighborhood_queries_when_adapter_is_available
 
 #[test]
 fn fused_gpu_sensing_and_motion_match_cpu_contract_when_adapter_is_available() {
+    let _case = CaseTrace::begin();
     let Ok(gpu) = GpuPhysicsBackend::new() else {
         return;
     };
@@ -232,6 +280,7 @@ fn fused_gpu_sensing_and_motion_match_cpu_contract_when_adapter_is_available() {
 
 #[test]
 fn gpu_prepares_render_instances_with_integrated_positions() {
+    let _case = CaseTrace::begin();
     let Ok(gpu) = GpuPhysicsBackend::new() else {
         return;
     };
@@ -258,6 +307,7 @@ fn gpu_prepares_render_instances_with_integrated_positions() {
 
 #[test]
 fn gpu_sensing_and_rendering_do_not_reintegrate_db2_positions_when_adapter_is_available() {
+    let _case = CaseTrace::begin();
     let Ok(gpu) = GpuPhysicsBackend::new() else {
         return;
     };
@@ -325,6 +375,7 @@ fn checked_ffi_command_batch(
 #[test]
 #[ignore = "requires a physical GPU; run with --ignored on the GPU qualification host"]
 fn physical_gpu_fuses_grid_sensing_integration_and_render_preparation() {
+    let _case = CaseTrace::begin();
     let gpu = GpuPhysicsBackend::new().unwrap_or_else(|error| {
         panic!("AUT-02 physical GPU gate unavailable: {error}");
     });
@@ -643,6 +694,7 @@ fn physical_gpu_fuses_grid_sensing_integration_and_render_preparation() {
 
 #[test]
 fn native_template_queries_distinguish_pruned_and_retained_species_without_changing_the_world() {
+    let _case = CaseTrace::begin();
     for retain_template in [false, true] {
         let configuration = serde_json::to_vec(&EngineConfig {
             backend: BackendPreference::Cpu,
@@ -828,6 +880,7 @@ fn native_template_queries_distinguish_pruned_and_retained_species_without_chang
 
 #[test]
 fn cpu_and_gpu_match_gameplay_state_within_existing_physics_tolerance() {
+    let _case = CaseTrace::begin();
     if GpuPhysicsBackend::new().is_err() {
         return;
     }
@@ -950,6 +1003,7 @@ fn stretch_native_tie_and_advance(engine: &mut Engine, source: OrganismId, targe
 
 #[test]
 fn native_one_shot_tie_has_spring_motion_and_hardens_on_cycle_twenty() {
+    let _case = CaseTrace::begin();
     let (mut engine, source, target) = native_tie_lifecycle_fixture(BackendPreference::Cpu, false);
     stretch_native_tie_and_advance(&mut engine, source, target);
     assert_native_tie_lifecycle(&engine, 2, -19, false);
@@ -966,6 +1020,7 @@ fn native_one_shot_tie_has_spring_motion_and_hardens_on_cycle_twenty() {
 
 #[test]
 fn native_repeated_tie_requests_reset_lifetime_without_premature_hardening() {
+    let _case = CaseTrace::begin();
     let (mut engine, source, target) = native_tie_lifecycle_fixture(BackendPreference::Cpu, true);
     for cycle in 2..=21 {
         engine.tick().unwrap();
@@ -980,6 +1035,7 @@ fn native_repeated_tie_requests_reset_lifetime_without_premature_hardening() {
 
 #[test]
 fn cpu_and_gpu_match_tie_lifecycle_spring_and_hardening() {
+    let _case = CaseTrace::begin();
     if GpuPhysicsBackend::new().is_err() {
         return;
     }
@@ -1031,6 +1087,7 @@ fn cpu_and_gpu_match_tie_lifecycle_spring_and_hardening() {
 
 #[test]
 fn cpu_and_gpu_emit_identical_nontiming_cycle_traces() {
+    let _case = CaseTrace::begin();
     if GpuPhysicsBackend::new().is_err() {
         return;
     }
@@ -1069,6 +1126,7 @@ fn cpu_and_gpu_emit_identical_nontiming_cycle_traces() {
 
 #[test]
 fn cpu_and_gpu_match_toxin_state_memory_and_position() {
+    let _case = CaseTrace::begin();
     if GpuPhysicsBackend::new().is_err() {
         return;
     }
@@ -1170,6 +1228,7 @@ fn cpu_and_gpu_match_toxin_state_memory_and_position() {
 
 #[test]
 fn engine_retains_gpu_backend_and_uses_it_for_tick_physics() {
+    let _case = CaseTrace::begin();
     if GpuPhysicsBackend::new().is_err() {
         return;
     }
@@ -1196,6 +1255,7 @@ fn engine_retains_gpu_backend_and_uses_it_for_tick_physics() {
 
 #[test]
 fn engine_can_switch_backends_while_preserving_live_state() {
+    let _case = CaseTrace::begin();
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
     let id = engine
         .spawn_at(
@@ -1219,6 +1279,7 @@ fn engine_can_switch_backends_while_preserving_live_state() {
 
 #[test]
 fn ffi_v1_consumers_accept_the_additive_snapshot() {
+    let _case = CaseTrace::begin();
     #[derive(serde::Deserialize)]
     struct FfiV1Snapshot {
         tick: u64,
@@ -1284,6 +1345,7 @@ fn ffi_v1_consumers_accept_the_additive_snapshot() {
 
 #[test]
 fn ffi_executes_versioned_command_batches_and_reports_capabilities() {
+    let _case = CaseTrace::begin();
     let engine = create_cpu_ffi_engine();
     let batch = br#"{"version":1,"commands":[{"type":"import_dna","dna":"start\nstop","position":[12.0,34.0]},{"type":"tick","count":2}]}"#;
     let mut result = DbBuffer::default();
@@ -1316,6 +1378,7 @@ fn ffi_executes_versioned_command_batches_and_reports_capabilities() {
 
 #[test]
 fn ffi_imports_a_configured_species_as_one_command() {
+    let _case = CaseTrace::begin();
     let engine = create_cpu_ffi_engine();
     let batch = br#"{"version":1,"commands":[{"type":"import_species","dna":"start\nstop","name":"Alga","vegetable":true,"color":4283213371,"minimum_population":10,"reseed":true,"initial_energy":2500,"positions":[[100.0,100.0],[200.0,200.0]]}]}"#;
     let mut result = DbBuffer::default();
@@ -1341,6 +1404,7 @@ fn ffi_imports_a_configured_species_as_one_command() {
 
 #[test]
 fn ffi_import_accepts_known_sysvars_without_inert_warnings() {
+    let _case = CaseTrace::begin();
     let engine = create_cpu_ffi_engine();
     let batch = br#"{"version":1,"commands":[{"type":"import_dna","dna":"start\n10 .mkvirus store\nstop","position":[10.0,20.0]}]}"#;
     let mut result = DbBuffer::default();
@@ -1362,6 +1426,7 @@ fn ffi_import_accepts_known_sysvars_without_inert_warnings() {
 
 #[test]
 fn ffi_adds_and_removes_live_environment_features() {
+    let _case = CaseTrace::begin();
     let engine = create_cpu_ffi_engine();
     let add = br#"{"version":1,"commands":[{"type":"add_obstacle","id":7,"minimum":[10.0,20.0],"maximum":[30.0,40.0]},{"type":"update_obstacle","obstacle":{"id":7,"minimum":[10.0,20.0],"maximum":[30.0,40.0],"color":4279312947,"opacity":0.35,"drift":[2.0,-3.0],"vision_policy":"see_through","shot_policy":"pass_through"}},{"type":"add_teleporter","id":8,"center":[50.0,60.0],"radius":15.0,"destination":[500.0,600.0]},{"type":"add_file_teleporter","teleporter":{"id":9,"center":[70.0,80.0],"radius":20.0,"inbound_path":"in","outbound_path":"out","poll_interval":3,"poll_countdown":1,"capacity":4,"filters":{"teleport_vegetables":false,"teleport_corpses":true,"teleport_heterotrophs":true},"sent":8,"received":5}},{"type":"update_file_teleporter","teleporter":{"id":9,"center":[70.0,80.0],"radius":20.0,"inbound_path":"in2","outbound_path":"out2","poll_interval":4,"poll_countdown":2,"capacity":5,"filters":{"teleport_vegetables":true,"teleport_corpses":false,"teleport_heterotrophs":false},"sent":9,"received":6}}]}"#;
     let mut result = DbBuffer::default();
@@ -1404,6 +1469,7 @@ fn ffi_adds_and_removes_live_environment_features() {
 
 #[test]
 fn ffi_manual_tools_return_ids_and_exported_dna() {
+    let _case = CaseTrace::begin();
     let engine = create_cpu_ffi_engine();
     let batch = br#"{"version":1,"commands":[
       {"type":"import_dna","dna":"start\n10 .up store\nstop","position":[10.0,10.0]},
@@ -1433,6 +1499,7 @@ fn ffi_manual_tools_return_ids_and_exported_dna() {
 
 #[test]
 fn ffi_rejects_unknown_batch_versions_with_owned_structured_error() {
+    let _case = CaseTrace::begin();
     let engine = create_cpu_ffi_engine();
     let batch = br#"{"version":99,"commands":[]}"#;
     let mut result = DbBuffer::default();
@@ -1452,6 +1519,7 @@ fn ffi_rejects_unknown_batch_versions_with_owned_structured_error() {
 
 #[test]
 fn ffi_binary_save_load_round_trip_replaces_engine_atomically() {
+    let _case = CaseTrace::begin();
     let engine = create_cpu_ffi_engine();
     let dna = b"start\nstop";
     assert_eq!(
@@ -1498,6 +1566,7 @@ fn ffi_binary_save_load_round_trip_replaces_engine_atomically() {
 }
 #[test]
 fn ffi_environment_updates_preserve_optional_db2_settings() {
+    let _case = CaseTrace::begin();
     let engine = create_cpu_ffi_engine();
 
     let update = br#"{"version":1,"commands":[{"type":"update_environment","metabolism_cost":2,"vegetable_energy_per_tick":3,"sunlight_energy":4,"gravity":[1.0,2.0],"drag":0.1,"brownian_motion":0.2,"physics":{"max_velocity":42.0,"movement_efficiency":0.5,"surface_gravity":0.3,"static_friction":0.4,"kinetic_friction":0.2,"density":0.000001,"viscosity":0.00002,"elasticity":0.8},"shots":{"speed":35.0,"range_multiplier":1.5,"decay":20.0,"energy_shots_do_not_decay":true,"waste_shots_do_not_decay":true},"vegetation":{"start_chloroplasts":12000,"max_energy_per_tick":80,"minimum_chloroplast_equivalents":40,"repopulation_amount":7,"repopulation_cooldown":12,"feeding_to_body":0.6,"daytime":false,"day_night_enabled":true,"cycle_length":5000}},{"type":"update_environment","metabolism_cost":5,"vegetable_energy_per_tick":6,"sunlight_energy":7,"gravity":[0.0,0.0],"drag":0.0,"brownian_motion":0.0}]}"#;
@@ -1524,6 +1593,7 @@ fn ffi_environment_updates_preserve_optional_db2_settings() {
 }
 #[test]
 fn ffi_versioned_public_abi_failures_are_atomic_and_valid_batch_commits_once() {
+    let _case = CaseTrace::begin();
     fn zeroed_buffer() -> DbBuffer {
         unsafe { std::mem::zeroed() }
     }
