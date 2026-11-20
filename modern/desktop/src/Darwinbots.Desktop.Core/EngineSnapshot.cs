@@ -228,6 +228,20 @@ public sealed record TeleporterFilterSnapshot(
     bool TeleportVegetables,
     bool TeleportCorpses,
     bool TeleportHeterotrophs);
+public enum NativeTeleporterKind
+{
+    Intrasim,
+    Inbound,
+    Outbound,
+}
+public sealed record NativeTeleporterOptions(
+    NativeTeleporterKind Kind,
+    uint Size,
+    string Path,
+    bool FixedPosition,
+    TeleporterFilterSnapshot Filters,
+    uint PollInterval,
+    uint Capacity);
 public sealed record FileTeleporterSnapshot(
     uint Id,
     float[] Center,
