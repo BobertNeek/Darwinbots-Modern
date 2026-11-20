@@ -1158,6 +1158,38 @@ mod tests {
     }
 
     #[test]
+    fn native_tie_energy_credits_round_each_store_once() {
+        for requested in [-1000, 1000] {
+            let mut world = world();
+            let (actor, target) = projection_pair(&mut world, 7);
+            let (giver, receiver) = if requested < 0 {
+                (target, actor)
+            } else {
+                (actor, target)
+            };
+            // Robot 223 and its tied robot 61 after shots, cycle 282 of the DB2 fixture.
+            world.slots.get_mut(giver).unwrap().materials.energy = f32::from_bits(0x442a_de7e);
+            let materials = &mut world.slots.get_mut(receiver).unwrap().materials;
+            materials.energy = f32::from_bits(0x44b8_19b7);
+            materials.body = f32::from_bits(0x438b_4f7c);
+            materials.waste = f32::from_bits(0x4228_7445);
+
+            let source = world.slots.get_mut(actor).unwrap();
+            source.counters.age = 2;
+            source.program.memory.write(MEM_TIE_PRESENT, 7);
+            source.program.memory.write(452, -1);
+            source.program.memory.write(453, requested);
+            world.tie_exchange_phase(&mut CycleRecorder::disabled(0));
+
+            assert_eq!(world.slots.get(giver).unwrap().materials.energy, 0.0);
+            let materials = &world.slots.get(receiver).unwrap().materials;
+            assert_eq!(materials.energy.to_bits(), 0x44f3_e796);
+            assert_eq!(materials.body.to_bits(), 0x4395_388d);
+            assert_eq!(materials.waste.to_bits(), 0x4243_cb11);
+        }
+    }
+
+    #[test]
     fn native_negative_resource_commands_use_tiepres_fallback_and_waste_has_no_age_gate() {
         for age in [0, 2] {
             let mut world = world();
