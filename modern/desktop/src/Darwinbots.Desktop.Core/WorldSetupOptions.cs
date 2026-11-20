@@ -54,6 +54,7 @@ public sealed record WorldSetupOptions
     public bool ToroidalWorld { get; init; } = true;
     public bool ShapesVisible { get; init; }
     public Db2ShapeCreationOptions? ShapeCreation { get; init; }
+    public Db2ShapeDriftOptions? ShapeDrift { get; init; }
     public bool FixedBotRadii { get; init; }
     public bool TiesEnabled { get; init; } = true;
     public bool RobotFixingAllowed { get; init; } = true;

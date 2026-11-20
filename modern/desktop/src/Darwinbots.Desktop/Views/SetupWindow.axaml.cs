@@ -24,6 +24,7 @@ public sealed partial class SetupWindow : Window
     private GlobalSettings _globalSettings = new();
     private MutationSettingsUpdate _mutationSettings = MutationSettingsUpdate.Default;
     private Db2ShapeCreationOptions? _shapeCreation;
+    private Db2ShapeDriftOptions? _shapeDrift;
     private IReadOnlyList<ObstacleSnapshot> _obstacles = [];
     private IReadOnlyList<string>? _legacySettingsFields;
     private const string ZerobotDna = "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0";
@@ -248,6 +249,7 @@ public sealed partial class SetupWindow : Window
             MutationSettings = _mutationSettings,
             ShapesVisible = _environment.ShapesVisible ?? false,
             ShapeCreation = _shapeCreation,
+            ShapeDrift = _shapeDrift,
             Obstacles = _obstacles.Select(obstacle => obstacle.ResolveSetupBounds(fieldWidth, fieldHeight)).ToArray(),
             LegacySettingsFields = _legacySettingsFields,
         };
@@ -420,6 +422,7 @@ public sealed partial class SetupWindow : Window
         };
         _mutationSettings = setup.MutationSettings;
         _shapeCreation = setup.ShapeCreation;
+        _shapeDrift = setup.ShapeDrift;
         _obstacles = setup.Obstacles;
         _legacySettingsFields = setup.LegacySettingsFields;
         StarterMode.IsChecked = setup.StartingMode == StartingMode.StarterBotsAndVegetables;
@@ -442,6 +445,7 @@ public sealed partial class SetupWindow : Window
     {
         _environment = EnvironmentUpdate.Default;
         _shapeCreation = null;
+        _shapeDrift = null;
         _obstacles = [];
         _legacySettingsFields = null;
         ApplyGlobalSettings(_profileSettings);
