@@ -82,6 +82,7 @@ public sealed partial class MainWindow : Window
     private readonly IDesktopStorageService _storage;
     private bool _tickInFlight;
     private bool _navigationInFlight;
+    private bool _editingLiveSettings;
     private readonly SemaphoreSlim _advanceGate = new(1, 1);
     private volatile bool _loadingSimulation;
     private OrganismKey? _moveOrganism;
@@ -1477,18 +1478,38 @@ public sealed partial class MainWindow : Window
         return await ReplaceSimulationAsync(false, startNew);
     }
 
-    private async Task<LegacyCommandResult> OpenAdvancedSettingsCommandAsync(int selectedTab = 0)
+    private async Task<LegacyCommandResult> OpenAdvancedSettingsCommandAsync(int selectedTab)
     {
-        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        var dialog = new AdvancedSettingsWindow(_liveEnvironment, _session.LatestSnapshot, selectedTab);
-        await dialog.ShowDialog(this);
-        if (!dialog.Accepted) return LegacyCommandResult.Cancel();
-        await _session.UpdateEnvironmentAsync(dialog.Update);
-        await _session.UpdateMutationSettingsAsync(dialog.MutationUpdate);
-        _liveEnvironment = dialog.Update;
-        SynchronizeRecordingPreferences();
-        RefreshEnvironmentControls();
-        return LegacyCommandResult.Success("LIVE SETTINGS APPLIED");
+        if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        if (_editingLiveSettings) return LegacyCommandResult.Failure("LIVE SETTINGS ALREADY OPEN");
+        _editingLiveSettings = true;
+        try
+        {
+            var costs = (await session.ReadConfigurationAsync())?.Costs ?? _globalSettings.Costs;
+            var dialog = new AdvancedSettingsWindow(_liveEnvironment, session.LatestSnapshot, selectedTab, costs);
+            await dialog.ShowDialog(this);
+            if (!dialog.Accepted) return LegacyCommandResult.Cancel();
+            var costUpdate = dialog.CostUpdate;
+            if (dialog.LiveSettingsEdited)
+            {
+                var update = dialog.Update;
+                await session.UpdateLiveSettingsAsync(update, dialog.MutationUpdate, costUpdate);
+                _liveEnvironment = update;
+                SynchronizeRecordingPreferences();
+                RefreshEnvironmentControls();
+            }
+            else if (costUpdate is not null)
+            {
+                await session.UpdateCostSettingsAsync(costUpdate);
+            }
+            if (costUpdate is not null)
+                _activeCostMultiplier = (await session.ReadConfigurationAsync())?.GlobalCostMultiplier ?? costUpdate.GlobalMultiplier;
+            return LegacyCommandResult.Success("LIVE SETTINGS APPLIED");
+        }
+        finally
+        {
+            _editingLiveSettings = false;
+        }
     }
 
     private async Task<LegacyCommandResult> OpenGlobalMutationRatesCommandAsync()
@@ -2783,20 +2804,8 @@ public sealed partial class MainWindow : Window
     private static ulong ReadULong(decimal? value, ulong fallback) =>
         (ulong)Math.Clamp(value ?? fallback, 1m, ulong.MaxValue);
 
-    private async void LiveAdvanced_Click(object? sender, RoutedEventArgs e)
-    {
-        if (_session is null) return;
-        var dialog = new AdvancedSettingsWindow(_liveEnvironment, _session.LatestSnapshot, selectedTab: 2);
-        await dialog.ShowDialog(this);
-        if (!dialog.Accepted) return;
-        var update = dialog.Update;
-        await _session.UpdateEnvironmentAsync(update);
-        await _session.UpdateMutationSettingsAsync(dialog.MutationUpdate);
-        _liveEnvironment = update;
-        SynchronizeRecordingPreferences();
-        RefreshEnvironmentControls();
-        _viewModel.Status = "LIVE SETTINGS APPLIED";
-    }
+    private async void LiveAdvanced_Click(object? sender, RoutedEventArgs e) =>
+        await ExecuteLegacyMenuCommandAsync(LegacyCommandId.EditPhysicsAndCosts);
 
     private async void ToroidalWorld_Changed(object? sender, RoutedEventArgs e)
     {
