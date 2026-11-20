@@ -44,6 +44,7 @@ public interface IEngineClient : IDisposable
         AddObstacle(left);
         AddObstacle(right);
     }
+    Db2ShapeDriftOptions? SetShapeDrift(bool? horizontal, bool? vertical, short? rate) => null;
     void UpdateObstacle(ObstacleSnapshot obstacle);
     void RemoveObstacle(uint id);
     void AddTeleporter(TeleporterSnapshot teleporter);

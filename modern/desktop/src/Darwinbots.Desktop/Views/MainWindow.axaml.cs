@@ -120,6 +120,8 @@ public sealed partial class MainWindow : Window
     private readonly PersistentToolWindowRegistry _toolWindows;
     private readonly SeededSpawnPlacement _randomShapePlacement;
     private ShapeCreationDimensions _shapeDimensions = ShapeCreationDimensions.Default;
+    private Db2ShapeDriftOptions? _shapeDrift;
+    private int _shapeWorldGeneration;
     private ShapesWindow? _shapesWindow;
     private readonly Stopwatch _runtimeClock = new();
     private double _activeCostMultiplier;
@@ -745,7 +747,7 @@ public sealed partial class MainWindow : Window
             async _ => await ToggleTiesAsync());
         handlers[LegacyCommandId.ObjectsNewShape] = Handler(
             () => LegacyCommandState.Available,
-            _ => Task.FromResult(OpenShapesWindow()));
+            _ => OpenShapesWindowAsync());
         handlers[LegacyCommandId.ObjectsDeleteShape] = Handler(
             () => FeatureState(WorldFeatureKind.Obstacle),
             async _ => await RemoveSelectedFeatureCommandAsync());
@@ -1811,18 +1813,46 @@ public sealed partial class MainWindow : Window
         return LegacyCommandResult.Success($"DELETED {obstacles.Length} SHAPE(S)");
     }
 
-    private LegacyCommandResult OpenShapesWindow()
+    private async Task<LegacyCommandResult> OpenShapesWindowAsync()
     {
-        _shapesWindow = _toolWindows.ShowOrActivate("shapes", () =>
+        await _advanceGate.WaitAsync();
+        try
         {
-            var window = new ShapesWindow(
-                _shapeDimensions,
-                dimensions => _shapeDimensions = dimensions,
-                () => AddGeneratedShapesAsync(1, centered: true));
-            window.Closed += (_, _) => _shapesWindow = null;
-            return window;
-        });
-        return LegacyCommandResult.Success("SHAPES OPENED");
+            if (_session is { } session)
+                _shapeDrift = (await session.ReadConfigurationAsync())?.ShapeDrift;
+            _shapesWindow = _toolWindows.ShowOrActivate("shapes", () =>
+            {
+                var window = new ShapesWindow(
+                    _shapeDimensions,
+                    dimensions => _shapeDimensions = dimensions,
+                    () => AddGeneratedShapesAsync(1, centered: true),
+                    _shapeDrift,
+                    SetShapeDriftAsync);
+                window.Closed += (_, _) => _shapesWindow = null;
+                return window;
+            });
+            return LegacyCommandResult.Success("SHAPES OPENED");
+        }
+        finally { _advanceGate.Release(); }
+    }
+
+    private async Task<LegacyCommandResult> SetShapeDriftAsync(bool? horizontal, bool? vertical, short? rate)
+    {
+        if (_session is not { } session || _loadingSimulation)
+            return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        var generation = _shapeWorldGeneration;
+        await _advanceGate.WaitAsync();
+        try
+        {
+            if (_loadingSimulation || _navigationInFlight || !IsVisible || _session != session
+                || generation != _shapeWorldGeneration)
+                return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+            if (await session.SetShapeDriftAsync(horizontal, vertical, rate) is not { } settings)
+                return LegacyCommandResult.Failure("SHAPE MOVEMENT SETTINGS UNAVAILABLE");
+            _shapeDrift = settings;
+            return LegacyCommandResult.Success(string.Empty);
+        }
+        finally { _advanceGate.Release(); }
     }
 
     private Task<LegacyCommandResult> AddRandomObstaclesCommandAsync(int count) =>
@@ -2166,6 +2196,8 @@ public sealed partial class MainWindow : Window
         try
         {
             _liveEnvironment = configuration.Environment;
+            _shapeDrift = configuration.ShapeDrift;
+            _shapesWindow?.SetDrift(_shapeDrift);
             SynchronizeRecordingPreferences(resetCorpseCursor: true);
             _lastAutomaticSaveTick = _session.LatestSnapshot.Tick;
             _activeCostMultiplier = configuration.GlobalCostMultiplier;
@@ -2992,6 +3024,7 @@ public sealed partial class MainWindow : Window
             if (_session is null) return;
             _loadingSimulation = true;
             await _session.LoadAsync(save);
+            _shapeWorldGeneration++;
             _shapeDimensions = ShapeCreationDimensions.Default;
             _shapesWindow?.SetDimensions(_shapeDimensions);
             // A rejected load publishes no snapshot and must keep user-closed

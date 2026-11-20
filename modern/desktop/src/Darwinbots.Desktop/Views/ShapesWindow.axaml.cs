@@ -9,19 +9,31 @@ public sealed partial class ShapesWindow : Window
 {
     private readonly Action<ShapeCreationDimensions> _dimensionsChanged;
     private readonly Func<Task<LegacyCommandResult>> _addShape;
+    private readonly Func<bool?, bool?, short?, Task<LegacyCommandResult>> _changeDrift;
     private bool _updatingDimensions;
+    private bool _updatingDrift;
 
     public ShapesWindow(
         ShapeCreationDimensions dimensions,
         Action<ShapeCreationDimensions> dimensionsChanged,
-        Func<Task<LegacyCommandResult>> addShape)
+        Func<Task<LegacyCommandResult>> addShape,
+        Db2ShapeDriftOptions? drift,
+        Func<bool?, bool?, short?, Task<LegacyCommandResult>> changeDrift)
     {
         _dimensionsChanged = dimensionsChanged;
         _addShape = addShape;
+        _changeDrift = changeDrift;
         InitializeComponent();
         SetDimensions(dimensions);
+        SetDrift(drift);
         ShapeWidthSlider.ValueChanged += (_, _) => UpdateDimensions();
         ShapeHeightSlider.ValueChanged += (_, _) => UpdateDimensions();
+        HorizontalDriftCheck.IsCheckedChanged += async (_, _) =>
+            await ChangeDriftAsync(horizontal: HorizontalDriftCheck.IsChecked == true);
+        VerticalDriftCheck.IsCheckedChanged += async (_, _) =>
+            await ChangeDriftAsync(vertical: VerticalDriftCheck.IsChecked == true);
+        DriftRateSlider.ValueChanged += async (_, _) =>
+            await ChangeDriftAsync(rate: (short)Math.Clamp(DriftRateSlider.Value, 1, 1000));
     }
 
     public void SetDimensions(ShapeCreationDimensions dimensions)
@@ -46,6 +58,44 @@ public sealed partial class ShapesWindow : Window
     {
         ShapeWidthValue.Text = $"{dimensions.WidthPermille / 10m:0.0}%";
         ShapeHeightValue.Text = $"{dimensions.HeightPermille / 10m:0.0}%";
+    }
+
+    public void SetDrift(Db2ShapeDriftOptions? drift)
+    {
+        drift ??= new();
+        _updatingDrift = true;
+        HorizontalDriftCheck.IsChecked = drift.Horizontal;
+        VerticalDriftCheck.IsChecked = drift.Vertical;
+        ShowDriftRate(drift.Rate);
+        _updatingDrift = false;
+    }
+
+    private void ShowDriftRate(short rate)
+    {
+        // Keep a saved value outside the slider's editing range visible until a real edit.
+        DriftRateSlider.Minimum = Math.Min(1, (int)rate);
+        DriftRateSlider.Maximum = Math.Max(1000, (int)rate);
+        DriftRateSlider.Value = rate;
+        DriftRateValue.Text = rate.ToString();
+    }
+
+    private async Task ChangeDriftAsync(bool? horizontal = null, bool? vertical = null, short? rate = null)
+    {
+        if (_updatingDrift) return;
+        if (rate is { } value)
+        {
+            _updatingDrift = true;
+            ShowDriftRate(value);
+            _updatingDrift = false;
+        }
+        try
+        {
+            ShapeStatus.Text = (await _changeDrift(horizontal, vertical, rate)).Status;
+        }
+        catch (Exception error)
+        {
+            ShapeStatus.Text = $"SHAPE MOVEMENT UPDATE FAILED · {error.Message}";
+        }
     }
 
     private async void AddShape_Click(object? sender, RoutedEventArgs e)

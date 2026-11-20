@@ -251,7 +251,7 @@ impl ShapeCreationSettings {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ShapeDriftSettings {
     pub horizontal: bool,
     pub vertical: bool,

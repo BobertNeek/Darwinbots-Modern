@@ -218,6 +218,14 @@ enum EngineCommand {
         left: crate::Obstacle,
         right: crate::Obstacle,
     },
+    SetShapeDrift {
+        #[serde(default)]
+        horizontal: Option<bool>,
+        #[serde(default)]
+        vertical: Option<bool>,
+        #[serde(default)]
+        rate: Option<i16>,
+    },
     UpdateObstacle {
         obstacle: crate::Obstacle,
     },
@@ -1006,6 +1014,13 @@ fn db_engine_command_batch_impl(
             EngineCommand::AddTrashCompactor { left, right } => engine
                 .add_trash_compactor(left, right)
                 .map(|_| serde_json::Value::Null),
+            EngineCommand::SetShapeDrift {
+                horizontal,
+                vertical,
+                rate,
+            } => engine
+                .set_shape_drift(horizontal, vertical, rate)
+                .map(|settings| serde_json::json!(settings)),
             EngineCommand::UpdateObstacle { obstacle } => engine
                 .update_obstacle(obstacle)
                 .map(|_| serde_json::Value::Null),
