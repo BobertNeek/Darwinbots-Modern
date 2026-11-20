@@ -243,6 +243,9 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task RemoveObstacleAsync(uint id, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.RemoveObstacle(id), cancellationToken);
 
+    public Task RemoveObstaclesAsync(IReadOnlyList<uint> ids, CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.RemoveObstacles(ids), cancellationToken);
+
     public async Task<int?> RemoveNativeRandomObstaclesAsync(CancellationToken cancellationToken = default)
     {
         int? removed = null;

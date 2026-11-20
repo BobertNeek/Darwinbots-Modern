@@ -17,7 +17,7 @@ namespace Darwinbots.Desktop.Tests;
 public sealed class RenderedWorldToolsCausalTests
 {
     [Fact]
-    public async Task DeleteTenRandomShapesUsesThePausedNativeWorldWithoutConfirmation()
+    public async Task HistoricShapeDeletionUsesThePausedNativeWorldWithoutConfirmation()
     {
         var setup = new WorldSetupOptions
         {
@@ -64,25 +64,48 @@ public sealed class RenderedWorldToolsCausalTests
 
                 var viewport = window.FindControl<WorldViewport>("Viewport")!;
                 var editShape = window.FindControl<Button>("EditShapeButton")!;
-                var removedShape = Assert.Single(before.Obstacles, shape => shape.Id == removedId);
                 var scaleX = viewport.Bounds.Width / before.WorldSize[0];
                 var scaleY = viewport.Bounds.Height / before.WorldSize[1];
                 if (viewport.FixedRatio) scaleX = scaleY = Math.Min(scaleX, scaleY);
-                var point = viewport.TranslatePoint(new Point(
-                    (removedShape.Minimum[0] + removedShape.Maximum[0]) * 0.5 * scaleX * viewport.Zoom + viewport.Pan.X,
-                    (removedShape.Minimum[1] + removedShape.Maximum[1]) * 0.5 * scaleY * viewport.Zoom + viewport.Pan.Y), window);
-                Assert.True(point.HasValue);
-                window.MouseDown(point.Value, MouseButton.Left, RawInputModifiers.None);
-                window.MouseUp(point.Value, MouseButton.Left, RawInputModifiers.None);
-                await WaitFor(() => editShape.IsEnabled, () => "The shape was not selected in the world viewport.");
+                async Task SelectShape(uint id)
+                {
+                    var shape = Assert.Single(session.LatestSnapshot.Obstacles, value => value.Id == id);
+                    var point = viewport.TranslatePoint(new Point(
+                        (shape.Minimum[0] + shape.Maximum[0]) * 0.5 * scaleX * viewport.Zoom + viewport.Pan.X,
+                        (shape.Minimum[1] + shape.Maximum[1]) * 0.5 * scaleY * viewport.Zoom + viewport.Pan.Y), window);
+                    Assert.True(point.HasValue);
+                    window.MouseDown(point.Value, MouseButton.Left, RawInputModifiers.None);
+                    window.MouseUp(point.Value, MouseButton.Left, RawInputModifiers.None);
+                    await WaitFor(() => editShape.IsEnabled, () => "The shape was not selected in the world viewport.");
+                }
+                await SelectShape(removedId);
 
+                var deleteSelected = menu.FindCommandItem(LegacyCommandId.ObjectsDeleteShape)!;
                 var delete = menu.FindCommandItem(LegacyCommandId.ObjectsDeleteTenRandomShapes)!;
                 Assert.True(delete.IsEnabled);
                 delete.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
-                await WaitFor(() => session.LatestSnapshot.Obstacles.Count == ids.Length - 10 && !editShape.IsEnabled,
+                await WaitFor(() => session.LatestSnapshot.Obstacles.Count == ids.Length - 10
+                        && !editShape.IsEnabled && !deleteSelected.IsEnabled,
                     () => "The menu did not remove ten shapes immediately and clear the removed selection.");
                 Assert.DoesNotContain(window.OwnedWindows, owned => owned is DeleteConfirmationWindow);
                 Assert.Equal(survivors, session.LatestSnapshot.Obstacles.Select(shape => shape.Id));
+
+                await SelectShape(survivors[0]);
+                await WaitFor(() => deleteSelected.IsEnabled, () => "Delete Shape did not recognize the selected shape.");
+                deleteSelected.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => session.LatestSnapshot.Obstacles.Count == survivors.Length - 1
+                        && !editShape.IsEnabled && !deleteSelected.IsEnabled,
+                    () => "Delete Shape did not remove exactly the selected shape and clear its selection.");
+                Assert.Equal(survivors[1..], session.LatestSnapshot.Obstacles.Select(shape => shape.Id));
+                Assert.DoesNotContain(window.OwnedWindows, owned => owned is DeleteConfirmationWindow);
+
+                await SelectShape(survivors[1]);
+                var deleteAll = menu.FindCommandItem(LegacyCommandId.ObjectsDeleteAllShapes)!;
+                Assert.True(deleteAll.IsEnabled);
+                deleteAll.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => session.LatestSnapshot.Obstacles.Count == 0 && !editShape.IsEnabled && !deleteSelected.IsEnabled,
+                    () => "Delete All Shapes did not immediately remove the remaining shapes and clear selection.");
+                Assert.DoesNotContain(window.OwnedWindows, owned => owned is DeleteConfirmationWindow);
                 Assert.Equal(before.Tick, session.LatestSnapshot.Tick);
             }
             finally

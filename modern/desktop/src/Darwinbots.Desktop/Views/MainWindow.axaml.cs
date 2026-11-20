@@ -290,6 +290,7 @@ public sealed partial class MainWindow : Window
             _selectedFeature = feature;
             _viewModel.Status = $"{feature.Kind.ToString().ToUpperInvariant()} {feature.Id} SELECTED";
             RefreshFeatureEditorButtons();
+            RefreshLegacyMenuStates();
         };
         RefreshFeatureEditorButtons();
         Viewport.OrganismDragCompleted += async (slot, position) =>
@@ -1771,23 +1772,33 @@ public sealed partial class MainWindow : Window
 
     private async Task<LegacyCommandResult> RemoveSelectedFeatureCommandAsync()
     {
-        if (_session is null || _selectedFeature is not { } feature)
+        if (_session is not { } session || _selectedFeature is not { } feature)
             return LegacyCommandResult.Failure("SELECT A WORLD OBJECT FIRST");
         var route = ObjectEditorPolicy.RouteDelete(ToObjectEditorKind(feature.Kind), SelectedObject());
         if (!route.Allowed)
             return LegacyCommandResult.Failure(route.DisabledReason ?? "SELECT A WORLD OBJECT FIRST");
-        if (feature.Kind == WorldFeatureKind.Obstacle)
+        await _advanceGate.WaitAsync();
+        try
         {
-            if (!await ConfirmObstacleDeletionAsync(1))
-                return LegacyCommandResult.Failure("DELETION CANCELLED");
-            await _session.RemoveObstacleAsync(feature.Id);
+            if (_loadingSimulation || _navigationInFlight || !IsVisible || _session != session)
+                return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+            var snapshot = session.LatestSnapshot;
+            if (feature.Kind == WorldFeatureKind.Obstacle && snapshot.Obstacles.Any(obstacle => obstacle.Id == feature.Id))
+                await session.RemoveObstacleAsync(feature.Id);
+            else if (feature.Kind == WorldFeatureKind.Teleporter && snapshot.FileTeleporters.Any(teleporter => teleporter.Id == feature.Id))
+                await session.RemoveFileTeleporterAsync(feature.Id);
+            else if (feature.Kind == WorldFeatureKind.Teleporter && snapshot.Teleporters.Any(teleporter => teleporter.Id == feature.Id))
+                await session.RemoveTeleporterAsync(feature.Id);
+            else return LegacyCommandResult.Failure("SELECT A WORLD OBJECT FIRST");
+            if (_selectedFeature == feature)
+            {
+                _selectedFeature = null;
+                Viewport.SelectFeature(null);
+                RefreshFeatureEditorButtons();
+            }
+            return LegacyCommandResult.Success($"{feature.Kind.ToString().ToUpperInvariant()} {feature.Id} REMOVED");
         }
-        else if (_session.LatestSnapshot.FileTeleporters.Any(value => value.Id == feature.Id)) await _session.RemoveFileTeleporterAsync(feature.Id);
-        else await _session.RemoveTeleporterAsync(feature.Id);
-        _selectedFeature = null;
-        Viewport.SelectFeature(null);
-        RefreshFeatureEditorButtons();
-        return LegacyCommandResult.Success($"{feature.Kind.ToString().ToUpperInvariant()} {feature.Id} REMOVED");
+        finally { _advanceGate.Release(); }
     }
 
     private async Task<LegacyCommandResult> DeleteAllTeleportersCommandAsync()
@@ -1802,13 +1813,24 @@ public sealed partial class MainWindow : Window
 
     private async Task<LegacyCommandResult> DeleteAllObstaclesCommandAsync()
     {
-        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        var obstacles = _session.LatestSnapshot.Obstacles.ToArray();
-        if (obstacles.Length == 0) return LegacyCommandResult.Success("DELETED 0 SHAPES");
-        if (!await ConfirmObstacleDeletionAsync(obstacles.Length))
-            return LegacyCommandResult.Failure("DELETION CANCELLED");
-        foreach (var obstacle in obstacles) await _session.RemoveObstacleAsync(obstacle.Id);
-        return LegacyCommandResult.Success($"DELETED {obstacles.Length} SHAPE(S)");
+        if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        await _advanceGate.WaitAsync();
+        try
+        {
+            if (_loadingSimulation || _navigationInFlight || !IsVisible || _session != session)
+                return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+            var ids = session.LatestSnapshot.Obstacles.Select(obstacle => obstacle.Id).ToArray();
+            if (ids.Length == 0) return LegacyCommandResult.Success("DELETED 0 SHAPES");
+            await session.RemoveObstaclesAsync(ids);
+            if (_selectedFeature is { Kind: WorldFeatureKind.Obstacle })
+            {
+                _selectedFeature = null;
+                Viewport.SelectFeature(null);
+                RefreshFeatureEditorButtons();
+            }
+            return LegacyCommandResult.Success($"DELETED {ids.Length} SHAPE(S)");
+        }
+        finally { _advanceGate.Release(); }
     }
 
     private LegacyCommandResult OpenShapesWindow()
