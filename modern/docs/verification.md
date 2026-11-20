@@ -6,11 +6,11 @@ Target: functional Darwinbots 2.48.32 offline behavior on native Windows, with W
 
 Baseline: `9dc4c91`, plus documentation corrections from `181821d`. The current work also fixes a real route gap: **Edit → Species previously opened mutation settings**. The repaired editor applies an atomic startup/repopulation roster without replacing living robots, preserves stable IDs, supports cancellation and restart with the edited roster, and retains source DNA, comments and placement bounds. Removed species retain their living identities and export source while repopulation is disabled. Their retirement survives modern save/resume.
 
-Other current repairs: Internet-marked legacy gateways cannot become active local gateways even when an old local flag remains set; hidden Internet metadata remains readable and round-trippable; event diagnostics scroll and wrap at normal window sizes; corrupted status text and stale six-tab expectations are corrected. Surviving menu command identifiers keep their numeric values. No ABI or snapshot version is changed; the JSON command protocol gains `update_species_settings`, and configuration entries expose their world-local `species_id`. Optional template metadata uses backward-compatible defaults when reading older modern saves.
+Other current repairs: Internet-marked legacy gateways cannot become active local gateways even when an old local flag remains set; hidden Internet metadata remains readable and round-trippable; event diagnostics scroll and wrap at normal window sizes; corrupted status text and stale six-tab expectations are corrected. Zero-copy startup species stay at zero. Ctrl+Enter creates a world even when Load Settings has focus, rather than reopening the picker. Surviving menu command identifiers keep their numeric values; retired values 15, 67 and 68 are not reused. No ABI or snapshot version is changed; the JSON command protocol gains `update_species_settings`, and configuration entries expose their world-local `species_id`. Optional template metadata uses backward-compatible defaults when reading older modern saves.
 
 ### Fresh feature checklist
 
-The checklist maps the pinned original behavior to production paths and executable checks. A passing domain means its covered scenarios passed; it does not imply universal historical-file or arbitrary-program equivalence. Qualification is currently in progress; final results and package identity will be recorded below before merge.
+The checklist maps the original source at `467a8a0c1564db2071cf65efe39dcfefc5ab7a0c` to production paths and executable checks. The retained VB6 source matches that pin, and the six canonical reference documents pass their hash verifier. A passing domain means its covered scenarios passed; it does not imply universal historical-file or arbitrary-program equivalence. Required native Windows acceptance is still incomplete. The [current structured receipt](../../docs/parity/evidence/offline-feature-completion-20261104/qualification.json) records passing checks and the remaining work separately.
 
 | Feature contract | Production boundary | Behavioral checks required for closure |
 | --- | --- | --- |
@@ -34,7 +34,24 @@ The checklist maps the pinned original behavior to production paths and executab
 
 ### Current qualification
 
-Pending final local workspace/Core/Desktop/package qualification, physical GPU qualification, native Windows walkthrough and repaired cross-platform CI. The initial CI run at `7a3db6b` passed Rust and Core on Windows, Linux and Apple silicon but failed desktop checks on stale six-tab and corrupted-text expectations; those failures are retained as failures, not counted as current acceptance.
+Automated qualification passed. On November 20, 2026, the maintainer directed the merge to `master` and a cloud handoff with the remaining native Windows checks still open. Full feature acceptance remains pending.
+
+| Boundary | Qualified revision and result |
+| --- | --- |
+| Local Rust workspace | `0f60376`: 1,071 passed across 68 targets; 12 physical-only cases ignored here and subsequently executed by the hardware runner. Engine/CLI source is unchanged through `da3581e`. |
+| Local Desktop.Core | `0f60376`: 328 passed; Core source is unchanged through `da3581e`. |
+| Local rendered desktop | `d9f9339`: 236 passed, one optional viewport benchmark skipped; the 139-ID inventory passed. Product/test source is unchanged at `da3581e`. |
+| Physical GPU | `d9f9339`: all six guarded groups passed on RTX 3050 / Vulkan / DiscreteGpu, driver 610.88. The four hardware-only groups passed 7 + 1 + 3 + 1 cases; broader GPU and switch groups passed 14 and 1 cases. These groups overlap; do not add them as unique cases. |
+| Original-world long continuation | 10,000 additional cycles, ten matching CPU/GPU gameplay and byte-identical continuous/resumed GPU save checkpoints. Final cycle 10,281: 2,161 robots, 869 shots and 8,999 births. The test took 4,513.66 seconds and retained a physical GPU after every reload. |
+| Four-platform CI | `da3581e`, [run 41835933113](https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/41835933113): Windows, Linux, Intel macOS and Apple silicon each passed 1,071 Rust, 328 Core and 236 Desktop cases, with one optional benchmark skipped and 12 hardware-only cases ignored on hosted machines. All four publish and explicit process-wait JSON smoke gates passed. |
+| Packages | All four existing CI package artifacts have recorded SHA-256 digests. The downloaded Windows ZIP matches GitHub's digest; its local smoke passed and all 48 DNA files match source. Native observations use this CI package, not a substituted local DLL. |
+| Offline routes/layout | All 75 surviving menu actions have production handlers. Internet-absence checks cover menus, setup, advanced/global settings, toolbar and teleporter choices. Latest rendered layouts were inspected; route inventory alone is not behavioral closure. |
+
+The native CI package showed five offline tabs and corrected onboarding. Default Auto creation produced 400 robots and reported CPU; a native Step advanced the cycle display and added 3,600 plant energy. Loading the earlier native `.set` restored the 3+3 CPU setup, and Ctrl+Enter from the focused Load Settings button created the six-robot world without reopening the picker. Ctrl+X opened the dedicated species roster, where zero initial count, starting energy 777 and a rename could be staged. Apply/cancel/reopen and preservation of living robots have automated evidence but are not yet observed in this native walkthrough.
+
+The native walkthrough stopped after the window helper could not recover a minimized window and the user ended Computer Use. Remaining native checks are live species apply/cancel/reopen, live settings, world and organism save/load and robot tools, leagues/evolution/restart, graphs/export, recording/recovery, and tray hide/restore. Tests used an isolated profile. On November 20, all seven original profile files matched their backup hashes and there were no additional files.
+
+Earlier failures remain dated failures: `7a3db6b` stale desktop expectations; `f19c6ce` test-helper compile error; local `0f60376`/`4c646d4` cost-dialog timeouts; and two `518007a` organism-route timeouts. Repairs preserve the assertions and use bounded CPU owners for UI fixtures. Current native Auto creation passed separately. Full logs and private profiles remain local; hashes, package identity and observation limits are in the structured receipt.
 
 ### Scope and evidence limits
 

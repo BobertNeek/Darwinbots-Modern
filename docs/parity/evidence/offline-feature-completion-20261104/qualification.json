@@ -1,0 +1,1007 @@
+{
+  "assessment_date": "2026-11-04",
+  "status": "incomplete_native_windows_acceptance_pending",
+  "completion_claim": false,
+  "delivery": {
+    "merge_directed_date": "2026-11-20",
+    "pull_request": 10,
+    "destination_branch": "master",
+    "native_windows_acceptance": "pending"
+  },
+  "reference_revision": "467a8a0c1564db2071cf65efe39dcfefc5ab7a0c",
+  "development_baseline": "9dc4c91098074546aac815bc97e43b691e1a39ac",
+  "documentation_corrections": "181821d",
+  "qualified_product_revision": "da3581e05903ea5315b8903835519d86a5c7f99d",
+  "rust_core_local_qualification_revision": "0f60376f5197f89fd6dc5e98cc4e0d4f9b8db800",
+  "desktop_local_qualification_revision": "d9f9339051a377c4cfd77b9faff6628b94b2c6c6",
+  "product_sources_unchanged_between_d9_and_da": true,
+  "local_results": {
+    "rust_passed": 1071,
+    "rust_targets": 68,
+    "hardware_only_ignored_in_ordinary_suite": 12,
+    "core_passed": 328,
+    "desktop_passed": 236,
+    "optional_viewport_benchmark_skipped": 1,
+    "rendered_inventory_ids": 139,
+    "offline_menu_actions_with_handlers": 75,
+    "bundled_dna_hashes_matching": 48
+  },
+  "physical_gpu": {
+    "source_revision": "d9f9339051a377c4cfd77b9faff6628b94b2c6c6",
+    "adapter": "NVIDIA GeForce RTX 3050",
+    "backend": "Vulkan",
+    "device_type": "DiscreteGpu",
+    "driver": "610.88",
+    "hardware_only_cases_passed": 12,
+    "groups": [
+      {
+        "task": "physical-library",
+        "status": "passed",
+        "exit_code": 0,
+        "passed_cases": 7,
+        "elapsed_seconds": 561.2824296,
+        "cargo_sha256": "6F4BEF66261261FCB43131BE8720BAB817D403A09EDEC7455C371974B90BDB7E",
+        "stdout_sha256": "D16E0CED02F9C33339280468F07DBFB6DF7F5501980E87D864F555E1CCB561E8",
+        "stderr_sha256": "513A1A457F07A2F7E0B180AE94C61D1DA2B6BCF0BE35ABC1AF49EA6564ADD151",
+        "input_unchanged": true,
+        "required_idle_seconds": 300,
+        "test_binaries": [
+          {
+            "file": "darwinbots_engine-f5a573ff9adb3a9e.exe",
+            "sha256": "8EA76C356C5F35B19D19E6BAF92E25A892EFEB92877BAEACEA780D28655D5748"
+          }
+        ]
+      },
+      {
+        "task": "physical-cli",
+        "status": "passed",
+        "exit_code": 0,
+        "passed_cases": 1,
+        "elapsed_seconds": 498.2225615,
+        "cargo_sha256": "6F4BEF66261261FCB43131BE8720BAB817D403A09EDEC7455C371974B90BDB7E",
+        "stdout_sha256": "AC2AFFE5B9EC33DF5AD31EABAAC1CD41B8C2B79B84D9DB8ED4624A476B460D15",
+        "stderr_sha256": "2EADC52394C8D6E2890C456FDED098981282BB1AE0A4819A7B17980A719812EA",
+        "input_unchanged": true,
+        "required_idle_seconds": 300,
+        "test_binaries": [
+          {
+            "file": "darwinbots_cli-19b2f1d2dddc4ec7.exe",
+            "sha256": "98C8C77099B59C950DF78FD3F2A110ECB1C1B17CB97C761B5B6F79C4E16961AA"
+          }
+        ]
+      },
+      {
+        "task": "physical-integration",
+        "status": "passed",
+        "exit_code": 0,
+        "passed_cases": 3,
+        "elapsed_seconds": 253.9642569,
+        "cargo_sha256": "6F4BEF66261261FCB43131BE8720BAB817D403A09EDEC7455C371974B90BDB7E",
+        "stdout_sha256": "47C23A1B8884FCC1991045BDB94BB5CDEF2B84C9A72ECE4587D25C137717D790",
+        "stderr_sha256": "5D1F0E0EDB5A703500B631FDB7BD628C9A5AE5E1AB3FFB779D11084F9BDF402B",
+        "input_unchanged": true,
+        "required_idle_seconds": 300,
+        "test_binaries": [
+          {
+            "file": "db24832_starter_movement-a7a6e97e3d6c9a98.exe",
+            "sha256": "0B784D5F743284A2CF3BACBDEBFAC1F37D0AC05B77389B37A9540BC7F31882A7"
+          },
+          {
+            "file": "gpu_ffi-0257c6a4cd2bc001.exe",
+            "sha256": "826C53D01A8D4B1FD7E3DA39C27A2AE6453B5F986310A337522BCDF2D70E83B7"
+          },
+          {
+            "file": "w4_evolution_gpu-51c7f1fed9db5603.exe",
+            "sha256": "0D0F3EA57736C7CB2DC240C1232F110F71B6481AD6B7E4A5E1D14A652F547533"
+          }
+        ]
+      },
+      {
+        "task": "physical-native-continuation",
+        "status": "passed",
+        "exit_code": 0,
+        "passed_cases": 1,
+        "elapsed_seconds": 4521.851292,
+        "cargo_sha256": "6F4BEF66261261FCB43131BE8720BAB817D403A09EDEC7455C371974B90BDB7E",
+        "stdout_sha256": "24CC9725FE76A3E885CE950EFBF9E4F466232A0ABB3764A0AD69888AC0D0A940",
+        "stderr_sha256": "823A99D9B1F884431087ECCD5C5945FEF075FDADC5E31164EAB9DB60A764C94B",
+        "input_unchanged": true,
+        "required_idle_seconds": 300,
+        "test_binaries": [
+          {
+            "file": "native_continuation_qualification-013876c4d65198fd.exe",
+            "sha256": "CE57C0C43476830DE73C8DE37B68DD220DF2E9ABD0CDEE3B085A3F02F62EF286"
+          }
+        ]
+      },
+      {
+        "task": "portable-gpu",
+        "status": "passed",
+        "exit_code": 0,
+        "passed_cases": 14,
+        "elapsed_seconds": 792.5252587,
+        "cargo_sha256": "6F4BEF66261261FCB43131BE8720BAB817D403A09EDEC7455C371974B90BDB7E",
+        "stdout_sha256": "E58170EC470189D32A200ABC4B2CF41DA75583CD264B62193954B8CE61589EF8",
+        "stderr_sha256": "853C0D4992A6565F810589D3893167AE566BFF39BA7B5766EEA89D46533D7F7C",
+        "input_unchanged": true,
+        "required_idle_seconds": 300,
+        "test_binaries": [
+          {
+            "file": "darwinbots_cli-19b2f1d2dddc4ec7.exe",
+            "sha256": "E6AF136779F2FA14B8DC7693DF6BD148D4DE5EB2CEFD33D4DA7DA72EBECBDB91"
+          },
+          {
+            "file": "darwinbots_cli-669e7ed1c271a6b6.exe",
+            "sha256": "512811512658C0D0DE7AD53103D8C01488F8B0E511CBC2240BFF99C1919552EC"
+          },
+          {
+            "file": "bundled_bot_corpus-64a072572acbe959.exe",
+            "sha256": "B2820547886C4FF4B480FF202301CDAAA6325FA374C1440DC69744BAA01D2A82"
+          },
+          {
+            "file": "commands-eec7744335c58eb1.exe",
+            "sha256": "4FA873B814A16ADBC17A1A9A01349369B05E17269F0FE9047429EABEC0C75D51"
+          },
+          {
+            "file": "db245_probes-527613d6923ddfd2.exe",
+            "sha256": "50BE9A2A05F51EEDBAAEA56B9F70CA1033E5EE61A0E0BB2A8145BA5C8946A5D6"
+          },
+          {
+            "file": "native_comparison-d3c5181653a931bd.exe",
+            "sha256": "215659FDBDDACBC6DF1BDF5FDF9DD0A270EB8EE60CCA848CA73994A06980B74A"
+          },
+          {
+            "file": "darwinbots_engine-92c50bc16611c615.exe",
+            "sha256": "C56904B347E1D05F688EFC15AB07A14C44DDFF5665F4D6482211702AC375E3B2"
+          },
+          {
+            "file": "advanced_mutation_costs-09fdfc0fa41cc905.exe",
+            "sha256": "8316BD90248AF1CEFB60D97E938E5351ADD9D012F46C88575842A408274F7950"
+          },
+          {
+            "file": "canonical_cycle_248-650ba62a7c41d570.exe",
+            "sha256": "331AD20AAD56F3A1747D644B915000695AAC3ED3A63C00B5AE8617A9BB880D48"
+          },
+          {
+            "file": "community_league_admission-93be0ad716fa77a4.exe",
+            "sha256": "4C39A71CF6F0F637810C5649F6086B2C06F6D388CF97109B87B6F0FACDB2CC35"
+          },
+          {
+            "file": "contracts-179a2d3a76e729ad.exe",
+            "sha256": "CEA1C599CCBA8AD28C588571013702A84BB11AA6201502BAD922ABFBF3EE7208"
+          },
+          {
+            "file": "core_state_contracts-6bf5e5eb215ae5d4.exe",
+            "sha256": "38E101F5DBFD8E960C60681954E84394493502B1A044D3C0893F0CB1782509D1"
+          },
+          {
+            "file": "corpses_collisions-66bd4fced172556a.exe",
+            "sha256": "42A4CA402FDE11E006C0FB8DCA83B7280570C40928101173DBA5718C3F2EB7EC"
+          },
+          {
+            "file": "db24832_clean_defaults-acb0259715fbf94e.exe",
+            "sha256": "B91EA05F690608E8504C818A63F674FE3755C990FC111507876D8B57BB5DFE48"
+          },
+          {
+            "file": "db24832_genuine_feeding-aa18f8f26e528034.exe",
+            "sha256": "BE1376E680EFE43FA1B750F1A776D063F5DC56DBE71C88AAC16DF9519B309CE8"
+          },
+          {
+            "file": "db24832_genuine_load_transients-cffd3fd7cf5f84a6.exe",
+            "sha256": "70AC46BAB6E2BBECCCB4759AB2EF0764376E3AEB9192C82FB171985D6A49E256"
+          },
+          {
+            "file": "db24832_starter_movement-f888656b7ea57a99.exe",
+            "sha256": "423907BB9A4779ACB65F0242D7403FB9343F18585F58135F67CB10B44FD7E68A"
+          },
+          {
+            "file": "db2_final_engine_world-461d89f488220f53.exe",
+            "sha256": "EF2B0B52284636E98BE30072E1723AEC80496C1CFF8503007786738820C2D152"
+          },
+          {
+            "file": "db2_mutation_248-46accb0e62919ad8.exe",
+            "sha256": "B8C4FEEFAC6BA06283C212546A23CD5C2BEF336E5CC38EF6BF63DC3B727D2859"
+          },
+          {
+            "file": "db2_physics-ce758037a74f4117.exe",
+            "sha256": "87517168F0E317CCCDBD60531F82A6FAEA8DA31901CABB20C4FEF84D706FA24F"
+          },
+          {
+            "file": "db2_projectiles-67673a8dd88d938d.exe",
+            "sha256": "0DF3328DDBDF8C65AEE63ABF98C1FDA05F0E73337CC92CB1BA8BC4D3D51C2861"
+          },
+          {
+            "file": "db2_starter_ecology-5e288a6d107e72d3.exe",
+            "sha256": "641D27FDF5015A944CD6C5B8D2C28EBDE44D97AC0946FD98C4EF1FD4E9C38DBF"
+          },
+          {
+            "file": "db2_vegetation-b21a95ff2211a5e6.exe",
+            "sha256": "BA1744B5E01CC8DEB71E43EE6B0E3729089F826885120E3EDBF8258743E9B78D"
+          },
+          {
+            "file": "db2_vision-2b2321f6475d537f.exe",
+            "sha256": "46693D407F4A7EA086DBA354BD2754DBCA3C5285F36DEC0E0B7A844ACDEE38D9"
+          },
+          {
+            "file": "dna_runtime_248-b6816bc5b4e5c92d.exe",
+            "sha256": "DF06AB04CFC52BCA1A0B074ED2F7F93C68F4B4F4B512AD006785395F5FC45136"
+          },
+          {
+            "file": "eco05_repopulation-5045dda4070ffd93.exe",
+            "sha256": "BBF894901CB9B4E453BF9D9482F9610A8AA42D06A5426F341C8479FD14B801B1"
+          },
+          {
+            "file": "environment_world-3854baf0f2ececf1.exe",
+            "sha256": "17EFEB2FD930FB3ECA3DADA93297C9FB3D76FFB4D414D3BFFAC84A029DD28269"
+          },
+          {
+            "file": "extinct_species-585aba2c31b9ffb2.exe",
+            "sha256": "B75DDB04321D4C81BA10E934676960334E65E6973AE31CB2F334AE9399B97075"
+          },
+          {
+            "file": "final_state_persistence_248-35fbe0bce0b29740.exe",
+            "sha256": "D305838D50933E639E1D57669634EDC68D9080C8037CC9EE4D87EB691A04CFB2"
+          },
+          {
+            "file": "gpu_ffi-4c7d162f35e688aa.exe",
+            "sha256": "8F014BD86BE958797145041C57464764F9F5993E8A9188AF5AA27F2BF9208B80"
+          },
+          {
+            "file": "history_records-143daf93a80a442e.exe",
+            "sha256": "ABA2B35E7689CC55F10A5EE158584F5A984675BA1F00CF51DE89E16925BF5A69"
+          },
+          {
+            "file": "legacy_distribution-7bb136b759d1c7de.exe",
+            "sha256": "A8B8FFD14EB68388954776392DC28CA77788160194B6739A63D3DFB5928A80B1"
+          },
+          {
+            "file": "legacy_transport-09aee2bbca8ac8a6.exe",
+            "sha256": "F22C280302B546FB710088D2CDB2BCAD7835612850BE7C8F6CEC0123C92F5A11"
+          },
+          {
+            "file": "live_legacy_menu_settings-b490f410f04c8243.exe",
+            "sha256": "7065486BCEF5B5C76150678CBBB7CE20BCBCC125B3AB5FB72882475050B45873"
+          },
+          {
+            "file": "local_modes-4c38d5ff313600fd.exe",
+            "sha256": "A7EE10698DF7C05D3F84381C3C2895199B69DA03E94E535D2E99FDF55FD3654F"
+          },
+          {
+            "file": "manual_tools-a429d3ceca6198a2.exe",
+            "sha256": "14E996F99993329D8DFA53FDD96F57361A09C1085881063FEAE6F44685115AB5"
+          },
+          {
+            "file": "mutation_advanced_248-d4b00b11f49281e8.exe",
+            "sha256": "C0F9BD127D2BC884261F9FC8AE3290FA3D74AC2BD22F2F7DA3311D67EAF48268"
+          },
+          {
+            "file": "mutation_lifecycle-94f7448b1761426e.exe",
+            "sha256": "51620C9F8E1D4CECB30053FAE2F7A28328BB65970E01EF569CB70CC8B55BEA62"
+          },
+          {
+            "file": "native_continuation_qualification-9ff3b2220595958d.exe",
+            "sha256": "65E3A17D20489D9FEC5C86AA882E75589C54AB0DE172E6ACC7C962669A4AABB0"
+          },
+          {
+            "file": "native_mutation_continuation_qualification-29af2bf317ca2797.exe",
+            "sha256": "3B3FB799E9F997548DE00877F12C4EE26517A3B02F46E7D2ED865EF1493B215A"
+          },
+          {
+            "file": "native_random_lifecycle_248-7de759149ed8af05.exe",
+            "sha256": "53711D953A5BFBC55C6D029BD58298709DC9AAEEB47A374D8737585347A8ED04"
+          },
+          {
+            "file": "native_reference_senses_248-e98e55079559ad45.exe",
+            "sha256": "AFE6ED970F9AC139B65717AC1877F5F8C65C5CE136F8BCC40B16B27394DC6380"
+          },
+          {
+            "file": "native_resource_precision-d406bdccc810eb07.exe",
+            "sha256": "4FFBE43F89868815877666772989A51A259367AEBB326F85204E40B1914B96D4"
+          },
+          {
+            "file": "occurrence_census_248-19d42b773440ac55.exe",
+            "sha256": "6F19C7531953B7068B6D3B6559976DC6987514C70BB610E6337470EE87F1667B"
+          },
+          {
+            "file": "parity_completion-900346f89625bb36.exe",
+            "sha256": "025705A8B504C5DE3AEDC3741DD89C807D7A48C9BE206578B50D0C7F6FF04BD0"
+          },
+          {
+            "file": "reproduction_heredity_248-66c2c382b759ceec.exe",
+            "sha256": "AB63599ED32F4352D1E4466D010400563902D4376A9E50579572387350374D1B"
+          },
+          {
+            "file": "robot_state_248-09c3c6f377e9f9c0.exe",
+            "sha256": "29B5237834769C6C0B4DAF4907B87B741610EC58EA387432FB308A988EFB86C7"
+          },
+          {
+            "file": "robot_tools-d87531d73e3fa458.exe",
+            "sha256": "915C24092833BF4083157AE2EE12F9BADE175E5A48351B85C2DCC628048A19E2"
+          },
+          {
+            "file": "scheduler_housekeeping-34a83c41b6c94c9d.exe",
+            "sha256": "6BE8453425F748A37699A7CB04DF997825447DC32E448E4B99C5C6951A685FC2"
+          },
+          {
+            "file": "scheduler_shock-02bcae018107ad24.exe",
+            "sha256": "9BA8AA40E5F19B8AED70C87EFBE27DE56A8BEE5BECB386A51BB54B75DA823352"
+          },
+          {
+            "file": "sensing_compatibility-7a9674124e31a7ee.exe",
+            "sha256": "425D329C5E5C503B880A5EA53877DF030240EAC709A9AA8E9663C6178DD9FDE1"
+          },
+          {
+            "file": "shot_state-1724e844b71cb858.exe",
+            "sha256": "D5B91F1531169937EAE93453B394E9E64290CD71038ECE75CED22A30B66FFF6E"
+          },
+          {
+            "file": "spawn_placement-6758035783c655f8.exe",
+            "sha256": "2B54EB81D518224EE003AA1B85FCFA8C93A27688C0036C11121273C2A59B0ECB"
+          },
+          {
+            "file": "species_ecology-f257e733aa9efc30.exe",
+            "sha256": "C768A99336505391577ADF5C75061834BEBA13EE21E9E9780E2B5186787DA13B"
+          },
+          {
+            "file": "starter_ecology-4f04f24d61d6a506.exe",
+            "sha256": "825CBB356355D03B9B6B7B5A915EEABC7B4B0FA359FB140E0C9F171592E54F47"
+          },
+          {
+            "file": "sysvar_lifecycle_248-a6463d22e029177f.exe",
+            "sha256": "3AD8EB1E0EE8C671DA19D0E899A4C3A9B7A7F2642DBA8804BF95BFC85ABFE654"
+          },
+          {
+            "file": "ties_multibot-88c93c24b9c68278.exe",
+            "sha256": "EEF43D337FD7B9A9AA7983372986AA32C0B4DCF728200234A991F02A4F8C6C73"
+          },
+          {
+            "file": "toroidal_world-64814961e5b6b04a.exe",
+            "sha256": "F972C2FD46D11D985BD25C88A483B0AC79F5B1C404641E98A15163B379280836"
+          },
+          {
+            "file": "touch_taste_248-b519518bac9ec43d.exe",
+            "sha256": "9F8893B9A19678765C2AF993D201780FB6645622C6702E05D0D0CBF5A5F4CF85"
+          },
+          {
+            "file": "visual_phenotypes-079c0d150cbd6f2c.exe",
+            "sha256": "F6ADC97EC143CAF8FC48A1810ED394A39CF642D1FF2FD20086EC7EE5BDEC7880"
+          },
+          {
+            "file": "vm-1b6c01cf0a4bd8e1.exe",
+            "sha256": "53F5B777C4013437BEA39EDED6EA7E5F0372DF99E35F375F4DA0EAEFC4629456"
+          },
+          {
+            "file": "vm_costs_telemetry-35be8fcf35537edb.exe",
+            "sha256": "54FDFB8EBA84A280A8D161E0279B7F4ACB8BB20AFF8F3DB6EFF7EAA8D7060297"
+          },
+          {
+            "file": "vm_implicit_conditions-992cbe6a6064bda8.exe",
+            "sha256": "4598C84169B08DB594E246CEF5C34DEE9862AFD825BD29515DB6A27CC7229E6C"
+          },
+          {
+            "file": "w4_evolution_gpu-3e196d79f9dd6aa4.exe",
+            "sha256": "468EAB1868A96640875DB7C733136550A9A0381CE2AEE8E7525AE377CDF0D5A1"
+          },
+          {
+            "file": "world_systems-3482d82d394d1951.exe",
+            "sha256": "BBEE1037363D66EB9CBF6F48C79967C1AA5FAF924897750860008E8EAFF9FAEB"
+          },
+          {
+            "file": "zerobot_progression-cafef9c9e3e52765.exe",
+            "sha256": "CD92D433B5F094C578AAA1E31B0D560804DE904BA5D0E76EED07CCA84FE9D503"
+          }
+        ]
+      },
+      {
+        "task": "backend-switches",
+        "status": "passed",
+        "exit_code": 0,
+        "passed_cases": 1,
+        "elapsed_seconds": 12.0382662,
+        "cargo_sha256": "6F4BEF66261261FCB43131BE8720BAB817D403A09EDEC7455C371974B90BDB7E",
+        "stdout_sha256": "CB7C08E230791C30007F650A9C6647A2606AF560E30DB0C4ED4FE4F782FDE00C",
+        "stderr_sha256": "70E406197EBBBD5DE843B82ADD4C77EC7DCB51445647597FFAA90A8127FD2163",
+        "input_unchanged": true,
+        "required_idle_seconds": 300,
+        "test_binaries": [
+          {
+            "file": "darwinbots_cli-19b2f1d2dddc4ec7.exe",
+            "sha256": "E6AF136779F2FA14B8DC7693DF6BD148D4DE5EB2CEFD33D4DA7DA72EBECBDB91"
+          },
+          {
+            "file": "darwinbots_cli-669e7ed1c271a6b6.exe",
+            "sha256": "512811512658C0D0DE7AD53103D8C01488F8B0E511CBC2240BFF99C1919552EC"
+          },
+          {
+            "file": "bundled_bot_corpus-64a072572acbe959.exe",
+            "sha256": "B2820547886C4FF4B480FF202301CDAAA6325FA374C1440DC69744BAA01D2A82"
+          },
+          {
+            "file": "commands-eec7744335c58eb1.exe",
+            "sha256": "4FA873B814A16ADBC17A1A9A01349369B05E17269F0FE9047429EABEC0C75D51"
+          },
+          {
+            "file": "db245_probes-527613d6923ddfd2.exe",
+            "sha256": "50BE9A2A05F51EEDBAAEA56B9F70CA1033E5EE61A0E0BB2A8145BA5C8946A5D6"
+          },
+          {
+            "file": "native_comparison-d3c5181653a931bd.exe",
+            "sha256": "215659FDBDDACBC6DF1BDF5FDF9DD0A270EB8EE60CCA848CA73994A06980B74A"
+          },
+          {
+            "file": "darwinbots_engine-92c50bc16611c615.exe",
+            "sha256": "C56904B347E1D05F688EFC15AB07A14C44DDFF5665F4D6482211702AC375E3B2"
+          },
+          {
+            "file": "advanced_mutation_costs-09fdfc0fa41cc905.exe",
+            "sha256": "8316BD90248AF1CEFB60D97E938E5351ADD9D012F46C88575842A408274F7950"
+          },
+          {
+            "file": "canonical_cycle_248-650ba62a7c41d570.exe",
+            "sha256": "331AD20AAD56F3A1747D644B915000695AAC3ED3A63C00B5AE8617A9BB880D48"
+          },
+          {
+            "file": "community_league_admission-93be0ad716fa77a4.exe",
+            "sha256": "4C39A71CF6F0F637810C5649F6086B2C06F6D388CF97109B87B6F0FACDB2CC35"
+          },
+          {
+            "file": "contracts-179a2d3a76e729ad.exe",
+            "sha256": "CEA1C599CCBA8AD28C588571013702A84BB11AA6201502BAD922ABFBF3EE7208"
+          },
+          {
+            "file": "core_state_contracts-6bf5e5eb215ae5d4.exe",
+            "sha256": "38E101F5DBFD8E960C60681954E84394493502B1A044D3C0893F0CB1782509D1"
+          },
+          {
+            "file": "corpses_collisions-66bd4fced172556a.exe",
+            "sha256": "42A4CA402FDE11E006C0FB8DCA83B7280570C40928101173DBA5718C3F2EB7EC"
+          },
+          {
+            "file": "db24832_clean_defaults-acb0259715fbf94e.exe",
+            "sha256": "B91EA05F690608E8504C818A63F674FE3755C990FC111507876D8B57BB5DFE48"
+          },
+          {
+            "file": "db24832_genuine_feeding-aa18f8f26e528034.exe",
+            "sha256": "BE1376E680EFE43FA1B750F1A776D063F5DC56DBE71C88AAC16DF9519B309CE8"
+          },
+          {
+            "file": "db24832_genuine_load_transients-cffd3fd7cf5f84a6.exe",
+            "sha256": "70AC46BAB6E2BBECCCB4759AB2EF0764376E3AEB9192C82FB171985D6A49E256"
+          },
+          {
+            "file": "db24832_starter_movement-f888656b7ea57a99.exe",
+            "sha256": "423907BB9A4779ACB65F0242D7403FB9343F18585F58135F67CB10B44FD7E68A"
+          },
+          {
+            "file": "db2_final_engine_world-461d89f488220f53.exe",
+            "sha256": "EF2B0B52284636E98BE30072E1723AEC80496C1CFF8503007786738820C2D152"
+          },
+          {
+            "file": "db2_mutation_248-46accb0e62919ad8.exe",
+            "sha256": "B8C4FEEFAC6BA06283C212546A23CD5C2BEF336E5CC38EF6BF63DC3B727D2859"
+          },
+          {
+            "file": "db2_physics-ce758037a74f4117.exe",
+            "sha256": "87517168F0E317CCCDBD60531F82A6FAEA8DA31901CABB20C4FEF84D706FA24F"
+          },
+          {
+            "file": "db2_projectiles-67673a8dd88d938d.exe",
+            "sha256": "0DF3328DDBDF8C65AEE63ABF98C1FDA05F0E73337CC92CB1BA8BC4D3D51C2861"
+          },
+          {
+            "file": "db2_starter_ecology-5e288a6d107e72d3.exe",
+            "sha256": "641D27FDF5015A944CD6C5B8D2C28EBDE44D97AC0946FD98C4EF1FD4E9C38DBF"
+          },
+          {
+            "file": "db2_vegetation-b21a95ff2211a5e6.exe",
+            "sha256": "BA1744B5E01CC8DEB71E43EE6B0E3729089F826885120E3EDBF8258743E9B78D"
+          },
+          {
+            "file": "db2_vision-2b2321f6475d537f.exe",
+            "sha256": "46693D407F4A7EA086DBA354BD2754DBCA3C5285F36DEC0E0B7A844ACDEE38D9"
+          },
+          {
+            "file": "dna_runtime_248-b6816bc5b4e5c92d.exe",
+            "sha256": "DF06AB04CFC52BCA1A0B074ED2F7F93C68F4B4F4B512AD006785395F5FC45136"
+          },
+          {
+            "file": "eco05_repopulation-5045dda4070ffd93.exe",
+            "sha256": "BBF894901CB9B4E453BF9D9482F9610A8AA42D06A5426F341C8479FD14B801B1"
+          },
+          {
+            "file": "environment_world-3854baf0f2ececf1.exe",
+            "sha256": "17EFEB2FD930FB3ECA3DADA93297C9FB3D76FFB4D414D3BFFAC84A029DD28269"
+          },
+          {
+            "file": "extinct_species-585aba2c31b9ffb2.exe",
+            "sha256": "B75DDB04321D4C81BA10E934676960334E65E6973AE31CB2F334AE9399B97075"
+          },
+          {
+            "file": "final_state_persistence_248-35fbe0bce0b29740.exe",
+            "sha256": "D305838D50933E639E1D57669634EDC68D9080C8037CC9EE4D87EB691A04CFB2"
+          },
+          {
+            "file": "gpu_ffi-4c7d162f35e688aa.exe",
+            "sha256": "8F014BD86BE958797145041C57464764F9F5993E8A9188AF5AA27F2BF9208B80"
+          },
+          {
+            "file": "history_records-143daf93a80a442e.exe",
+            "sha256": "ABA2B35E7689CC55F10A5EE158584F5A984675BA1F00CF51DE89E16925BF5A69"
+          },
+          {
+            "file": "legacy_distribution-7bb136b759d1c7de.exe",
+            "sha256": "A8B8FFD14EB68388954776392DC28CA77788160194B6739A63D3DFB5928A80B1"
+          },
+          {
+            "file": "legacy_transport-09aee2bbca8ac8a6.exe",
+            "sha256": "F22C280302B546FB710088D2CDB2BCAD7835612850BE7C8F6CEC0123C92F5A11"
+          },
+          {
+            "file": "live_legacy_menu_settings-b490f410f04c8243.exe",
+            "sha256": "7065486BCEF5B5C76150678CBBB7CE20BCBCC125B3AB5FB72882475050B45873"
+          },
+          {
+            "file": "local_modes-4c38d5ff313600fd.exe",
+            "sha256": "A7EE10698DF7C05D3F84381C3C2895199B69DA03E94E535D2E99FDF55FD3654F"
+          },
+          {
+            "file": "manual_tools-a429d3ceca6198a2.exe",
+            "sha256": "14E996F99993329D8DFA53FDD96F57361A09C1085881063FEAE6F44685115AB5"
+          },
+          {
+            "file": "mutation_advanced_248-d4b00b11f49281e8.exe",
+            "sha256": "C0F9BD127D2BC884261F9FC8AE3290FA3D74AC2BD22F2F7DA3311D67EAF48268"
+          },
+          {
+            "file": "mutation_lifecycle-94f7448b1761426e.exe",
+            "sha256": "51620C9F8E1D4CECB30053FAE2F7A28328BB65970E01EF569CB70CC8B55BEA62"
+          },
+          {
+            "file": "native_continuation_qualification-9ff3b2220595958d.exe",
+            "sha256": "65E3A17D20489D9FEC5C86AA882E75589C54AB0DE172E6ACC7C962669A4AABB0"
+          },
+          {
+            "file": "native_mutation_continuation_qualification-29af2bf317ca2797.exe",
+            "sha256": "3B3FB799E9F997548DE00877F12C4EE26517A3B02F46E7D2ED865EF1493B215A"
+          },
+          {
+            "file": "native_random_lifecycle_248-7de759149ed8af05.exe",
+            "sha256": "53711D953A5BFBC55C6D029BD58298709DC9AAEEB47A374D8737585347A8ED04"
+          },
+          {
+            "file": "native_reference_senses_248-e98e55079559ad45.exe",
+            "sha256": "AFE6ED970F9AC139B65717AC1877F5F8C65C5CE136F8BCC40B16B27394DC6380"
+          },
+          {
+            "file": "native_resource_precision-d406bdccc810eb07.exe",
+            "sha256": "4FFBE43F89868815877666772989A51A259367AEBB326F85204E40B1914B96D4"
+          },
+          {
+            "file": "occurrence_census_248-19d42b773440ac55.exe",
+            "sha256": "6F19C7531953B7068B6D3B6559976DC6987514C70BB610E6337470EE87F1667B"
+          },
+          {
+            "file": "parity_completion-900346f89625bb36.exe",
+            "sha256": "025705A8B504C5DE3AEDC3741DD89C807D7A48C9BE206578B50D0C7F6FF04BD0"
+          },
+          {
+            "file": "reproduction_heredity_248-66c2c382b759ceec.exe",
+            "sha256": "AB63599ED32F4352D1E4466D010400563902D4376A9E50579572387350374D1B"
+          },
+          {
+            "file": "robot_state_248-09c3c6f377e9f9c0.exe",
+            "sha256": "29B5237834769C6C0B4DAF4907B87B741610EC58EA387432FB308A988EFB86C7"
+          },
+          {
+            "file": "robot_tools-d87531d73e3fa458.exe",
+            "sha256": "915C24092833BF4083157AE2EE12F9BADE175E5A48351B85C2DCC628048A19E2"
+          },
+          {
+            "file": "scheduler_housekeeping-34a83c41b6c94c9d.exe",
+            "sha256": "6BE8453425F748A37699A7CB04DF997825447DC32E448E4B99C5C6951A685FC2"
+          },
+          {
+            "file": "scheduler_shock-02bcae018107ad24.exe",
+            "sha256": "9BA8AA40E5F19B8AED70C87EFBE27DE56A8BEE5BECB386A51BB54B75DA823352"
+          },
+          {
+            "file": "sensing_compatibility-7a9674124e31a7ee.exe",
+            "sha256": "425D329C5E5C503B880A5EA53877DF030240EAC709A9AA8E9663C6178DD9FDE1"
+          },
+          {
+            "file": "shot_state-1724e844b71cb858.exe",
+            "sha256": "D5B91F1531169937EAE93453B394E9E64290CD71038ECE75CED22A30B66FFF6E"
+          },
+          {
+            "file": "spawn_placement-6758035783c655f8.exe",
+            "sha256": "2B54EB81D518224EE003AA1B85FCFA8C93A27688C0036C11121273C2A59B0ECB"
+          },
+          {
+            "file": "species_ecology-f257e733aa9efc30.exe",
+            "sha256": "C768A99336505391577ADF5C75061834BEBA13EE21E9E9780E2B5186787DA13B"
+          },
+          {
+            "file": "starter_ecology-4f04f24d61d6a506.exe",
+            "sha256": "825CBB356355D03B9B6B7B5A915EEABC7B4B0FA359FB140E0C9F171592E54F47"
+          },
+          {
+            "file": "sysvar_lifecycle_248-a6463d22e029177f.exe",
+            "sha256": "3AD8EB1E0EE8C671DA19D0E899A4C3A9B7A7F2642DBA8804BF95BFC85ABFE654"
+          },
+          {
+            "file": "ties_multibot-88c93c24b9c68278.exe",
+            "sha256": "EEF43D337FD7B9A9AA7983372986AA32C0B4DCF728200234A991F02A4F8C6C73"
+          },
+          {
+            "file": "toroidal_world-64814961e5b6b04a.exe",
+            "sha256": "F972C2FD46D11D985BD25C88A483B0AC79F5B1C404641E98A15163B379280836"
+          },
+          {
+            "file": "touch_taste_248-b519518bac9ec43d.exe",
+            "sha256": "9F8893B9A19678765C2AF993D201780FB6645622C6702E05D0D0CBF5A5F4CF85"
+          },
+          {
+            "file": "visual_phenotypes-079c0d150cbd6f2c.exe",
+            "sha256": "F6ADC97EC143CAF8FC48A1810ED394A39CF642D1FF2FD20086EC7EE5BDEC7880"
+          },
+          {
+            "file": "vm-1b6c01cf0a4bd8e1.exe",
+            "sha256": "53F5B777C4013437BEA39EDED6EA7E5F0372DF99E35F375F4DA0EAEFC4629456"
+          },
+          {
+            "file": "vm_costs_telemetry-35be8fcf35537edb.exe",
+            "sha256": "54FDFB8EBA84A280A8D161E0279B7F4ACB8BB20AFF8F3DB6EFF7EAA8D7060297"
+          },
+          {
+            "file": "vm_implicit_conditions-992cbe6a6064bda8.exe",
+            "sha256": "4598C84169B08DB594E246CEF5C34DEE9862AFD825BD29515DB6A27CC7229E6C"
+          },
+          {
+            "file": "w4_evolution_gpu-3e196d79f9dd6aa4.exe",
+            "sha256": "468EAB1868A96640875DB7C733136550A9A0381CE2AEE8E7525AE377CDF0D5A1"
+          },
+          {
+            "file": "world_systems-3482d82d394d1951.exe",
+            "sha256": "BBEE1037363D66EB9CBF6F48C79967C1AA5FAF924897750860008E8EAFF9FAEB"
+          },
+          {
+            "file": "zerobot_progression-cafef9c9e3e52765.exe",
+            "sha256": "CD92D433B5F094C578AAA1E31B0D560804DE904BA5D0E76EED07CCA84FE9D503"
+          }
+        ]
+      }
+    ],
+    "long_continuation": {
+      "additional_cycles": 10000,
+      "checkpoints_matched": 10,
+      "final_cycle": 10281,
+      "final_robots": 2161,
+      "final_shots": 869,
+      "total_births": 8999,
+      "final_save_bytes": 32027010,
+      "continuous_vs_resumed_save_bytes_equal": true,
+      "cpu_vs_gpu_gameplay_equal": true
+    },
+    "overlap_note": "The portable and switch groups overlap other cases; do not sum group counts as unique tests."
+  },
+  "ci": {
+    "source_revision": "da3581e05903ea5315b8903835519d86a5c7f99d",
+    "run": 41835933113,
+    "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/41835933113",
+    "conclusion": "success",
+    "jobs": [
+      {
+        "id": 126595182451,
+        "name": "verify-and-package (windows-latest, win-x64)",
+        "conclusion": "success",
+        "rust_passed": 1071,
+        "physical_only_ignored": 12,
+        "core_passed": 328,
+        "desktop_passed": 236,
+        "optional_benchmark_skipped": 1,
+        "package_publish_passed": true,
+        "package_smoke_passed": true
+      },
+      {
+        "id": 126595182737,
+        "name": "verify-and-package (macos-latest, osx-arm64)",
+        "conclusion": "success",
+        "rust_passed": 1071,
+        "physical_only_ignored": 12,
+        "core_passed": 328,
+        "desktop_passed": 236,
+        "optional_benchmark_skipped": 1,
+        "package_publish_passed": true,
+        "package_smoke_passed": true
+      },
+      {
+        "id": 126595182835,
+        "name": "verify-and-package (ubuntu-latest, linux-x64)",
+        "conclusion": "success",
+        "rust_passed": 1071,
+        "physical_only_ignored": 12,
+        "core_passed": 328,
+        "desktop_passed": 236,
+        "optional_benchmark_skipped": 1,
+        "package_publish_passed": true,
+        "package_smoke_passed": true
+      },
+      {
+        "id": 126595182903,
+        "name": "verify-and-package (macos-15-intel, osx-x64)",
+        "conclusion": "success",
+        "rust_passed": 1071,
+        "physical_only_ignored": 12,
+        "core_passed": 328,
+        "desktop_passed": 236,
+        "optional_benchmark_skipped": 1,
+        "package_publish_passed": true,
+        "package_smoke_passed": true
+      }
+    ],
+    "artifacts": [
+      {
+        "id": 13332835954,
+        "name": "darwinbots-osx-x64",
+        "size_in_bytes": 16985225,
+        "url": "https://api.github.com/repos/BobertNeek/Darwinbots-Modern/actions/artifacts/13332835954",
+        "archive_download_url": "https://api.github.com/repos/BobertNeek/Darwinbots-Modern/actions/artifacts/13332835954/zip",
+        "expired": false,
+        "created_at": "2026-11-04T14:33:08Z",
+        "expires_at": "2027-02-02T13:12:06Z",
+        "updated_at": "2026-11-04T14:33:08Z",
+        "digest": "sha256:2f40e858056bb1c0bea8cad7aaca6b533fdbadefe4f146a942fefd49037880e0",
+        "workflow_run": {
+          "id": 41835933113,
+          "repository_id": 1298633104,
+          "head_repository_id": 1298633104,
+          "head_branch": "codex/offline-feature-completion",
+          "head_sha": "da3581e05903ea5315b8903835519d86a5c7f99d"
+        }
+      },
+      {
+        "id": 13332168428,
+        "name": "darwinbots-gui-audit-osx-x64",
+        "size_in_bytes": 4176351,
+        "url": "https://api.github.com/repos/BobertNeek/Darwinbots-Modern/actions/artifacts/13332168428",
+        "archive_download_url": "https://api.github.com/repos/BobertNeek/Darwinbots-Modern/actions/artifacts/13332168428/zip",
+        "expired": false,
+        "created_at": "2026-11-04T14:32:20Z",
+        "expires_at": "2027-02-02T13:12:06Z",
+        "updated_at": "2026-11-04T14:32:20Z",
+        "digest": "sha256:525c8011aa24a17622a38532846634679bdab0c7fca045ddc9dc89a3f5841cc4",
+        "workflow_run": {
+          "id": 41835933113,
+          "repository_id": 1298633104,
+          "head_repository_id": 1298633104,
+          "head_branch": "codex/offline-feature-completion",
+          "head_sha": "da3581e05903ea5315b8903835519d86a5c7f99d"
+        }
+      },
+      {
+        "id": 13330051027,
+        "name": "darwinbots-gui-audit-win-x64",
+        "size_in_bytes": 2540192,
+        "url": "https://api.github.com/repos/BobertNeek/Darwinbots-Modern/actions/artifacts/13330051027",
+        "archive_download_url": "https://api.github.com/repos/BobertNeek/Darwinbots-Modern/actions/artifacts/13330051027/zip",
+        "expired": false,
+        "created_at": "2026-11-04T13:50:09Z",
+        "expires_at": "2027-02-02T13:12:06Z",
+        "updated_at": "2026-11-04T13:50:09Z",
+        "digest": "sha256:7c9ee0133194b1e52c63ad0831b1b6630b2b04527ef3af000c7bcc8384d06300",
+        "workflow_run": {
+          "id": 41835933113,
+          "repository_id": 1298633104,
+          "head_repository_id": 1298633104,
+          "head_branch": "codex/offline-feature-completion",
+          "head_sha": "da3581e05903ea5315b8903835519d86a5c7f99d"
+        }
+      },
+      {
+        "id": 13329910792,
+        "name": "darwinbots-win-x64",
+        "size_in_bytes": 43477552,
+        "url": "https://api.github.com/repos/BobertNeek/Darwinbots-Modern/actions/artifacts/13329910792",
+        "archive_download_url": "https://api.github.com/repos/BobertNeek/Darwinbots-Modern/actions/artifacts/13329910792/zip",
+        "expired": false,
+        "created_at": "2026-11-04T13:50:22Z",
+        "expires_at": "2027-02-02T13:12:06Z",
+        "updated_at": "2026-11-04T13:50:22Z",
+        "digest": "sha256:38684f367d7feed03763e158b5f1a4d24293e041017474e71847ba197cd964cf",
+        "workflow_run": {
+          "id": 41835933113,
+          "repository_id": 1298633104,
+          "head_repository_id": 1298633104,
+          "head_branch": "codex/offline-feature-completion",
+          "head_sha": "da3581e05903ea5315b8903835519d86a5c7f99d"
+        }
+      },
+      {
+        "id": 13328316360,
+        "name": "darwinbots-gui-audit-osx-arm64",
+        "size_in_bytes": 4178036,
+        "url": "https://api.github.com/repos/BobertNeek/Darwinbots-Modern/actions/artifacts/13328316360",
+        "archive_download_url": "https://api.github.com/repos/BobertNeek/Darwinbots-Modern/actions/artifacts/13328316360/zip",
+        "expired": false,
+        "created_at": "2026-11-04T13:38:46Z",
+        "expires_at": "2027-02-02T13:12:06Z",
+        "updated_at": "2026-11-04T13:38:46Z",
+        "digest": "sha256:c8e4edee55f141ef9d37a8ef99ccf29ba20fccca4c54339d8dd22960f13b6358",
+        "workflow_run": {
+          "id": 41835933113,
+          "repository_id": 1298633104,
+          "head_repository_id": 1298633104,
+          "head_branch": "codex/offline-feature-completion",
+          "head_sha": "da3581e05903ea5315b8903835519d86a5c7f99d"
+        }
+      },
+      {
+        "id": 13328271459,
+        "name": "darwinbots-osx-arm64",
+        "size_in_bytes": 16877246,
+        "url": "https://api.github.com/repos/BobertNeek/Darwinbots-Modern/actions/artifacts/13328271459",
+        "archive_download_url": "https://api.github.com/repos/BobertNeek/Darwinbots-Modern/actions/artifacts/13328271459/zip",
+        "expired": false,
+        "created_at": "2026-11-04T13:38:58Z",
+        "expires_at": "2027-02-02T13:12:06Z",
+        "updated_at": "2026-11-04T13:38:58Z",
+        "digest": "sha256:633aed275d8df5c1681ef7cde88a40cc168c81b6643b70fc455c38b749310145",
+        "workflow_run": {
+          "id": 41835933113,
+          "repository_id": 1298633104,
+          "head_repository_id": 1298633104,
+          "head_branch": "codex/offline-feature-completion",
+          "head_sha": "da3581e05903ea5315b8903835519d86a5c7f99d"
+        }
+      },
+      {
+        "id": 13325719997,
+        "name": "darwinbots-linux-x64",
+        "size_in_bytes": 14689868,
+        "url": "https://api.github.com/repos/BobertNeek/Darwinbots-Modern/actions/artifacts/13325719997",
+        "archive_download_url": "https://api.github.com/repos/BobertNeek/Darwinbots-Modern/actions/artifacts/13325719997/zip",
+        "expired": false,
+        "created_at": "2026-11-04T13:32:26Z",
+        "expires_at": "2027-02-02T13:12:06Z",
+        "updated_at": "2026-11-04T13:32:26Z",
+        "digest": "sha256:f174e52c9e6a709ac517b15cfb8c3d485ddfe0b234a49e8e341ed748905ed30e",
+        "workflow_run": {
+          "id": 41835933113,
+          "repository_id": 1298633104,
+          "head_repository_id": 1298633104,
+          "head_branch": "codex/offline-feature-completion",
+          "head_sha": "da3581e05903ea5315b8903835519d86a5c7f99d"
+        }
+      },
+      {
+        "id": 13325659973,
+        "name": "darwinbots-gui-audit-linux-x64",
+        "size_in_bytes": 3370716,
+        "url": "https://api.github.com/repos/BobertNeek/Darwinbots-Modern/actions/artifacts/13325659973",
+        "archive_download_url": "https://api.github.com/repos/BobertNeek/Darwinbots-Modern/actions/artifacts/13325659973/zip",
+        "expired": false,
+        "created_at": "2026-11-04T13:32:16Z",
+        "expires_at": "2027-02-02T13:12:06Z",
+        "updated_at": "2026-11-04T13:32:16Z",
+        "digest": "sha256:c09816d53afeec9aec38b580a4e0e96faa0376ae13b34a1f672e585448178574",
+        "workflow_run": {
+          "id": 41835933113,
+          "repository_id": 1298633104,
+          "head_repository_id": 1298633104,
+          "head_branch": "codex/offline-feature-completion",
+          "head_sha": "da3581e05903ea5315b8903835519d86a5c7f99d"
+        }
+      }
+    ]
+  },
+  "windows_package": {
+    "source_revision": "da3581e05903ea5315b8903835519d86a5c7f99d",
+    "product_tree_matches_revision": "d9f9339051a377c4cfd77b9faff6628b94b2c6c6",
+    "workflow_run": 41835933113,
+    "artifact_id": 13329910792,
+    "archive_sha256": "38684f367d7feed03763e158b5f1a4d24293e041017474e71847ba197cd964cf",
+    "archive_bytes": 43477552,
+    "archive_digest_verified": true,
+    "files": [
+      {
+        "file": "Darwinbots.Desktop.exe",
+        "bytes": 162816,
+        "sha256": "b5bf6a2af20e6a3be2dd2b6de665556e5dfe15f0863cd647e7e73a5879034b03"
+      },
+      {
+        "file": "Darwinbots.Desktop.dll",
+        "bytes": 809472,
+        "sha256": "11ff4434be68e3d51f20ab0aa2405bb60dd6d9f7601029bf4a76edc8c35cd0dd"
+      },
+      {
+        "file": "Darwinbots.Desktop.Core.dll",
+        "bytes": 1001472,
+        "sha256": "427091f231249364fa81edb6c738a1f179c52288ecff29a598b38ddf2d2540c1"
+      },
+      {
+        "file": "darwinbots_engine.dll",
+        "bytes": 12564480,
+        "sha256": "7720a5dad35300b9421dd524a41868c993a11574d1567314cd55074ff09ccfa6"
+      }
+    ],
+    "bundled_bots_source_hash_matches": 48,
+    "local_smoke_verified": true,
+    "local_smoke": {
+      "status": "passed",
+      "backend": "CPU",
+      "ticks": 13,
+      "population": 1,
+      "movement": true,
+      "save_resume": true,
+      "persistent_save_bytes_equal": true,
+      "inspection_history_boundary": true,
+      "species_settings": true,
+      "bundled_bots": 48
+    },
+    "local_smoke_utc": "2026-11-04T14:20:04.572Z"
+  },
+  "native_windows": {
+    "source_revision": "da3581e05903ea5315b8903835519d86a5c7f99d",
+    "artifact_id": 13329910792,
+    "observed": [
+      "Five offline setup tabs and corrected onboarding on the actual CI package.",
+      "Default Auto setup created a 400-robot world. It reported CPU. One native Step advanced the cycle display from -1 to0 and added3600 plant energy.",
+      "Loading the earlier native .set restored3/3 robots, Cpu,3000x2000,capacity64,vegetable cap32.",
+      "Ctrl+Enter while Load Settings remained focused created the six-robot world and did not reopen the file picker.",
+      "Ctrl+X opened the dedicated live roster, where zero initial count,777 starting energy and a rename could be staged. Apply/cancel/reopen are not yet observed."
+    ],
+    "pending": [
+      "Live species apply/cancel/reopen and existing-robot preservation.",
+      "Live settings.",
+      "Simulation save/load, native .sim/.dbo interchange and robot tools.",
+      "Leagues, evolution and restart.",
+      "Graphs and export.",
+      "Recording and recovery.",
+      "Tray hide and restore."
+    ],
+    "stop_reason": "The window helper could not restore the minimized window after the documented retry. The user stopped Computer Use with Escape.",
+    "limits": [
+      "Official capture timed out on this Win10 host; passive window screenshots work.",
+      "Common file-dialog focus is checked visually because reported AX focus can name the search field incorrectly.",
+      "Raw screenshots, settings and profile backups remain local."
+    ]
+  },
+  "retained_failures": [
+    {
+      "revision": "7a3db6b",
+      "result": "Stale six-tab and corrupted-status test expectations failed; repaired0f60376."
+    },
+    {
+      "revision": "f19c6ce",
+      "result": "Rendered-test helper call did not compile; repaired4c646d4."
+    },
+    {
+      "revision": "0f60376",
+      "result": "Local full Desktop aborted in the Auto/capacity25000 cost-dialog fixture; repaired bounded CPU owner527cd7a."
+    },
+    {
+      "revision": "4c646d4",
+      "result": "Focused cost-dialog run aborted; repaired527cd7a."
+    },
+    {
+      "revision": "518007a",
+      "result": "Two native organism UI fixtures timed out with Auto/capacity25000 owners; repaired bounded CPU ownersd9f9339."
+    }
+  ],
+  "profile_protection": {
+    "original_files_backed_up": 7,
+    "original_bytes_backed_up": 72100888,
+    "comparison_date": "2026-11-20",
+    "original_files_matching_sha256": 7,
+    "changed_files": 0,
+    "additional_files": 0,
+    "isolated_native_profile": true
+  },
+  "scope_limits": [
+    "Retained genuine original executable oracles were rerun; no new original-GUI comparison is claimed.",
+    "Identical arbitrary random trajectories and universal historical-version/file compatibility are outside scope.",
+    "Native Linux/macOS window-manager and tray interaction are outside the selected acceptance.",
+    "No public hosting or release."
+  ],
+  "private_evidence_root": "output/offline-feature-completion-20261104"
+}
