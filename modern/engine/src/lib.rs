@@ -44,7 +44,7 @@ pub use biology::RobotMaterials;
 pub use biology::{BiologyState, MaterialAmounts};
 pub use config::{
     CorpseDecayMode, CorpseDecaySettings, EngineConfig, MAX_ROBOTS, PhysicsSettings,
-    RecordingSettings, ShotSettings, VegetationSettings, WasteSettings,
+    RecordingSettings, ShapeCreationSettings, ShotSettings, VegetationSettings, WasteSettings,
 };
 pub use corpse::CorpseSnapshot;
 pub use dna::{DnaMetadata, LegacyDna};

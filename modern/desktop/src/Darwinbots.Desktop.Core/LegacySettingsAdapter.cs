@@ -8,7 +8,9 @@ internal static class LegacySettingsAdapter
     internal static List<string> Encode(DesktopSettings settings)
     {
         // Original SaveSett has one shared shapesAbsorbShots Boolean.
-        string shotPolicy = settings.Obstacles.FirstOrDefault()?.ShotPolicy ?? "absorb";
+        var shapeCreation = settings.ShapeCreation;
+        string shotPolicy = settings.Obstacles.FirstOrDefault()?.ShotPolicy
+            ?? (shapeCreation?.AbsorbShots == false ? "reflect" : "absorb");
         if (settings.Obstacles.Any(o => o.ShotPolicy is not ("absorb" or "reflect"))
             || settings.Obstacles.Any(o => o.ShotPolicy != shotPolicy))
             throw new InvalidDataException("Original DB2 .set files support one global Absorb or Reflect shape shot policy; PassThrough, unknown policies, and mixed policies cannot be represented.");
@@ -142,10 +144,12 @@ internal static class LegacySettingsAdapter
         Number(tail + 10, vegetation.SunDownThreshold); Flag(tail + 11, vegetation.SunDownEnabled); Number(tail + 15, vegetation.SunThresholdMode);
         Flag(tail + 17 + 5 * count, settings.Shots.WasteShotsDoNotDecay);
         Flag(tail + 14, settings.FixedBotRadii); Flag(tail + 16, !settings.AsexualReproductionAllowed);
-        Flag(shapes, settings.Obstacles.All(o => o.Opacity == 0));
-        Flag(shapes + 1, false); Flag(shapes + 3, settings.Obstacles.Any(o => o.Drift[0] != 0));
+        bool hasObstacles = settings.Obstacles.Count > 0;
+        Flag(shapes, hasObstacles ? settings.Obstacles.All(o => o.Opacity == 0) : shapeCreation?.Transparent == true);
+        Flag(shapes + 1, shapeCreation?.Black ?? false);
+        Flag(shapes + 3, settings.Obstacles.Any(o => o.Drift[0] != 0));
         Flag(shapes + 4, settings.Obstacles.Any(o => o.Drift[1] != 0));
-        Flag(shapes + 5, settings.Obstacles.All(o => o.VisionPolicy == "see_through"));
+        Flag(shapes + 5, hasObstacles ? settings.Obstacles.All(o => o.VisionPolicy == "see_through") : shapeCreation?.SeeThrough == true);
         Flag(shapes + 6, shotPolicy == "absorb");
         Flag(shapes + 7, settings.ShapesVisible); Number(shapes + 8, settings.Obstacles.Count);
         for (int i = 0; i < settings.Obstacles.Count; i++)
@@ -205,6 +209,9 @@ internal static class LegacySettingsAdapter
         int tail = placement + 4 * count;
         var species = new List<SpeciesImport>();
         int shapes = tail + 18 + 5 * count;
+        Db2ShapeCreationOptions? shapeCreation = !string.IsNullOrWhiteSpace(Text(shapes))
+            ? new(Flag(shapes + 1), Flag(shapes), Flag(shapes + 5), Flag(shapes + 6))
+            : null;
         int obstacleCount = Integer(shapes + 8);
         if (obstacleCount is < 0 or > 32000 || obstacleCount > 0 && shapes + 9 + 7 * obstacleCount > lines.Length)
             throw new InvalidDataException("Legacy settings obstacles are invalid or truncated.");
@@ -215,7 +222,7 @@ internal static class LegacySettingsAdapter
             float x = (float)Number(o + 5), y = (float)Number(o + 6);
             obstacles.Add(new((uint)(index + 1), [x, y], [x + (float)Number(o + 1), y + (float)Number(o + 2)])
             {
-                Color = Flag(shapes + 1) ? 0xff000000 : FromVbColor(Integer(o)),
+                Color = FromVbColor(Integer(o)),
                 Opacity = Flag(shapes) ? 0 : 1,
                 Drift = [Flag(shapes + 3) ? (float)Number(o + 3) : 0, Flag(shapes + 4) ? (float)Number(o + 4) : 0],
                 VisionPolicy = Flag(shapes + 5) ? "see_through" : "opaque",
@@ -310,7 +317,7 @@ internal static class LegacySettingsAdapter
             Gravity = [0, Float(18)], BrownianMotion = Float(20), Species = species,
             FixedBotRadii = Flag(tail + 14), TiesEnabled = !Flag(global + 7),
             AsexualReproductionAllowed = !Flag(tail + 16), RobotFixingAllowed = !Flag(footer + 9 + 3 * count),
-            Obstacles = obstacles, ShapesVisible = Flag(shapes + 7),
+            Obstacles = obstacles, ShapesVisible = Flag(shapes + 7), ShapeCreation = shapeCreation,
             ToroidalWorld = Flag(global + 9), WrapX = Flag(global + 83, Flag(global + 9)),
             WrapY = Flag(global + 84, Flag(global + 9)), Vegetation = vegetation,
             Physics = Db2PhysicsOptions.Default with

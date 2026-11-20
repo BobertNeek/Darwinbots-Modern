@@ -527,6 +527,49 @@ public sealed class SetupControlSurfaceTests
         }, CancellationToken.None);
     }
 
+    [Fact]
+    public async Task OriginalEmptyShapeSettingsReachTheNewWorldAndSaveFromSetup()
+    {
+        var expected = new Db2ShapeCreationOptions(Black: true, Transparent: true, SeeThrough: false, AbsorbShots: false);
+        var legacy = LegacyDnaText.Decode(Db2SettingsCodec.Encode(new DesktopSettings { ShapeCreation = expected }));
+        var marker = legacy.IndexOf("#DARWINBOTS_MODERN_SETTINGS_V1#", StringComparison.Ordinal);
+        var storage = new SettingsWorkflowStorage
+        {
+            SettingsToOpen = Db2SettingsCodec.Decode(LegacyDnaText.Encode(legacy[..marker])),
+        };
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new SetupWindow(storage);
+            WorldSetupOptions? created = null;
+            window.WorldCreated += options => created = options;
+            window.Show();
+            try
+            {
+                window.FindControl<Button>("LoadSettingsButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => window.FindControl<TextBlock>("SetupStatus")!.Text == "SETTINGS LOADED");
+                window.FindControl<Button>("SaveSettingsButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => storage.SavedSettings is not null);
+                Assert.Equal(expected, storage.SavedSettings!.ShapeCreation);
+
+                window.FindControl<Button>("StartNewButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Assert.NotNull(created);
+                Assert.Equal(expected, created.ShapeCreation);
+                using var engine = new NativeEngineClient(created with { Backend = "Cpu" });
+                Assert.Empty(engine.Snapshot().Obstacles);
+                Assert.Equal(1, engine.AddNativeRandomObstacles(1));
+                var shape = Assert.Single(engine.Snapshot().Obstacles);
+                Assert.Equal(0xff000000u, shape.Color);
+                Assert.Equal(0, shape.Opacity);
+                Assert.Equal("opaque", shape.VisionPolicy);
+                Assert.Equal("reflect", shape.ShotPolicy);
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
     private static void Select(SetupWindow window, RadioButton radio, string modeName)
     {
         radio.IsChecked = true;
