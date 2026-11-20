@@ -126,7 +126,7 @@ pub(crate) fn resolve_collisions(
             .map(|mass| mass.clamp(1.0, 32_000.0))
             .collect::<Vec<_>>()
     });
-    resolve_native_collisions(
+    resolve_contacts(
         positions,
         velocities,
         radii,
@@ -134,6 +134,7 @@ pub(crate) fn resolve_collisions(
         fixed,
         pairs,
         elasticity,
+        false,
     );
 }
 
@@ -146,6 +147,21 @@ pub(crate) fn resolve_native_collisions(
     pairs: &[(usize, usize)],
     elasticity: f32,
 ) {
+    resolve_contacts(
+        positions, velocities, radii, masses, fixed, pairs, elasticity, true,
+    );
+}
+
+fn resolve_contacts(
+    positions: &mut [[f32; 2]],
+    velocities: &mut [[f32; 2]],
+    radii: &[f32],
+    masses: &[f32],
+    fixed: &[bool],
+    pairs: &[(usize, usize)],
+    elasticity: f32,
+    native_precision: bool,
+) {
     // Physics.Repel3, including its gradual separation, projection damping and
     // finite fixed-bot mass. VectorScalar's native Single clamp is intentional.
     let elasticity = elasticity.clamp(0.0, 1.0);
@@ -153,8 +169,9 @@ pub(crate) fn resolve_native_collisions(
         if first == second || first >= positions.len() || second >= positions.len() {
             continue;
         }
-        let minimum_distance =
-            radii.get(first).copied().unwrap_or(1.0) + radii.get(second).copied().unwrap_or(1.0);
+        let first_radius = radii.get(first).copied().unwrap_or(1.0);
+        let second_radius = radii.get(second).copied().unwrap_or(1.0);
+        let minimum_distance = first_radius + second_radius;
         let delta = [
             positions[second][0] - positions[first][0],
             positions[second][1] - positions[first][1],
@@ -181,15 +198,21 @@ pub(crate) fn resolve_native_collisions(
             .clamp(0.0, 32_000.0);
         let first_fixed = fixed.get(first).copied().unwrap_or(false);
         let second_fixed = fixed.get(second).copied().unwrap_or(false);
-        let overlap = minimum_distance - distance;
+        let overlap = if native_precision {
+            // Repel3 keeps the radius sum and subtraction together before writing fixedSep.
+            f64::from(first_radius) + f64::from(second_radius) - f64::from(distance)
+        } else {
+            f64::from(minimum_distance - distance)
+        };
         let stationary = native_magnitude(velocities[first]) < 0.0001
             && native_magnitude(velocities[second]) < 0.0001;
         let (first_separation, second_separation) = if first_fixed && second_fixed || stationary {
-            let half = native_scalar(normal, (f64::from(overlap) / 2.0) as f32);
+            let half = native_scalar(normal, (overlap / 2.0) as f32);
             (half, half)
         } else {
-            let scale =
-                (f64::from(overlap) / (1.0 + 55_f64.powf(0.3 - f64::from(elasticity)))) as f32;
+            let fixed_separation = overlap as f32;
+            let scale = (f64::from(fixed_separation)
+                / (1.0 + 55_f64.powf(0.3 - f64::from(elasticity)))) as f32;
             let separation = native_scalar(normal, scale);
             let total_mass = first_mass + second_mass;
             (
@@ -264,6 +287,44 @@ pub(crate) fn resolve_native_collisions(
 #[cfg(test)]
 mod native_contact_tests {
     use super::{resolve_collisions, resolve_native_collisions};
+
+    #[test]
+    fn native_contact_rounds_after_subtracting_distance_from_both_radii() {
+        // First contact of robot 80 in the original 2.48.32 cycle 283 replay.
+        let positions = [[11_419.034, 3_721.2454], [12_070.293, 3_312.5093]];
+        let velocities = [[-0.024626613, -0.031454656], [0.0048942002, 0.0018680517]];
+        let radii = [385.05197, 393.9339];
+        let masses = [28_112.441, 28_979.453];
+        let fixed = [false; 2];
+        let pairs = [(0, 1)];
+
+        let mut native_positions = positions;
+        let mut native_velocities = velocities;
+        resolve_native_collisions(
+            &mut native_positions,
+            &mut native_velocities,
+            &radii,
+            &masses,
+            &fixed,
+            &pairs,
+            0.0,
+        );
+        assert_eq!(native_positions[1][1].to_bits(), 0x454e_fe62);
+
+        let mut portable_positions = positions;
+        let mut portable_velocities = velocities;
+        resolve_collisions(
+            &mut portable_positions,
+            &mut portable_velocities,
+            &radii,
+            &masses,
+            &fixed,
+            &pairs,
+            0.0,
+        );
+        assert_eq!(portable_positions[1][1].to_bits(), 0x454e_fe63);
+    }
+
     #[test]
     fn native_first_pair_can_observe_an_unvisited_zero_mass() {
         let mut positions = [[0.0, 0.0], [100.0, 0.0]];
