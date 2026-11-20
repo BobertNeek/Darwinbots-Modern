@@ -4766,7 +4766,8 @@ impl Engine {
     }
 
     fn insert_live_robot(&mut self, state: RobotState) -> OrganismId {
-        if self.native_random.is_some() {
+        // The bare API also seeds the native RNG. Only original-clock worlds use posto.
+        if self.native_cycle.is_some() {
             self.slots.spawn_first_free(state)
         } else {
             self.slots.spawn(state)

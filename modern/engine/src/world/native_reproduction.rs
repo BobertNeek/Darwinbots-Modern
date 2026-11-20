@@ -351,12 +351,14 @@ mod tests {
     #[test]
     fn portable_robot_spawn_retains_lifo_order_across_db3s_resume() {
         let mut world = Engine::new(EngineConfig::testing()).unwrap();
+        world.native_random = None;
         let dna = LegacyDna::parse("stop").unwrap();
         let first = world.spawn(dna.clone()).unwrap();
         let last = world.spawn(dna.clone()).unwrap();
         world.remove_many(&[first, last]).unwrap();
         let mut restored =
             crate::SaveFile::decode(&crate::SaveFile::encode(&world).unwrap()).unwrap();
+        assert!(restored.native_random.is_none() && restored.native_cycle.is_none());
 
         assert_eq!(restored.spawn(dna.clone()).unwrap().slot(), last.slot());
         assert_eq!(restored.spawn(dna).unwrap().slot(), first.slot());
