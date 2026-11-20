@@ -5335,6 +5335,8 @@ impl Engine {
                     .to_owned(),
             ));
         }
+        let native_mutation_spare_entries =
+            self.inherit_native_mutation_spare_entries(&first_organism)?;
         let mut dna = if let Some(second) = second {
             let second_dna = self.slots.get(second)?.program.dna.clone();
             if let Some(random) = self.native_random.as_mut() {
@@ -5381,6 +5383,7 @@ impl Engine {
                 first_organism.program.mutation_metadata.clone();
             child_organism.program.mutation_profile =
                 first_organism.program.mutation_profile.clone();
+            child_organism.native_mutation_spare_entries = native_mutation_spare_entries;
             child_organism.flags.new_move = first_organism.flags.new_move;
             child_organism.flags.can_mutate = first_organism.flags.can_mutate;
             for address in 971..=975 {
@@ -11912,6 +11915,8 @@ impl Engine {
                 birth.mutation_reproduction
                     || ((next_rng % 10_000) as f32) < configured_rate * 100.0
             };
+            let native_mutation_spare_entries =
+                self.inherit_native_mutation_spare_entries(&parent_state)?;
             let mut child_dna = if birth.sexual {
                 if let Some(stored) = parent_state.effects.stored_sperm.as_ref() {
                     if let Some(random) = self.native_random.as_mut() {
@@ -12003,6 +12008,7 @@ impl Engine {
                 child_organism.program.rng_state = next_rng;
                 child_organism.program.mutation_profile =
                     parent_state.program.mutation_profile.clone();
+                child_organism.native_mutation_spare_entries = native_mutation_spare_entries;
                 child_organism.program.point_mutation_schedule = None;
                 child_organism.program.point2_mutation_schedule = None;
                 child_organism.program.mutation_metadata =
