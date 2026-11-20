@@ -5,6 +5,9 @@ namespace Darwinbots.Desktop.Core;
 // Offsets follow OptionsForm.SaveSett (DB2 2.48.32), including variable species tails.
 internal static class LegacySettingsAdapter
 {
+    internal const int ContestModeOffset = 45;
+    internal const int OrdinaryRestartOffset = 46;
+
     internal static List<string> Encode(DesktopSettings settings)
     {
         // Original SaveSett has one shared shapesAbsorbShots Boolean.
@@ -32,15 +35,19 @@ internal static class LegacySettingsAdapter
         if (settings.LegacySettingsFields is { Count: > 1 } original
             && original[1] == (count - 1).ToString(CultureInfo.InvariantCulture))
         {
-            // The footer moves when walls are added or removed; retain unknown fields.
-            int oldCount = int.Parse(original[shapes + 8], CultureInfo.InvariantCulture);
-            int oldFooter = shapes + 9 + 7 * oldCount;
             for (int i = 0; i < Math.Min(shapes + 9, original.Count); i++) fields[i] = original[i];
-            for (int i = oldFooter; i < original.Count; i++)
+            // Older settings may end before the obstacle count and movable footer.
+            if (original.Count > shapes + 8
+                && int.TryParse(original[shapes + 8], NumberStyles.Integer, CultureInfo.InvariantCulture, out int oldCount)
+                && oldCount is >= 0 and <= 32000)
             {
-                int target = footer + i - oldFooter;
-                while (fields.Count <= target) fields.Add("0");
-                fields[target] = original[i];
+                int oldFooter = shapes + 9 + 7 * oldCount;
+                for (int i = oldFooter; i < original.Count; i++)
+                {
+                    int target = footer + i - oldFooter;
+                    while (fields.Count <= target) fields.Add("0");
+                    fields[target] = original[i];
+                }
             }
         }
         while (fields.Count < end) fields.Add("0");
@@ -105,6 +112,9 @@ internal static class LegacySettingsAdapter
         Number(global + 41, vegetation.CycleLength);
         Number(global + 42, settings.CorpseDecay.Mode switch { Db2CorpseDecayMode.WasteShot => 2, Db2CorpseDecayMode.EnergyShot => 3, _ => 1 });
         Number(global + 43, settings.CorpseDecay.Period); Number(global + 44, cost.Movement);
+        // Maintain original contest eligibility even if the species count changed.
+        if (ReadRetainedFlag(settings.LegacySettingsFields, ContestModeOffset)) Flag(global + ContestModeOffset, true);
+        Flag(global + OrdinaryRestartOffset, settings.OrdinaryRestartOnExtinction);
         for (int i = 0; i < 9 && settings.LegacySettingsFields is null; i++)
         {
             Text(global + 47 + 4 * i, ""); Text(global + 48 + 4 * i, "");
@@ -171,6 +181,20 @@ internal static class LegacySettingsAdapter
 
     private static uint ToVbColor(uint color) => ((color & 0xff) << 16) | (color & 0xff00) | ((color >> 16) & 0xff);
     private static uint FromVbColor(int color) => 0xff000000 | ToVbColor(unchecked((uint)color));
+
+    internal static bool ReadRetainedFlag(IReadOnlyList<string>? fields, int globalOffset)
+    {
+        if (fields is not { Count: > 1 }
+            || !int.TryParse(fields[1]?.Trim('"'), NumberStyles.Integer, CultureInfo.InvariantCulture, out int lastSpecies)
+            || lastSpecies is < -1 or > 999)
+            return false;
+        int index = 2 + 40 * (lastSpecies + 1) + globalOffset;
+        if (index >= fields.Count) return false;
+        string raw = fields[index]?.Trim().Trim('"') ?? "";
+        if (bool.TryParse(raw.Trim('#'), out bool flag)) return flag;
+        return double.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out double value)
+            && double.IsFinite(value) && value != 0;
+    }
 
     internal static DesktopSettings Decode(string[] lines, int count, int global)
     {
@@ -300,6 +324,7 @@ internal static class LegacySettingsAdapter
         {
             OrganismCapacity = 32000, WorldWidth = Float(3), WorldHeight = Float(4),
             Seed = NativeSeed(global + 89), LegacySettingsFields = lines.TakeWhile(line => !line.StartsWith("#DARWINBOTS_MODERN_SETTINGS", StringComparison.Ordinal)).ToArray(),
+            OrdinaryRestartOnExtinction = Flag(global + OrdinaryRestartOffset),
             MutationSettings = MutationSettingsUpdate.Default with { GlobalMultiplier = Float(27, 1) },
             VegetablePopulationCap = Math.Max(0, Integer(global + 5)), SunlightEnergy = vegetation.MaxEnergyPerTick,
             Gravity = [0, Float(18)], BrownianMotion = Float(20), Species = species,

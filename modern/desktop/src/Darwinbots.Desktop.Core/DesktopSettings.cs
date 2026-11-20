@@ -20,6 +20,7 @@ public sealed record DesktopSettings
     public StartingMode StartingMode { get; init; } = StartingMode.StarterBotsAndVegetables;
     public ZerobotSustenance ZerobotSustenance { get; init; } = ZerobotSustenance.DisabledMetabolism;
     public bool AutomaticZerobotProgression { get; init; } = true;
+    public bool OrdinaryRestartOnExtinction { get; init; }
     public int VegetablePopulationCap { get; init; } = 500;
     public int MetabolismCost { get; init; }
     public int VegetableEnergyPerTick { get; init; }
@@ -61,6 +62,7 @@ public sealed record DesktopSettings
         StartingMode = setup.StartingMode,
         ZerobotSustenance = setup.ZerobotSustenance,
         AutomaticZerobotProgression = setup.AutomaticZerobotProgression,
+        OrdinaryRestartOnExtinction = setup.OrdinaryRestartOnExtinction,
         VegetablePopulationCap = setup.VegetablePopulationCap,
         MetabolismCost = setup.MetabolismCost,
         VegetableEnergyPerTick = setup.VegetableEnergyPerTick,
@@ -94,6 +96,7 @@ public sealed record DesktopSettings
             StartingMode = StartingMode,
             ZerobotSustenance = ZerobotSustenance,
             AutomaticZerobotProgression = AutomaticZerobotProgression,
+            OrdinaryRestartOnExtinction = OrdinaryRestartOnExtinction,
             Backend = Backend,
             Seed = Seed ?? fallback.Seed,
             LegacySettingsFields = LegacySettingsFields,
@@ -147,6 +150,9 @@ public sealed record DesktopSettings
             _ => throw new NotSupportedException($"Settings schema version {version} is not supported."),
         };
         settings.Validate();
+        if (!root.TryGetProperty("ordinaryRestartOnExtinction", out _)
+            && LegacySettingsAdapter.ReadRetainedFlag(settings.LegacySettingsFields, LegacySettingsAdapter.OrdinaryRestartOffset))
+            settings = settings with { OrdinaryRestartOnExtinction = true };
         return settings;
     }
 
