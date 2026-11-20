@@ -22,8 +22,16 @@ public sealed partial class MainWindow : Window
 {
     private const string TrayPngBase64 = "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAlSURBVDhPY1BQV/1PCQYb4FNrQBYeNWDUABAeNYCaBpCPVf8DAN1j1wSVGu34AAAAAElFTkSuQmCC";
 
-    private void MainWindow_KeyDown(object? sender, KeyEventArgs e)
+    private async void MainWindow_KeyDown(object? sender, KeyEventArgs e)
     {
+        if (e.Source is not TextBox
+            && HistoricMenuBar.FindCommandItem(LegacyCommandId.HelpAbout)?.InputGesture?.Matches(e) == true)
+        {
+            e.Handled = true;
+            await ExecuteLegacyMenuCommandAsync(LegacyCommandId.HelpAbout);
+            return;
+        }
+
         var routed = new RoutedEventArgs();
         if (e.Key == Key.F6) Pause_Click(sender, routed);
         else if (e.Key == Key.F7) Step_Click(sender, routed);
@@ -888,9 +896,12 @@ public sealed partial class MainWindow : Window
         EngineState,
         async _ => await AddMazeCommandAsync(pattern));
 
-    private async void HistoricMenuBar_CommandInvoked(object? sender, LegacyCommandInvokedEventArgs e)
+    private async void HistoricMenuBar_CommandInvoked(object? sender, LegacyCommandInvokedEventArgs e) =>
+        await ExecuteLegacyMenuCommandAsync(e.Command);
+
+    private async Task ExecuteLegacyMenuCommandAsync(LegacyCommandId command)
     {
-        var result = await _legacyCommands.ExecuteAsync(e.Command);
+        var result = await _legacyCommands.ExecuteAsync(command);
         _viewModel.Status = result.Status;
         RefreshLegacyMenuStates();
     }
