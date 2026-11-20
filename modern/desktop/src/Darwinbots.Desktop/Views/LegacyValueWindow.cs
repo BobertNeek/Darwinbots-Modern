@@ -9,7 +9,8 @@ public sealed class LegacyValueWindow : Window
 {
     private readonly TextBox _value;
     public bool Accepted { get; private set; }
-    public string Value => _value.Text?.Trim() ?? string.Empty;
+    public string RawValue => _value.Text ?? string.Empty;
+    public string Value => RawValue.Trim();
 
     public LegacyValueWindow(string title, string label, string initialValue, string hint)
     {

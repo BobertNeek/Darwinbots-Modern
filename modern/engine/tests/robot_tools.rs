@@ -1,11 +1,98 @@
 use darwinbots_engine::{
     CycleEvent, CyclePhase, Engine, EngineConfig, LegacyDna, PlayerBotBinding, RestrictionColumn,
-    RestrictionOptions,
+    RestrictionOptions, SaveFile, SpeciesDefinition, SpeciesSettings,
     ffi::{
         DbBuffer, DbStatus, db_buffer_free, db_engine_command_batch, db_engine_create,
         db_engine_destroy, db_engine_snapshot_json,
     },
+    native_binary::NativeRecordFile,
 };
+
+#[test]
+fn auto_tag_uses_exact_founder_names_and_persists_the_native_tag() {
+    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    let founder = engine.register_species(SpeciesDefinition {
+        name: "Founder.txt".into(),
+        ..SpeciesDefinition::default()
+    });
+    let lowercase = engine.register_species(SpeciesDefinition {
+        name: "founder.txt".into(),
+        ..SpeciesDefinition::default()
+    });
+    let dna = LegacyDna::parse("start stop\n'#tag: Old tag").unwrap();
+    let first = engine
+        .spawn_species_at(dna.clone(), founder, [100.0; 2])
+        .unwrap();
+    let second = engine
+        .spawn_species_at(dna.clone(), founder, [200.0; 2])
+        .unwrap();
+    let unrelated = engine.spawn_species_at(dna, lowercase, [300.0; 2]).unwrap();
+
+    engine
+        .update_species_settings(vec![SpeciesSettings {
+            species_id: Some(founder),
+            definition: SpeciesDefinition {
+                name: "Edited roster name".into(),
+                ..SpeciesDefinition::default()
+            },
+            dna: "start stop".into(),
+            initial_count: 2,
+            initial_energy: 1000,
+            comment: String::new(),
+        }])
+        .unwrap();
+    let before = SaveFile::encode(&engine).unwrap();
+    assert!(engine.tag_organisms_by_name("", "Other tag").is_err());
+    assert_eq!(
+        engine
+            .tag_organisms_by_name(" Founder.txt", "Other tag")
+            .unwrap(),
+        0
+    );
+    assert_eq!(
+        engine
+            .tag_organisms_by_name("Edited roster name", "Other tag")
+            .unwrap(),
+        0
+    );
+    assert_eq!(SaveFile::encode(&engine).unwrap(), before);
+
+    let tag = format!("\0Alpha\x1f\x7fé€ÿ{}", "z".repeat(60));
+    let expected = format!("?Alpha????ÿ{}", "z".repeat(34));
+    assert_eq!(
+        engine.tag_organisms_by_name("Founder.txt", &tag).unwrap(),
+        2
+    );
+    assert_eq!(engine.snapshot().tick, 0);
+
+    let mut resumed = SaveFile::decode(&SaveFile::encode(&engine).unwrap()).unwrap();
+    let exported =
+        NativeRecordFile::decode(&resumed.export_native_organisms(&[first, second]).unwrap())
+            .unwrap();
+    let mut expected_native = b"?Alpha????\xff".to_vec();
+    expected_native.extend([b'z'; 34]);
+    expected_native.resize(50, b' ');
+    for (id, record) in [first, second].into_iter().zip(exported.robots) {
+        assert_eq!(record.bytes("species_name").unwrap(), b"Founder.txt");
+        assert_eq!(record.bytes("tag").unwrap(), expected_native);
+        assert!(
+            resumed
+                .export_dna(id)
+                .unwrap()
+                .ends_with(&format!("'#tag: {expected}"))
+        );
+    }
+    assert!(
+        resumed
+            .export_dna(unrelated)
+            .unwrap()
+            .ends_with("'#tag: Old tag")
+    );
+    assert_eq!(resumed.tag_organisms_by_name("Founder.txt", "").unwrap(), 2);
+    for id in [first, second] {
+        assert!(!resumed.export_dna(id).unwrap().contains("'#tag:"));
+    }
+}
 
 fn binding(key: u32, memory_address: u16, value: i32, invert: bool) -> PlayerBotBinding {
     PlayerBotBinding {
