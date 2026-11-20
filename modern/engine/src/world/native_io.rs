@@ -390,6 +390,9 @@ impl Engine {
         for (index, record) in file.robots.iter().enumerate() {
             let mut robot = engine.native_robot(record)?;
             robot.native_record_index = Some(index);
+            // LoadSimulation restores the tie array and VM memory cell 466.
+            // The separate runtime .numties starts at zero until Update_Ties.
+            robot.native_tie_count_pending = true;
             let absolute_id = robot.identity.absolute_id;
             let id = engine.slots.spawn(robot);
             if old_slots.insert(record.word("old_slot")?, id).is_some() {

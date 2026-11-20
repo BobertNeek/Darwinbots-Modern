@@ -378,6 +378,8 @@ pub struct RobotState {
     #[serde(default)]
     pub heredity: RobotHeredityState,
     pub ties: [Option<TieEndpointState>; 10],
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub(crate) native_tie_count_pending: bool,
     pub phenotype: VisualPhenotype,
     #[serde(skip)]
     pub(crate) teleporter_backflow: Option<TeleporterBackflow>,
@@ -421,6 +423,7 @@ impl RobotState {
             native_virtual_body: None,
             heredity: RobotHeredityState::default(),
             ties: [None; 10],
+            native_tie_count_pending: false,
             phenotype,
             teleporter_backflow: None,
         };
