@@ -161,7 +161,7 @@ public sealed partial class SetupWindow : Window
 
     private void StartNew_Click(object? sender, RoutedEventArgs e)
     {
-        if (Species.Count == 0) { SetupStatus.Text = "Add at least one species."; return; }
+        if (!ValidateSpeciesRoster()) return;
         _workflow.UpdateWorkingCopy(_ => ReadSetupOptions());
         var options = _workflow.StartNew();
         if (_speciesEditor) { EditedOptions = options; StartNewRequested = true; Close(); }
@@ -170,7 +170,7 @@ public sealed partial class SetupWindow : Window
 
     private void Change_Click(object? sender, RoutedEventArgs e)
     {
-        if (Species.Count == 0) { SetupStatus.Text = "Add at least one species."; return; }
+        if (!ValidateSpeciesRoster()) return;
         _workflow.UpdateWorkingCopy(_ => ReadSetupOptions());
         var options = _workflow.Change();
         if (_speciesEditor) { EditedOptions = options; Close(); }
@@ -188,11 +188,20 @@ public sealed partial class SetupWindow : Window
     private void PublishWorld(WorldSetupOptions options) =>
         WorldCreated?.Invoke(options with { NativeGaussianSpare = _nativeGaussianSpare, NativeSunChange = _nativeSunChange, NativeProcessCaches = _nativeProcessCaches });
 
-    private WorldSetupOptions ReadSetupOptions()
+    private bool ValidateSpeciesRoster()
     {
+        if (Species.Count > 0 || (!_speciesEditor && _legacySettingsFields is not null
+            && CurrentMode() == StartingMode.StarterBotsAndVegetables)) return true;
+        SetupStatus.Text = "Add at least one species.";
+        return false;
+    }
+
+    private WorldSetupOptions ReadSetupOptions(WorldSetupOptions? staged = null)
+    {
+        staged ??= _workflow.WorkingCopy;
         var sustenance = (ZerobotSustenance)Math.Max(0, Sustenance.SelectedIndex);
         var species = Species.Select((row, index) => row.ToImport(index)).ToList();
-        if (!_speciesEditor && CurrentMode() != StartingMode.StarterBotsAndVegetables)
+        if (!_speciesEditor && species.Count > 0 && CurrentMode() != StartingMode.StarterBotsAndVegetables)
         {
             if (sustenance == ZerobotSustenance.PhotosyntheticZerobots)
                 species[0] = species[0] with { Vegetable = true };
@@ -230,6 +239,10 @@ public sealed partial class SetupWindow : Window
             Recording = _environment.Recording ?? new Db2RecordingOptions(),
             AutoSpeciation = _environment.AutoSpeciation,
             SpeciationGeneticDistancePercent = _environment.SpeciationGeneticDistancePercent,
+            FixedBotRadii = staged.FixedBotRadii,
+            TiesEnabled = staged.TiesEnabled,
+            RobotFixingAllowed = staged.RobotFixingAllowed,
+            AsexualReproductionAllowed = staged.AsexualReproductionAllowed,
             ToroidalWorld = _environment.ToroidalWorld,
             WrapX = _environment.WrapX,
             WrapY = _environment.WrapY,
@@ -416,9 +429,11 @@ public sealed partial class SetupWindow : Window
         StarterMode.IsChecked = setup.StartingMode == StartingMode.StarterBotsAndVegetables;
         ZerobotMode.IsChecked = setup.StartingMode == StartingMode.Zerobots;
         ZerobotVegetableMode.IsChecked = setup.StartingMode == StartingMode.ZerobotsAndVegetables;
-        LoadMode(setup.StartingMode);
-        if (setup.Species.Count > 0)
+        if (setup.Species.Count == 0 && setup.LegacySettingsFields is null)
+            LoadMode(setup.StartingMode);
+        else
         {
+            UpdateSustenanceAvailability(setup.StartingMode);
             Species.Clear();
             foreach (var species in setup.Species)
                 Species.Add(new(species.Name, species.Dna, species.Vegetable, species.Color,
@@ -447,7 +462,7 @@ public sealed partial class SetupWindow : Window
         AutomaticProgression.IsChecked = true;
         StarterMode.IsChecked = true;
         Mode_Checked(StarterMode, e);
-        _workflow.Reset(ReadSetupOptions());
+        _workflow.Reset(ReadSetupOptions(new WorldSetupOptions()));
         SetupStatus.Text = "New world defaults restored.";
     }
 
