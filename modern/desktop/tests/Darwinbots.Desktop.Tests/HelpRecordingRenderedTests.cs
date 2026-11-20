@@ -271,6 +271,68 @@ public sealed class HelpRecordingRenderedTests
         }, CancellationToken.None);
     }
 
+    [Theory]
+    [InlineData(LegacyCommandId.RobotKill, false, false)]
+    [InlineData(LegacyCommandId.RobotKillEntireOrganism, false, false)]
+    [InlineData(LegacyCommandId.RobotKillEntireOrganism, true, false)]
+    [InlineData(LegacyCommandId.RobotKill, false, true)]
+    public async Task ManualKillRecordsOnlyTheAffectedRobots(LegacyCommandId command, bool excludeVegetable, bool writeFails)
+    {
+        var selected = RecordingEngineClient.Organism with { UniqueId = 100 };
+        var vegetable = selected with { Slot = 4, Generation = 7, UniqueId = 200, Vegetable = true };
+        var unrelated = selected with { Slot = 5, UniqueId = 300 };
+        var selectedKey = new OrganismKey(selected.Slot, selected.Generation);
+        var vegetableKey = new OrganismKey(vegetable.Slot, vegetable.Generation);
+        var engine = new RecordingEngineClient(RecordingEngineClient.CreateSnapshot() with
+        {
+            Population = 3,
+            Organisms = [selected, vegetable, unrelated],
+            Ties = [new TieSnapshot(selectedKey, vegetableKey, 40f)],
+        });
+        await using var simulation = new SimulationSession(engine);
+        var storage = new AuditStorageService
+        {
+            DeadSnapshotWriteError = writeFails ? new IOException("Test output is locked") : null,
+        };
+
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], new WorldSetupOptions
+            {
+                Recording = new Db2RecordingOptions(DeadSnapshotEnabled: true, ExcludeRepopulatingRobots: excludeVegetable),
+            }, new AuditEngineClientFactory(), storage);
+            DesktopTestApplication.UseSession(window, simulation);
+            try
+            {
+                ((MainWindowViewModel)window.DataContext!).Select(selectedKey);
+                var router = (LegacyCommandRouter)typeof(MainWindow)
+                    .GetField("_legacyCommands", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(window)!;
+                var result = await router.ExecuteAsync(command);
+                Assert.True(result.Succeeded, result.Status);
+
+                var group = command == LegacyCommandId.RobotKillEntireOrganism;
+                var removal = Assert.Single(engine.Calls, call => call.StartsWith("Remove", StringComparison.Ordinal));
+                Assert.Equal(group ? "RemoveMany:3:2,4:7" : "Remove:3:2", removal);
+                if (writeFails)
+                {
+                    Assert.Contains("DEAD RECORDING FAILED · Test output is locked", result.Status, StringComparison.Ordinal);
+                    Assert.Empty(storage.DeadSnapshotWrites);
+                    Assert.False(router.GetState(LegacyCommandId.RecordingDeadEnable).Checked);
+                    return;
+                }
+
+                var records = Db2GenomeRecordFile.Decode(LegacyDnaText.Decode(Assert.Single(storage.DeadSnapshotWrites)));
+                Assert.Equal(group && !excludeVegetable ? new ulong[] { 100, 200 } : [100], records.Select(record => record.Id));
+                Assert.All(records, record => Assert.Equal("start\nstop", record.Dna.Trim()));
+                Assert.Equal(group && !excludeVegetable ? new[] { (3u, 2u), (4u, 7u) } : [(3u, 2u)], engine.DnaExports);
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
     private static Task InvokeTask(object target, string method, params object[] args) =>
         (Task)target.GetType().GetMethod(method, BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(target, args)!;
 

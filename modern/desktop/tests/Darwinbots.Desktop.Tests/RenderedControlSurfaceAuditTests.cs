@@ -2050,6 +2050,7 @@ internal sealed class AuditStorageService : IDesktopStorageService
     }
     public byte[]? SavedLivingSnapshot { get; private set; }
     public List<byte[]> DeadSnapshotWrites { get; } = [];
+    public Exception? DeadSnapshotWriteError { get; init; }
     public bool AcceptOrganismSave { get; init; } = true;
     public string? SavedOrganismSuggestedFileName { get; private set; }
     public byte[]? SavedOrganism { get; private set; }
@@ -2101,6 +2102,7 @@ internal sealed class AuditStorageService : IDesktopStorageService
 
     public async Task<bool> AppendDeadSnapshotAsync(Func<Stream, Task> writeAsync)
     {
+        if (DeadSnapshotWriteError is { } error) throw error;
         using var stream = new MemoryStream();
         await writeAsync(stream);
         DeadSnapshotWrites.Add(stream.ToArray());

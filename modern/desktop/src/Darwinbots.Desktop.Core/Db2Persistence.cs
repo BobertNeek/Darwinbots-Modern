@@ -117,11 +117,17 @@ public static class Db2GenomeRecordFile
 
     public static string EncodeLiving(
         EngineSnapshot snapshot,
-        IReadOnlyDictionary<OrganismKey, string> dnaByOrganism)
+        IReadOnlyDictionary<OrganismKey, string> dnaByOrganism) => EncodeLiving(snapshot, dnaByOrganism, true);
+
+    internal static string EncodeLiving(
+        EngineSnapshot snapshot,
+        IReadOnlyDictionary<OrganismKey, string> dnaByOrganism,
+        bool includeHeader)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         ArgumentNullException.ThrowIfNull(dnaByOrganism);
-        var builder = new StringBuilder().Append(Header).Append("\r\n");
+        var builder = new StringBuilder();
+        if (includeHeader) builder.Append(Header).Append("\r\n");
         foreach (var organism in snapshot.Organisms)
         {
             var key = new OrganismKey(organism.Slot, organism.Generation);
