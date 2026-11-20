@@ -269,6 +269,7 @@ const MEM_MY_EYE: i32 = 728;
 const MEM_XPOS: i32 = 219;
 const MEM_YPOS: i32 = 217;
 const MEM_DAYTIME: i32 = 218;
+const MEM_SUN: i32 = 400;
 const MEM_EDGE: i32 = 214;
 const MEM_LIGHT: i32 = 923;
 const BIRTH_BORDER_SMUDGE: f32 = 50.0;
@@ -7056,6 +7057,15 @@ impl Engine {
                 continue;
             }
             if self.native_random.is_some() {
+                if robot.flags.exists && !robot.flags.hidden {
+                    // Senses.LandMark compares the raw Single heading to
+                    // Double literals and refreshes before the next DNA pass.
+                    let heading = f64::from(robot.heading());
+                    robot
+                        .program
+                        .memory
+                        .write(MEM_SUN, i32::from(heading > 1.39 && heading < 1.75));
+                }
                 // WriteSenses changes the physical coordinates as well as
                 // publishing zero when collision separation left them negative.
                 robot.kinematics.position = robot.kinematics.position.map(|value| value.max(0.0));
@@ -13222,23 +13232,23 @@ fn apply_tie_resource(
         target
             .materials
             .publish_for_profile(&mut target.program.memory, native.is_some());
-        source.materials.mass = derived_mass(
-            source.materials.body,
-            source.materials.shell,
-            source.materials.chloroplasts,
-        )
-        .clamp(1.0, 32_000.0);
+        // Native Update_Ties runs after CalcMass. A resource transfer can
+        // change radius, but the mass remains available to UpdatePosition.
+        if native.is_none() {
+            for robot in [&mut *source, &mut *target] {
+                robot.materials.mass = derived_mass(
+                    robot.materials.body,
+                    robot.materials.shell,
+                    robot.materials.chloroplasts,
+                )
+                .clamp(1.0, 32_000.0);
+            }
+        }
         source.materials.radius = crate::physics::organism_radius(
             source.materials.body,
             source.materials.chloroplasts,
             fixed_bot_radii,
         );
-        target.materials.mass = derived_mass(
-            target.materials.body,
-            target.materials.shell,
-            target.materials.chloroplasts,
-        )
-        .clamp(1.0, 32_000.0);
         target.materials.radius = crate::physics::organism_radius(
             target.materials.body,
             target.materials.chloroplasts,

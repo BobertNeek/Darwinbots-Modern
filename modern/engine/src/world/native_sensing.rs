@@ -660,4 +660,67 @@ mod tests {
         assert_eq!(world.memory_at(actor, MEM_XPOS).unwrap(), 0);
         assert_eq!(world.memory_at(actor, MEM_YPOS).unwrap(), 0);
     }
+
+    #[test]
+    fn native_sun_refresh_uses_raw_heading_and_write_senses_eligibility() {
+        let mut world = world();
+        let actor = bot(&mut world, [500.0; 2]);
+        for (heading, expected) in [
+            (1.39_f32, 0),
+            (1.39_f32.next_up(), 1),
+            (1.75_f32.next_down(), 1),
+            (1.75_f32, 0),
+            (1.57 + std::f32::consts::TAU, 0),
+        ] {
+            let robot = world.slots.get_mut(actor).unwrap();
+            robot.flags.can_see = false;
+            robot.set_heading(heading);
+            robot.program.memory.write(MEM_SUN, 7);
+            world.publish_core_senses_phase();
+            assert_eq!(world.memory_at(actor, MEM_SUN).unwrap(), expected);
+        }
+
+        let robot = world.slots.get_mut(actor).unwrap();
+        robot.set_heading(1.57);
+        robot.program.memory.write(MEM_SUN, 7);
+        robot.flags.can_execute_dna = false;
+        world.publish_core_senses_phase();
+        assert_eq!(world.memory_at(actor, MEM_SUN).unwrap(), 7);
+
+        let robot = world.slots.get_mut(actor).unwrap();
+        robot.flags.can_execute_dna = true;
+        robot.flags.hidden = true;
+        world.publish_core_senses_phase();
+        assert_eq!(world.memory_at(actor, MEM_SUN).unwrap(), 7);
+
+        world.slots.get_mut(actor).unwrap().flags.hidden = false;
+        world.native_random = None;
+        world.publish_core_senses_phase();
+        assert_eq!(world.memory_at(actor, MEM_SUN).unwrap(), 7);
+    }
+
+    #[test]
+    fn genuine_sun_readbacks_follow_both_captured_headings() {
+        // Original 2.48.32 cycle-283 capture SHA-256
+        // fd2cb2bd5e36044d459d238f561dcf60cec70bf1efcb6d1b90dde3078ad9927e.
+        let input = include_bytes!("../../tests/fixtures/db24832-original-user.sim");
+        let mut world = Engine::from_native_sim(input).unwrap();
+        for (cycle, heading_and_sun) in [
+            (282, [(1.7251679_f32, 1), (1.3915738_f32, 1)]),
+            (283, [(2.7248788_f32, 0), (1.3158129_f32, 0)]),
+        ] {
+            world.tick().unwrap();
+            assert_eq!(world.native_cycle, Some(cycle));
+            for (id, (heading, sun)) in [163, 210].into_iter().zip(heading_and_sun) {
+                let robot = world
+                    .slots
+                    .iter()
+                    .filter_map(|slot| slot.organism.as_ref())
+                    .find(|robot| robot.identity.absolute_id == id)
+                    .unwrap();
+                assert_eq!(robot.heading(), heading);
+                assert_eq!(robot.program.memory.read(MEM_SUN), sun);
+            }
+        }
+    }
 }
