@@ -2326,8 +2326,16 @@ struct EngineCycleCheckpoint {
     death_poffs_enabled: bool,
 }
 
+#[derive(Clone, Default)]
+pub(crate) struct PlayerBotInput {
+    pointer: Option<[f32; 2]>,
+    highlights: Vec<OrganismId>,
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct Engine {
+    #[serde(skip)]
+    pub(crate) player_bot_input: PlayerBotInput,
     #[serde(default)]
     native_buckets: native_collisions::NativeBuckets,
     #[serde(skip, default)]
@@ -2624,6 +2632,7 @@ impl Engine {
             robot_fixing_allowed: legacy.robot_fixing_allowed,
             asexual_reproduction_allowed: legacy.asexual_reproduction_allowed,
             player_bot: PlayerBotState::default(),
+            player_bot_input: PlayerBotInput::default(),
             restriction_options: RestrictionOptions::default(),
             local_mode: LocalModeState::default(),
             next_lineage_id: legacy.next_lineage_id,
@@ -2837,6 +2846,7 @@ impl Engine {
             robot_fixing_allowed: true,
             asexual_reproduction_allowed: true,
             player_bot: PlayerBotState::default(),
+            player_bot_input: PlayerBotInput::default(),
             restriction_options: RestrictionOptions::default(),
             local_mode: LocalModeState::default(),
             next_lineage_id: 2,
@@ -4451,6 +4461,7 @@ impl Engine {
         self.player_bot.bindings = bindings;
         if !enabled {
             self.player_bot.pressed_keys.clear();
+            self.player_bot_input.pointer = None;
         }
         self.publish_snapshot();
         Ok(())
@@ -4477,6 +4488,31 @@ impl Engine {
             self.player_bot.pressed_keys.retain(|value| *value != key);
         }
         self.publish_snapshot();
+        Ok(())
+    }
+
+    pub fn set_player_bot_targets(
+        &mut self,
+        focus: Option<OrganismId>,
+        highlights: Vec<OrganismId>,
+    ) {
+        // Input can follow the preceding published frame. Match a stable key,
+        // never a newly born occupant of a reused slot.
+        self.player_bot.focus = focus.filter(|id| self.slots.get(*id).is_ok());
+        self.player_bot_input.highlights = highlights;
+        self.publish_snapshot();
+    }
+
+    pub fn set_player_bot_pointer(
+        &mut self,
+        position: Option<[f32; 2]>,
+    ) -> Result<(), EngineError> {
+        if position.is_some_and(|point| point.iter().any(|coordinate| !coordinate.is_finite())) {
+            return Err(EngineError::Invariant(
+                "PlayerBot pointer needs finite coordinates".into(),
+            ));
+        }
+        self.player_bot_input.pointer = position.filter(|point| *point != [0.0, 0.0]);
         Ok(())
     }
 
@@ -5951,6 +5987,7 @@ impl Engine {
             robot_fixing_allowed: self.robot_fixing_allowed,
             asexual_reproduction_allowed: self.asexual_reproduction_allowed,
             player_bot: self.player_bot.clone(),
+            player_bot_input: self.player_bot_input.clone(),
             restriction_options: self.restriction_options.clone(),
             local_mode: self.local_mode.clone(),
             next_lineage_id: self.next_lineage_id,
@@ -7169,38 +7206,51 @@ impl Engine {
         if !self.player_bot.enabled {
             return;
         }
-        let Some(focus) = self.player_bot.focus else {
-            return;
-        };
-        let bindings = self.player_bot.bindings.clone();
-        let pressed_keys = self.player_bot.pressed_keys.clone();
-        let Some(slot) = self.slots.slots.get_mut(focus.slot() as usize) else {
-            return;
-        };
-        if slot.generation != focus.generation() {
-            return;
-        }
-        let Some(robot) = slot.organism.as_mut() else {
-            return;
-        };
-        for binding in bindings {
-            if pressed_keys.contains(&binding.key) == binding.invert {
+        let mut targets = self.player_bot_input.highlights.clone();
+        targets.extend(self.player_bot.focus);
+        targets.sort_unstable_by_key(|id| (id.slot(), id.generation()));
+        targets.dedup();
+        for id in targets {
+            let Ok(robot) = self.slots.get_mut(id) else {
                 continue;
+            };
+            if let Some(point) = self.player_bot_input.pointer {
+                let [x, y] = robot.kinematics.position;
+                let radians = Self::native_angle_from_delta(point[0] - x, y - point[1]);
+                let aim = (radians * 200.0).round_ties_even() as i32;
+                Self::write_player_bot_memory(robot, id, 19, aim, trace);
             }
-            let address = binding.memory_address;
-            let before = robot.program.memory.read(address as i32);
-            robot.program.memory.write(address as i32, binding.value);
-            robot
-                .effects
-                .mark_reproduction_input(address as i32, binding.value);
-            trace.memory_write(
-                CyclePhase::PlayerBot,
-                focus,
-                address,
-                before,
-                robot.program.memory.read(address as i32),
-            );
+            for binding in &self.player_bot.bindings {
+                if self.player_bot.pressed_keys.contains(&binding.key) != binding.invert {
+                    Self::write_player_bot_memory(
+                        robot,
+                        id,
+                        binding.memory_address,
+                        binding.value,
+                        trace,
+                    );
+                }
+            }
         }
+    }
+
+    fn write_player_bot_memory(
+        robot: &mut RobotState,
+        id: OrganismId,
+        address: u16,
+        value: i32,
+        trace: &mut CycleRecorder,
+    ) {
+        let before = robot.program.memory.read(address as i32);
+        robot.program.memory.write(address as i32, value);
+        robot.effects.mark_reproduction_input(address as i32, value);
+        trace.memory_write(
+            CyclePhase::PlayerBot,
+            id,
+            address,
+            before,
+            robot.program.memory.read(address as i32),
+        );
     }
 
     fn tide_scaling(&self) -> f32 {
@@ -8765,11 +8815,9 @@ impl Engine {
         angle
     }
 
-    fn native_tie_geometry(source: &RobotState, target: &RobotState) -> [i32; 3] {
+    fn native_angle_from_delta(dx: f32, dy: f32) -> f32 {
         // Physics.angle evaluates the Single ratio before Double Atn, then
         // assigns its Single result. atan2 changes the source rounding points.
-        let dx = target.kinematics.position[0] - source.kinematics.position[0];
-        let dy = source.kinematics.position[1] - target.kinematics.position[1];
         let angle = if dx == 0.0 {
             if dy < 0.0 {
                 std::f32::consts::FRAC_PI_2 * 3.0
@@ -8784,7 +8832,13 @@ impl Engine {
                 angle
             }
         };
-        let angle = Self::native_normalize_tie_angle(angle);
+        Self::native_normalize_tie_angle(angle)
+    }
+
+    fn native_tie_geometry(source: &RobotState, target: &RobotState) -> [i32; 3] {
+        let dx = target.kinematics.position[0] - source.kinematics.position[0];
+        let dy = source.kinematics.position[1] - target.kinematics.position[1];
+        let angle = Self::native_angle_from_delta(dx, dy);
         let heading = Self::native_normalize_tie_angle(source.heading());
         let mut difference = angle - heading;
         if difference > std::f32::consts::PI {

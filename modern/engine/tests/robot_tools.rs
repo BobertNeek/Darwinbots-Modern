@@ -1,6 +1,6 @@
 use darwinbots_engine::{
     CycleEvent, CyclePhase, Engine, EngineConfig, LegacyDna, PlayerBotBinding, RestrictionColumn,
-    RestrictionOptions,
+    RestrictionOptions, SaveFile,
     ffi::{
         DbBuffer, DbStatus, db_buffer_free, db_engine_command_batch, db_engine_create,
         db_engine_destroy, db_engine_snapshot_json,
@@ -81,6 +81,66 @@ fn player_bot_release_and_invert_follow_pressed_xor_invert() {
     engine.tick().unwrap();
     assert_eq!(engine.memory_at(id, 50).unwrap(), 11);
     assert_eq!(engine.memory_at(id, 51).unwrap(), 22);
+}
+
+#[test]
+fn player_bot_aims_at_current_pointer_for_focus_and_stable_highlights_only() {
+    let mut engine = Engine::new_native(EngineConfig::testing()).unwrap();
+    let dna = LegacyDna::parse("start\nstop").unwrap();
+    let focus = engine.spawn_at(dna.clone(), [500.0, 500.0]).unwrap();
+    let highlighted = engine.spawn_at(dna.clone(), [900.0, 500.0]).unwrap();
+    let stale = engine.spawn_at(dna.clone(), [1300.0, 500.0]).unwrap();
+    engine.remove(stale).unwrap();
+    let replacement = engine.spawn_at(dna, [1300.0, 500.0]).unwrap();
+    assert_eq!(stale.slot(), replacement.slot());
+    engine
+        .configure_player_bot(true, Some(focus), vec![binding(65, 19, 77, false)])
+        .unwrap();
+    engine.set_player_bot_key(focus, 65, true).unwrap();
+    let baseline = SaveFile::encode(&engine).unwrap();
+
+    engine.set_player_bot_targets(Some(focus), vec![highlighted, focus, stale]);
+    engine.set_player_bot_pointer(Some([500.0, 300.0])).unwrap();
+    assert_eq!(SaveFile::encode(&engine).unwrap(), baseline);
+
+    let mut restored = SaveFile::decode(&baseline).unwrap();
+    assert_eq!(player_bot_aim_writes(&mut restored), [(focus, 77)]);
+    // The older candidate path must see pointer aim before the user's key
+    // mapping overwrites the same address in the pre-shot PlayerBot phase.
+    assert_eq!(
+        player_bot_aim_writes(&mut engine),
+        [
+            (focus, 314),
+            (focus, 77),
+            (highlighted, 536),
+            (highlighted, 77)
+        ],
+    );
+
+    engine.set_player_bot_key(focus, 65, false).unwrap();
+    engine.set_player_bot_pointer(None).unwrap();
+    assert!(player_bot_aim_writes(&mut engine).is_empty());
+    engine.set_player_bot_pointer(Some([0.0, 0.0])).unwrap();
+    assert!(player_bot_aim_writes(&mut engine).is_empty());
+}
+
+fn player_bot_aim_writes(engine: &mut Engine) -> Vec<(darwinbots_engine::OrganismId, i32)> {
+    engine
+        .tick_with_trace()
+        .unwrap()
+        .events
+        .into_iter()
+        .filter_map(|event| match event {
+            CycleEvent::MemoryWrite {
+                phase: CyclePhase::PlayerBot,
+                id,
+                address: 19,
+                after,
+                ..
+            } => Some((id, after)),
+            _ => None,
+        })
+        .collect()
 }
 
 #[test]

@@ -22,6 +22,73 @@ namespace Darwinbots.Desktop.Tests;
 public sealed class PlayerBotRenderedTests
 {
     [Fact]
+    public async Task HeldFieldPointerAimsFocusedAndShiftHighlightedRobotsUntilRelease()
+    {
+        var setup = new WorldSetupOptions { Backend = "Cpu", WorldWidth = 1000, WorldHeight = 1000, PopulationCapacity = 8 };
+        await using var session = new SimulationSession(new NativeEngineClient(setup));
+        await session.ImportDnaAsync("start\nstop", [300, 300]);
+        await session.ImportDnaAsync("start\nstop", [600, 300]);
+        var (focus, other) = (session.LatestSnapshot.Organisms[0], session.LatestSnapshot.Organisms[1]);
+
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], setup, NativeEngineClientFactory.Instance, new AuditStorageService());
+            DesktopTestApplication.UseSession(window, session);
+            window.Show();
+            try
+            {
+                var viewport = window.FindControl<WorldViewport>("Viewport")!;
+                var focusPoint = WorldPoint(300, 300);
+                window.MouseDown(focusPoint, MouseButton.Left, RawInputModifiers.None);
+                window.MouseUp(focusPoint, MouseButton.Left, RawInputModifiers.None);
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                menu.FindCommandItem(LegacyCommandId.EditEnablePlayerBot)!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => session.LatestSnapshot.PlayerBot.Enabled);
+
+                var highlight = WorldPoint(600, 300);
+                window.MouseDown(highlight, MouseButton.Left, RawInputModifiers.Shift);
+                window.MouseUp(highlight, MouseButton.Left, RawInputModifiers.Shift);
+                await session.StepAsync(0);
+                Assert.Equal(new OrganismKey(focus.Slot, focus.Generation), session.LatestSnapshot.PlayerBot.Focus);
+
+                var blankPoint = WorldPoint(140, 100);
+                var target = WorldPoint(300, 50);
+                window.MouseDown(blankPoint, MouseButton.Left, RawInputModifiers.None);
+                await session.StepAsync();
+                Assert.Equal(0, Aim(focus.Slot));
+                Assert.Equal(0, Aim(other.Slot));
+
+                window.MouseMove(target, RawInputModifiers.LeftMouseButton);
+                await session.StepAsync();
+                Assert.InRange(Aim(focus.Slot), 313, 315);
+                Assert.InRange(Aim(other.Slot), 488, 490);
+
+                window.MouseUp(target, MouseButton.Left, RawInputModifiers.None);
+                await session.SetOrganismMemoryAsync(focus.Slot, focus.Generation, 19, 0);
+                await session.SetOrganismMemoryAsync(other.Slot, other.Generation, 19, 0);
+                await session.StepAsync();
+                Assert.Equal(0, Aim(focus.Slot));
+                Assert.Equal(0, Aim(other.Slot));
+
+                int Aim(uint slot) => session.LatestSnapshot.Organisms.Single(robot => robot.Slot == slot).Aim;
+                Point WorldPoint(float x, float y)
+                {
+                    var scaleX = viewport.Bounds.Width / setup.WorldWidth;
+                    var scaleY = viewport.Bounds.Height / setup.WorldHeight;
+                    if (viewport.FixedRatio) scaleX = scaleY = Math.Min(scaleX, scaleY);
+                    return viewport.TranslatePoint(new Point(x * scaleX * viewport.Zoom + viewport.Pan.X,
+                        y * scaleY * viewport.Zoom + viewport.Pan.Y), window)!.Value;
+                }
+            }
+            finally
+            {
+                typeof(MainWindow).GetField("_session", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(window, null);
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
     public async Task RealPlayerBotKeyMapRoutesVisibleKeysToTheNextAuthoritativeCycle()
     {
         var factory = new PlayerBotTestEngineFactory();

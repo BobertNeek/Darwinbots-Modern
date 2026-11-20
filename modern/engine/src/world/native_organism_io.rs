@@ -76,6 +76,7 @@ impl Engine {
         // The public method is atomic too, not only its command-batch caller.
         let mut candidate = SaveFile::decode(&SaveFile::encode(self)?)?;
         let count = candidate.apply_native_organisms(file, position)?;
+        std::mem::swap(&mut candidate.player_bot_input, &mut self.player_bot_input);
         *self = candidate;
         Ok(count)
     }

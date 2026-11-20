@@ -28,6 +28,7 @@ public sealed class WorldViewport : Control
     private float[]? _dragPosition;
     private Point? _dragOrigin;
     private bool _dragMoved;
+    private IPointer? _playerBotPointer;
     private bool _renderWaste = true;
     private bool _showSelectedVision = true;
     private bool _wrapX = true;
@@ -54,6 +55,10 @@ public sealed class WorldViewport : Control
     public event Action<WorldFeatureSelection>? WorldFeatureSelected;
     public event Action<uint, float[]>? OrganismDragCompleted;
     public event Action<OrganismKey, float[]>? OrganismKeyDragCompleted;
+    public event Action<OrganismKey>? PlayerBotHighlightRequested;
+    public event Action<float[]?>? PlayerBotPointerChanged;
+    public Func<bool>? IsPlayerBotEnabled { get; set; }
+    public Func<bool>? CanAimPlayerBot { get; set; }
 
     public bool RenderWaste { get => _renderWaste; set { _renderWaste = value; InvalidateVisual(); } }
     public bool FixedRatio { get => _fixedRatio; set { _fixedRatio = value; InvalidateVisual(); } }
@@ -143,12 +148,12 @@ public sealed class WorldViewport : Control
         SelectKeys(keys, primaryKey);
     }
 
-    public void SelectKeys(IEnumerable<OrganismKey> keys, OrganismKey primary)
+    public void SelectKeys(IEnumerable<OrganismKey> keys, OrganismKey? primary)
     {
         _selectedKey = primary;
         _selectedKeys.Clear();
         foreach (var key in keys) _selectedKeys.Add(key);
-        _selectedKeys.Add(primary);
+        if (primary is { } selected) _selectedKeys.Add(selected);
         InvalidateVisual();
     }
 
@@ -456,6 +461,13 @@ public sealed class WorldViewport : Control
             return;
         }
         var selected = FindNearest(point.Position);
+        if (point.Properties.IsLeftButtonPressed && e.KeyModifiers == KeyModifiers.Shift
+            && selected is { } highlight && highlight != _selectedKey && IsPlayerBotEnabled?.Invoke() == true)
+        {
+            PlayerBotHighlightRequested?.Invoke(highlight);
+            e.Handled = true;
+            return;
+        }
         if (point.Properties.IsRightButtonPressed)
         {
             if (selected is { } contextKey)
@@ -475,6 +487,13 @@ public sealed class WorldViewport : Control
             {
                 SelectFeature(feature);
                 WorldFeatureSelected?.Invoke(feature);
+                e.Handled = true;
+                return;
+            }
+            if (point.Properties.IsLeftButtonPressed && CanAimPlayerBot?.Invoke() == true)
+            {
+                _playerBotPointer = e.Pointer;
+                e.Pointer.Capture(this);
                 e.Handled = true;
                 return;
             }
@@ -506,6 +525,19 @@ public sealed class WorldViewport : Control
     protected override void OnPointerMoved(PointerEventArgs e)
     {
         base.OnPointerMoved(e);
+        if (ReferenceEquals(_playerBotPointer, e.Pointer))
+        {
+            var current = e.GetCurrentPoint(this);
+            if (current.Properties.IsLeftButtonPressed && CanAimPlayerBot?.Invoke() == true)
+                PlayerBotPointerChanged?.Invoke(WorldPoint(current.Position, clamp: false));
+            else
+            {
+                ClearPlayerBotPointer();
+                e.Pointer.Capture(null);
+            }
+            e.Handled = true;
+            return;
+        }
         if (_dragKey is not null)
         {
             var pointer = e.GetPosition(this);
@@ -527,6 +559,13 @@ public sealed class WorldViewport : Control
     protected override void OnPointerReleased(PointerReleasedEventArgs e)
     {
         base.OnPointerReleased(e);
+        if (ReferenceEquals(_playerBotPointer, e.Pointer))
+        {
+            ClearPlayerBotPointer();
+            e.Pointer.Capture(null);
+            e.Handled = true;
+            return;
+        }
         _panAnchor = null;
         if (_dragMoved && _dragKey is { } key && _dragPosition is { } position)
         {
@@ -537,6 +576,19 @@ public sealed class WorldViewport : Control
         _dragOrigin = null;
         _dragMoved = false;
         e.Pointer.Capture(null);
+    }
+
+    protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e)
+    {
+        base.OnPointerCaptureLost(e);
+        if (ReferenceEquals(_playerBotPointer, e.Pointer))
+            ClearPlayerBotPointer();
+    }
+
+    private void ClearPlayerBotPointer()
+    {
+        _playerBotPointer = null;
+        PlayerBotPointerChanged?.Invoke(null);
     }
 
     protected override void OnPointerWheelChanged(PointerWheelEventArgs e)
@@ -591,13 +643,15 @@ public sealed class WorldViewport : Control
         return best;
     }
 
-    private float[] WorldPoint(Point point)
+    private float[] WorldPoint(Point point, bool clamp = true)
     {
-        var scaleX = ScaleX;
-        var scaleY = ScaleY;
+        var x = (point.X - _pan.X) / (ScaleX * _zoom);
+        var y = (point.Y - _pan.Y) / (ScaleY * _zoom);
+        if (!clamp)
+            return [(float)x, (float)y];
         return [
-            (float)Math.Clamp((point.X - _pan.X) / (scaleX * _zoom), 0, _snapshot.WorldSize[0]),
-            (float)Math.Clamp((point.Y - _pan.Y) / (scaleY * _zoom), 0, _snapshot.WorldSize[1]),
+            (float)Math.Clamp(x, 0, _snapshot.WorldSize[0]),
+            (float)Math.Clamp(y, 0, _snapshot.WorldSize[1]),
         ];
     }
 

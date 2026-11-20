@@ -679,6 +679,30 @@ public sealed partial class NativeEngineClient : IEngineClient
         }, "update PlayerBot key state");
     }
 
+    public void SetPlayerBotTargets(OrganismKey? focus, IReadOnlyList<OrganismKey> highlights)
+    {
+        ExecuteBatch(new
+        {
+            version = 1,
+            commands = new[] { new
+            {
+                type = "set_player_bot_targets",
+                focus = focus is { } key ? new { slot = key.Slot, generation = key.Generation } : null,
+                highlights = highlights.Select(value => new { slot = value.Slot, generation = value.Generation }).ToArray(),
+            } },
+        }, "update PlayerBot targets");
+    }
+
+    public void SetPlayerBotPointer(float[]? position)
+    {
+        if (position is not null) ValidatePosition(position);
+        ExecuteBatch(new
+        {
+            version = 1,
+            commands = new[] { new { type = "set_player_bot_pointer", position } },
+        }, "update PlayerBot pointer");
+    }
+
     public void SetOrganismMemory(uint slot, uint generation, ushort address, int value) => ExecuteBatch(
         new
         {

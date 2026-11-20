@@ -114,6 +114,7 @@ public sealed partial class MainWindow : Window
     private bool _automaticTagByName;
     private bool _playerBotEnabled;
     private IReadOnlyList<PlayerBotBinding> _playerBotBindings = [];
+    private readonly HashSet<OrganismKey> _playerBotHighlights = [];
     private bool _rgbMemoryMonitorEnabled;
     private RgbMemoryMonitorSettings _rgbMemorySettings = RgbMemoryMonitorSettings.Default;
     private const string RgbMonitorToolKey = "rgb-memory-monitor";
@@ -207,24 +208,39 @@ public sealed partial class MainWindow : Window
         Viewport.WrapY = _liveEnvironment.WrapY;
         RuntimeSpeed.SelectedIndex = _ticksPerUpdate switch { <= 1 => 0, <= 5 => 1, <= 20 => 2, _ => 3 };
         _maximumSpeed = DesktopControlRules.IsMaximumSpeed(RuntimeSpeed.SelectedIndex);
-        Viewport.OrganismKeySelected += key =>
+        Viewport.IsPlayerBotEnabled = () => _playerBotEnabled;
+        Viewport.CanAimPlayerBot = () => _playerBotEnabled && _insertion?.IsActive != true
+            && _moveOrganism is null && _environmentPlacement == EnvironmentPlacement.None;
+        Viewport.PlayerBotPointerChanged += position => _session?.SetPlayerBotPointer(position);
+        Viewport.PlayerBotHighlightRequested += async key =>
         {
+            if (_playerBotHighlights.Add(key))
+            {
+                Viewport.SelectKeys(_playerBotHighlights, SelectedRobotKey());
+                await SynchronizePlayerBotTargetsAsync();
+            }
+        };
+        Viewport.OrganismKeySelected += async key =>
+        {
+            if (!_playerBotEnabled || !_playerBotHighlights.Contains(key))
+                _playerBotHighlights.Clear();
             _viewModel.Select(key);
-            Viewport.SelectKey(key);
+            Viewport.SelectKeys(_playerBotHighlights, key);
             RefreshLegacyMenuStates();
+            await SynchronizePlayerBotTargetsAsync();
         };
         Viewport.ContextMenu = BuildViewportContextMenu();
         Viewport.OrganismContextRequested += (key, _) =>
         {
             _viewModel.Select(key);
-            Viewport.SelectKey(key);
+            Viewport.SelectKeys(_playerBotHighlights, key);
             RefreshLegacyMenuStates();
             Viewport.ContextMenu?.Open(Viewport);
         };
         Viewport.OrganismDoubleClicked += async key =>
         {
             _viewModel.Select(key);
-            Viewport.SelectKey(key);
+            Viewport.SelectKeys(_playerBotHighlights, key);
             var result = await _legacyCommands.ExecuteAsync(LegacyCommandId.RobotShowInfo);
             _viewModel.Status = result.Status;
             RefreshLegacyMenuStates();
@@ -789,7 +805,7 @@ public sealed partial class MainWindow : Window
             async _ => await MakeSelectedNewSpeciesAsync());
         handlers[LegacyCommandId.RobotSelectEntireOrganism] = Handler(
             SelectedRobotState,
-            _ => Task.FromResult(SelectEntireOrganism()));
+            async _ => await SelectEntireOrganismAsync());
         handlers[LegacyCommandId.RobotSaveEntireOrganism] = Handler(
             SelectedRobotState,
             async _ => await SaveEntireOrganismAsync());
@@ -1191,6 +1207,10 @@ public sealed partial class MainWindow : Window
             : _playerBotBindings;
         await _session.ConfigurePlayerBotAsync(new PlayerBotConfig(next, SelectedRobotKey(), _playerBotBindings));
         _playerBotEnabled = next;
+        if (next)
+            await SynchronizePlayerBotTargetsAsync();
+        else
+            _session.SetPlayerBotPointer(null);
         return LegacyCommandResult.Success($"PLAYERBOT MODE · {(next ? "ON · MAPPED KEYS WRITE AFTER SENSE CLEAR" : "OFF")}");
     }
 
@@ -1218,6 +1238,11 @@ public sealed partial class MainWindow : Window
         _viewModel.SelectedOrganism is { } organism
             ? new OrganismKey(organism.Slot, organism.Generation)
             : null;
+
+    private Task SynchronizePlayerBotTargetsAsync() =>
+        _playerBotEnabled && _session is { } session
+            ? session.SetPlayerBotTargetsAsync(SelectedRobotKey(), _playerBotHighlights.ToArray())
+            : Task.CompletedTask;
 
     private Task<LegacyCommandResult> OpenEyeDesignerAsync()
     {
@@ -1711,13 +1736,15 @@ public sealed partial class MainWindow : Window
             .ToArray();
     }
 
-    private LegacyCommandResult SelectEntireOrganism()
+    private async Task<LegacyCommandResult> SelectEntireOrganismAsync()
     {
         var group = SelectedOrganismGroup();
         var selected = _viewModel.SelectedOrganism!;
-        Viewport.SelectKeys(
-            group.Select(value => new OrganismKey(value.Slot, value.Generation)),
-            new OrganismKey(selected.Slot, selected.Generation));
+        if (!_playerBotEnabled)
+            _playerBotHighlights.Clear();
+        _playerBotHighlights.UnionWith(group.Select(value => new OrganismKey(value.Slot, value.Generation)));
+        Viewport.SelectKeys(_playerBotHighlights, new OrganismKey(selected.Slot, selected.Generation));
+        await SynchronizePlayerBotTargetsAsync();
         return LegacyCommandResult.Success($"ORGANISM SELECTED · {group.Count:N0} BOT(S)");
     }
 
@@ -2941,6 +2968,7 @@ public sealed partial class MainWindow : Window
             if (_session is null) return;
             _loadingSimulation = true;
             await _session.LoadAsync(save);
+            _playerBotHighlights.Clear();
             // A rejected load publishes no snapshot and must keep user-closed
             // graphs closed. Loading publications defer this until success.
             _automaticEvolutionGraphBoundary = null;
