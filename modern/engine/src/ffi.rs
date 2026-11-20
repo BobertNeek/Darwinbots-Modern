@@ -239,6 +239,14 @@ enum EngineCommand {
     AddNativeCenteredObstacle {
         dimensions_permille: [u16; 2],
     },
+    SetShapeDrift {
+        #[serde(default)]
+        horizontal: Option<bool>,
+        #[serde(default)]
+        vertical: Option<bool>,
+        #[serde(default)]
+        rate: Option<i16>,
+    },
     UpdateObstacle {
         obstacle: crate::Obstacle,
     },
@@ -1107,6 +1115,13 @@ fn db_engine_command_batch_impl(
             } => engine
                 .add_native_centered_obstacle(dimensions_permille)
                 .map(|added| serde_json::json!(added)),
+            EngineCommand::SetShapeDrift {
+                horizontal,
+                vertical,
+                rate,
+            } => engine
+                .set_shape_drift(horizontal, vertical, rate)
+                .map(|settings| serde_json::json!(settings)),
             EngineCommand::UpdateObstacle { obstacle } => engine
                 .update_obstacle(obstacle)
                 .map(|_| serde_json::Value::Null),

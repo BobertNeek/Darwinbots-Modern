@@ -117,6 +117,96 @@ public sealed class RenderedWorldToolsCausalTests
     }
 
     [Fact]
+    public async Task ShapesMovementKeepsImportedZeroAndAppliesQueuedAxisEdits()
+    {
+        var setup = new WorldSetupOptions
+        {
+            Backend = "Cpu", Seed = 75, PopulationCapacity = 64,
+            WorldWidth = 1_100, WorldHeight = 800,
+        };
+        using var savedWorld = new NativeEngineClient(setup);
+        var shape = new ObstacleSnapshot(1, [120f, 130f], [200f, 250f]) { Drift = [3f, 4f] };
+        savedWorld.AddObstacle(shape);
+        savedWorld.UpdateObstacle(shape);
+        var storage = new AuditStorageService { OpenedSimulation = savedWorld.SaveLegacy() };
+
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], setup, NativeEngineClientFactory.Instance, storage);
+            window.Show();
+            try
+            {
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                var load = menu.FindCommandItem(LegacyCommandId.FileLoadSimulation)!;
+                var create = menu.FindCommandItem(LegacyCommandId.ObjectsNewShape)!;
+                await WaitFor(() => load.IsEnabled, () => "The simulation did not finish starting.");
+                var session = TryField<SimulationSession>(window, "_session")!;
+                load.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => session.LatestSnapshot.Obstacles.Count == 1,
+                    () => "The original SIM did not load.");
+
+                async Task<ShapesWindow> OpenTool()
+                {
+                    create.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    await WaitFor(() => window.OwnedWindows.OfType<ShapesWindow>().Any(tool => tool.IsVisible),
+                        () => "New Shape did not open.");
+                    return Assert.Single(window.OwnedWindows.OfType<ShapesWindow>(), tool => tool.IsVisible);
+                }
+
+                var tool = await OpenTool();
+                var horizontal = tool.FindControl<CheckBox>("HorizontalDriftCheck")!;
+                var vertical = tool.FindControl<CheckBox>("VerticalDriftCheck")!;
+                var rate = tool.FindControl<Slider>("DriftRateSlider")!;
+                Assert.False(horizontal.IsChecked);
+                Assert.False(vertical.IsChecked);
+                Assert.Equal(0, rate.Value);
+                Assert.Equal(new Db2ShapeDriftOptions(), (await session.ReadConfigurationAsync())!.ShapeDrift);
+                Assert.Equal([3f, 4f], Assert.Single(session.LatestSnapshot.Obstacles).Drift);
+
+                horizontal.IsChecked = true;
+                rate.Value = 1;
+                var gate = TryField<SemaphoreSlim>(window, "_advanceGate")!;
+                // Wait for the enable and rate edits, then exercise two edits queued behind a tick/save gate.
+                await gate.WaitAsync();
+                try
+                {
+                    Assert.Equal(new Db2ShapeDriftOptions(true, false, 1), (await session.ReadConfigurationAsync())!.ShapeDrift);
+                    Assert.Equal([3f, 4f], Assert.Single(session.LatestSnapshot.Obstacles).Drift);
+                    horizontal.IsChecked = false;
+                    horizontal.IsChecked = true;
+                }
+                finally { gate.Release(); }
+                await gate.WaitAsync();
+                try
+                {
+                    Assert.Equal(new Db2ShapeDriftOptions(true, false, 1), (await session.ReadConfigurationAsync())!.ShapeDrift);
+                    Assert.Equal([0f, 4f], Assert.Single(session.LatestSnapshot.Obstacles).Drift);
+                }
+                finally { gate.Release(); }
+
+                tool.Close();
+                tool = await OpenTool();
+                horizontal = tool.FindControl<CheckBox>("HorizontalDriftCheck")!;
+                vertical = tool.FindControl<CheckBox>("VerticalDriftCheck")!;
+                rate = tool.FindControl<Slider>("DriftRateSlider")!;
+                Assert.True(horizontal.IsChecked);
+                Assert.False(vertical.IsChecked);
+                Assert.Equal(1, rate.Value);
+                load.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => horizontal.IsChecked == false && rate.Value == 0,
+                    () => "The Shape window did not hydrate from the replacement SIM.");
+                Assert.Equal(new Db2ShapeDriftOptions(), (await session.ReadConfigurationAsync())!.ShapeDrift);
+                Assert.Equal([3f, 4f], Assert.Single(session.LatestSnapshot.Obstacles).Drift);
+            }
+            finally
+            {
+                foreach (var owned in window.OwnedWindows.ToArray()) owned.Close();
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
     public async Task ShapesToolCreatesWithLiveDimensionsAndResetsOnLoadedWorld()
     {
         var setup = new WorldSetupOptions

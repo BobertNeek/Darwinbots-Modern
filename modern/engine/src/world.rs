@@ -6500,6 +6500,63 @@ impl Engine {
         Ok(())
     }
 
+    pub(crate) fn set_shape_drift(
+        &mut self,
+        horizontal: Option<bool>,
+        vertical: Option<bool>,
+        rate: Option<i16>,
+    ) -> Result<Option<crate::ShapeDriftSettings>, EngineError> {
+        if self.native_random.is_none() {
+            return Ok(None);
+        }
+        if horizontal.is_none() && vertical.is_none() && rate.is_none() {
+            return Ok(self.config.shape_drift);
+        }
+        if rate.is_some_and(|rate| !(1..=1000).contains(&rate)) {
+            return Err(EngineError::Invariant(
+                "shape drift rate must be between 1 and 1000".into(),
+            ));
+        }
+        let drift = self.config.shape_drift.get_or_insert_with(Default::default);
+        if let Some(horizontal) = horizontal {
+            drift.horizontal = horizontal;
+        }
+        if let Some(vertical) = vertical {
+            drift.vertical = vertical;
+        }
+        let wall_speed = rate.map(|rate| {
+            drift.rate = rate;
+            (f64::from(rate) * 0.1) as f32
+        });
+        let settings = *drift;
+        for shape in &mut self.obstacles {
+            self.native_obstacle_extents
+                .entry(shape.id)
+                .or_insert_with(|| shape.extents());
+            if horizontal == Some(false) {
+                shape.drift[0] = 0.0;
+            }
+            if vertical == Some(false) {
+                shape.drift[1] = 0.0;
+            }
+            if let Some(speed) = wall_speed
+                && self
+                    .trash_compactor
+                    .is_some_and(|pair| pair.contains(shape.id))
+                && shape.drift[0] != 0.0
+            {
+                shape.drift[0] = speed.copysign(shape.drift[0]);
+            }
+        }
+        if let Some(speed) = wall_speed
+            && let Some(compactor) = self.trash_compactor.as_mut()
+        {
+            compactor.speed = speed;
+        }
+        self.publish_snapshot();
+        Ok(Some(settings))
+    }
+
     pub fn add_trash_compactor(
         &mut self,
         left: Obstacle,
@@ -11198,7 +11255,13 @@ impl Engine {
                 .obstacles
                 .get_disjoint_mut(indices)
                 .expect("compactor walls are distinct");
-            compactor.move_walls(left, right, world_size, extents);
+            compactor.move_walls(
+                left,
+                right,
+                world_size,
+                extents,
+                native_drift.map(|drift| drift.rate),
+            );
         }
         for obstacle in &mut self.obstacles {
             if compactor.is_some_and(|compactor| compactor.contains(obstacle.id)) {
@@ -14784,6 +14847,76 @@ const fn default_snapshot_schema_version() -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::SaveFile;
+
+    #[test]
+    fn live_shape_drift_preserves_zero_and_edits_only_the_requested_motion() {
+        let mut world = Engine::new_native(EngineConfig {
+            shape_drift: Some(crate::ShapeDriftSettings::default()),
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let mut ordinary = Obstacle::new(1, [120.0; 2], [140.0; 2]);
+        ordinary.drift = [3.5, -4.0];
+        world.add_obstacle(ordinary).unwrap();
+        let mut left = Obstacle::new(2, [0.0, 0.0], [100.0, 100.0]);
+        left.drift[0] = 2.0;
+        let mut right = Obstacle::new(3, [900.0, 0.0], [1000.0, 100.0]);
+        right.drift[0] = -2.0;
+        world.add_trash_compactor(left, right).unwrap();
+        world.obstacles[1].drift = [-2.0, 6.0];
+        world.obstacles[2].drift = [2.0, -7.0];
+        let random = world.native_random.clone();
+
+        let rejected = world.set_shape_drift(Some(false), None, Some(0));
+        assert!(rejected.is_err());
+        assert_eq!(world.obstacles[0].drift, [3.5, -4.0]);
+
+        let movement = world
+            .set_shape_drift(Some(true), Some(true), None)
+            .unwrap()
+            .unwrap();
+        assert_eq!(movement.rate, 0);
+        assert_eq!(world.obstacles[0].drift, [3.5, -4.0]);
+        world.set_shape_drift(None, None, Some(1)).unwrap();
+        assert_eq!(world.obstacles[0].drift, [3.5, -4.0]);
+        assert_eq!(world.obstacles[1].drift, [-0.1_f32, 6.0]);
+        assert_eq!(world.obstacles[2].drift, [0.1_f32, -7.0]);
+
+        world.set_shape_drift(Some(false), None, None).unwrap();
+        world.set_shape_drift(Some(true), None, Some(27)).unwrap();
+        assert_eq!(world.obstacles[0].drift, [0.0, -4.0]);
+        assert_eq!(world.obstacles[1].drift, [0.0, 6.0]);
+        assert_eq!(world.obstacles[2].drift, [0.0, -7.0]);
+        assert_eq!(world.obstacles[1].drift[0].to_bits(), 0);
+        assert_eq!(world.trash_compactor.unwrap().speed, 2.7_f32);
+        let settings = world.set_shape_drift(None, Some(false), None).unwrap();
+        assert!(world.obstacles.iter().all(|shape| shape.drift == [0.0; 2]));
+        assert_eq!(world.native_random, random);
+
+        let restored = SaveFile::decode(&SaveFile::encode(&world).unwrap()).unwrap();
+        assert_eq!(restored.config.shape_drift, settings);
+        assert_eq!(restored.obstacles, world.obstacles);
+        assert_eq!(restored.trash_compactor.unwrap().speed, 2.7_f32);
+    }
+
+    #[test]
+    fn live_shape_drift_uses_original_compactor_turnaround_and_rebound_rates() {
+        let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+        let mut left = Obstacle::new(1, [-100.0, 100.0], [0.0, 200.0]);
+        left.drift[0] = 2.0;
+        let mut right = Obstacle::new(2, [900.0, -100.0], [1000.0, 0.0]);
+        right.drift[0] = -2.0;
+        world.add_trash_compactor(left, right).unwrap();
+        world.set_shape_drift(Some(false), None, Some(1)).unwrap();
+        world.obstacles[1].drift[1] = -1.0;
+        world.move_obstacles();
+
+        assert_eq!(world.obstacles[0].drift[0], 0.1_f32);
+        assert_eq!(world.obstacles[1].drift[0], -0.1_f32);
+        assert_eq!(world.obstacles[1].minimum[1], -100.0);
+        assert_eq!(world.obstacles[1].drift[1].to_bits(), 0.01_f32.to_bits());
+    }
 
     #[test]
     fn native_shape_drift_uses_axis_order_and_skips_trash_compactor_walls() {

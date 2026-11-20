@@ -53,6 +53,7 @@ public interface IEngineClient : IDisposable
     }
     int? AddNativeRandomObstacles(int count, ShapeCreationDimensions? dimensions = null) => null;
     int? AddNativeCenteredObstacle(ShapeCreationDimensions dimensions) => null;
+    Db2ShapeDriftOptions? SetShapeDrift(bool? horizontal, bool? vertical, short? rate) => null;
     void UpdateObstacle(ObstacleSnapshot obstacle);
     void RemoveObstacle(uint id);
     void RemoveObstacles(IReadOnlyList<uint> ids)

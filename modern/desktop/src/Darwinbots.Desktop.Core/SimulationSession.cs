@@ -392,6 +392,14 @@ public sealed class SimulationSession : IAsyncDisposable
         return added;
     }
 
+    public async Task<Db2ShapeDriftOptions?> SetShapeDriftAsync(
+        bool? horizontal, bool? vertical, short? rate, CancellationToken cancellationToken = default)
+    {
+        Db2ShapeDriftOptions? settings = null;
+        await Enqueue(engine => settings = engine.SetShapeDrift(horizontal, vertical, rate), cancellationToken).ConfigureAwait(false);
+        return settings;
+    }
+
     public Task UpdateObstacleAsync(ObstacleSnapshot obstacle, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.UpdateObstacle(obstacle), cancellationToken);
 

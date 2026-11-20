@@ -484,6 +484,19 @@ public sealed partial class NativeEngineClient : IEngineClient
         return result.ValueKind == JsonValueKind.Null ? null : result.GetInt32();
     }
 
+    public Db2ShapeDriftOptions? SetShapeDrift(bool? horizontal, bool? vertical, short? rate)
+    {
+        var result = ExecuteBatchForResult(new
+        {
+            version = 1,
+            commands = new[] { new { type = "set_shape_drift", horizontal, vertical, rate } },
+        }, "set shape drift").GetProperty("results")[0];
+        return result.ValueKind == JsonValueKind.Null ? null : new Db2ShapeDriftOptions(
+            result.GetProperty("horizontal").GetBoolean(),
+            result.GetProperty("vertical").GetBoolean(),
+            result.GetProperty("rate").GetInt16());
+    }
+
     public void UpdateObstacle(ObstacleSnapshot obstacle)
     {
         ArgumentNullException.ThrowIfNull(obstacle);

@@ -225,13 +225,6 @@ impl Default for VegetationSettings {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ShapeDriftSettings {
-    pub horizontal: bool,
-    pub vertical: bool,
-    pub rate: i16,
-}
-
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct ShapeCreationSettings {
     pub black: bool,
@@ -256,6 +249,13 @@ impl ShapeCreationSettings {
             ShapeShotPolicy::Reflect
         }
     }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ShapeDriftSettings {
+    pub horizontal: bool,
+    pub vertical: bool,
+    pub rate: i16,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
