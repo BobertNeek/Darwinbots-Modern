@@ -245,6 +245,11 @@ enum EngineCommand {
         corridor: u16,
         thickness: u16,
     },
+    AddNativePatternMaze {
+        pattern: crate::world::NativePatternMaze,
+        corridor: u16,
+        thickness: u16,
+    },
     SetShapeDrift {
         #[serde(default)]
         horizontal: Option<bool>,
@@ -1133,6 +1138,13 @@ fn db_engine_command_batch_impl(
                 thickness,
             } => engine
                 .add_native_simple_maze(horizontal, corridor, thickness)
+                .map(|added| serde_json::json!(added)),
+            EngineCommand::AddNativePatternMaze {
+                pattern,
+                corridor,
+                thickness,
+            } => engine
+                .add_native_pattern_maze(pattern, corridor, thickness)
                 .map(|added| serde_json::json!(added)),
             EngineCommand::SetShapeDrift {
                 horizontal,

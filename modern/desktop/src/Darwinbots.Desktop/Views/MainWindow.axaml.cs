@@ -2205,22 +2205,15 @@ public sealed partial class MainWindow : Window
     private async Task<LegacyCommandResult> AddMazeCommandAsync(MazePreset pattern)
     {
         if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        if (pattern is MazePreset.Horizontal or MazePreset.Vertical or MazePreset.PolarIce)
+        if (pattern != MazePreset.TrashCompactor)
             return await AddNativeMazeAsync(session, pattern);
         var snapshot = session.LatestSnapshot;
         var size = snapshot.WorldSize;
         var shapes = MazePresetBuilder.Build(pattern, size[0], size[1]);
-        if (pattern == MazePreset.TrashCompactor)
-        {
-            var id = checked(snapshot.Obstacles.Select(obstacle => obstacle.Id).DefaultIfEmpty().Max() + 1);
-            await session.AddTrashCompactorAsync(
-                new ObstacleSnapshot(id, shapes[0].Minimum, shapes[0].Maximum) { Drift = shapes[0].Drift },
-                new ObstacleSnapshot(checked(id + 1), shapes[1].Minimum, shapes[1].Maximum) { Drift = shapes[1].Drift });
-        }
-        else
-        {
-            await AddObstaclesAsync(shapes);
-        }
+        var id = checked(snapshot.Obstacles.Select(obstacle => obstacle.Id).DefaultIfEmpty().Max() + 1);
+        await session.AddTrashCompactorAsync(
+            new ObstacleSnapshot(id, shapes[0].Minimum, shapes[0].Maximum) { Drift = shapes[0].Drift },
+            new ObstacleSnapshot(checked(id + 1), shapes[1].Minimum, shapes[1].Maximum) { Drift = shapes[1].Drift });
         return LegacyCommandResult.Success($"{pattern.ToString().ToUpperInvariant()} MAZE ADDED · {shapes.Count} SHAPES");
     }
 
@@ -2235,7 +2228,6 @@ public sealed partial class MainWindow : Window
                 || generation != _shapeWorldGeneration)
                 return LegacyCommandResult.Failure("ENGINE IS NOT READY");
 
-            var horizontal = pattern == MazePreset.Horizontal;
             int? added;
             if (pattern == MazePreset.PolarIce)
             {
@@ -2247,17 +2239,19 @@ public sealed partial class MainWindow : Window
                     _shapesWindow?.SetDrift(result.Drift);
                 }
             }
+            else if (pattern is MazePreset.Horizontal or MazePreset.Vertical)
+            {
+                added = await session.AddNativeSimpleMazeAsync(pattern == MazePreset.Horizontal, dimensions);
+            }
             else
             {
-                added = await session.AddNativeSimpleMazeAsync(horizontal, dimensions);
+                added = await session.AddNativePatternMazeAsync(pattern, dimensions);
             }
 
             if (added is null)
             {
                 var size = session.LatestSnapshot.WorldSize;
-                var shapes = pattern == MazePreset.PolarIce
-                    ? MazePresetBuilder.Build(pattern, size[0], size[1])
-                    : MazePresetBuilder.BuildSimple(horizontal, size[0], size[1], dimensions);
+                var shapes = MazePresetBuilder.BuildWithDimensions(pattern, size[0], size[1], dimensions);
                 await AddObstaclesAsync(shapes);
                 added = shapes.Count;
             }

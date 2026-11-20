@@ -361,6 +361,26 @@ public sealed class RenderedWorldToolsCausalTests
                     Assert.Equal(360f, shape.Minimum[1]);
                     Assert.Equal(420f, shape.Maximum[1]);
                 });
+
+                thickness.Value = 1;
+                menu.FindCommandItem(LegacyCommandId.ObjectsSprial)!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => session.LatestSnapshot.Obstacles.Count == 11,
+                    () => "Spiral did not use the live corridor and wall settings.");
+                var spiral = session.LatestSnapshot.Obstacles.Skip(7).ToArray();
+                Assert.Equal([0f, 300f], spiral[0].Minimum);
+                Assert.Equal([800f, 301f], spiral[0].Maximum);
+                Assert.Equal([300f, 600f], spiral[3].Minimum);
+                Assert.Equal([301f, 500f], spiral[3].Maximum);
+
+                thickness.Value = 500;
+                menu.FindCommandItem(LegacyCommandId.ObjectsCheckerboard)!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => session.LatestSnapshot.Obstacles.Count == 13,
+                    () => "Checkerboard did not use the live corridor independently of wall thickness.");
+                var checkerboard = session.LatestSnapshot.Obstacles.Skip(11).ToArray();
+                Assert.Equal([290f, 345f], checkerboard[0].Minimum);
+                Assert.Equal([400f, 455f], checkerboard[0].Maximum);
+                Assert.Equal([700f, 345f], checkerboard[1].Minimum);
+                Assert.Equal([810f, 455f], checkerboard[1].Maximum);
             }
             finally
             {
