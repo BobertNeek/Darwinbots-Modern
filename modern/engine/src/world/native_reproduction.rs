@@ -39,6 +39,92 @@ mod tests {
         include_bytes!("../../tests/fixtures/db24832-reproduction-start-48032.sim");
 
     #[test]
+    fn newborn_actual_velocity_uses_native_inheritance_then_normal_motion() {
+        for native in [true, false] {
+            let config = EngineConfig {
+                world_width: 3_000.0,
+                world_height: 2_000.0,
+                ..EngineConfig::testing()
+            };
+            let mut world = if native {
+                Engine::new_native(config).unwrap()
+            } else {
+                let mut world = Engine::new(config).unwrap();
+                world.native_random = None;
+                world
+            };
+            let parent = world
+                .spawn_at(
+                    LegacyDna::parse("cond *.robage 0 = start 50 .repro store stop").unwrap(),
+                    [1_000.0, 1_000.0],
+                )
+                .unwrap();
+            let inherited = [11.25, -7.5];
+            let kinematics = &mut world.slots.get_mut(parent).unwrap().kinematics;
+            kinematics.velocity = [3.0, 2.0];
+            kinematics.actual_velocity = inherited;
+
+            world.tick().unwrap();
+            assert_eq!(world.population(), 2);
+            let child = world
+                .slots
+                .ids_in_slot_order()
+                .into_iter()
+                .find(|&id| id != parent)
+                .unwrap();
+            let expected = if native { inherited } else { [0.0; 2] };
+            let saved = crate::SaveFile::encode(&world).unwrap();
+            let mut world = crate::SaveFile::decode(&saved).unwrap();
+            let kinematics = &world.slots.get(child).unwrap().kinematics;
+            assert_eq!(kinematics.actual_velocity, expected);
+            let birth_position = kinematics.position;
+            world
+                .replace_dna(child, LegacyDna::parse("stop").unwrap())
+                .unwrap();
+
+            world.tick().unwrap();
+            let kinematics = &world.slots.get(child).unwrap().kinematics;
+            let displacement =
+                std::array::from_fn(|axis| kinematics.position[axis] - birth_position[axis]);
+            assert_ne!(displacement, inherited);
+            assert_ne!(displacement, [0.0; 2]);
+            assert_eq!(kinematics.actual_velocity, displacement);
+        }
+    }
+
+    #[test]
+    fn genuine_cycle_283_newborn_velocities_match_the_original_capture() {
+        // Original 2.48.32 cycle-283 capture SHA-256
+        // fd2cb2bd5e36044d459d238f561dcf60cec70bf1efcb6d1b90dde3078ad9927e.
+        let input = include_bytes!("../../tests/fixtures/db24832-original-user.sim");
+        let mut world = Engine::from_native_sim(input).unwrap();
+        world.tick_many(2).unwrap();
+        assert_eq!(world.native_cycle, Some(283));
+        let file = NativeRecordFile::decode(&world.export_native_sim().unwrap()).unwrap();
+        for (id, parent, actual_velocity) in [
+            (295, 34, [-0.16113281_f32, -0.020996094_f32]),
+            (296, 293, [45.689453, 38.664307]),
+            (297, 268, [11.238281, 21.178406]),
+            (298, 276, [41.725586, 25.679688]),
+        ] {
+            let newborn = file
+                .robots
+                .iter()
+                .find(|record| record.long("absolute_id").unwrap() == id)
+                .unwrap();
+            assert_eq!(newborn.long("parent").unwrap(), parent);
+            assert_eq!(
+                [
+                    newborn.single("actual_velocity_x").unwrap(),
+                    newborn.single("actual_velocity_y").unwrap(),
+                ],
+                actual_velocity,
+                "absolute ID {id}",
+            );
+        }
+    }
+
+    #[test]
     fn native_load_repopulation_waits_until_c21_and_preserves_negative_db3s_delay_and_caller_draws()
     {
         let mut input = NativeRecordFile::decode(REPRODUCTION_START).unwrap();
