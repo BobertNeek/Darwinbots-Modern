@@ -5845,6 +5845,7 @@ impl Engine {
         self.record_actual_velocities();
         trace.phase(CyclePhase::ObjectsTeleporters);
         self.move_obstacles();
+        self.move_native_teleporters();
         trace.phase(CyclePhase::Repopulation);
         let started = Instant::now();
         self.vegetation_repopulation_phase()?;
@@ -6114,6 +6115,7 @@ impl Engine {
         teleporter.poll_interval = teleporter.poll_interval.max(1);
         teleporter.capacity = teleporter.capacity.max(1);
         teleporter.poll_countdown = teleporter.poll_countdown.min(teleporter.poll_interval);
+        teleporter.native_top_left = None;
         self.teleporters.push(teleporter);
         self.publish_snapshot();
         Ok(())
@@ -6142,6 +6144,7 @@ impl Engine {
         teleporter.poll_interval = teleporter.poll_interval.max(1);
         teleporter.capacity = teleporter.capacity.max(1);
         teleporter.poll_countdown = teleporter.poll_countdown.min(teleporter.poll_interval);
+        teleporter.retain_native_movement(&self.teleporters[index])?;
         self.teleporters[index] = teleporter;
         for slot in &mut self.slots.slots {
             if let Some(robot) = slot.organism.as_mut() {
