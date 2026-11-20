@@ -1812,6 +1812,8 @@ public sealed partial class MainWindow : Window
     private async Task<LegacyCommandResult> AddRandomObstaclesCommandAsync(int count)
     {
         if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        if (await _session.AddNativeRandomObstaclesAsync(count) is { } added)
+            return LegacyCommandResult.Success($"ADDED {added} RANDOM SHAPES");
         var size = _session.LatestSnapshot.WorldSize;
         var shapes = _randomShapePlacement.NextObstacles(count, size[0], size[1]);
         await AddObstaclesAsync(shapes);

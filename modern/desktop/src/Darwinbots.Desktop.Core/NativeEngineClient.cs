@@ -362,6 +362,17 @@ public sealed partial class NativeEngineClient : IEngineClient
         ExecuteBatch(new { version = 1, commands = new[] { new { type = "add_obstacle", id = obstacle.Id, minimum = obstacle.Minimum, maximum = obstacle.Maximum } } }, "add obstacle");
     }
 
+    public int? AddNativeRandomObstacles(int count)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(count);
+        var result = ExecuteBatchForResult(new
+        {
+            version = 1,
+            commands = new[] { new { type = "add_native_random_obstacles", count } },
+        }, "add native random obstacles").GetProperty("results")[0];
+        return result.ValueKind == JsonValueKind.Null ? null : result.GetInt32();
+    }
+
     public void UpdateObstacle(ObstacleSnapshot obstacle)
     {
         ArgumentNullException.ThrowIfNull(obstacle);
