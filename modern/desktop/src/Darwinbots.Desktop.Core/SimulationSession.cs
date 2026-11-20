@@ -248,6 +248,10 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task UpdateMutationSettingsAsync(MutationSettingsUpdate update, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.UpdateMutationSettings(update), cancellationToken);
 
+    public Task UpdateGlobalMutationSettingsAsync(MutationSettingsUpdate update, GlobalAdvancedMutationSettings? advanced,
+        GlobalMainSettings main, CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.UpdateGlobalMutationSettings(update, advanced, main), cancellationToken);
+
     public Task UpdateOrganismMutationProfileAsync(
         uint slot,
         uint generation,

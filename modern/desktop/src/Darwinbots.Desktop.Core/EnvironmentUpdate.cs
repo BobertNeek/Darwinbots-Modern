@@ -304,21 +304,24 @@ public static class NativeCommandSerializer
         },
     };
 
-    internal static object CreateMutationSettingsBatch(MutationSettingsUpdate update) => new
+    internal static object CreateMutationSettingsBatch(MutationSettingsUpdate update,
+        GlobalAdvancedMutationSettings? advanced = null, GlobalMainSettings? main = null)
     {
-        version = 1,
-        commands = new[]
+        var mutation = new
         {
-            new
-            {
-                type = "update_mutation_settings",
-                enabled = update.Enabled,
-                global_multiplier = update.GlobalMultiplier,
-                species_rates = update.SpeciesRates.Select(value => new { species = value.Species, rate = value.Rate }).ToArray(),
-                profile = update.Profile is null ? null : MutationProfile(update.Profile),
-            },
-        },
-    };
+            type = "update_mutation_settings",
+            enabled = update.Enabled,
+            global_multiplier = update.GlobalMultiplier,
+            species_rates = update.SpeciesRates.Select(value => new { species = value.Species, rate = value.Rate }).ToArray(),
+            profile = update.Profile is null ? null : MutationProfile(update.Profile),
+        };
+        object[] commands = advanced is null ? [mutation] :
+        [
+            mutation,
+            new { type = "update_advanced_mutation_settings", settings = AdvancedMutation(advanced, main ?? new()) },
+        ];
+        return new { version = 1, commands };
+    }
 
     internal static object MutationProfile(MutationProfileUpdate value) => new
     {
