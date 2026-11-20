@@ -23,10 +23,13 @@ public sealed partial class TeleporterEditorWindow : Window
         CenterY.Value = (decimal)teleporter.Center.ElementAtOrDefault(1);
         DestinationX.Value = (decimal)teleporter.Destination.ElementAtOrDefault(0);
         DestinationY.Value = (decimal)teleporter.Destination.ElementAtOrDefault(1);
+        DestinationX.IsEnabled = DestinationY.IsEnabled = !teleporter.RandomDestination;
+        RandomDestinationNotice.IsVisible = teleporter.RandomDestination;
         Radius.Value = (decimal)teleporter.Radius;
         PollInterval.Value = teleporter.PollInterval;
         Capacity.Value = teleporter.Capacity;
         BackflowLimit.Value = teleporter.BackflowLimit;
+        BackflowLimit.IsEnabled = !teleporter.RandomDestination;
         TeleportVegetables.IsChecked = teleporter.TeleportVegetables;
         TeleportCorpses.IsChecked = teleporter.TeleportCorpses;
         TeleportHeterotrophs.IsChecked = teleporter.TeleportHeterotrophs;

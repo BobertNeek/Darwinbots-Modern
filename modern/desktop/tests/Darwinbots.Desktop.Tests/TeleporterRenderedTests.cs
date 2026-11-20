@@ -13,19 +13,24 @@ namespace Darwinbots.Desktop.Tests;
 
 public sealed class TeleporterRenderedTests
 {
-    [Fact]
-    public async Task TeleporterEditorRendersTypesAndPolicyAndAppliesLocalEdit()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task TeleporterEditorRendersTypesAndPolicyAndAppliesLocalEdit(bool randomDestination)
     {
         await DesktopTestApplication.Session.Dispatch(() =>
         {
-            var window = new TeleporterEditorWindow(
-                new TeleporterSnapshot(7, [100f, 200f], 40f, [800f, 900f])
-                {
-                    Capacity = 4,
-                    BackflowLimit = 2,
-                    RespectShapes = true,
-                    Mode = "intrasim"
-                })
+            using var engine = new NativeEngineClient(backend: "Cpu");
+            engine.AddTeleporter(new TeleporterSnapshot(7, [100f, 200f], 40f, [800f, 900f])
+            {
+                Capacity = 4,
+                BackflowLimit = 2,
+                RandomDestination = randomDestination,
+                RespectShapes = true
+            });
+            var original = Assert.Single(engine.Snapshot().Teleporters);
+            Assert.Equal(randomDestination, original.RandomDestination);
+            var window = new TeleporterEditorWindow(original)
             {
                 WindowState = WindowState.Normal,
                 Width = 560,
@@ -39,8 +44,12 @@ public sealed class TeleporterRenderedTests
             Assert.Equal(4m, window.FindControl<NumericUpDown>("Capacity")!.Value);
             Assert.Equal(2m, window.FindControl<NumericUpDown>("BackflowLimit")!.Value);
             Assert.True(window.FindControl<CheckBox>("RespectShapes")!.IsChecked);
+            Assert.Equal(!randomDestination, window.FindControl<NumericUpDown>("DestinationX")!.IsEnabled);
+            Assert.Equal(!randomDestination, window.FindControl<NumericUpDown>("DestinationY")!.IsEnabled);
+            Assert.Equal(!randomDestination, window.FindControl<NumericUpDown>("BackflowLimit")!.IsEnabled);
+            Assert.Equal(randomDestination, window.FindControl<TextBlock>("RandomDestinationNotice")!.IsVisible);
 
-            Capture(window, "teleporter-editor-exercised.png");
+            if (!randomDestination) Capture(window, "teleporter-editor-exercised.png");
 
             window.FindControl<NumericUpDown>("Radius")!.Value = 55m;
             Click(window, window.FindControl<Button>("ApplyButton")!);
@@ -48,6 +57,11 @@ public sealed class TeleporterRenderedTests
             Assert.NotNull(window.Result);
             Assert.Equal(55f, window.Result!.Radius);
             Assert.Equal("intrasim", window.Result.Mode);
+            Assert.Equal(randomDestination, window.Result.RandomDestination);
+            engine.UpdateTeleporter(window.Result);
+            var updated = Assert.Single(engine.Snapshot().Teleporters);
+            Assert.Equal(55f, updated.Radius);
+            Assert.Equal(randomDestination, updated.RandomDestination);
             window.Close();
         }, CancellationToken.None);
     }
