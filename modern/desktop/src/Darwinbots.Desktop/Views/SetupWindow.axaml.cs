@@ -230,6 +230,7 @@ public sealed partial class SetupWindow : Window
             StartingMode = CurrentMode(),
             ZerobotSustenance = sustenance,
             AutomaticZerobotProgression = AutomaticProgression.IsChecked == true,
+            OrdinaryRestartOnExtinction = OrdinaryRestartToggle.IsChecked == true,
             Backend = ((ComboBoxItem)Backend.SelectedItem!).Content?.ToString() ?? "Auto",
             Seed = (ulong)(Seed.Value ?? 1),
             PopulationCapacity = (int)(PopulationCap.Value ?? 25_000),
@@ -428,6 +429,7 @@ public sealed partial class SetupWindow : Window
         };
         Sustenance.SelectedIndex = (int)setup.ZerobotSustenance;
         AutomaticProgression.IsChecked = setup.AutomaticZerobotProgression;
+        OrdinaryRestartToggle.IsChecked = setup.OrdinaryRestartOnExtinction;
         _environment = setup.ToEnvironmentUpdate();
         _globalSettings = setup.GlobalSettings;
         _globalSettings = _globalSettings with
@@ -474,6 +476,8 @@ public sealed partial class SetupWindow : Window
         Speed.SelectedIndex = 3;
         Sustenance.SelectedIndex = 3;
         AutomaticProgression.IsChecked = true;
+        OrdinaryRestartToggle.IsChecked = false;
+        _legacySettingsFields = null;
         StarterMode.IsChecked = true;
         Mode_Checked(StarterMode, e);
         _workflow.Reset(ReadSetupOptions(new WorldSetupOptions()));
@@ -586,6 +590,7 @@ public sealed partial class SetupWindow : Window
         var enabled = mode != StartingMode.StarterBotsAndVegetables;
         Sustenance.IsEnabled = enabled;
         AutomaticProgression.IsEnabled = enabled;
+        OrdinaryRestartToggle.IsEnabled = !enabled;
         SustenanceLabel.Text = "ZEROBOT SUSTENANCE";
         SustenanceHint.Text = enabled
             ? "Optional assistance while functional DNA evolves."

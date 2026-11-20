@@ -23,6 +23,7 @@ public sealed record WorldSetupOptions
     public StartingMode StartingMode { get; init; } = StartingMode.StarterBotsAndVegetables;
     public ZerobotSustenance ZerobotSustenance { get; init; } = ZerobotSustenance.DisabledMetabolism;
     public bool AutomaticZerobotProgression { get; init; } = true;
+    public bool OrdinaryRestartOnExtinction { get; init; }
     public string Backend { get; init; } = "Auto";
     public ulong Seed { get; init; } = 1;
     [System.Text.Json.Serialization.JsonIgnore]
@@ -67,6 +68,13 @@ public sealed record WorldSetupOptions
     public GlobalSettings GlobalSettings { get; init; } = new();
     public string? LoadSavePath { get; init; }
     public bool IsAutosaveRecovery { get; init; }
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool EnableOrdinaryRestartOnStart => OrdinaryRestartOnExtinction
+        && LoadSavePath is null
+        && StartingMode == StartingMode.StarterBotsAndVegetables
+        && Species.Count > 0
+        && !LegacySettingsAdapter.ReadRetainedFlag(LegacySettingsFields, LegacySettingsAdapter.ContestModeOffset);
 
     public int EffectiveMetabolismCost => StartingMode == StartingMode.StarterBotsAndVegetables
         ? MetabolismCost

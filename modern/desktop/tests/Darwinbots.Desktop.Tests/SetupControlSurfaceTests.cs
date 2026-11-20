@@ -789,6 +789,41 @@ public sealed class SetupControlSurfaceTests
         throw new FileNotFoundException($"Original settings fixture '{name}' was not found.");
     }
 
+    [Fact]
+    public async Task SetupLoadsSavesAndStartsWithTheOrdinaryRestartPreference()
+    {
+        var encoded = LegacyDnaText.Decode(Db2SettingsCodec.Encode(new DesktopSettings { OrdinaryRestartOnExtinction = true }));
+        int marker = encoded.IndexOf("#DARWINBOTS_MODERN_SETTINGS_V1#", StringComparison.Ordinal);
+        var storage = new SettingsWorkflowStorage
+        {
+            SettingsToOpen = Db2SettingsCodec.Decode(LegacyDnaText.Encode(encoded[..marker])),
+        };
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new SetupWindow(storage);
+            WorldSetupOptions? created = null;
+            window.WorldCreated += options => created = options;
+            try
+            {
+                window.FindControl<Button>("LoadSettingsButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                var restart = window.FindControl<CheckBox>("OrdinaryRestartToggle")!;
+                await WaitFor(() => restart.IsChecked == true);
+                window.FindControl<Button>("SaveSettingsButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => storage.SavedSettings is not null);
+                Assert.True(storage.SavedSettings!.OrdinaryRestartOnExtinction);
+                Assert.Null(created);
+
+                window.FindControl<Button>("StartNewButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Assert.NotNull(created);
+                Assert.True(created.EnableOrdinaryRestartOnStart);
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
     private static void Select(SetupWindow window, RadioButton radio, string modeName)
     {
         radio.IsChecked = true;

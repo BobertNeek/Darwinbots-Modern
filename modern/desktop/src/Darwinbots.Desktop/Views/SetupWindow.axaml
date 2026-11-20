@@ -140,6 +140,7 @@
         <ComboBox x:Name="Sustenance" SelectedIndex="3"><ComboBoxItem Content="FEEDER + REPRODUCER"/><ComboBoxItem Content="ENERGY-ONLY FEEDER"/><ComboBoxItem Content="PHOTOSYNTHETIC ZEROBOTS"/><ComboBoxItem Content="DISABLED METABOLISM"/><ComboBoxItem Content="NO ASSISTANCE"/></ComboBox>
         <TextBlock x:Name="SustenanceHint" TextWrapping="Wrap" Foreground="#6F716D" FontSize="12"/>
         <CheckBox x:Name="AutomaticProgression" IsChecked="True" Content="AUTOMATIC ZEROBOT PROGRESSION" Margin="0,8,0,0"/>
+        <CheckBox x:Name="OrdinaryRestartToggle" Content="RESTART ON EXTINCTION" />
         <Button x:Name="AdvancedSettingsButton" Content="⚙  ADVANCED SETTINGS" Margin="0,18,0,0" Click="Advanced_Click"/>
         <Button x:Name="GlobalSettingsButton" Content="☷  GLOBAL SETTINGS" Click="GlobalSettings_Click"/>
         <StackPanel Orientation="Horizontal" Spacing="8"><Button x:Name="LoadSettingsButton" Content="LOAD SETTINGS" Click="LoadSettings_Click"/><Button x:Name="SaveSettingsButton" Content="SAVE SETTINGS" Click="SaveSettings_Click"/></StackPanel>

@@ -2532,6 +2532,8 @@ public sealed partial class MainWindow : Window
                 compatibilityWarnings.AddRange((await _session.ImportSpeciesAsync(species)).CompatibilityWarnings);
                 RegisterInsertionSpecies(species);
             }
+            if (worldSetup.EnableOrdinaryRestartOnStart && _session.LatestSnapshot.OrdinaryRestartAvailable)
+                await _session.SetOrdinaryRestartAsync(true);
             // Worker completion means the snapshot was queued for presentation.
             // Do not announce readiness ahead of those normal-priority UI posts.
             await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
