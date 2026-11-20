@@ -84,7 +84,7 @@ mod native_corpses;
 
 #[path = "world/death_recording.rs"]
 mod death_recording;
-use death_recording::DeathRecord;
+use death_recording::DeathRecording;
 
 #[path = "world/native_graphs.rs"]
 mod native_graphs;
@@ -2374,7 +2374,7 @@ pub struct Engine {
     #[serde(default = "default_true", skip_serializing_if = "is_true")]
     death_poffs_enabled: bool,
     #[serde(skip)]
-    recorded_deaths: Option<Vec<DeathRecord>>,
+    recorded_deaths: Option<DeathRecording>,
     config: EngineConfig,
     #[serde(flatten)]
     slots: RobotArena,
