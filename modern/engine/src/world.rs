@@ -269,6 +269,7 @@ const MEM_MY_EYE: i32 = 728;
 const MEM_XPOS: i32 = 219;
 const MEM_YPOS: i32 = 217;
 const MEM_DAYTIME: i32 = 218;
+const MEM_SUN: i32 = 400;
 const MEM_EDGE: i32 = 214;
 const MEM_LIGHT: i32 = 923;
 const BIRTH_BORDER_SMUDGE: f32 = 50.0;
@@ -7056,6 +7057,15 @@ impl Engine {
                 continue;
             }
             if self.native_random.is_some() {
+                if robot.flags.exists && !robot.flags.hidden {
+                    // Senses.LandMark compares the raw Single heading to
+                    // Double literals and refreshes before the next DNA pass.
+                    let heading = f64::from(robot.heading());
+                    robot
+                        .program
+                        .memory
+                        .write(MEM_SUN, i32::from(heading > 1.39 && heading < 1.75));
+                }
                 // WriteSenses changes the physical coordinates as well as
                 // publishing zero when collision separation left them negative.
                 robot.kinematics.position = robot.kinematics.position.map(|value| value.max(0.0));
