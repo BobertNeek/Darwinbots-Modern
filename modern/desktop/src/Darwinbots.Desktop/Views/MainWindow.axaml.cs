@@ -145,6 +145,7 @@ public sealed partial class MainWindow : Window
     {
         _startupArguments = arguments.ToArray();
         _setup = setup with { NativeGaussianSpare = null, NativeSunChange = null, NativeProcessCaches = null };
+        _shapeDrift = setup.ShapeDrift;
         _randomShapePlacement = new SeededSpawnPlacement(setup.Seed ^ 0x4d42UL);
         _initialNativeGaussianSpare = setup.NativeGaussianSpare;
         _initialNativeSunChange = setup.NativeSunChange;
@@ -1581,6 +1582,7 @@ public sealed partial class MainWindow : Window
         GlobalSettings = _globalSettings,
         Recording = _liveEnvironment.Recording ?? new(),
         ShapesVisible = _liveEnvironment.ShapesVisible ?? _setup.ShapesVisible,
+        ShapeDrift = _shapeDrift,
     };
 
     private async Task<LegacyCommandResult> ShowSelectedRobotInfoAsync()
