@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using System.Text.Json.Nodes;
 using Darwinbots.Desktop.Core;
 using Xunit;
 
@@ -175,6 +176,73 @@ public sealed class LegacySettingsImportTests
         Assert.False(actual.RobotFixingAllowed);
         Assert.Equal(settings.Vegetation.Tides, actual.Vegetation.Tides);
         Assert.Equal(settings.Species.Count, actual.Species.Count);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void OriginalOrdinaryRestartBooleanSurvivesSetupAndBothSettingsFormats(bool enabled)
+    {
+        var fields = File.ReadAllLines(Path.Combine(RepositoryRoot(), "Installer", "sets", "Simple Simulation.set"));
+        const int restartField = 2 + 40 * 2 + 46;
+        fields[restartField] = enabled ? "#TRUE#" : "#FALSE#";
+        // Older settings can stop after Restart and omit the obstacle footer.
+        var native = LegacyDnaText.Encode(string.Join("\r\n", fields[..(restartField + 1)]));
+        var imported = Db2SettingsCodec.Decode(native);
+        Assert.Equal(enabled, imported.OrdinaryRestartOnExtinction);
+        var setup = imported.ToWorldSetup();
+        Assert.Equal(enabled, setup.EnableOrdinaryRestartOnStart);
+        var saved = DesktopSettings.FromWorldSetup(setup);
+        var encoded = Db2SettingsCodec.Encode(saved);
+        Assert.Equal(fields[restartField], LegacyDnaText.Decode(encoded).Split("\r\n")[restartField]);
+        Assert.Equal(enabled, Db2SettingsCodec.Decode(encoded).OrdinaryRestartOnExtinction);
+        Assert.Equal(enabled, DesktopSettings.FromJson(saved.ToJson()).OrdinaryRestartOnExtinction);
+    }
+
+    [Fact]
+    public void OriginalRestartPreferenceOnlyActivatesForAnOrdinaryStartupRoster()
+    {
+        var fields = File.ReadAllLines(Path.Combine(RepositoryRoot(), "Installer", "sets", "Simple Simulation.set"));
+        const int contestField = 2 + 40 * 2 + 45;
+        fields[contestField + 1] = "#TRUE#";
+        var setup = Db2SettingsCodec.Decode(LegacyDnaText.Encode(string.Join("\r\n", fields))).ToWorldSetup();
+        Assert.True(setup.EnableOrdinaryRestartOnStart);
+        Assert.False((setup with { LoadSavePath = "original.sim" }).EnableOrdinaryRestartOnStart);
+        Assert.False((setup with { Species = [] }).EnableOrdinaryRestartOnStart);
+        Assert.False((setup with { StartingMode = StartingMode.Zerobots }).EnableOrdinaryRestartOnStart);
+
+        fields[contestField] = "#TRUE#";
+        var contest = Db2SettingsCodec.Decode(LegacyDnaText.Encode(string.Join("\r\n", fields)));
+        Assert.True(contest.OrdinaryRestartOnExtinction);
+        Assert.False(contest.ToWorldSetup().EnableOrdinaryRestartOnStart);
+        var exported = LegacyDnaText.Decode(Db2SettingsCodec.Encode(contest)).Split("\r\n");
+        Assert.Equal("#TRUE#", exported[contestField]);
+        Assert.Equal("#TRUE#", exported[contestField + 1]);
+        var changedRoster = Db2SettingsCodec.Encode(contest with { Species = [contest.Species[0]] });
+        const int smallerContestField = 2 + 40 + 45;
+        Assert.Equal("#TRUE#", LegacyDnaText.Decode(changedRoster).Split("\r\n")[smallerContestField]);
+        Assert.False(Db2SettingsCodec.Decode(changedRoster).ToWorldSetup().EnableOrdinaryRestartOnStart);
+    }
+
+    [Fact]
+    public void EarlierModernSettingsRecoverOnlyTheRetainedOriginalRestartFlag()
+    {
+        var fields = File.ReadAllLines(Path.Combine(RepositoryRoot(), "Installer", "sets", "Simple Simulation.set"));
+        fields[2 + 40 * 2 + 46] = "#TRUE#";
+        var imported = Db2SettingsCodec.Decode(LegacyDnaText.Encode(string.Join("\r\n", fields)));
+        var older = JsonNode.Parse(imported.ToJson())!.AsObject();
+        Assert.True(older.Remove("ordinaryRestartOnExtinction"));
+        Assert.True(DesktopSettings.FromJson(older.ToJsonString()).OrdinaryRestartOnExtinction);
+
+        var hybrid = LegacyDnaText.Decode(Db2SettingsCodec.Encode(imported)).Split("\r\n");
+        int marker = Array.IndexOf(hybrid, "#DARWINBOTS_MODERN_SETTINGS_V1#");
+        hybrid[marker + 1] = Convert.ToBase64String(Encoding.UTF8.GetBytes(older.ToJsonString()));
+        Assert.True(Db2SettingsCodec.Decode(LegacyDnaText.Encode(string.Join("\r\n", hybrid))).OrdinaryRestartOnExtinction);
+
+        var disabled = imported with { OrdinaryRestartOnExtinction = false };
+        Assert.False(DesktopSettings.FromJson(disabled.ToJson()).OrdinaryRestartOnExtinction);
+        older.Remove("legacySettingsFields");
+        Assert.False(DesktopSettings.FromJson(older.ToJsonString()).OrdinaryRestartOnExtinction);
     }
 
     internal static string RepositoryRoot()

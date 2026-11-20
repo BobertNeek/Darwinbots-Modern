@@ -5,6 +5,7 @@ using Avalonia.Interactivity;
 using Darwinbots.Desktop.Controls;
 using Darwinbots.Desktop.Core;
 using Darwinbots.Desktop.Core.LegacyMenus;
+using Darwinbots.Desktop.Services;
 using Darwinbots.Desktop.ViewModels;
 using Darwinbots.Desktop.Views;
 using Xunit;
@@ -167,6 +168,79 @@ public sealed class SafeModeAutosaveRenderedTests
             }
             finally { window.Close(); }
         }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task OrdinaryExtinctionRestartsFromTheOriginalSetPreference()
+    {
+        var directory = Directory.CreateTempSubdirectory("darwinbots-restart-set-");
+        try
+        {
+            var setupOptions = Setup(false);
+            var species = Assert.Single(setupOptions.Species) with { DnaPath = Path.Combine(directory.FullName, "restart-bot.txt") };
+            await File.WriteAllBytesAsync(species.DnaPath!, LegacyDnaText.Encode(species.Dna));
+            var settings = DesktopSettings.FromWorldSetup(setupOptions with
+            {
+                OrdinaryRestartOnExtinction = true,
+                Species = [species],
+            });
+            var encoded = LegacyDnaText.Decode(Db2SettingsCodec.Encode(settings));
+            const string marker = "#DARWINBOTS_MODERN_SETTINGS_V1#";
+            var settingsPath = Path.Combine(directory.FullName, "restart.set");
+            var originalSet = LegacyDnaText.Encode(encoded[..encoded.IndexOf(marker, StringComparison.Ordinal)]);
+            await File.WriteAllBytesAsync(settingsPath, originalSet);
+            var storage = new SettingsWorkflowStorage
+            {
+                SettingsToOpen = SetupStorageService.DecodeSettings(settingsPath, await File.ReadAllBytesAsync(settingsPath)),
+            };
+
+            await DesktopTestApplication.Session.Dispatch(async () =>
+            {
+                var setup = new SetupWindow(storage);
+                WorldSetupOptions? created = null;
+                setup.WorldCreated += value => created = value;
+                try
+                {
+                    Show(setup);
+                    Named<Button>(setup, "LoadSettingsButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    await WaitFor(() => Named<TextBlock>(setup, "SetupStatus").Text == "SETTINGS LOADED");
+                    Assert.True(Named<CheckBox>(setup, "OrdinaryRestartToggle").IsChecked);
+                    Named<Button>(setup, "SaveSettingsButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    await WaitFor(() => storage.SavedSettings is not null);
+                    Assert.True(storage.SavedSettings!.OrdinaryRestartOnExtinction);
+                    Named<Button>(setup, "StartNewButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    Assert.NotNull(created);
+                    Assert.True(created.EnableOrdinaryRestartOnStart);
+                }
+                finally { setup.Close(); }
+
+                var window = new MainWindow([], created with { Backend = "Cpu" },
+                    NativeEngineClientFactory.Instance, new AuditStorageService());
+                try
+                {
+                    Show(window);
+                    await Ready(window);
+                    var session = Field<SimulationSession>(window, "_session");
+                    var before = session.LatestSnapshot;
+                    Assert.True(before.OrdinaryRestartOnExtinction);
+                    Assert.Equal(LocalModeStatus.Idle, before.LocalMode.Status);
+                    var oldRobot = Assert.Single(before.Organisms);
+                    await session.RemoveAsync(oldRobot.Slot, oldRobot.Generation);
+                    await InvokeTask(window, "AdvanceSimulationAsync", 1u);
+
+                    var after = session.LatestSnapshot;
+                    Assert.Equal(1ul, after.OrdinaryRestartCount);
+                    Assert.False(after.OrdinaryRestartPending);
+                    Assert.Equal(LocalModeStatus.Idle, after.LocalMode.Status);
+                    var replacement = Assert.Single(after.Organisms);
+                    Assert.NotEqual(oldRobot.UniqueId, replacement.UniqueId);
+                    Assert.Equal(oldRobot.Species, replacement.Species);
+                    Assert.Equal(1000, replacement.Energy);
+                }
+                finally { window.Close(); }
+            }, CancellationToken.None);
+        }
+        finally { directory.Delete(recursive: true); }
     }
 
     [Fact]
