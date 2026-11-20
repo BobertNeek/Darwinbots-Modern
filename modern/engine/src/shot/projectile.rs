@@ -244,7 +244,13 @@ impl ProjectilePool {
         if slot == usize::MAX {
             return u32::MAX;
         }
-        let direction = [request.angle.cos(), -request.angle.sin()];
+        let direction = if self.native_slot_pointer.is_some() {
+            // Shots.bas stores ShAngle as Single, evaluates Double trig, and passes Singles to VectorSet.
+            let angle = f64::from(request.angle);
+            [angle.cos() as f32, -angle.sin() as f32]
+        } else {
+            [request.angle.cos(), -request.angle.sin()]
+        };
         let mut position = [
             request.owner_position[0] + direction[0] * request.owner_radius,
             request.owner_position[1] + direction[1] * request.owner_radius,
@@ -737,6 +743,48 @@ mod tests {
             gene_number,
             dna_length: 0,
         }
+    }
+
+    #[test]
+    fn native_firing_rounds_double_trig_at_the_vector_set_boundary() {
+        let settings = ShotSettings::default();
+        let mut pool = ProjectilePool::default();
+        pool.reset_native_slots(100);
+        // The source heading and Random(-20, 20) result of genuine cycle 282 shot 147.
+        // Keep the measured heading on the runtime trig path in release tests.
+        let heading = std::hint::black_box(f32::from_bits(0x40a178ff));
+        let angle = (f64::from(heading) - 13.0 / 200.0) as f32;
+        assert_eq!(angle.to_bits(), 0x409f6484);
+        let actual_velocity = [0xc0843000, 0x3f7ba800].map(f32::from_bits);
+        let shot = pool.spawn(
+            ProjectileSpawn {
+                angle,
+                owner_actual_velocity: actual_velocity,
+                ..gene_request(-1, 0)
+            },
+            &settings,
+        );
+        assert_eq!(
+            pool.velocities[shot as usize].map(f32::to_bits),
+            [0x40cf8a20, 0x421e319a]
+        );
+
+        let mut portable = ProjectilePool::default();
+        let shot = portable.spawn(
+            ProjectileSpawn {
+                angle,
+                owner_actual_velocity: actual_velocity,
+                ..gene_request(-1, 0)
+            },
+            &settings,
+        );
+        assert_eq!(
+            portable.velocities[shot as usize],
+            [
+                actual_velocity[0] + angle.cos() * settings.speed,
+                actual_velocity[1] - angle.sin() * settings.speed,
+            ]
+        );
     }
 
     #[test]
