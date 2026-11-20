@@ -149,7 +149,7 @@ impl Engine {
                 self.next_absolute_id = self.next_absolute_id.saturating_add(1);
             }
             let absolute_id = robot.identity.absolute_id;
-            let id = self.slots.spawn(robot);
+            let id = self.insert_live_robot(robot);
             old_slots.insert(old_slot, id);
             parents.entry(absolute_id).or_insert(id);
         }

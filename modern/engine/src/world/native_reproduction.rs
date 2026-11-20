@@ -268,6 +268,101 @@ mod tests {
     }
 
     #[test]
+    fn native_births_reuse_lowest_free_robot_slots_across_db3s_resume() {
+        let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+        world.mutations_enabled = false;
+        let dna = LegacyDna::parse("stop").unwrap();
+        let holes_and_parents = world
+            .spawn_batch(
+                [[70.0, 70.0], [250.0, 250.0], [900.0, 650.0], [650.0, 650.0]]
+                    .into_iter()
+                    .map(|position| (dna.clone(), position)),
+            )
+            .unwrap();
+        let [lower, first_parent, higher, second_parent] = holes_and_parents.as_slice() else {
+            unreachable!();
+        };
+        let holes = [*lower, *higher];
+        let parents = [*first_parent, *second_parent];
+        world.remove_many_with_death_poffs(&holes, true).unwrap();
+        assert_eq!(world.slots.free_slots, [lower.slot(), higher.slot()]);
+        let next_absolute_id = world.next_absolute_id;
+        let mut restored =
+            crate::SaveFile::decode(&crate::SaveFile::encode(&world).unwrap()).unwrap();
+        assert_eq!(restored.slots.free_slots, world.slots.free_slots);
+
+        for world in [&mut world, &mut restored] {
+            let births = parents
+                .into_iter()
+                .map(|parent| PendingBirth {
+                    parent,
+                    percentage: 50,
+                    asexual_command: 50,
+                    mutated_command: 0,
+                    mutation_reproduction: false,
+                    assisted: false,
+                    sexual: false,
+                    sperm_source: None,
+                })
+                .collect();
+            world
+                .commit_lifecycle_queues(
+                    LifecycleQueues {
+                        births,
+                        deaths: Vec::new(),
+                    },
+                    &mut CycleRecorder::disabled(0),
+                )
+                .unwrap();
+
+            for (index, (previous, parent)) in holes.into_iter().zip(parents).enumerate() {
+                let child = OrganismId::new(previous.slot(), previous.generation() + 1);
+                let identity = &world.slots.get(child).unwrap().identity;
+                assert_eq!(identity.absolute_id, next_absolute_id + index as u64);
+                assert_eq!(identity.parents[0], Some(parent));
+                assert!(matches!(
+                    world.slots.get(previous),
+                    Err(EngineError::StaleOrganismId)
+                ));
+            }
+            assert!(world.slots.free_slots.is_empty());
+            assert_eq!(world.next_absolute_id, next_absolute_id + 2);
+            world.publish_snapshot();
+        }
+        assert_eq!(
+            crate::SaveFile::encode(&world).unwrap(),
+            crate::SaveFile::encode(&restored).unwrap()
+        );
+
+        let native =
+            crate::native_binary::NativeRecordFile::decode(&world.export_native_sim().unwrap())
+                .unwrap();
+        for (index, previous) in holes.into_iter().enumerate() {
+            let absolute = (next_absolute_id + index as u64) as i32;
+            let record = native
+                .robots
+                .iter()
+                .find(|record| record.long("absolute_id").unwrap() == absolute)
+                .unwrap();
+            assert_eq!(record.word("old_slot").unwrap(), previous.slot() as i16 + 1);
+        }
+    }
+
+    #[test]
+    fn portable_robot_spawn_retains_lifo_order_across_db3s_resume() {
+        let mut world = Engine::new(EngineConfig::testing()).unwrap();
+        let dna = LegacyDna::parse("stop").unwrap();
+        let first = world.spawn(dna.clone()).unwrap();
+        let last = world.spawn(dna.clone()).unwrap();
+        world.remove_many(&[first, last]).unwrap();
+        let mut restored =
+            crate::SaveFile::decode(&crate::SaveFile::encode(&world).unwrap()).unwrap();
+
+        assert_eq!(restored.spawn(dna.clone()).unwrap().slot(), last.slot());
+        assert_eq!(restored.spawn(dna).unwrap().slot(), first.slot());
+    }
+
+    #[test]
     fn absent_stage_keeps_older_checkpoints_and_invalid_stages_reject() {
         let world = Engine::new_native(EngineConfig::testing()).unwrap();
         let mut old = serde_json::to_value(&world).unwrap();
