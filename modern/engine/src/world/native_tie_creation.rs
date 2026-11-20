@@ -1158,6 +1158,95 @@ mod tests {
     }
 
     #[test]
+    fn native_resource_ties_refresh_only_the_original_radius_endpoint() {
+        let body = f32::from_bits(0x4517_efef);
+        let chloroplasts = f32::from_bits(0x46e4_b4a6);
+        for (location, requested, defended, receiver, body_credit) in [
+            (-1, 100, false, Some(1), 2.9),
+            (-1, -100, false, Some(0), 2.9),
+            (-6, 100, false, Some(1), 98.7),
+            (-6, -100, false, Some(0), 98.7),
+            (-1, -100, true, Some(0), 0.0),
+            (-6, -100, true, Some(0), 0.0),
+            (-3, 100, false, None, 0.0),
+            (-4, 100, false, None, 0.0),
+        ] {
+            let mut world = world();
+            let actor = bot(&mut world, [1000.0; 2]);
+            let opponent = world.register_species(SpeciesDefinition {
+                name: "Opponent.txt".into(),
+                ..SpeciesDefinition::default()
+            });
+            let target = world
+                .spawn_species_at(
+                    LegacyDna::parse("start stop").unwrap(),
+                    opponent,
+                    [1200.0, 1000.0],
+                )
+                .unwrap();
+            assert!(world.native_make_tie(actor, target, 500, -20, 7));
+            let endpoints = [actor, target];
+            let prior_energy = [6000.0, 7000.0];
+            let radius = [50.0_f32, 60.0];
+            let mass = [80.0, 90.0];
+            let added_mass = [Some(100.0), Some(200.0)];
+            for (index, id) in endpoints.into_iter().enumerate() {
+                let robot = world.slots.get_mut(id).unwrap();
+                robot.materials.energy = 1000.0;
+                robot.materials.previous_energy = prior_energy[index];
+                robot.materials.body = if receiver == Some(index) {
+                    body - body_credit
+                } else {
+                    body
+                };
+                robot.materials.chloroplasts = chloroplasts;
+                robot.materials.radius = radius[index];
+                robot.materials.mass = mass[index];
+                robot.materials.venom = 100.0;
+                robot.materials.waste = 100.0;
+                robot.kinematics.native_added_mass = added_mass[index];
+            }
+            if defended {
+                let target = world.slots.get_mut(target).unwrap();
+                target.materials.poison = 50.0;
+                target.program.memory.write(834, 123);
+            }
+            let source = world.slots.get_mut(actor).unwrap();
+            source.counters.age = 2;
+            source.program.memory.write(455, 7);
+            source.program.memory.write(452, location);
+            source.program.memory.write(453, requested);
+            world.tie_exchange_phase(&mut CycleRecorder::disabled(0));
+
+            let source = world.slots.get(actor).unwrap();
+            assert_eq!(source.effects.poisoning_active, defended);
+            if location == -3 {
+                assert_eq!(source.materials.venom, 0.0);
+            }
+            if location == -4 {
+                assert_eq!(source.materials.waste, 0.0);
+            }
+            for (index, id) in endpoints.into_iter().enumerate() {
+                let robot = world.slots.get(id).unwrap();
+                assert_eq!(robot.materials.previous_energy, prior_energy[index]);
+                assert_eq!(robot.materials.mass, mass[index]);
+                assert_eq!(robot.kinematics.native_added_mass, added_mass[index]);
+                let expected_radius = if receiver == Some(index) {
+                    assert_eq!(robot.materials.body.to_bits(), body.to_bits());
+                    0x43c4_a39f
+                } else {
+                    radius[index].to_bits()
+                };
+                assert_eq!(
+                    robot.materials.radius.to_bits(),
+                    expected_radius,
+                    "location {location}, request {requested}, defended {defended}, endpoint {index}"
+                );
+            }
+        }
+    }
+
+    #[test]
     fn native_negative_resource_commands_use_tiepres_fallback_and_waste_has_no_age_gate() {
         for age in [0, 2] {
             let mut world = world();
