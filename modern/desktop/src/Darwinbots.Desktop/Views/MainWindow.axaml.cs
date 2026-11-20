@@ -1673,15 +1673,11 @@ public sealed partial class MainWindow : Window
     private async Task<LegacyCommandResult> MakeSelectedNewSpeciesAsync()
     {
         var organism = _viewModel.SelectedOrganism!;
-        var source = _session!.LatestSnapshot.Species.ElementAtOrDefault((int)organism.Species);
-        var dialog = new LegacyValueWindow("Make New Species", "New species name", $"{source?.Name ?? "Species"} descendant", "Only the selected robot moves to the new species; its DNA and current state are preserved.");
-        await dialog.ShowDialog(this);
-        if (!dialog.Accepted) return LegacyCommandResult.Cancel();
-        if (string.IsNullOrWhiteSpace(dialog.Value)) return LegacyCommandResult.Failure("SPECIES NAME IS REQUIRED");
-        var sourceColor = source?.Color ?? organism.Phenotype.Color;
-        var color = 0xff000000 | (((sourceColor & 0x00ffffff) + 0x00130d17) & 0x00ffffff);
-        await _session.MakeNewSpeciesAsync(organism.Slot, organism.Generation, dialog.Value, color);
-        return LegacyCommandResult.Success($"NEW SPECIES · {dialog.Value.ToUpperInvariant()}");
+        if (organism.IsCorpse) return LegacyCommandResult.Failure("A CORPSE CANNOT START A NEW SPECIES");
+        var dialog = new LegacyConfirmationWindow("Make New Species", "Start new species using this robot?");
+        if (!await dialog.ShowDialog<bool>(this)) return LegacyCommandResult.Cancel();
+        var name = await _session!.ForkRobotAndDescendantsAsync(organism.Slot, organism.Generation);
+        return LegacyCommandResult.Success($"NEW SPECIES · {name.ToUpperInvariant()}");
     }
 
     private IReadOnlyList<OrganismSnapshot> SelectedOrganismGroup()

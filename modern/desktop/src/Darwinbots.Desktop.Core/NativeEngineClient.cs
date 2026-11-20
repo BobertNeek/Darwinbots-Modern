@@ -638,6 +638,11 @@ public sealed partial class NativeEngineClient : IEngineClient
         ExecuteBatch(new { version = 1, commands = new[] { new { type = "make_new_species", slot, generation, name, color } } }, "make new species");
     }
 
+    public string ForkRobotAndDescendants(uint slot, uint generation) => ExecuteBatchForResult(
+        new { version = 1, commands = new[] { new { type = "fork_robot_and_descendants", slot, generation } } },
+        "fork robot and descendants").GetProperty("results")[0].GetProperty("name").GetString()
+        ?? throw new InvalidDataException("Native engine returned an empty founder name.");
+
     public void UpdateLegacyRestrictions(bool robotFixingAllowed, bool asexualReproductionAllowed) => ExecuteBatch(
         new { version = 1, commands = new[] { new { type = "update_legacy_restrictions", robot_fixing_allowed = robotFixingAllowed, asexual_reproduction_allowed = asexualReproductionAllowed } } },
         "update legacy restrictions");
