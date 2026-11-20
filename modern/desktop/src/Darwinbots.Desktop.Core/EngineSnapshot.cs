@@ -188,12 +188,33 @@ internal static class VisualSnapshotDefaults
 
 public sealed record ObstacleSnapshot(uint Id, float[] Minimum, float[] Maximum)
 {
+    [System.Text.Json.Serialization.JsonIgnore]
+    internal LegacySettingsObstacleBounds? LegacySettingsBounds { get; init; }
+
     public uint Color { get; init; } = 0xffb9bdb6u;
     public float Opacity { get; init; } = 1f;
     public float[] Drift { get; init; } = [0f, 0f];
     public string VisionPolicy { get; init; } = "opaque";
     public string ShotPolicy { get; init; } = "absorb";
+
+    public ObstacleSnapshot ResolveSetupBounds(float fieldWidth, float fieldHeight)
+    {
+        if (LegacySettingsBounds is not { } bounds) return this;
+        var (minimum, maximum) = bounds.InField(fieldWidth, fieldHeight);
+        return this with { Minimum = minimum, Maximum = maximum };
+    }
 }
+
+internal readonly record struct LegacySettingsObstacleBounds(float X, float Y, float Width, float Height)
+{
+    internal (float[] Minimum, float[] Maximum) InField(float fieldWidth, float fieldHeight)
+    {
+        float x = X * fieldWidth;
+        float y = Y * fieldHeight;
+        return ([x, y], [x + Width * fieldWidth, y + Height * fieldHeight]);
+    }
+}
+
 public sealed record TeleporterSnapshot(uint Id, float[] Center, float Radius, float[] Destination)
 {
     public string Mode { get; init; } = "intrasim";
