@@ -94,6 +94,22 @@ public sealed class RenderedWorldToolsCausalTests
                     () => "The Shape window did not hydrate from the replacement SIM.");
                 Assert.Equal(new Db2ShapeDriftOptions(), (await session.ReadConfigurationAsync())!.ShapeDrift);
                 Assert.Equal([3f, 4f], Assert.Single(session.LatestSnapshot.Obstacles).Drift);
+
+                var tick = session.LatestSnapshot.Tick;
+                menu.FindCommandItem(LegacyCommandId.ObjectsPolarIce)!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => horizontal.IsChecked == true && vertical.IsChecked == true && rate.Value == 20,
+                    () => "Polar Ice did not update the open Shapes tool.");
+                Assert.Equal(new Db2ShapeDriftOptions(true, true, 20), (await session.ReadConfigurationAsync())!.ShapeDrift);
+                Assert.Equal(tick, session.LatestSnapshot.Tick);
+                var shapes = session.LatestSnapshot.Obstacles;
+                Assert.Equal(10, shapes.Count);
+                Assert.Equal([3f, 4f], shapes[0].Drift);
+                Assert.All(shapes.Skip(1), ice =>
+                {
+                    Assert.Equal([275f, 200f], ice.Minimum);
+                    Assert.Equal([825f, 600f], ice.Maximum);
+                    Assert.Equal([0f, 0f], ice.Drift);
+                });
             }
             finally
             {
