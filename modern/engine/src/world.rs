@@ -37,6 +37,8 @@ use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::fs;
 use std::time::Instant;
 
+pub(crate) const DEFAULT_NATIVE_SHAPE_DIMENSIONS: [u16; 2] = [200; 2];
+
 use crate::physics::{
     MovementInput, MovementState, apply_angular_damping, apply_resistance, apply_static_friction,
     apply_voluntary_impulse, brownian_rotation, derived_mass, environment_impulse,
@@ -6018,17 +6020,43 @@ impl Engine {
     pub(crate) fn add_native_random_obstacles(
         &mut self,
         count: usize,
+        dimensions_permille: [u16; 2],
     ) -> Result<Option<usize>, EngineError> {
+        self.add_native_shapes(count, dimensions_permille, false)
+    }
+
+    pub(crate) fn add_native_centered_obstacle(
+        &mut self,
+        dimensions_permille: [u16; 2],
+    ) -> Result<Option<usize>, EngineError> {
+        self.add_native_shapes(1, dimensions_permille, true)
+    }
+
+    fn add_native_shapes(
+        &mut self,
+        count: usize,
+        dimensions_permille: [u16; 2],
+        centered: bool,
+    ) -> Result<Option<usize>, EngineError> {
+        if dimensions_permille
+            .iter()
+            .any(|size| !(1..=1000).contains(size))
+        {
+            return Err(EngineError::Invariant(
+                "shape width and height must be within 1 to 1000 per mille".to_owned(),
+            ));
+        }
         let Some(random) = self.native_random.as_mut() else {
             return Ok(None);
         };
-        let dimensions = [self.config.world_width, self.config.world_height];
-        if dimensions
-            .iter()
-            .any(|dimension| !dimension.is_finite() || *dimension <= 0.0)
-        {
+        let dimensions = [self.config.world_width, self.config.world_height].map(f64::from);
+        if dimensions.iter().any(|dimension| {
+            !dimension.is_finite()
+                || *dimension <= 0.0
+                || centered && dimension.round_ties_even() > f64::from(i32::MAX)
+        }) {
             return Err(EngineError::Invariant(
-                "random shapes require positive finite field dimensions".to_owned(),
+                "native shape creation requires valid field dimensions".to_owned(),
             ));
         }
         let added = count.min(1000_usize.saturating_sub(self.obstacles.len()));
@@ -6073,22 +6101,36 @@ impl Engine {
             );
             (black, transparent, vision, shot)
         };
-        let extent_fraction = f64::from(0.2_f32);
+        // Each original slider scales the integer value and stores it as Single.
+        let extent_fractions =
+            dimensions_permille.map(|size| f64::from((f64::from(size) * 0.001) as f32));
         for offset in 0..count {
-            let position = [random.unit(), random.unit()];
-            let extent = [random.unit(), random.unit()];
+            let [(left, right), (top, bottom)] = if centered {
+                // ObstacleForm.MakeShape uses integer centers and full fixed extents.
+                [0, 1].map(|axis| {
+                    let dimension = dimensions[axis];
+                    let fraction = extent_fractions[axis];
+                    let center = random.integer(0, dimension.round_ties_even() as i32);
+                    let minimum = (f64::from(center) - dimension * (fraction / 2.0)) as f32;
+                    (minimum, minimum + (dimension * fraction) as f32)
+                })
+            } else {
+                let position = [random.unit(), random.unit()];
+                let extent = [random.unit(), random.unit()];
+                [0, 1].map(|axis| {
+                    let dimension = dimensions[axis];
+                    let fraction = extent_fractions[axis];
+                    let coordinate = (f64::from(position[axis]) * dimension) as f32;
+                    let minimum =
+                        ((f64::from(coordinate) - dimension * (fraction / 2.0)) as f32).max(0.0);
+                    let size = (f64::from(extent[axis]) * dimension * fraction) as f32;
+                    (minimum, (minimum + size).min(dimension as f32))
+                })
+            };
             if offset == added {
                 // VB6 prepares geometry before NewObstacle checks the cap and stops.
                 break;
             }
-            let [(left, right), (top, bottom)] = [0, 1].map(|axis| {
-                let dimension = f64::from(dimensions[axis]);
-                let coordinate = (f64::from(position[axis]) * dimension) as f32;
-                let minimum =
-                    ((f64::from(coordinate) - dimension * (extent_fraction / 2.0)) as f32).max(0.0);
-                let size = (f64::from(extent[axis]) * dimension * extent_fraction) as f32;
-                (minimum, (minimum + size).min(dimensions[axis]))
-            });
             let mut shape =
                 Obstacle::new(last_id + offset as u32 + 1, [left, top], [right, bottom]);
             let bgr = if black {
@@ -14065,6 +14107,61 @@ mod tests {
     use super::*;
 
     #[test]
+    fn native_shapes_dialog_uses_fixed_extents_integer_centers_and_unclipped_edges() {
+        let mut world = Engine::new(EngineConfig {
+            world_width: 1100.0,
+            world_height: 800.0,
+            seed: 1338,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let before = world.native_random.clone();
+        assert!(world.add_native_centered_obstacle([0, 250]).is_err());
+        assert!(world.add_native_random_obstacles(10, [400, 1001]).is_err());
+        assert_eq!(world.native_random, before);
+        assert!(world.obstacles.is_empty());
+
+        assert_eq!(
+            world.add_native_centered_obstacle([400, 250]).unwrap(),
+            Some(1)
+        );
+        let shape = &world.obstacles[0];
+        // The first two inclusive integer draws produce a center of (67, 786).
+        assert_eq!(shape.minimum, [-153.0, 686.0]);
+        assert_eq!(shape.maximum, [287.0, 886.0]);
+        assert_eq!(shape.color, 0xff8f_b000);
+        assert_eq!(world.native_random.as_ref().unwrap().state(), 0x6d_ad77);
+
+        assert_eq!(
+            world.add_native_random_obstacles(1, [400, 250]).unwrap(),
+            Some(1)
+        );
+        let shape = &world.obstacles[1];
+        assert_eq!(shape.minimum.map(f32::to_bits), [0, 0x43ad_6f78]);
+        assert_eq!(shape.maximum.map(f32::to_bits), [0x40f8_4ff8, 0x43d2_9f8e]);
+        assert_eq!(world.native_random.as_ref().unwrap().state(), 0xc9_530c);
+    }
+
+    #[test]
+    fn native_shapes_dialog_consumes_only_two_position_draws_at_capacity() {
+        let mut world = Engine::new(EngineConfig::testing()).unwrap();
+        world.obstacles = (1..=1000)
+            .map(|id| Obstacle::new(id, [0.0; 2], [1.0; 2]))
+            .collect();
+        let mut expected = world.native_random.clone().unwrap();
+        expected.unit();
+        expected.unit();
+        assert_eq!(
+            world
+                .add_native_centered_obstacle(DEFAULT_NATIVE_SHAPE_DIMENSIONS)
+                .unwrap(),
+            Some(0)
+        );
+        assert_eq!(world.obstacles.len(), 1000);
+        assert_eq!(world.native_random.as_ref(), Some(&expected));
+    }
+
+    #[test]
     fn native_random_shapes_use_ordered_draws_clipped_geometry_and_saved_stream() {
         let mut world = Engine::new(EngineConfig {
             world_width: 1100.0,
@@ -14073,7 +14170,12 @@ mod tests {
             ..EngineConfig::testing()
         })
         .unwrap();
-        assert_eq!(world.add_native_random_obstacles(1).unwrap(), Some(1));
+        assert_eq!(
+            world
+                .add_native_random_obstacles(1, DEFAULT_NATIVE_SHAPE_DIMENSIONS)
+                .unwrap(),
+            Some(1)
+        );
         let shape = &world.snapshot().obstacles[0];
         // VB6 seed 1338 clamps X to zero and clips the far edge of Y.
         assert_eq!(shape.minimum.map(f32::to_bits), [0, 0x4430_5f77]);
@@ -14084,8 +14186,18 @@ mod tests {
 
         let saved = crate::SaveFile::encode(&world).unwrap();
         let mut restored = crate::SaveFile::decode(&saved).unwrap();
-        assert_eq!(world.add_native_random_obstacles(10).unwrap(), Some(10));
-        assert_eq!(restored.add_native_random_obstacles(10).unwrap(), Some(10));
+        assert_eq!(
+            world
+                .add_native_random_obstacles(10, DEFAULT_NATIVE_SHAPE_DIMENSIONS)
+                .unwrap(),
+            Some(10)
+        );
+        assert_eq!(
+            restored
+                .add_native_random_obstacles(10, DEFAULT_NATIVE_SHAPE_DIMENSIONS)
+                .unwrap(),
+            Some(10)
+        );
         assert_eq!(world.obstacles, restored.obstacles);
         assert_eq!(world.native_random, restored.native_random);
         assert_eq!(world.snapshot().tick, 0);
@@ -14101,7 +14213,12 @@ mod tests {
         for _ in 0..11 {
             expected.unit();
         }
-        assert_eq!(world.add_native_random_obstacles(10).unwrap(), Some(1));
+        assert_eq!(
+            world
+                .add_native_random_obstacles(10, DEFAULT_NATIVE_SHAPE_DIMENSIONS)
+                .unwrap(),
+            Some(1)
+        );
         assert_eq!(world.snapshot().obstacles.len(), 1000);
         assert_eq!(world.snapshot().obstacles.last().unwrap().id, 1000);
         assert_eq!(world.native_random.as_ref(), Some(&expected));
@@ -14109,11 +14226,21 @@ mod tests {
         for _ in 0..4 {
             expected.unit();
         }
-        assert_eq!(world.add_native_random_obstacles(10).unwrap(), Some(0));
+        assert_eq!(
+            world
+                .add_native_random_obstacles(10, DEFAULT_NATIVE_SHAPE_DIMENSIONS)
+                .unwrap(),
+            Some(0)
+        );
         assert_eq!(world.native_random.as_ref(), Some(&expected));
 
         world.native_random = None;
-        assert_eq!(world.add_native_random_obstacles(10).unwrap(), None);
+        assert_eq!(
+            world
+                .add_native_random_obstacles(10, DEFAULT_NATIVE_SHAPE_DIMENSIONS)
+                .unwrap(),
+            None
+        );
         assert_eq!(world.snapshot().obstacles.len(), 1000);
     }
 
@@ -14137,12 +14264,22 @@ mod tests {
         for _ in 0..8 {
             expected.unit();
         }
-        assert_eq!(world.add_native_random_obstacles(2).unwrap(), Some(2));
+        assert_eq!(
+            world
+                .add_native_random_obstacles(2, DEFAULT_NATIVE_SHAPE_DIMENSIONS)
+                .unwrap(),
+            Some(2)
+        );
         assert_eq!(world.native_random.as_ref(), Some(&expected));
         let saved = crate::SaveFile::encode(&world).unwrap();
         let mut restored = crate::SaveFile::decode(&saved).unwrap();
         assert!(restored.config.shape_creation.is_none());
-        assert_eq!(restored.add_native_random_obstacles(1).unwrap(), Some(1));
+        assert_eq!(
+            restored
+                .add_native_random_obstacles(1, DEFAULT_NATIVE_SHAPE_DIMENSIONS)
+                .unwrap(),
+            Some(1)
+        );
         let encoded = restored.export_native_sim().unwrap();
         let imported = Engine::from_native_sim(&encoded).unwrap();
         assert_eq!(imported.obstacles.len(), 3);
@@ -14175,7 +14312,12 @@ mod tests {
             for _ in 0..4 {
                 expected.unit();
             }
-            assert_eq!(engine.add_native_random_obstacles(1).unwrap(), Some(1));
+            assert_eq!(
+                engine
+                    .add_native_random_obstacles(1, DEFAULT_NATIVE_SHAPE_DIMENSIONS)
+                    .unwrap(),
+                Some(1)
+            );
             assert_eq!(engine.native_random.as_ref(), Some(&expected));
             let shape = &engine.obstacles[0];
             assert_eq!(shape.color, 0xff00_0000);

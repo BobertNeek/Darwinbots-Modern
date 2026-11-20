@@ -362,14 +362,40 @@ public sealed partial class NativeEngineClient : IEngineClient
         ExecuteBatch(new { version = 1, commands = new[] { new { type = "add_obstacle", id = obstacle.Id, minimum = obstacle.Minimum, maximum = obstacle.Maximum } } }, "add obstacle");
     }
 
-    public int? AddNativeRandomObstacles(int count)
+    public int? AddNativeRandomObstacles(int count, ShapeCreationDimensions? dimensions = null)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(count);
+        var size = dimensions ?? ShapeCreationDimensions.Default;
         var result = ExecuteBatchForResult(new
         {
             version = 1,
-            commands = new[] { new { type = "add_native_random_obstacles", count } },
+            commands = new[]
+            {
+                new
+                {
+                    type = "add_native_random_obstacles",
+                    count,
+                    dimensions_permille = new[] { size.WidthPermille, size.HeightPermille },
+                },
+            },
         }, "add native random obstacles").GetProperty("results")[0];
+        return result.ValueKind == JsonValueKind.Null ? null : result.GetInt32();
+    }
+
+    public int? AddNativeCenteredObstacle(ShapeCreationDimensions dimensions)
+    {
+        var result = ExecuteBatchForResult(new
+        {
+            version = 1,
+            commands = new[]
+            {
+                new
+                {
+                    type = "add_native_centered_obstacle",
+                    dimensions_permille = new[] { dimensions.WidthPermille, dimensions.HeightPermille },
+                },
+            },
+        }, "add native centered obstacle").GetProperty("results")[0];
         return result.ValueKind == JsonValueKind.Null ? null : result.GetInt32();
     }
 
