@@ -55,6 +55,8 @@ enum ManualReproductionMutationMode {
 enum EngineCommand {
     Tick {
         count: u32,
+        #[serde(default)]
+        capture_deaths: bool,
     },
     SetNativeRestartSeed {
         seed: u64,
@@ -677,11 +679,16 @@ fn db_engine_command_batch_impl(
             EngineCommand::SetNativeProcessCaches { caches } => engine
                 .set_native_process_caches(caches)
                 .map(|_| serde_json::Value::Null),
-            EngineCommand::Tick { count } => {
+            EngineCommand::Tick { count, capture_deaths } => {
                 if count > 1_000_000 {
                     return fail(DbStatus::InvalidCommand, "tick count exceeds batch limit");
                 }
-                engine.tick_many(count).map(|_| serde_json::Value::Null)
+                if capture_deaths {
+                    engine.tick_many_with_death_records(count)
+                        .map(|records| serde_json::json!({ "death_records": records }))
+                } else {
+                    engine.tick_many(count).map(|_| serde_json::Value::Null)
+                }
             }
             EngineCommand::ConfigureLocalMode { config } => engine
                 .configure_local_mode(config)
@@ -1924,6 +1931,43 @@ mod tests {
             assert_eq!(db_buffer_free(&mut buffer), DbStatus::Ok);
         }
         (status, result)
+    }
+
+    #[test]
+    fn opt_in_death_records_follow_atomic_tick_commands_and_preserve_legacy_results() {
+        let mut engine = Engine::new(EngineConfig {
+            metabolism_cost: 1,
+            recording: crate::RecordingSettings {
+                dead_snapshot_enabled: true,
+                ..Default::default()
+            },
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let id = engine.spawn(LegacyDna::parse("start\nstop").unwrap()).unwrap();
+        engine.set_organism_energy(id, 1).unwrap();
+        let absolute_id = engine.snapshot().organisms[0].unique_id;
+        let before = SaveFile::encode(&engine).unwrap();
+        let (status, result) = classic_test_batch(&mut engine, serde_json::json!([
+            {"type":"tick","count":3,"capture_deaths":true},
+            {"type":"set_organism_energy","slot":id.slot(),"generation":id.generation(),"energy":500}
+        ]));
+        assert_eq!(status, DbStatus::EngineError);
+        assert!(result.is_empty());
+        assert_eq!(before, SaveFile::encode(&engine).unwrap());
+
+        let (status, result) = classic_test_batch(&mut engine, serde_json::json!([
+            {"type":"tick","count":3,"capture_deaths":true},
+            {"type":"tick","count":1}
+        ]));
+        assert_eq!(status, DbStatus::Ok);
+        let result: serde_json::Value = serde_json::from_slice(&result).unwrap();
+        let records = result["results"][0]["death_records"].as_array().unwrap();
+        assert_eq!(records.len(), 1);
+        assert_eq!(records[0]["id"], absolute_id);
+        assert_eq!(records[0]["tick"], 1);
+        assert!(result["results"][1].is_null());
+        assert_eq!(result["tick"], 4);
     }
 
     fn populated_native_cpu_candidate_fixture() -> Engine {

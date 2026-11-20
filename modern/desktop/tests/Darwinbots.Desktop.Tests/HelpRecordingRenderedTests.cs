@@ -272,7 +272,7 @@ public sealed class HelpRecordingRenderedTests
     }
 
     [Fact]
-    public async Task StartupLoadedAndLiveRecordingPreferencesDriveMenusAndRecordedDeaths()
+    public async Task StartupLoadedAndLiveRecordingPreferencesDriveMenus()
     {
         await DesktopTestApplication.Session.Dispatch(async () =>
         {
@@ -298,24 +298,6 @@ public sealed class HelpRecordingRenderedTests
                 var exclude = menu.FindCommandItem(LegacyCommandId.RecordingDeadExcludeRepopulating)!;
                 Assert.True(enabled.IsChecked);
                 Assert.True(exclude.IsChecked);
-                var deaths = engine.Snapshot() with
-                {
-                    Organisms = [RecordingEngineClient.Organism with { IsCorpse = true, UniqueId = 42, MutationLog = ["Corpse history"] }],
-                    Corpses =
-                    [
-                        new CorpseSnapshot([10f, 10f], [0f, 0f], 0, 100, 5, 1) { Dna = "ANIMAL-ONLY-DNA", UniqueId = 42 },
-                        new CorpseSnapshot([20f, 20f], [0f, 0f], 0, 100, 5, 1, true) { Dna = "REPOPULATING-ONLY-DNA" },
-                        new CorpseSnapshot([30f, 30f], [0f, 0f], 0, 100, 5, 1) { Dna = "ARCHIVED-DNA", UniqueId = 45 },
-                    ],
-                };
-                await InvokeTask(window, "RecordDeadSnapshotAsync", deaths);
-                var recorded = System.Text.Encoding.UTF8.GetString(Assert.Single(storage.DeadSnapshotWrites));
-                Assert.Contains("ANIMAL-ONLY-DNA", recorded, StringComparison.Ordinal);
-                Assert.DoesNotContain("REPOPULATING-ONLY-DNA", recorded, StringComparison.Ordinal);
-                Assert.Contains("ARCHIVED-DNA", recorded, StringComparison.Ordinal);
-                Assert.Equal("Rob id,Mutation History\r\n\r\n42,\r\nCorpse history\r\n\r\n",
-                    LegacyDnaText.Decode(Assert.Single(storage.DeadMutationHistoryWrites)));
-
                 menu.FindCommandItem(LegacyCommandId.EditGeneralSettings)!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
                 await WaitFor(() => window.OwnedWindows.OfType<AdvancedSettingsWindow>().Any(), "Recording settings did not open.");
                 var settings = Assert.Single(window.OwnedWindows.OfType<AdvancedSettingsWindow>());
@@ -327,8 +309,7 @@ public sealed class HelpRecordingRenderedTests
                 Assert.False(exclude.IsChecked);
                 Assert.False(engine.EnvironmentUpdates.Last().Recording!.DeadSnapshotEnabled);
                 Assert.False(engine.EnvironmentUpdates.Last().Recording!.ExcludeRepopulatingRobots);
-                await InvokeTask(window, "RecordDeadSnapshotAsync", deaths);
-                Assert.Single(storage.DeadSnapshotWrites);
+                Assert.Empty(storage.DeadSnapshotWrites);
 
                 engine.ConfigurationForRead = new WorldConfiguration(EnvironmentUpdate.Default with
                 {
@@ -353,13 +334,74 @@ public sealed class HelpRecordingRenderedTests
     }
 
     [Theory]
-    [InlineData(LegacyCommandId.RobotKill, false, false)]
-    [InlineData(LegacyCommandId.RobotKillEntireOrganism, false, false)]
-    [InlineData(LegacyCommandId.RobotKillEntireOrganism, true, false)]
-    [InlineData(LegacyCommandId.RobotKill, false, true)]
-    public async Task ManualKillRecordsOnlyTheAffectedRobots(LegacyCommandId command, bool excludeVegetable, bool writeFails)
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task NativeTickWritesNaturalDeathsWhenTheRobotIsActuallyRemoved(bool corpses)
     {
-        var selected = RecordingEngineClient.Organism with { UniqueId = 100, MutationLog = ["Selected change"] };
+        var options = new WorldSetupOptions
+        {
+            Backend = "Cpu", PopulationCapacity = 16, MetabolismCost = 1,
+            CorpseDecay = new Db2CorpseDecayOptions(corpses, corpses ? 15 : 0, Db2CorpseDecayMode.None, 32_000, 1),
+            Recording = new Db2RecordingOptions(DeadSnapshotEnabled: true),
+        };
+        var engine = new NativeEngineClient(options);
+        await using var session = new SimulationSession(engine);
+        await session.ImportSpeciesAsync(new SpeciesImport("Café", "start\nstop", false, 0xff239ac0, 1, 1, 0, false, 0));
+        var actor = Assert.Single(session.LatestSnapshot.Organisms);
+        await session.SetDeathPoffsEnabledAsync(false);
+        var directory = Directory.CreateTempSubdirectory("db2-native-death-");
+        try
+        {
+            await DesktopTestApplication.Session.Dispatch(async () =>
+            {
+                var storage = new AvaloniaDesktopStorageService(directory.FullName);
+                var window = new MainWindow([], options, NativeEngineClientFactory.Instance, storage);
+                DesktopTestApplication.UseSession(window, session);
+                var path = Path.Combine(directory.FullName, "records", "DeadRobots.snp");
+                var history = Db2GenomeRecordFile.MutationHistoryPath(path);
+                var publications = new List<ulong>();
+                session.SnapshotPublished += snapshot => publications.Add(snapshot.Tick);
+                try
+                {
+                    if (corpses)
+                    {
+                        await InvokeTask(window, "AdvanceSimulationAsync", 1u);
+                        Assert.Equal(actor.UniqueId, Assert.Single(session.LatestSnapshot.Corpses).UniqueId);
+                        Assert.False(File.Exists(path));
+                        Assert.False(File.Exists(history));
+                        publications.Clear();
+                    }
+
+                    var publicationTick = session.LatestSnapshot.Tick + 3;
+                    await InvokeTask(window, "AdvanceSimulationAsync", 3u);
+                    Assert.Equal([publicationTick], publications);
+                    Assert.Empty(session.LatestSnapshot.Corpses);
+                    Assert.Empty(session.LatestSnapshot.Organisms);
+                    var bytes = File.ReadAllBytes(path);
+                    var record = Assert.Single(Db2GenomeRecordFile.Decode(LegacyDnaText.Decode(bytes)));
+                    Assert.Equal(actor.UniqueId, record.Id);
+                    Assert.Equal(corpses ? "Corpse" : "Café", record.Founder);
+                    Assert.Contains("start", record.Dna, StringComparison.Ordinal);
+                    Assert.Equal($"Rob id,Mutation History\r\n\r\n{actor.UniqueId},\r\n\r\n", File.ReadAllText(history));
+                    await InvokeTask(window, "AdvanceSimulationAsync", 1u);
+                    Assert.Equal(bytes, File.ReadAllBytes(path));
+                }
+                finally { window.Close(); }
+            }, CancellationToken.None);
+        }
+        finally { directory.Delete(recursive: true); }
+    }
+
+    [Theory]
+    [InlineData(LegacyCommandId.RobotKill, false, false, false)]
+    [InlineData(LegacyCommandId.RobotKillEntireOrganism, false, false, false)]
+    [InlineData(LegacyCommandId.RobotKillEntireOrganism, true, false, false)]
+    [InlineData(LegacyCommandId.RobotKill, false, true, false)]
+    [InlineData(LegacyCommandId.RobotKill, false, false, true)]
+    public async Task ManualKillRecordsOnlyTheAffectedRobots(
+        LegacyCommandId command, bool excludeVegetable, bool writeFails, bool corpse)
+    {
+        var selected = RecordingEngineClient.Organism with { UniqueId = 100, IsCorpse = corpse, MutationLog = ["Selected change"] };
         var vegetable = selected with { Slot = 4, Generation = 7, UniqueId = 200, Vegetable = true, MutationLog = ["Vegetable change"] };
         var unrelated = selected with { Slot = 5, UniqueId = 300, MutationLog = ["Unrelated change"] };
         var selectedKey = new OrganismKey(selected.Slot, selected.Generation);
@@ -406,6 +448,7 @@ public sealed class HelpRecordingRenderedTests
                 var records = Db2GenomeRecordFile.Decode(LegacyDnaText.Decode(Assert.Single(storage.DeadSnapshotWrites)));
                 Assert.Equal(group && !excludeVegetable ? new ulong[] { 100, 200 } : [100], records.Select(record => record.Id));
                 Assert.All(records, record => Assert.Equal("start\nstop", record.Dna.Trim()));
+                if (corpse) Assert.Equal("Corpse", Assert.Single(records).Founder);
                 Assert.Equal(group && !excludeVegetable ? new[] { (3u, 2u), (4u, 7u) } : [(3u, 2u)], engine.DnaExports);
                 Assert.Equal("Rob id,Mutation History\r\n\r\n100,\r\nSelected change\r\n\r\n"
                     + (group && !excludeVegetable ? "\r\n200,\r\nVegetable change\r\n\r\n" : string.Empty),

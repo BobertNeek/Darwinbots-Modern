@@ -1624,23 +1624,6 @@ public sealed class RuntimeControlSurfaceTests
         {
             Tick = 42,
             Species = [new("Unassigned", false, 0xff112233, 0, false), new("Café", false, 0xff445566, 0, false)],
-            Corpses =
-            [
-                new CorpseSnapshot([4f, 5f], [0f, 0f], 0, 12, 3, 1)
-                {
-                    Dna = "start\nstop",
-                    UniqueId = 9001,
-                    Generation = 4,
-                    DnaLength = 2,
-                },
-                new CorpseSnapshot([6f, 7f], [0f, 0f], 0, 12, 3, 1, Repopulating: true)
-                {
-                    Dna = "repopulating",
-                    UniqueId = 9002,
-                    Generation = 4,
-                    DnaLength = 1,
-                },
-            ],
         };
         var engine = new RecordingEngineClient(snapshot);
         await using var simulation = new SimulationSession(engine);
@@ -1669,7 +1652,6 @@ public sealed class RuntimeControlSurfaceTests
                 Assert.NotNull(typeof(WorldViewport).GetProperty("Zoom"));
                 Assert.NotNull(typeof(WorldViewport).GetProperty("ZoomLocked"));
                 Assert.NotNull(typeof(WorldViewport).GetEvent("OrganismDoubleClicked"));
-                Assert.NotNull(typeof(MainWindow).GetMethod("RecordDeadSnapshotAsync", BindingFlags.Instance | BindingFlags.NonPublic));
 
                 menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.RecordingSnapshotLiving)!
                     .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
@@ -1694,15 +1676,6 @@ public sealed class RuntimeControlSurfaceTests
                 await WaitFor(() => window.OwnedWindows.OfType<PhylogenyWindow>().Any());
                 window.OwnedWindows.OfType<PhylogenyWindow>().Single().Close();
 
-                SetField(window, "_deadRecordingEnabled", true);
-                SetField(window, "_excludeRepopulatingDead", true);
-                var recorder = typeof(MainWindow).GetMethod("RecordDeadSnapshotAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
-                await (Task)recorder.Invoke(window, [snapshot])!;
-                Assert.Contains((byte)0xe9, storage.DeadSnapshotWrites.Single());
-                var dead = LegacyDnaText.Decode(storage.DeadSnapshotWrites.Single());
-                Assert.StartsWith(Db2GenomeRecordFile.Header + "\r\n", dead);
-                Assert.Contains("9001", dead, StringComparison.Ordinal);
-                Assert.DoesNotContain("9002", dead, StringComparison.Ordinal);
             }
             finally
             {

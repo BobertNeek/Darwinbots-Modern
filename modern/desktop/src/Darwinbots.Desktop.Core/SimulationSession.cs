@@ -33,6 +33,10 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task StepAsync(uint count = 1, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.Tick(count), cancellationToken, measureTicks: true);
 
+    public Task StepRecordingDeathsAsync(
+        uint count, Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted, CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.TickRecordingDeaths(count, onCommitted), cancellationToken, measureTicks: true);
+
     public async Task<OrganismKey?> FindBestRobotAsync(bool energyWeighting, CancellationToken cancellationToken = default)
         => await FindBestRobotAsync(energyWeighting ? 100 : 0, cancellationToken).ConfigureAwait(false);
 
@@ -145,8 +149,7 @@ public sealed class SimulationSession : IAsyncDisposable
             {
                 var robot = snapshot.Organisms.FirstOrDefault(value => value.Slot == key.Slot && value.Generation == key.Generation)
                     ?? throw new InvalidDataException("A selected robot is no longer available.");
-                // Corpses already go through the corpse recording path.
-                if (robot.IsCorpse || robot.DnaLength == 1 || (excludeVegetables && robot.Vegetable)) continue;
+                if (robot.DnaLength == 1 || (excludeVegetables && robot.Vegetable)) continue;
                 var source = engine.ExportDna(key.Slot, key.Generation);
                 if (!string.IsNullOrWhiteSpace(source)) dna[key] = source;
             }
