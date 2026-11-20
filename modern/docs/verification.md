@@ -55,6 +55,8 @@ Earlier failures remain dated failures: `7a3db6b` stale desktop expectations; `f
 
 ### Scope and evidence limits
 
+- Imported DB2 local teleporters choose a random field destination for each transfer. Modern DB3S saves preserve the selected policy. Older DB3S saves use their stored fixed destination. The native `.sim` record stores gateway geometry and mode without destination coordinates, so an exported fixed local route uses random destinations when reopened as `.sim`. The port uses its simulation RNG and current group relocation rules.
+
 The original source and pinned genuine executable captures define behavior. Current tests can recheck retained original oracles without claiming new original-GUI observations. Identical arbitrary random trajectories, every historical file/version, public hosting and a public release are outside this target. Native Linux/macOS tray and window-manager interaction is outside the selected acceptance boundary. Raw user saves, profile backups and private desktop diagnostics remain local.
 
 ---

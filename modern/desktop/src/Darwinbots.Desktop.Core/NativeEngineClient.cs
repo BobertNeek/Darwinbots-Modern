@@ -431,6 +431,7 @@ public sealed partial class NativeEngineClient : IEngineClient
             center = teleporter.Center,
             radius = teleporter.Radius,
             destination = teleporter.Destination,
+            random_destination = teleporter.RandomDestination,
             width = teleporter.Radius * 2f,
             height = teleporter.Radius * 2f,
             color = teleporter.Color,

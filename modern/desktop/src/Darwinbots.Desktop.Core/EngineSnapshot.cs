@@ -196,6 +196,7 @@ public sealed record ObstacleSnapshot(uint Id, float[] Minimum, float[] Maximum)
 }
 public sealed record TeleporterSnapshot(uint Id, float[] Center, float Radius, float[] Destination)
 {
+    public bool RandomDestination { get; init; }
     public string Mode { get; init; } = "intrasim";
     public uint Color { get; init; } = 0xffb9bdb6u;
     public float[] Velocity { get; init; } = [0f, 0f];

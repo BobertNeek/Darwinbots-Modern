@@ -66,6 +66,9 @@ pub struct Teleporter {
     pub center: [f32; 2],
     pub radius: f32,
     pub destination: [f32; 2],
+    /// Native DB2 local gateways choose a new field destination for each transfer.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub random_destination: bool,
     #[serde(default)]
     pub width: f32,
     #[serde(default)]
@@ -123,6 +126,7 @@ impl Teleporter {
             center,
             radius,
             destination,
+            random_destination: false,
             width: radius * 2.0,
             height: radius * 2.0,
             color: default_shape_color(),
@@ -224,6 +228,9 @@ pub(crate) fn blocks_backflow(
     teleporter: &Teleporter,
     backflow: Option<TeleporterBackflow>,
 ) -> bool {
+    if teleporter.random_destination {
+        return false;
+    }
     let Some(backflow) = backflow else {
         return false;
     };
