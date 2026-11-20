@@ -435,6 +435,10 @@ public sealed partial class NativeEngineClient : IEngineClient
     public void RemoveObstacle(uint id) => ExecuteBatch(
         new { version = 1, commands = new[] { new { type = "remove_obstacle", id } } }, "remove obstacle");
 
+    public void RemoveObstacles(IReadOnlyList<uint> ids) => ExecuteBatch(
+        new { version = 1, commands = ids.Select(id => new { type = "remove_obstacle", id }).ToArray() },
+        "remove obstacles");
+
     public int? RemoveNativeRandomObstacles()
     {
         var result = ExecuteBatchForResult(
