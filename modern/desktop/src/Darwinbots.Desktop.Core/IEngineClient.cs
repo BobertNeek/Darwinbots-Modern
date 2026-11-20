@@ -74,6 +74,10 @@ public interface IEngineClient : IDisposable
     void ConfigureLocalMode(LocalModeConfig config);
     void StartLocalMode();
     void RestartLocalMode();
+    void SetOrdinaryRestart(bool enabled) =>
+        throw new NotSupportedException("Ordinary simulation restart is unavailable in this engine client.");
+    void FinishOrdinaryRestart() =>
+        throw new NotSupportedException("Ordinary simulation restart is unavailable in this engine client.");
     void AdjudicateLocalRound(uint? winner, string reason);
     void SetOrganismAim(uint slot, uint generation, int aim);
     void UpdateEnvironment(EnvironmentUpdate update);

@@ -774,6 +774,14 @@ public sealed partial class NativeEngineClient : IEngineClient
         new { version = 1, commands = new object[] { NativeRestartSeedCommand(), new { type = "restart_local_mode" } } },
         "restart local mode");
 
+    public void SetOrdinaryRestart(bool enabled) => ExecuteBatch(
+        new { version = 1, commands = new[] { new { type = "set_ordinary_restart", enabled } } },
+        "update ordinary simulation restart");
+
+    public void FinishOrdinaryRestart() => ExecuteBatch(
+        new { version = 1, commands = new[] { new { type = "finish_ordinary_restart" } } },
+        "restart ordinary simulation");
+
     public void AdjudicateLocalRound(uint? winner, string reason)
     {
         EnsureAlive();
