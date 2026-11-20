@@ -103,10 +103,11 @@ fn player_bot_tracks_keys_without_a_focused_organism() {
     assert_eq!(engine.memory_at(highlight, 50).unwrap(), 77);
     assert_eq!(engine.memory_at(focus, 50).unwrap(), 0);
 
-    engine.set_player_bot_targets(Some(focus), vec![highlight]);
+    engine.set_player_bot_targets(Some(focus), vec![]);
     engine.set_player_bot_key_state(65, true).unwrap();
     assert_eq!(engine.snapshot().player_bot.focus, Some(focus));
     engine.remove(focus).unwrap();
+    assert_eq!(engine.snapshot().player_bot.focus, None);
     engine.set_player_bot_targets(None, vec![highlight]);
     engine.set_player_bot_key_state(65, false).unwrap();
     engine.set_organism_memory(highlight, 50, 0).unwrap();
@@ -114,6 +115,71 @@ fn player_bot_tracks_keys_without_a_focused_organism() {
     assert!(engine.snapshot().player_bot.enabled);
     assert_eq!(engine.snapshot().player_bot.focus, None);
     assert_eq!(engine.memory_at(highlight, 50).unwrap(), 0);
+}
+
+#[test]
+fn player_bot_follows_the_highest_existing_highlight_after_manual_and_natural_removal() {
+    let mut engine = Engine::new_native(EngineConfig::testing()).unwrap();
+    let dna = LegacyDna::parse("start\nstop").unwrap();
+    let focus = engine.spawn_at(dna.clone(), [200.0, 500.0]).unwrap();
+    let lower = engine.spawn_at(dna.clone(), [400.0, 500.0]).unwrap();
+    let higher = engine
+        .spawn_at(
+            LegacyDna::parse("start\n100 .strbody store\nstop").unwrap(),
+            [600.0, 500.0],
+        )
+        .unwrap();
+    let stale = engine.spawn_at(dna.clone(), [800.0, 500.0]).unwrap();
+    engine.remove(stale).unwrap();
+    let replacement = engine.spawn_at(dna, [800.0, 500.0]).unwrap();
+    assert_eq!(stale.slot(), replacement.slot());
+    assert_ne!(stale.generation(), replacement.generation());
+
+    engine
+        .configure_player_bot(true, Some(focus), vec![])
+        .unwrap();
+    engine.set_player_bot_targets(Some(focus), vec![higher, stale, focus, lower]);
+    engine.remove(focus).unwrap();
+    assert_eq!(engine.snapshot().player_bot.focus, Some(higher));
+
+    engine.set_organism_energy(higher, 1).unwrap();
+    engine.tick().unwrap();
+    assert!(engine.memory_at(higher, 50).is_err());
+    assert_eq!(engine.snapshot().player_bot.focus, Some(lower));
+    assert!(engine.snapshot().player_bot.enabled);
+
+    engine.remove(lower).unwrap();
+    assert_eq!(engine.snapshot().player_bot.focus, None);
+    assert_eq!(engine.memory_at(replacement, 50).unwrap(), 0);
+}
+
+#[test]
+fn player_bot_keeps_focus_while_the_robot_still_exists_as_a_corpse() {
+    let mut config = EngineConfig::testing();
+    config.corpse_decay.enabled = true;
+    let mut engine = Engine::new_native(config).unwrap();
+    let dna = LegacyDna::parse("start\nstop").unwrap();
+    let focus = engine.spawn_at(dna.clone(), [500.0, 500.0]).unwrap();
+    let highlight = engine.spawn_at(dna, [900.0, 500.0]).unwrap();
+    engine
+        .configure_player_bot(true, Some(focus), vec![])
+        .unwrap();
+    engine.set_player_bot_targets(Some(focus), vec![highlight]);
+
+    engine.tick().unwrap();
+    engine.set_organism_energy(focus, 1).unwrap();
+    engine.tick().unwrap();
+    assert!(
+        engine
+            .snapshot()
+            .organisms
+            .iter()
+            .any(|robot| robot.id == focus && robot.flags.corpse)
+    );
+    assert_eq!(engine.snapshot().player_bot.focus, Some(focus));
+
+    engine.remove(focus).unwrap();
+    assert_eq!(engine.snapshot().player_bot.focus, Some(highlight));
 }
 
 #[test]

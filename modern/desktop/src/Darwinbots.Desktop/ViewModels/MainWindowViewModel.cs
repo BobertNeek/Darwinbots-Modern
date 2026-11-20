@@ -163,12 +163,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         Backend = snapshot.Backend;
         if (_selectedKey is null && !_selectionWasLost)
             _selectedKey = snapshot.PlayerBot.Enabled ? snapshot.PlayerBot.Focus : SelectDefaultOrganism(snapshot);
-        if (_selectedKey is { } selected && snapshot.Organisms.All(organism =>
-                organism.Slot != selected.Slot || organism.Generation != selected.Generation))
+        if (_selectedKey is { } selected && !Contains(selected))
         {
-            _selectedKey = null;
-            _selectionWasLost = true;
+            _selectedKey = snapshot.PlayerBot.Enabled && snapshot.PlayerBot.Focus is { } focus && Contains(focus)
+                ? focus : null;
+            _selectionWasLost = _selectedKey is null;
         }
+
         // Modern worlds have an empty Unassigned sentinel; native DB2 starts with a real species at zero.
         var emptySentinel = snapshot.Species.FirstOrDefault()?.Name == "Unassigned"
             && snapshot.Organisms.All(robot => robot.Species != 0);
@@ -203,6 +204,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(EnergyActivitySummary)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PlantSummary)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(MutationSummary)));
+
+        bool Contains(OrganismKey key) => snapshot.Organisms.Any(organism =>
+            organism.Slot == key.Slot && organism.Generation == key.Generation);
     }
 
     private (long EnergyDelta, ulong ShotsThisCycle) CalculateDeltas(EngineSnapshot snapshot)
