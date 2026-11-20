@@ -236,6 +236,7 @@ public static class NativeSnapshotParser
         return new EngineSnapshot(native.Tick, organisms.Length, backend, organisms)
         {
             NativeCycle = native.NativeCycle,
+            NativeF1Enabled = native.NativeF1Enabled,
             RenderInstances = renderInstances,
             Species = species,
             MutationSettings = new MutationSettingsSnapshot(
@@ -546,7 +547,8 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("ties")] NativeTie[]? Ties,
         [property: JsonPropertyName("phase_timings")] NativePhaseTimings? PhaseTimings,
         [property: JsonPropertyName("local_mode")] NativeLocalMode? LocalMode,
-        [property: JsonPropertyName("death_poffs_enabled")] bool? DeathPoffsEnabled = null);
+        [property: JsonPropertyName("death_poffs_enabled")] bool? DeathPoffsEnabled = null,
+        [property: JsonPropertyName("native_f1_enabled")] bool NativeF1Enabled = false);
 
     private sealed record NativePlayerBot(
         [property: JsonPropertyName("enabled")] bool Enabled,

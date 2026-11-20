@@ -682,10 +682,10 @@ public sealed partial class MainWindow : Window
             EngineState,
             async _ => await OpenPlayerBotSettingsAsync());
         handlers[LegacyCommandId.EditEnablePlayerBot] = Handler(
-            () => EngineState() with { Checked = _playerBotEnabled },
+            () => F1ToolState(EngineState() with { Checked = _playerBotEnabled }),
             async _ => await TogglePlayerBotAsync());
         handlers[LegacyCommandId.EditEyeDesigner] = Handler(
-            SelectedRobotState,
+            () => F1ToolState(SelectedRobotState()),
             async _ => await OpenEyeDesignerAsync());
         handlers[LegacyCommandId.EditRestrictionOverwrites] = Handler(
             EngineState,
@@ -852,6 +852,11 @@ public sealed partial class MainWindow : Window
     private LegacyCommandState SelectedRobotState() => _viewModel.SelectedOrganism is null
         ? new LegacyCommandState(false, false, "Select a robot first.")
         : LegacyCommandState.Available;
+
+    private LegacyCommandState F1ToolState(LegacyCommandState state) =>
+        _session?.LatestSnapshot.NativeF1Enabled == true
+            ? state with { Enabled = false, DisabledReason = "Unavailable in F1 competition." }
+            : state;
 
     private LegacyCommandState FeatureState(WorldFeatureKind kind)
     {
