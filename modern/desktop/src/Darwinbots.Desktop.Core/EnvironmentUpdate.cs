@@ -248,6 +248,13 @@ public static class NativeCommandSerializer
             toroidal_world = options.ToroidalWorld,
             fixed_bot_radii = options.FixedBotRadii,
             shapes_visible = options.ShapesVisible,
+            shape_creation = options.ShapeCreation is { } shapeCreation ? new
+            {
+                black = shapeCreation.Black,
+                transparent = shapeCreation.Transparent,
+                see_through = shapeCreation.SeeThrough,
+                absorb_shots = shapeCreation.AbsorbShots,
+            } : null,
             dna_costs = DnaCosts(options.GlobalSettings.Costs),
             advanced_mutation = AdvancedMutation(options.GlobalSettings.AdvancedMutation, options.GlobalSettings.Main),
             disqualification = options.GlobalSettings.League.DisqualificationRule,

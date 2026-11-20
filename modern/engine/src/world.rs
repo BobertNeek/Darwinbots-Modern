@@ -1039,6 +1039,7 @@ impl From<Db3sV2EngineConfig> for EngineConfig {
             recognition_fudging: 0,
             disqualification: 0,
             shapes_visible: false,
+            shape_creation: None,
             greedy_reproduction: false,
             body_cutoff: 0,
             seed: value.seed,
@@ -6041,28 +6042,37 @@ impl Engine {
             .checked_add(added as u32)
             .ok_or_else(|| EngineError::Invariant("shape ID capacity exhausted".to_owned()))?;
 
-        let origin = self.native_origin.as_ref().and_then(|origin| {
-            crate::native_binary::NativeSimulationTail::decode(&origin.tail).ok()
-        });
-        let native_flag = |name| origin.as_ref().and_then(|tail| tail.integer(name).ok());
-        let black = native_flag("shapes_black").is_some_and(|value| value != 0);
-        let transparent = native_flag("shapes_transparent").is_some_and(|value| value != 0);
-        // Keep the live vision and shot policies when shapes already exist.
-        // A loaded simulation also carries global policies when it has no shapes.
-        let (vision, shot) = self.obstacles.first().map_or_else(
-            || {
-                let vision = match native_flag("shapes_see_through") {
-                    Some(value) if value != 0 => ShapeVisionPolicy::SeeThrough,
-                    _ => ShapeVisionPolicy::default(),
-                };
-                let shot = match native_flag("shapes_absorb") {
-                    Some(0) => ShapeShotPolicy::Reflect,
-                    _ => ShapeShotPolicy::default(),
-                };
-                (vision, shot)
-            },
-            |shape| (shape.vision_policy, shape.shot_policy),
-        );
+        let (black, transparent, vision, shot) = if let Some(settings) = self.config.shape_creation
+        {
+            (
+                settings.black,
+                settings.transparent,
+                settings.vision_policy(),
+                settings.shot_policy(),
+            )
+        } else {
+            let origin = self.native_origin.as_ref().and_then(|origin| {
+                crate::native_binary::NativeSimulationTail::decode(&origin.tail).ok()
+            });
+            let native_flag = |name| origin.as_ref().and_then(|tail| tail.integer(name).ok());
+            let black = native_flag("shapes_black").is_some_and(|value| value != 0);
+            let transparent = native_flag("shapes_transparent").is_some_and(|value| value != 0);
+            let (vision, shot) = self.obstacles.first().map_or_else(
+                || {
+                    let vision = match native_flag("shapes_see_through") {
+                        Some(value) if value != 0 => ShapeVisionPolicy::SeeThrough,
+                        _ => ShapeVisionPolicy::default(),
+                    };
+                    let shot = match native_flag("shapes_absorb") {
+                        Some(0) => ShapeShotPolicy::Reflect,
+                        _ => ShapeShotPolicy::default(),
+                    };
+                    (vision, shot)
+                },
+                |shape| (shape.vision_policy, shape.shot_policy),
+            );
+            (black, transparent, vision, shot)
+        };
         let extent_fraction = f64::from(0.2_f32);
         for offset in 0..count {
             let position = [random.unit(), random.unit()];
@@ -14121,6 +14131,7 @@ mod tests {
             .unwrap();
         file.tail = tail.encode().unwrap();
         let mut world = Engine::from_native_sim(&file.encode().unwrap()).unwrap();
+        assert!(world.config.shape_creation.is_none());
         assert!(world.obstacles.is_empty());
         let mut expected = world.native_random.clone().unwrap();
         for _ in 0..8 {
@@ -14130,11 +14141,43 @@ mod tests {
         assert_eq!(world.native_random.as_ref(), Some(&expected));
         let saved = crate::SaveFile::encode(&world).unwrap();
         let mut restored = crate::SaveFile::decode(&saved).unwrap();
+        assert!(restored.config.shape_creation.is_none());
         assert_eq!(restored.add_native_random_obstacles(1).unwrap(), Some(1));
         let encoded = restored.export_native_sim().unwrap();
         let imported = Engine::from_native_sim(&encoded).unwrap();
         assert_eq!(imported.obstacles.len(), 3);
         for shape in imported.obstacles {
+            assert_eq!(shape.color, 0xff00_0000);
+            assert_eq!(shape.opacity, 0.0);
+            assert_eq!(shape.vision_policy, ShapeVisionPolicy::SeeThrough);
+            assert_eq!(shape.shot_policy, ShapeShotPolicy::Reflect);
+        }
+    }
+
+    #[test]
+    fn explicit_shape_creation_policies_survive_empty_modern_and_native_saves() {
+        let world = Engine::new_native(EngineConfig {
+            shape_creation: Some(crate::ShapeCreationSettings {
+                black: true,
+                transparent: true,
+                see_through: true,
+                absorb_shots: false,
+            }),
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let mut restored =
+            crate::SaveFile::decode(&crate::SaveFile::encode(&world).unwrap()).unwrap();
+        let mut imported = Engine::from_native_sim(&restored.export_native_sim().unwrap()).unwrap();
+        for engine in [&mut restored, &mut imported] {
+            assert!(engine.obstacles.is_empty());
+            let mut expected = engine.native_random.clone().unwrap();
+            for _ in 0..4 {
+                expected.unit();
+            }
+            assert_eq!(engine.add_native_random_obstacles(1).unwrap(), Some(1));
+            assert_eq!(engine.native_random.as_ref(), Some(&expected));
+            let shape = &engine.obstacles[0];
             assert_eq!(shape.color, 0xff00_0000);
             assert_eq!(shape.opacity, 0.0);
             assert_eq!(shape.vision_policy, ShapeVisionPolicy::SeeThrough);

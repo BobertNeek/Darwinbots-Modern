@@ -82,6 +82,37 @@ public sealed class ShapeShotPolicyCompatibilityTests
         Assert.Equal("pass_through", Assert.Single(Db2SettingsCodec.Decode(encoded).Obstacles).ShotPolicy);
     }
 
+    [Theory]
+    [InlineData(true, false, true, false)]
+    [InlineData(false, true, false, true)]
+    public void OriginalSettingsRoundTripExplicitCreationPoliciesWithZeroShapes(
+        bool black, bool transparent, bool seeThrough, bool absorbShots)
+    {
+        var shapeCreation = new Db2ShapeCreationOptions(black, transparent, seeThrough, absorbShots);
+        var settings = new DesktopSettings { ShapeCreation = shapeCreation };
+        var legacy = NativeText(settings);
+        // Original shape options start at field 189 when the species roster is empty.
+        var fields = legacy.Split("\r\n");
+        Assert.Equal(transparent ? "#TRUE#" : "#FALSE#", fields[189]);
+        Assert.Equal(black ? "#TRUE#" : "#FALSE#", fields[190]);
+        Assert.Equal("0", fields[197]);
+        var imported = Db2SettingsCodec.Decode(LegacyDnaText.Encode(legacy));
+        Assert.Empty(imported.Obstacles);
+        Assert.Equal(shapeCreation, imported.ShapeCreation);
+        Assert.Equal(shapeCreation, Db2SettingsCodec.Decode(Db2SettingsCodec.Encode(imported)).ShapeCreation);
+        var exported = NativeText(DesktopSettings.FromWorldSetup(imported.ToWorldSetup())).Split("\r\n");
+        Assert.Equal(fields[189..198], exported[189..198]);
+    }
+
+    [Fact]
+    public void DefaultSettingsWithZeroShapesWriteRandomOpaqueCreationFlags()
+    {
+        var fields = NativeText(new DesktopSettings()).Split("\r\n");
+        Assert.Equal("#FALSE#", fields[189]);
+        Assert.Equal("#FALSE#", fields[190]);
+        Assert.Equal("#FALSE#", fields[194]);
+    }
+
     private static DesktopSettings SettingsWith(params string[] policies) => new()
     {
         Obstacles = policies.Select((policy, index) => new ObstacleSnapshot(
