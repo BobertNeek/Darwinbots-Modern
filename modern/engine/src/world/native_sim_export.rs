@@ -1,6 +1,6 @@
 //! Live 2.48.32 simulation export, with retained metadata for imported worlds.
 
-use super::native_export::{ansi, mutation_arrays, native_dna};
+use super::native_export::{NativeSlotNumbering, ansi, mutation_arrays, native_dna};
 use super::*;
 use crate::CorpseDecayMode;
 use crate::native_binary::{NativeRecordFile, NativeSimulationTail, NativeValue};
@@ -213,11 +213,9 @@ impl Engine {
                     .map(|_| OrganismId::new(i as u32, slot.generation))
             })
             .collect();
-        let remap: HashMap<_, _> = members
-            .iter()
-            .enumerate()
-            .map(|(i, &id)| (id, i + 1))
-            .collect();
+        // SaveSimulation writes each actor's runtime slot. Keep holes so a
+        // projectile's numeric parent cannot name an unrelated saved actor.
+        let slots = self.native_record_slots(&members, NativeSlotNumbering::Runtime)?;
         let classic_world = self.classic_native_species_aliases().is_some();
         let species_projection = self.native_species_projection(&members)?;
         let mut tail = NativeSimulationTail::empty(
@@ -419,10 +417,10 @@ impl Engine {
             }
             tail.set_value(&(p.clone() + "skin"), NativeValue::Bytes(skin))?;
         }
-        self.write_native_shots(&mut tail, &remap)?;
+        self.write_native_shots(&mut tail, &slots)?;
         self.write_native_objects(&mut tail)?;
         NativeRecordFile {
-            robots: self.native_robot_records(&members)?,
+            robots: self.native_robot_records_in_slots(&members, &slots)?,
             tail: tail.encode()?,
         }
         .encode()
@@ -629,17 +627,17 @@ impl Engine {
     fn write_native_shots(
         &self,
         t: &mut NativeSimulationTail,
-        remap: &HashMap<OrganismId, usize>,
+        slots: &HashMap<OrganismId, i16>,
     ) -> Result<(), EngineError> {
         let s = &self.projectiles;
         for i in 0..s.owners.len() {
             let p = format!("shot[{i}].");
             let parent = self
                 .current_native_shot_owner(s.owners[i])
-                .and_then(|owner| remap.get(&owner).copied())
+                .and_then(|owner| slots.get(&owner).copied())
                 .map_or_else(
                     || f64::from(native_shots::literal_owner_slot(s.owners[i])),
-                    |packed_slot| packed_slot as f64,
+                    f64::from,
                 );
             for (name, value) in [
                 ("x", f64::from(s.positions[i][0])),
@@ -884,7 +882,97 @@ mod tests {
     }
 
     #[test]
-    fn native_shot_export_resolves_recycled_owner_before_packed_old_slot_mapping() {
+    fn native_sim_export_preserves_runtime_slots_for_shot_parents_and_ties() {
+        let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+        let dna = LegacyDna::parse("start 1 .up store stop").unwrap();
+        let virus_gene_length = (dna.blocks().len() - 1) as u32;
+        let first = engine.spawn_at(dna.clone(), [100.0; 2]).unwrap();
+        let dead = engine.spawn_at(dna.clone(), [500.0; 2]).unwrap();
+        let live = engine.spawn_at(dna.clone(), [900.0; 2]).unwrap();
+        let live_absolute_id = engine.slots.get(live).unwrap().identity.absolute_id;
+        engine.ties.push(TieState::legacy(first, live, 800.0, 1, 1));
+        engine.projectiles.reset_native_slots(100);
+        let orphan = engine
+            .projectiles
+            .spawn_energy_packet(dead, [700.0; 2], [0.0; 2], 10.0, 50.0)
+            as usize;
+        let stored = engine.projectiles.spawn(
+            ProjectileSpawn {
+                owner: live,
+                owner_position: [900.0; 2],
+                owner_velocity: [0.0; 2],
+                owner_actual_velocity: [0.0; 2],
+                correct_position: true,
+                owner_radius: 30.0,
+                owner_virtual_body: 100.0,
+                range_multiplier: 1.0,
+                angle: 0.0,
+                kind: -7,
+                value: 1.0,
+                payload: Some(dna.clone()),
+                source_species_name: None,
+                toxin_memory_location: 0,
+                toxin_memory_value: 0,
+                color: 0,
+                source_vegetable: false,
+                stored: true,
+                gene_number: 1,
+                dna_length: virus_gene_length,
+            },
+            &engine.config.shots,
+        ) as usize;
+        engine.remove(dead).unwrap();
+        assert!(engine.projectiles.alive[orphan]);
+        assert!(
+            engine
+                .current_native_shot_owner(engine.projectiles.owners[orphan])
+                .is_none()
+        );
+
+        let bytes = engine.export_native_sim().unwrap();
+        let file = NativeRecordFile::decode(&bytes).unwrap();
+        let tail = NativeSimulationTail::decode(&file.tail).unwrap();
+        assert_eq!(file.robots.len(), 2);
+        assert_eq!(file.robots[0].word("old_slot").unwrap(), 1);
+        assert_eq!(file.robots[1].word("old_slot").unwrap(), 3);
+        assert_eq!(tail.integer(&format!("shot[{orphan}].parent")).unwrap(), 2);
+        assert_eq!(tail.integer(&format!("shot[{stored}].parent")).unwrap(), 3);
+        assert_eq!(tail.integer(&format!("shot[{stored}].stored")).unwrap(), -1);
+        for (robot, other_slot) in file.robots.iter().zip([3_i16, 1_i16]) {
+            let tie = robot.bytes("ties_core").unwrap();
+            assert_eq!(
+                i16::from_le_bytes(tie[40..42].try_into().unwrap()),
+                other_slot
+            );
+        }
+
+        let loaded = Engine::from_native_sim(&bytes).unwrap();
+        assert_eq!(loaded.ties.len(), 1);
+        assert_eq!(loaded.projectiles.owners[orphan].slot(), 1);
+        // RemapAllShots leaves the unmatched literal 2, which can name the
+        // live robot after LoadSimulation compacts the robot array.
+        assert_eq!(
+            loaded.projectiles.owners[orphan],
+            loaded.projectiles.owners[stored]
+        );
+        let owner = loaded.slots.get(loaded.projectiles.owners[stored]).unwrap();
+        assert_eq!(owner.identity.absolute_id, live_absolute_id);
+        assert_eq!(
+            owner.effects.stored_virus.as_ref().unwrap().dna.blocks(),
+            dna.blocks()
+        );
+        assert!(!loaded.projectiles.stored[orphan]);
+        assert!(loaded.projectiles.stored[stored]);
+
+        let organism_group = engine.export_native_organisms(&[first, live]).unwrap();
+        let packed = NativeRecordFile::decode(&organism_group).unwrap();
+        assert_eq!(packed.robots[1].word("old_slot").unwrap(), 2);
+        let tie = packed.robots[0].bytes("ties_core").unwrap();
+        assert_eq!(i16::from_le_bytes(tie[40..42].try_into().unwrap()), 2);
+    }
+
+    #[test]
+    fn native_shot_export_keeps_recycled_owner_at_its_runtime_slot() {
         let mut engine = Engine::new(EngineConfig::testing()).unwrap();
         let first = engine
             .spawn_at(LegacyDna::parse("stop").unwrap(), [100.0; 2])
@@ -911,8 +999,10 @@ mod tests {
         engine.remove(first).unwrap();
         let exported = NativeRecordFile::decode(&engine.export_native_sim().unwrap()).unwrap();
         let tail = NativeSimulationTail::decode(&exported.tail).unwrap();
-        // Runtime owner slot2 is packed to exported old_slot1; old generation must not orphan it.
-        assert_eq!(tail.integer(&format!("shot[{shot}].parent")).unwrap(), 1);
+        // Original shots address the recycled numeric slot, even after it receives
+        // a robot with a new absolute ID.
+        assert_eq!(tail.integer(&format!("shot[{shot}].parent")).unwrap(), 2);
+        assert_eq!(exported.robots[0].word("old_slot").unwrap(), 2);
         assert_eq!(
             exported.robots[0].long("absolute_id").unwrap() as u64,
             engine.slots.get(replacement).unwrap().identity.absolute_id
