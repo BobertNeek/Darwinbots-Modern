@@ -1,3 +1,4 @@
+using System.Globalization;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
@@ -11,6 +12,7 @@ namespace Darwinbots.Desktop.Views;
 public sealed class EyeDesignerWindow : Window, IPersistentSnapshotToolWindow
 {
     private readonly IDesktopStorageService _storage;
+    private readonly Func<OrganismKey, ushort, int, Task> _writeMemory;
     private readonly TextBox[] _directions = new TextBox[EyeDesignerModel.EyeCount];
     private readonly TextBox[] _widths = new TextBox[EyeDesignerModel.EyeCount];
     private readonly TextBlock _status = new();
@@ -21,9 +23,10 @@ public sealed class EyeDesignerWindow : Window, IPersistentSnapshotToolWindow
     private bool _syncing;
     private bool _dirty;
 
-    public EyeDesignerWindow(IDesktopStorageService storage)
+    public EyeDesignerWindow(IDesktopStorageService storage, Func<OrganismKey, ushort, int, Task> writeMemory)
     {
         _storage = storage ?? throw new ArgumentNullException(nameof(storage));
+        _writeMemory = writeMemory ?? throw new ArgumentNullException(nameof(writeMemory));
         Title = "Darwinbots — Eye Designer";
         Width = 760;
         Height = 680;
@@ -61,12 +64,12 @@ public sealed class EyeDesignerWindow : Window, IPersistentSnapshotToolWindow
             Grid.SetRow(eye, row);
             rows.Children.Add(eye);
             _directions[index] = new TextBox { Name = $"Eye{row}Direction", MinWidth = 120 };
-            _directions[index].TextChanged += (_, _) => DraftChanged(number);
+            _directions[index].TextChanged += async (_, _) => await EyeChangedAsync(number, width: false);
             Grid.SetRow(_directions[index], row);
             Grid.SetColumn(_directions[index], 1);
             rows.Children.Add(_directions[index]);
             _widths[index] = new TextBox { Name = $"Eye{row}Width", MinWidth = 120 };
-            _widths[index].TextChanged += (_, _) => DraftChanged(number);
+            _widths[index].TextChanged += async (_, _) => await EyeChangedAsync(number, width: true);
             Grid.SetRow(_widths[index], row);
             Grid.SetColumn(_widths[index], 2);
             rows.Children.Add(_widths[index]);
@@ -155,8 +158,8 @@ public sealed class EyeDesignerWindow : Window, IPersistentSnapshotToolWindow
         {
             for (var index = 0; index < model.Rows.Count; index++)
             {
-                _directions[index].Text = model.Rows[index].Direction.ToString(System.Globalization.CultureInfo.InvariantCulture);
-                _widths[index].Text = model.Rows[index].Width.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                _directions[index].Text = model.Rows[index].Direction.ToString(CultureInfo.InvariantCulture);
+                _widths[index].Text = model.Rows[index].Width.ToString(CultureInfo.InvariantCulture);
             }
         }
         finally { _syncing = false; }
@@ -165,16 +168,33 @@ public sealed class EyeDesignerWindow : Window, IPersistentSnapshotToolWindow
         _status.Text = _focus is { } focus ? $"ROBOT {focus.Slot}:{focus.Generation}" : "STANDALONE EYE DESIGN";
     }
 
-    private void DraftChanged(int index)
+    private async Task EyeChangedAsync(int index, bool width)
     {
         if (_syncing) return;
-        if (_model.TrySet(index, _directions[index].Text ?? string.Empty, _widths[index].Text ?? string.Empty, out var error))
+        var before = _model.Rows[index];
+        var directionText = width ? before.Direction.ToString(CultureInfo.InvariantCulture) : _directions[index].Text ?? string.Empty;
+        var widthText = width ? _widths[index].Text ?? string.Empty : before.Width.ToString(CultureInfo.InvariantCulture);
+        if (!_model.TrySet(index, directionText, widthText, out var error))
         {
             _dirty = true;
-            _preview.SetVision(_model.Preview, _model.Aim);
-            _status.Text = "DRAFT VALID · PREVIEW UPDATED";
+            _status.Text = error;
+            return;
         }
-        else _status.Text = error;
+
+        var current = _model.Rows[index];
+        if (before == current) return;
+        _dirty = true;
+        _preview.SetVision(_model.Preview, _model.Aim);
+        _status.Text = "EYE PREVIEW UPDATED";
+        if (_focus is not { } focus || Find(_snapshot) is null) return;
+
+        // The nine DB2 direction cells start at 521 and the nine width cells at 531.
+        var address = (ushort)((width ? 531 : 521) + index);
+        try { await _writeMemory(focus, address, width ? current.Width : current.Direction); }
+        catch (Exception failure)
+        {
+            if (_focus == focus) _status.Text = $"EYE UPDATE FAILED · {failure.Message}";
+        }
     }
 
     private void ResetDraft()

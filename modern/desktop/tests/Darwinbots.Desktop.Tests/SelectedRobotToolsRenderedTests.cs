@@ -94,6 +94,66 @@ public sealed class SelectedRobotToolsRenderedTests
         }, CancellationToken.None);
     }
 
+    [Fact]
+    public async Task EyeEditsWriteOnlyTheChangedCellOnTheCurrentlyFocusedRobot()
+    {
+        var setup = new WorldSetupOptions { Backend = "Cpu", WorldWidth = 1000, WorldHeight = 1000, PopulationCapacity = 8 };
+        await using var session = new SimulationSession(new NativeEngineClient(setup));
+        await session.ImportDnaAsync("start\nstop", [300, 300]);
+        await session.ImportDnaAsync("start\nstop", [600, 300]);
+        var bots = session.LatestSnapshot.Organisms.OrderBy(bot => bot.Position[0]).ToArray();
+        var first = new OrganismKey(bots[0].Slot, bots[0].Generation);
+        var second = new OrganismKey(bots[1].Slot, bots[1].Generation);
+
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var player = new MainWindow([], setup, new AuditEngineClientFactory(), new AuditStorageService());
+            DesktopTestApplication.UseSession(player, session);
+            try
+            {
+                player.Show();
+                var model = Assert.IsType<MainWindowViewModel>(player.DataContext);
+                model.Select(first);
+                var eye = OpenEyeDesigner(player);
+                var fields = eye.GetVisualDescendants().OfType<TextBox>().ToArray();
+                var direction = Assert.Single(fields, field => field.Name == "Eye1Direction");
+                var width = Assert.Single(fields, field => field.Name == "Eye1Width");
+
+                direction.Text = "invalid";
+                width.Text = "110";
+                await WaitFor(() => ReadEye(session, first).Width == 110);
+                Assert.Equal(0, ReadEye(session, first).Direction);
+                Assert.Equal(0, ReadEye(session, second).Width);
+
+                direction.Text = "90";
+                await WaitFor(() => ReadEye(session, first).Direction == 90);
+                model.Select(second);
+                Assert.Equal("0", direction.Text);
+                Assert.Equal("0", width.Text);
+                width.Text = "40";
+                await WaitFor(() => ReadEye(session, second).Width == 40);
+                Assert.Equal(110, ReadEye(session, first).Width);
+
+                model.ClearSelection();
+                direction.Text = "77";
+                await eye.WriteDnaAsync();
+                await session.RefreshSnapshotAsync();
+                Assert.Equal(90, ReadEye(session, first).Direction);
+                Assert.Equal(0, ReadEye(session, second).Direction);
+            }
+            finally { player.Close(); }
+        }, CancellationToken.None);
+    }
+
+    private static EyeSnapshot ReadEye(SimulationSession session, OrganismKey key) => session.LatestSnapshot.Organisms
+        .Single(bot => bot.Slot == key.Slot && bot.Generation == key.Generation).Vision.Eyes[0];
+
+    private static async Task WaitFor(Func<bool> condition)
+    {
+        for (var attempt = 0; attempt < 100 && !condition(); attempt++) await Task.Delay(25);
+        Assert.True(condition(), "The eye memory write did not reach the simulation.");
+    }
+
     private static EyeDesignerWindow OpenEyeDesigner(MainWindow player)
     {
         var command = player.FindControl<LegacyMenuBar>("HistoricMenuBar")!.FindCommandItem(LegacyCommandId.EditEyeDesigner)!;
