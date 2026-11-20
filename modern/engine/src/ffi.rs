@@ -240,6 +240,11 @@ enum EngineCommand {
         dimensions_permille: [u16; 2],
     },
     AddNativePolarIce,
+    AddNativeSimpleMaze {
+        horizontal: bool,
+        corridor: u16,
+        thickness: u16,
+    },
     SetShapeDrift {
         #[serde(default)]
         horizontal: Option<bool>,
@@ -1122,6 +1127,13 @@ fn db_engine_command_batch_impl(
                     |(added, drift)| serde_json::json!({ "added": added, "drift": drift }),
                 )
             }),
+            EngineCommand::AddNativeSimpleMaze {
+                horizontal,
+                corridor,
+                thickness,
+            } => engine
+                .add_native_simple_maze(horizontal, corridor, thickness)
+                .map(|added| serde_json::json!(added)),
             EngineCommand::SetShapeDrift {
                 horizontal,
                 vertical,

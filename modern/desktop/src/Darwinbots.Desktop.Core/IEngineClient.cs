@@ -47,6 +47,7 @@ public interface IEngineClient : IDisposable
     void SwitchBackend(string backend);
     void AddObstacle(ObstacleSnapshot obstacle);
     (int Added, Db2ShapeDriftOptions Drift)? AddNativePolarIce() => null;
+    int? AddNativeSimpleMaze(bool horizontal, MazeDimensions dimensions) => null;
     void AddTrashCompactor(ObstacleSnapshot left, ObstacleSnapshot right)
     {
         AddObstacle(left);

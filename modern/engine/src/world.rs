@@ -2556,6 +2556,45 @@ struct CycleCheckpoint {
     snapshot_publication_count: u64,
 }
 
+struct NativeShapeAppender<'a> {
+    random: &'a mut crate::native_random::NativeRandom,
+    obstacles: &'a mut Vec<Obstacle>,
+    extents: &'a mut BTreeMap<u32, [f32; 2]>,
+    last_id: u32,
+    capacity: usize,
+    appearance: (bool, bool, ShapeVisionPolicy, ShapeShotPolicy),
+    added: usize,
+}
+
+impl NativeShapeAppender<'_> {
+    fn add(&mut self, [(left, width), (top, height)]: [(f32, f32); 2]) -> bool {
+        if self.added == self.capacity {
+            return false;
+        }
+        let id = self.last_id + self.added as u32 + 1;
+        let mut shape = Obstacle::new(id, [left, top], [left + width, top + height]);
+        let (black, transparent, vision, shot) = self.appearance;
+        let bgr = if black {
+            0
+        } else {
+            (f64::from(self.random.unit()) * 65_536.0
+                + f64::from(self.random.unit()) * 255.0
+                + f64::from(self.random.unit()))
+            .round_ties_even() as i32
+        };
+        shape.color = native_io::color(bgr);
+        if transparent {
+            shape.opacity = 0.0;
+        }
+        shape.vision_policy = vision;
+        shape.shot_policy = shot;
+        self.extents.insert(id, [width, height]);
+        self.obstacles.push(shape);
+        self.added += 1;
+        true
+    }
+}
+
 impl Engine {
     pub(crate) fn from_db3s_v2_payload(payload: serde_json::Value) -> Result<Self, EngineError> {
         let legacy: Db3sV2Payload = serde_json::from_value(payload)?;
@@ -6366,33 +6405,41 @@ impl Engine {
         // Each original slider scales the integer value and stores it as Single.
         let extent_fractions =
             dimensions_permille.map(|size| f64::from((f64::from(size) * 0.001) as f32));
-        let added = self.append_native_shapes(count, |random| {
-            if centered {
-                // ObstacleForm.MakeShape uses integer centers and full fixed extents.
-                [0, 1].map(|axis| {
-                    let dimension = dimensions[axis];
-                    let fraction = extent_fractions[axis];
-                    let center = random.integer(0, dimension.round_ties_even() as i32);
-                    let minimum = (f64::from(center) - dimension * (fraction / 2.0)) as f32;
-                    (minimum, (dimension * fraction) as f32)
-                })
-            } else {
-                let position = [random.unit(), random.unit()];
-                let extent = [random.unit(), random.unit()];
-                [0, 1].map(|axis| {
-                    let dimension = dimensions[axis];
-                    let fraction = extent_fractions[axis];
-                    let coordinate = (f64::from(position[axis]) * dimension) as f32;
-                    let minimum =
-                        ((f64::from(coordinate) - dimension * (fraction / 2.0)) as f32).max(0.0);
-                    let size = (f64::from(extent[axis]) * dimension * fraction) as f32;
-                    let limit = dimension as f32;
-                    if minimum + size > limit {
-                        (minimum, limit - minimum)
-                    } else {
-                        (minimum, size)
-                    }
-                })
+        let added = self.append_native_shapes(count, |shapes| {
+            for _ in 0..count {
+                let random = &mut *shapes.random;
+                let geometry = if centered {
+                    // ObstacleForm.MakeShape uses integer centers and full fixed extents.
+                    [0, 1].map(|axis| {
+                        let dimension = dimensions[axis];
+                        let fraction = extent_fractions[axis];
+                        let center = random.integer(0, dimension.round_ties_even() as i32);
+                        let minimum = (f64::from(center) - dimension * (fraction / 2.0)) as f32;
+                        (minimum, (dimension * fraction) as f32)
+                    })
+                } else {
+                    let position = [random.unit(), random.unit()];
+                    let extent = [random.unit(), random.unit()];
+                    [0, 1].map(|axis| {
+                        let dimension = dimensions[axis];
+                        let fraction = extent_fractions[axis];
+                        let coordinate = (f64::from(position[axis]) * dimension) as f32;
+                        let minimum = ((f64::from(coordinate) - dimension * (fraction / 2.0))
+                            as f32)
+                            .max(0.0);
+                        let size = (f64::from(extent[axis]) * dimension * fraction) as f32;
+                        let limit = dimension as f32;
+                        if minimum + size > limit {
+                            (minimum, limit - minimum)
+                        } else {
+                            (minimum, size)
+                        }
+                    })
+                };
+                // Random and centered creation draw geometry before checking capacity.
+                if !shapes.add(geometry) {
+                    break;
+                }
             }
         })?;
         if added.is_some_and(|count| count != 0) {
@@ -6420,7 +6467,14 @@ impl Engine {
             let extent = field / 2.0;
             (extent / 2.0, extent)
         });
-        let Some(added) = self.append_native_shapes(9, |_| geometry)? else {
+        let Some(added) = self.append_native_shapes(9, |shapes| {
+            for _ in 0..9 {
+                if !shapes.add(geometry) {
+                    break;
+                }
+            }
+        })?
+        else {
             return Ok(None);
         };
         // The maze changes SimOpts directly. Only the Shapes slider immediately
@@ -6440,15 +6494,80 @@ impl Engine {
         Ok(Some((added, drift)))
     }
 
+    pub(crate) fn add_native_simple_maze(
+        &mut self,
+        horizontal: bool,
+        corridor: u16,
+        thickness: u16,
+    ) -> Result<Option<usize>, EngineError> {
+        if !(300..=5000).contains(&corridor) || !(1..=500).contains(&thickness) {
+            return Err(EngineError::Invariant(
+                "maze dimensions are outside the Shapes slider ranges".into(),
+            ));
+        }
+        if self.native_random.is_none() {
+            return Ok(None);
+        }
+        let field = [self.config.world_width, self.config.world_height]
+            .map(|extent| f64::from(extent).round_ties_even());
+        if field
+            .iter()
+            .any(|extent| !(1.0..=f64::from(i32::MAX)).contains(extent))
+        {
+            return Err(EngineError::Invariant(
+                "native mazes require valid field dimensions".into(),
+            ));
+        }
+        let [across, along] = if horizontal {
+            field
+        } else {
+            [field[1], field[0]]
+        };
+        let pitch = f64::from(corridor + thickness);
+        let lines = (across / pitch).round_ties_even();
+        if lines > f64::from(i16::MAX) {
+            return Err(EngineError::Invariant(
+                "maze line count exceeds the original Integer range".into(),
+            ));
+        }
+        let lines = (lines as usize).saturating_sub(1);
+        let added = self.append_native_shapes(2 * lines, |shapes| {
+            for line in 1..=lines {
+                let opening = shapes.random.integer(0, along as i32 - i32::from(corridor));
+                let across_position = (line as f64 * pitch) as f32;
+                let wall = |position: f32, extent: f32| {
+                    let cross = (across_position, f32::from(thickness));
+                    let span = (position, extent);
+                    if horizontal {
+                        [cross, span]
+                    } else {
+                        [span, cross]
+                    }
+                };
+                // NewObstacle accepts raw signed extents. Failed appends consume no color
+                // draws, but the original maze keeps drawing one opening for each line.
+                shapes.add(wall(-100.0, opening as f32));
+                let end = f64::from(opening) + f64::from(corridor);
+                if end < along + 100.0 {
+                    shapes.add(wall(end as f32, (along + 100.0 - end) as f32));
+                }
+            }
+        })?;
+        if added.is_some_and(|count| count != 0) {
+            self.publish_snapshot();
+        }
+        Ok(added)
+    }
+
     fn append_native_shapes(
         &mut self,
-        count: usize,
-        mut geometry: impl FnMut(&mut crate::native_random::NativeRandom) -> [(f32, f32); 2],
+        maximum: usize,
+        emit: impl FnOnce(&mut NativeShapeAppender<'_>),
     ) -> Result<Option<usize>, EngineError> {
         let Some(random) = self.native_random.as_mut() else {
             return Ok(None);
         };
-        let added = count.min(1000_usize.saturating_sub(self.obstacles.len()));
+        let capacity = maximum.min(1000_usize.saturating_sub(self.obstacles.len()));
         let last_id = self
             .obstacles
             .iter()
@@ -6456,11 +6575,10 @@ impl Engine {
             .max()
             .unwrap_or(0);
         last_id
-            .checked_add(added as u32)
+            .checked_add(capacity as u32)
             .ok_or_else(|| EngineError::Invariant("shape ID capacity exhausted".to_owned()))?;
 
-        let (black, transparent, vision, shot) = if let Some(settings) = self.config.shape_creation
-        {
+        let appearance = if let Some(settings) = self.config.shape_creation {
             (
                 settings.black,
                 settings.transparent,
@@ -6490,32 +6608,17 @@ impl Engine {
             );
             (black, transparent, vision, shot)
         };
-        for offset in 0..count {
-            let [(left, width), (top, height)] = geometry(random);
-            if offset == added {
-                // VB6 prepares the next shape's geometry before checking the slot limit.
-                break;
-            }
-            let mut shape =
-                Obstacle::new(last_id + offset as u32 + 1, [left, top], [left + width, top + height]);
-            let bgr = if black {
-                0
-            } else {
-                (f64::from(random.unit()) * 65_536.0
-                    + f64::from(random.unit()) * 255.0
-                    + f64::from(random.unit()))
-                .round_ties_even() as i32
-            };
-            shape.color = native_io::color(bgr);
-            if transparent {
-                shape.opacity = 0.0;
-            }
-            shape.vision_policy = vision;
-            shape.shot_policy = shot;
-            self.native_obstacle_extents.insert(shape.id, [width, height]);
-            self.obstacles.push(shape);
-        }
-        Ok(Some(added))
+        let mut shapes = NativeShapeAppender {
+            random,
+            obstacles: &mut self.obstacles,
+            extents: &mut self.native_obstacle_extents,
+            last_id,
+            capacity,
+            appearance,
+            added: 0,
+        };
+        emit(&mut shapes);
+        Ok(Some(shapes.added))
     }
 
     fn validate_obstacle_addition(&self, obstacle: &Obstacle) -> Result<(), EngineError> {
@@ -11273,6 +11376,7 @@ impl Engine {
     fn move_obstacles(&mut self) {
         let world_size = [self.config.world_width, self.config.world_height];
         let compactor = self.trash_compactor;
+        let native_world = self.native_random.is_some();
         let native_drift = self.native_random.as_ref().and(self.config.shape_drift);
         if let Some(drift) = native_drift
             && (drift.horizontal || drift.vertical)
@@ -11326,17 +11430,18 @@ impl Engine {
             if compactor.is_some_and(|compactor| compactor.contains(obstacle.id)) {
                 continue;
             }
-            let widths = self
-                .native_obstacle_extents
-                .get(&obstacle.id)
-                .copied()
-                .unwrap_or_else(|| obstacle.extents());
+            let native_extents = self.native_obstacle_extents.get(&obstacle.id).copied();
+            let widths = native_extents.unwrap_or_else(|| obstacle.extents());
+            // Native-created shapes keep their original bounds with an implicit rate of 0.
+            let bounds_rate = native_drift
+                .map(|drift| drift.rate)
+                .or_else(|| (native_world && native_extents.is_some()).then_some(0));
             for (axis, extent) in world_size.iter().enumerate() {
                 let delta = obstacle.drift[axis];
                 let width = widths[axis];
                 let mut minimum = obstacle.minimum[axis] + delta;
-                if let Some(drift) = native_drift {
-                    let rate = i32::from(drift.rate);
+                if let Some(rate) = bounds_rate {
+                    let rate = i32::from(rate);
                     if minimum < -width {
                         minimum = -width;
                         obstacle.drift[axis] = (f64::from(rate) * 0.01) as f32;
@@ -14907,6 +15012,140 @@ const fn default_snapshot_schema_version() -> u32 {
 mod tests {
     use super::*;
     use crate::SaveFile;
+
+    #[test]
+    fn native_simple_mazes_use_ties_even_counts_and_interleaved_live_openings_and_colors() {
+        let mut world = Engine::new_native(EngineConfig {
+            world_width: 1260.0,
+            world_height: 900.0,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        world.native_random = Some(Default::default());
+        assert_eq!(
+            world.add_native_simple_maze(true, 300, 60).unwrap(),
+            Some(6)
+        );
+        let pairs: Vec<_> = world
+            .obstacles
+            .chunks_exact(2)
+            .map(|walls| {
+                (
+                    [walls[0].minimum, walls[0].maximum],
+                    [walls[1].minimum, walls[1].maximum],
+                    [walls[0].color, walls[1].color],
+                )
+            })
+            .collect();
+        assert_eq!(
+            pairs,
+            [
+                (
+                    [[360.0, -100.0], [420.0, 324.0]],
+                    [[360.0, 724.0], [420.0, 1000.0]],
+                    [0xff23_8900, 0xff12_4e00]
+                ),
+                (
+                    [[720.0, -100.0], [780.0, 357.0]],
+                    [[720.0, 757.0], [780.0, 1000.0]],
+                    [0xff37_d100, 0xffdb_6a00]
+                ),
+                (
+                    [[1080.0, -100.0], [1140.0, 124.0]],
+                    [[1080.0, 524.0], [1140.0, 1000.0]],
+                    [0xff21_f700, 0xff73_f300]
+                ),
+            ]
+        );
+        assert_eq!(world.native_random.as_ref().unwrap().state(), 0x86_5dc7);
+
+        assert_eq!(
+            world.add_native_simple_maze(true, 300, 60).unwrap(),
+            Some(6)
+        );
+        assert_eq!(world.obstacles[6].maximum[1], 361.0);
+        assert_eq!(world.native_random.as_ref().unwrap().state(), 0xff_d9a2);
+
+        assert_eq!(
+            world.add_native_simple_maze(false, 300, 60).unwrap(),
+            Some(2)
+        );
+        let walls = &world.obstacles[12..];
+        assert_eq!(walls[0].minimum, [-100.0, 360.0]);
+        assert_eq!(walls[0].maximum, [549.0, 420.0]);
+        assert_eq!(walls[1].minimum, [949.0, 360.0]);
+        assert_eq!(walls[1].maximum, [1360.0, 420.0]);
+        assert_eq!(walls[0].color, 0xff98_0400);
+        assert_eq!(world.native_random.as_ref().unwrap().state(), 0x48_d3b3);
+    }
+
+    #[test]
+    fn native_simple_maze_keeps_opening_draws_after_running_out_of_slots() {
+        let mut world = Engine::new_native(EngineConfig {
+            world_width: 1260.0,
+            world_height: 900.0,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        world.obstacles = (1..=999)
+            .map(|id| Obstacle::new(id, [0.0; 2], [1.0; 2]))
+            .collect();
+        world.native_random = Some(Default::default());
+        assert_eq!(
+            world.add_native_simple_maze(true, 300, 60).unwrap(),
+            Some(1)
+        );
+        assert_eq!(world.obstacles.last().unwrap().color, 0xff23_8900);
+        assert_eq!(world.obstacles.len(), 1000);
+        assert_eq!(world.native_random.as_ref().unwrap().state(), 0xc6_555e);
+        assert_eq!(
+            world.add_native_simple_maze(true, 300, 60).unwrap(),
+            Some(0)
+        );
+        assert_eq!(world.obstacles.len(), 1000);
+        assert_eq!(world.native_random.as_ref().unwrap().state(), 0xd0_826b);
+    }
+
+    #[test]
+    fn native_simple_maze_keeps_inclusive_zero_and_negative_opening_extents() {
+        for (height, opening) in [(301.0_f32, 1.0_f32), (300.0, 0.0), (100.0, -141.0)] {
+            let mut world = Engine::new_native(EngineConfig {
+                world_width: 720.0,
+                world_height: height,
+                ..EngineConfig::testing()
+            })
+            .unwrap();
+            world.native_random = Some(Default::default());
+            assert_eq!(
+                world.add_native_simple_maze(true, 300, 60).unwrap(),
+                Some(2)
+            );
+            assert!(world.config.shape_drift.is_none());
+            let first = &world.obstacles[0];
+            assert_eq!(first.minimum, [360.0, -100.0]);
+            assert_eq!(first.maximum, [420.0, -100.0 + opening]);
+            assert_eq!(world.native_obstacle_extents[&first.id], [60.0, opening]);
+            assert_eq!(world.native_random.as_ref().unwrap().state(), 0x03_96a9);
+
+            if opening <= 0.0 {
+                let invalid = Obstacle::new(10, first.minimum, first.maximum);
+                assert!(world.add_obstacle(invalid).is_err());
+            }
+            let restored = SaveFile::decode(&SaveFile::encode(&world).unwrap()).unwrap();
+            assert_eq!(world.obstacles, restored.obstacles);
+            assert_eq!(
+                world.native_obstacle_extents,
+                restored.native_obstacle_extents
+            );
+
+            world.move_obstacles();
+            assert_eq!(world.obstacles[0].minimum[1], (-opening).min(height));
+            assert_eq!(
+                world.native_obstacle_extents[&world.obstacles[0].id],
+                [60.0, opening]
+            );
+        }
+    }
 
     #[test]
     fn native_polar_ice_starts_stationary_then_drifts_with_the_existing_shapes() {

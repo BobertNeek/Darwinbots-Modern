@@ -145,6 +145,7 @@ public sealed partial class MainWindow : Window
     private readonly PersistentToolWindowRegistry _toolWindows;
     private readonly SeededSpawnPlacement _randomShapePlacement;
     private ShapeCreationDimensions _shapeDimensions = ShapeCreationDimensions.Default;
+    private MazeDimensions _mazeDimensions = MazeDimensions.Default;
     private Db2ShapeDriftOptions? _shapeDrift;
     private int _shapeWorldGeneration;
     private ShapesWindow? _shapesWindow;
@@ -1132,6 +1133,7 @@ public sealed partial class MainWindow : Window
             var spare = _initialNativeGaussianSpare;
             var sunChange = _initialNativeSunChange;
             var caches = _initialNativeProcessCaches;
+            var mazeDimensions = _mazeDimensions;
             if (_session is not null)
             {
                 var context = await _session.ReadNativeProcessStateAsync();
@@ -1145,7 +1147,10 @@ public sealed partial class MainWindow : Window
                     allowLastExitResume: _startupArguments.Count == 0);
                 setupWindow.WorldCreated += options =>
                 {
-                    var replacement = new MainWindow(_startupArguments, options, _engineFactory, _storage, _launchSafeModeBackup);
+                    var replacement = new MainWindow(_startupArguments, options, _engineFactory, _storage, _launchSafeModeBackup)
+                    {
+                        _mazeDimensions = mazeDimensions,
+                    };
                     SetApplicationMainWindow(replacement);
                     replacement.Show();
                     setupWindow.Close();
@@ -1156,8 +1161,10 @@ public sealed partial class MainWindow : Window
             else
             {
                 var replacement = new MainWindow(_startupArguments,
-                    (editedSetup ?? CreateNextWorldSetup()) with { NativeGaussianSpare = spare, NativeSunChange = sunChange, NativeProcessCaches = caches },
-                    _engineFactory, _storage, _launchSafeModeBackup);
+                    (editedSetup ?? CreateNextWorldSetup()) with { NativeGaussianSpare = spare, NativeSunChange = sunChange, NativeProcessCaches = caches }, _engineFactory, _storage, _launchSafeModeBackup)
+                {
+                    _mazeDimensions = mazeDimensions,
+                };
                 SetApplicationMainWindow(replacement);
                 replacement.Show();
             }
@@ -2090,7 +2097,9 @@ public sealed partial class MainWindow : Window
                     dimensions => _shapeDimensions = dimensions,
                     () => AddGeneratedShapesAsync(1, centered: true),
                     _shapeDrift,
-                    SetShapeDriftAsync);
+                    SetShapeDriftAsync,
+                    _mazeDimensions,
+                    dimensions => _mazeDimensions = dimensions);
                 window.Closed += (_, _) => _shapesWindow = null;
                 return window;
             });
@@ -2196,7 +2205,8 @@ public sealed partial class MainWindow : Window
     private async Task<LegacyCommandResult> AddMazeCommandAsync(MazePreset pattern)
     {
         if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        if (pattern == MazePreset.PolarIce) return await AddPolarIceMazeAsync(session);
+        if (pattern is MazePreset.Horizontal or MazePreset.Vertical or MazePreset.PolarIce)
+            return await AddNativeMazeAsync(session, pattern);
         var snapshot = session.LatestSnapshot;
         var size = snapshot.WorldSize;
         var shapes = MazePresetBuilder.Build(pattern, size[0], size[1]);
@@ -2214,9 +2224,10 @@ public sealed partial class MainWindow : Window
         return LegacyCommandResult.Success($"{pattern.ToString().ToUpperInvariant()} MAZE ADDED · {shapes.Count} SHAPES");
     }
 
-    private async Task<LegacyCommandResult> AddPolarIceMazeAsync(SimulationSession session)
+    private async Task<LegacyCommandResult> AddNativeMazeAsync(SimulationSession session, MazePreset pattern)
     {
         var generation = _shapeWorldGeneration;
+        var dimensions = _mazeDimensions;
         await _advanceGate.WaitAsync();
         try
         {
@@ -2224,17 +2235,33 @@ public sealed partial class MainWindow : Window
                 || generation != _shapeWorldGeneration)
                 return LegacyCommandResult.Failure("ENGINE IS NOT READY");
 
-            if (await session.AddNativePolarIceAsync() is { } result)
+            var horizontal = pattern == MazePreset.Horizontal;
+            int? added;
+            if (pattern == MazePreset.PolarIce)
             {
-                _shapeDrift = result.Drift;
-                _shapesWindow?.SetDrift(result.Drift);
-                return LegacyCommandResult.Success($"POLARICE MAZE ADDED · {result.Added} SHAPES");
+                var polarIce = await session.AddNativePolarIceAsync();
+                added = polarIce?.Added;
+                if (polarIce is { } result)
+                {
+                    _shapeDrift = result.Drift;
+                    _shapesWindow?.SetDrift(result.Drift);
+                }
+            }
+            else
+            {
+                added = await session.AddNativeSimpleMazeAsync(horizontal, dimensions);
             }
 
-            var size = session.LatestSnapshot.WorldSize;
-            var shapes = MazePresetBuilder.Build(MazePreset.PolarIce, size[0], size[1]);
-            await AddObstaclesAsync(shapes);
-            return LegacyCommandResult.Success($"POLARICE MAZE ADDED · {shapes.Count} SHAPES");
+            if (added is null)
+            {
+                var size = session.LatestSnapshot.WorldSize;
+                var shapes = pattern == MazePreset.PolarIce
+                    ? MazePresetBuilder.Build(pattern, size[0], size[1])
+                    : MazePresetBuilder.BuildSimple(horizontal, size[0], size[1], dimensions);
+                await AddObstaclesAsync(shapes);
+                added = shapes.Count;
+            }
+            return LegacyCommandResult.Success($"{pattern.ToString().ToUpperInvariant()} MAZE ADDED · {added} SHAPES");
         }
         finally { _advanceGate.Release(); }
     }
