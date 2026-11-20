@@ -255,6 +255,8 @@ public static class Db2GenomeRecordFile
 
     private static bool LooksLikeRecord(string line)
     {
+        // Detokenized DNA comments can contain quotes, including in the hash.
+        if (line.TrimStart().StartsWith('\'')) return false;
         var fields = CsvFields(line);
         if (fields.Count != 14) return false;
         try
