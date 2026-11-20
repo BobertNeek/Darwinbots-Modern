@@ -22,12 +22,6 @@ public static class LegacyHelpResolver
             "Species and lineage identity",
             "A robot retains a stable slot:generation identity while alive. Species name identifies its imported DNA family. Lineage color drifts only when automatic speciation creates a descendant lineage, allowing related organisms to be recognized visually.\n\nAutotroph species use green hues. Heterotroph species use the remaining palette."),
         new(
-            LegacyCommandId.HelpSurvivalInfo,
-            "Survival Info",
-            "Reading the ecosystem",
-            "Energy keeps a bot alive and powers movement, shots, and reproduction. Body is a durable energy reserve and influences rendered size. Vegetables gain energy from chloroplasts and sunlight; animals must feed or exchange energy.\n\nPopulation, births, deaths, energy, mutation, shots, and feeding totals are recorded below the world view.",
-            Visible: false),
-        new(
             LegacyCommandId.HelpAbout,
             "About Darwinbots Modern",
             "Behavioral modernization",
