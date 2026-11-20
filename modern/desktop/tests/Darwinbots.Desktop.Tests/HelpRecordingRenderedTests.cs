@@ -9,6 +9,7 @@ using Avalonia.VisualTree;
 using Darwinbots.Desktop.Controls;
 using Darwinbots.Desktop.Core;
 using Darwinbots.Desktop.Core.LegacyMenus;
+using Darwinbots.Desktop.Services;
 using Darwinbots.Desktop.ViewModels;
 using Darwinbots.Desktop.Views;
 using Xunit;
@@ -17,6 +18,81 @@ namespace Darwinbots.Desktop.Tests;
 
 public sealed class HelpRecordingRenderedTests
 {
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task LivingSnapshotOffersMutationHistoryFromTheSameCapture(bool includeHistory)
+    {
+        var actor = RecordingEngineClient.Organism with { UniqueId = 314, MutationLog = ["Café", "Previous change"] };
+        var engine = new RecordingEngineClient(RecordingEngineClient.CreateSnapshot() with { Organisms = [actor] });
+        await using var session = new SimulationSession(engine);
+        await session.RefreshSnapshotAsync();
+
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var storage = new AuditStorageService { PromptForLivingMutationHistory = true };
+            var window = new MainWindow([], new WorldSetupOptions(), new AuditEngineClientFactory(), storage);
+            DesktopTestApplication.UseSession(window, session);
+            try
+            {
+                window.Show();
+                if (includeHistory)
+                    window.FindControl<LegacyMenuBar>("HistoricMenuBar")!
+                        .FindCommandItem(LegacyCommandId.RecordingSnapshotLiving)!
+                        .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                else
+                    window.FindControl<Button>("ToolbarSlot21")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => window.OwnedWindows.Any(), "Mutation history choice did not open.");
+                var prompt = Assert.Single(window.OwnedWindows);
+                Assert.Equal("Snapshot of the living", prompt.Title);
+                prompt.GetVisualDescendants().OfType<Button>()
+                    .Single(button => Equals(button.Content, includeHistory ? "YES" : "NO"))
+                    .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => storage.SavedLivingSnapshot is not null, "Snapshot was not saved.");
+                Assert.Equal(314UL, Assert.Single(Db2GenomeRecordFile.Decode(LegacyDnaText.Decode(storage.SavedLivingSnapshot!))).Id);
+                if (includeHistory)
+                {
+                    Assert.Contains((byte)0xe9, storage.SavedLivingMutationHistory!);
+                    Assert.Equal("Rob id,Mutation History\r\n\r\n314,\r\nCafé\r\nPrevious change\r\n\r\n",
+                        LegacyDnaText.Decode(storage.SavedLivingMutationHistory));
+                }
+                else Assert.Null(storage.SavedLivingMutationHistory);
+            }
+            finally
+            {
+                foreach (var owned in window.OwnedWindows.ToArray()) owned.Close();
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task FailedHistoryAppendRestoresBothDeadRecordingFiles()
+    {
+        var directory = Directory.CreateTempSubdirectory("db2-genome-history-");
+        try
+        {
+            var storage = new AvaloniaDesktopStorageService(directory.FullName);
+            var records = Path.Combine(directory.FullName, "records", "DeadRobots.snp");
+            var history = Path.Combine(directory.FullName, "records", "DeadRobots_Mutations.txt");
+            await storage.AppendDeadSnapshotAsync(
+                stream => stream.WriteAsync("first record"u8.ToArray()).AsTask(),
+                stream => stream.WriteAsync("first history"u8.ToArray()).AsTask());
+
+            await Assert.ThrowsAsync<IOException>(() => storage.AppendDeadSnapshotAsync(
+                stream => stream.WriteAsync("second record"u8.ToArray()).AsTask(),
+                async stream =>
+                {
+                    await stream.WriteAsync("second history"u8.ToArray());
+                    throw new IOException("Interrupted after appending to both files.");
+                }));
+
+            Assert.Equal("first record", File.ReadAllText(records));
+            Assert.Equal("first history", File.ReadAllText(history));
+        }
+        finally { directory.Delete(recursive: true); }
+    }
+
     [Fact]
     public async Task AboutShortcutLeavesSelectAllToLeagueEditors()
     {
@@ -224,16 +300,21 @@ public sealed class HelpRecordingRenderedTests
                 Assert.True(exclude.IsChecked);
                 var deaths = engine.Snapshot() with
                 {
+                    Organisms = [RecordingEngineClient.Organism with { IsCorpse = true, UniqueId = 42, MutationLog = ["Corpse history"] }],
                     Corpses =
                     [
-                        new CorpseSnapshot([10f, 10f], [0f, 0f], 0, 100, 5, 1) { Dna = "ANIMAL-ONLY-DNA" },
+                        new CorpseSnapshot([10f, 10f], [0f, 0f], 0, 100, 5, 1) { Dna = "ANIMAL-ONLY-DNA", UniqueId = 42 },
                         new CorpseSnapshot([20f, 20f], [0f, 0f], 0, 100, 5, 1, true) { Dna = "REPOPULATING-ONLY-DNA" },
+                        new CorpseSnapshot([30f, 30f], [0f, 0f], 0, 100, 5, 1) { Dna = "ARCHIVED-DNA", UniqueId = 45 },
                     ],
                 };
                 await InvokeTask(window, "RecordDeadSnapshotAsync", deaths);
                 var recorded = System.Text.Encoding.UTF8.GetString(Assert.Single(storage.DeadSnapshotWrites));
                 Assert.Contains("ANIMAL-ONLY-DNA", recorded, StringComparison.Ordinal);
                 Assert.DoesNotContain("REPOPULATING-ONLY-DNA", recorded, StringComparison.Ordinal);
+                Assert.Contains("ARCHIVED-DNA", recorded, StringComparison.Ordinal);
+                Assert.Equal("Rob id,Mutation History\r\n\r\n42,\r\nCorpse history\r\n\r\n",
+                    LegacyDnaText.Decode(Assert.Single(storage.DeadMutationHistoryWrites)));
 
                 menu.FindCommandItem(LegacyCommandId.EditGeneralSettings)!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
                 await WaitFor(() => window.OwnedWindows.OfType<AdvancedSettingsWindow>().Any(), "Recording settings did not open.");
@@ -278,9 +359,9 @@ public sealed class HelpRecordingRenderedTests
     [InlineData(LegacyCommandId.RobotKill, false, true)]
     public async Task ManualKillRecordsOnlyTheAffectedRobots(LegacyCommandId command, bool excludeVegetable, bool writeFails)
     {
-        var selected = RecordingEngineClient.Organism with { UniqueId = 100 };
-        var vegetable = selected with { Slot = 4, Generation = 7, UniqueId = 200, Vegetable = true };
-        var unrelated = selected with { Slot = 5, UniqueId = 300 };
+        var selected = RecordingEngineClient.Organism with { UniqueId = 100, MutationLog = ["Selected change"] };
+        var vegetable = selected with { Slot = 4, Generation = 7, UniqueId = 200, Vegetable = true, MutationLog = ["Vegetable change"] };
+        var unrelated = selected with { Slot = 5, UniqueId = 300, MutationLog = ["Unrelated change"] };
         var selectedKey = new OrganismKey(selected.Slot, selected.Generation);
         var vegetableKey = new OrganismKey(vegetable.Slot, vegetable.Generation);
         var engine = new RecordingEngineClient(RecordingEngineClient.CreateSnapshot() with
@@ -317,6 +398,7 @@ public sealed class HelpRecordingRenderedTests
                 {
                     Assert.Contains("DEAD RECORDING FAILED · Test output is locked", result.Status, StringComparison.Ordinal);
                     Assert.Empty(storage.DeadSnapshotWrites);
+                    Assert.Empty(storage.DeadMutationHistoryWrites);
                     Assert.False(router.GetState(LegacyCommandId.RecordingDeadEnable).Checked);
                     return;
                 }
@@ -325,6 +407,9 @@ public sealed class HelpRecordingRenderedTests
                 Assert.Equal(group && !excludeVegetable ? new ulong[] { 100, 200 } : [100], records.Select(record => record.Id));
                 Assert.All(records, record => Assert.Equal("start\nstop", record.Dna.Trim()));
                 Assert.Equal(group && !excludeVegetable ? new[] { (3u, 2u), (4u, 7u) } : [(3u, 2u)], engine.DnaExports);
+                Assert.Equal("Rob id,Mutation History\r\n\r\n100,\r\nSelected change\r\n\r\n"
+                    + (group && !excludeVegetable ? "\r\n200,\r\nVegetable change\r\n\r\n" : string.Empty),
+                    LegacyDnaText.Decode(Assert.Single(storage.DeadMutationHistoryWrites)));
             }
             finally
             {

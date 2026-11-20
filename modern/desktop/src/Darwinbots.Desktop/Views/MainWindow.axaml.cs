@@ -5,6 +5,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Layout;
 using Avalonia.Threading;
 using Darwinbots.Desktop;
 using Darwinbots.Desktop.Core;
@@ -574,10 +575,8 @@ public sealed partial class MainWindow : Window
         _viewModel.Status = (await FindBestRobotAsync()).Status;
     }
 
-    private async void ToolbarSnapshot_Click(object? sender, RoutedEventArgs e)
-    {
-        _viewModel.Status = (await SaveLivingSnapshotAsync()).Status;
-    }
+    private async void ToolbarSnapshot_Click(object? sender, RoutedEventArgs e) =>
+        await ExecuteLegacyMenuCommandAsync(LegacyCommandId.RecordingSnapshotLiving);
 
     private void ToolbarIgnoreErrors_Click(object? sender, RoutedEventArgs e)
     {
@@ -1006,8 +1005,9 @@ public sealed partial class MainWindow : Window
         await DeadRecordingGate.WaitAsync();
         try
         {
-            var (appended, error) = await AppendDeadRecordsAsync((includeHeader, format) =>
-                LegacyRecordingSerializer.SerializeRemoved(removed.Snapshot, removed.Dna, includeHeader, format));
+            var (appended, error) = await AppendDeadRecordsAsync(
+                (includeHeader, format) => LegacyRecordingSerializer.SerializeRemoved(removed.Snapshot, removed.Dna, includeHeader, format),
+                MutationHistories(removed.Snapshot, removed.Dna).ToArray());
             return LegacyCommandResult.Success(appended ? status : $"{status} · {error ?? "DEAD RECORDING UNAVAILABLE"}");
         }
         finally { DeadRecordingGate.Release(); }
@@ -1369,20 +1369,57 @@ public sealed partial class MainWindow : Window
     private async Task<LegacyCommandResult> SaveLivingSnapshotAsync()
     {
         if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        var snapshot = _session.LatestSnapshot;
+        var (snapshot, dna) = await _session.CaptureLivingGenomeRecordsAsync();
         var suggestedFileName = $"darwinbots-living-{snapshot.Tick}.snp";
-        var dna = new Dictionary<OrganismKey, string>();
-        foreach (var organism in snapshot.Organisms)
-            dna[new OrganismKey(organism.Slot, organism.Generation)] =
-                await _session.ExportDnaAsync(organism.Slot, organism.Generation);
         var format = LegacyRecordingSerializer.Select(LegacyCommandId.RecordingSnapshotLiving).Format;
         var bytes = LegacyDnaText.Encode(LegacyRecordingSerializer.SerializeLiving(snapshot, dna, format));
-        var saved = await _storage.SaveLivingSnapshotAsync(this, suggestedFileName, async stream =>
-            await stream.WriteAsync(bytes));
+        var saved = await _storage.SaveLivingSnapshotAsync(this, suggestedFileName, bytes, async () =>
+            await ChooseLivingMutationHistoryAsync()
+                ? LegacyDnaText.Encode(Db2GenomeRecordFile.EncodeMutationHistory(MutationHistories(snapshot, dna), includeHeader: true))
+                : null);
         return saved
             ? LegacyCommandResult.Success($"LIVING SNAPSHOT · {suggestedFileName}")
             : LegacyCommandResult.Cancel();
     }
+
+    private Task<bool> ChooseLivingMutationHistoryAsync()
+    {
+        var dialog = new Window
+        {
+            Title = "Snapshot of the living",
+            Width = 430,
+            SizeToContent = SizeToContent.Height,
+            CanResize = false,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+        };
+        var withoutHistory = new Button { Content = "NO", IsCancel = true };
+        var withHistory = new Button { Content = "YES", IsDefault = true };
+        withoutHistory.Click += (_, _) => dialog.Close(false);
+        withHistory.Click += (_, _) => dialog.Close(true);
+        dialog.Content = new StackPanel
+        {
+            Margin = new Thickness(18),
+            Spacing = 16,
+            Children =
+            {
+                new TextBlock { Text = "Save mutation history alongside this snapshot?" },
+                new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    HorizontalAlignment = HorizontalAlignment.Right,
+                    Spacing = 8,
+                    Children = { withoutHistory, withHistory },
+                },
+            },
+        };
+        return dialog.ShowDialog<bool>(this);
+    }
+
+    private static IEnumerable<(ulong Id, IReadOnlyList<string> Log)> MutationHistories(
+        EngineSnapshot snapshot, IReadOnlyDictionary<OrganismKey, string> dna) =>
+        snapshot.Organisms
+            .Where(robot => dna.ContainsKey(new OrganismKey(robot.Slot, robot.Generation)))
+            .Select(robot => (robot.UniqueId == 0 ? robot.Slot : robot.UniqueId, robot.MutationLog));
 
     private void SynchronizeRecordingPreferences(bool resetCorpseCursor = false)
     {
@@ -1433,30 +1470,41 @@ public sealed partial class MainWindow : Window
             if (snapshot.Corpses.Count == _recordedCorpseCount) return;
             var corpses = snapshot.Corpses.Skip(_recordedCorpseCount)
                 .Where(corpse => !_excludeRepopulatingDead || !corpse.Repopulating)
+                .Where(corpse => !string.IsNullOrWhiteSpace(corpse.Dna))
                 .ToArray();
-            if (!corpses.Any(corpse => !string.IsNullOrWhiteSpace(corpse.Dna)))
+            if (corpses.Length == 0)
             {
                 _recordedCorpseCount = snapshot.Corpses.Count;
                 return;
             }
-            var (appended, error) = await AppendDeadRecordsAsync((includeHeader, format) =>
-                LegacyRecordingSerializer.SerializeDead(corpses, snapshot.Species, includeHeader, format));
+            var uniqueIds = snapshot.Corpses.GroupBy(corpse => corpse.UniqueId)
+                .Where(group => group.Key != 0 && group.Count() == 1)
+                .Select(group => group.Key).ToHashSet();
+            var retained = snapshot.Organisms.Where(robot => robot.IsCorpse).ToLookup(robot => robot.UniqueId);
+            var histories = corpses
+                .Where(corpse => uniqueIds.Contains(corpse.UniqueId) && retained[corpse.UniqueId].Count() == 1)
+                .Select(corpse => (corpse.UniqueId, retained[corpse.UniqueId].Single().MutationLog))
+                .ToArray();
+            var (appended, error) = await AppendDeadRecordsAsync(
+                (includeHeader, format) => LegacyRecordingSerializer.SerializeDead(corpses, snapshot.Species, includeHeader, format),
+                histories);
             if (appended) _recordedCorpseCount = snapshot.Corpses.Count;
             if (error is not null) _viewModel.Status = error;
         }
         finally { DeadRecordingGate.Release(); }
     }
 
-    private async Task<(bool Appended, string? Error)> AppendDeadRecordsAsync(Func<bool, LegacyRecordingFormat, string> serialize)
+    private async Task<(bool Appended, string? Error)> AppendDeadRecordsAsync(
+        Func<bool, LegacyRecordingFormat, string> serialize,
+        IReadOnlyList<(ulong Id, IReadOnlyList<string> Log)> histories)
     {
         try
         {
-            var appended = await _storage.AppendDeadSnapshotAsync(async stream =>
-            {
-                var format = LegacyRecordingSerializer.Select(LegacyCommandId.RecordingDeadEnable).Format;
-                var text = serialize(stream.Length == 0, format);
-                await stream.WriteAsync(LegacyDnaText.Encode(text));
-            });
+            var format = LegacyRecordingSerializer.Select(LegacyCommandId.RecordingDeadEnable).Format;
+            var appended = await _storage.AppendDeadSnapshotAsync(
+                async stream => await stream.WriteAsync(LegacyDnaText.Encode(serialize(stream.Length == 0, format))),
+                histories.Count == 0 ? null : async stream => await stream.WriteAsync(LegacyDnaText.Encode(
+                    Db2GenomeRecordFile.EncodeMutationHistory(histories, includeHeader: stream.Length == 0))));
             return (appended, null);
         }
         catch (Exception error)

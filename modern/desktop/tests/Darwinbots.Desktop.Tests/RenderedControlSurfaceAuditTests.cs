@@ -2049,7 +2049,10 @@ internal sealed class AuditStorageService : IDesktopStorageService
         return Task.FromResult(PickedPopulationSeedDirectory);
     }
     public byte[]? SavedLivingSnapshot { get; private set; }
+    public bool PromptForLivingMutationHistory { get; init; }
+    public byte[]? SavedLivingMutationHistory { get; private set; }
     public List<byte[]> DeadSnapshotWrites { get; } = [];
+    public List<byte[]> DeadMutationHistoryWrites { get; } = [];
     public Exception? DeadSnapshotWriteError { get; init; }
     public bool AcceptOrganismSave { get; init; } = true;
     public string? SavedOrganismSuggestedFileName { get; private set; }
@@ -2092,19 +2095,26 @@ internal sealed class AuditStorageService : IDesktopStorageService
         return Task.FromResult(true);
     }
 
-    public async Task<bool> SaveLivingSnapshotAsync(TopLevel owner, string suggestedFileName, Func<Stream, Task> writeAsync)
+    public async Task<bool> SaveLivingSnapshotAsync(
+        TopLevel owner, string suggestedFileName, byte[] snapshot, Func<Task<byte[]?>> chooseMutationHistoryAsync)
     {
-        using var stream = new MemoryStream();
-        await writeAsync(stream);
-        SavedLivingSnapshot = stream.ToArray();
+        if (PromptForLivingMutationHistory)
+            SavedLivingMutationHistory = await chooseMutationHistoryAsync();
+        SavedLivingSnapshot = snapshot;
         return true;
     }
 
-    public async Task<bool> AppendDeadSnapshotAsync(Func<Stream, Task> writeAsync)
+    public async Task<bool> AppendDeadSnapshotAsync(Func<Stream, Task> writeAsync, Func<Stream, Task>? writeMutationHistoryAsync)
     {
         if (DeadSnapshotWriteError is { } error) throw error;
         using var stream = new MemoryStream();
         await writeAsync(stream);
+        if (writeMutationHistoryAsync is not null)
+        {
+            using var history = new MemoryStream();
+            await writeMutationHistoryAsync(history);
+            DeadMutationHistoryWrites.Add(history.ToArray());
+        }
         DeadSnapshotWrites.Add(stream.ToArray());
         return true;
     }
