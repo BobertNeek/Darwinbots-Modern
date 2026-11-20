@@ -23,6 +23,7 @@ impl Engine {
 mod tests {
     use super::*;
     use crate::eye_value;
+    use crate::world::native_pipeline::NativeRobotPhase;
 
     fn world() -> Engine {
         Engine::new(EngineConfig {
