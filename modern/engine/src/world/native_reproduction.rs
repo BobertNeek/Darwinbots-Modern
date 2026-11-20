@@ -216,6 +216,42 @@ mod tests {
     }
 
     #[test]
+    fn native_reproduction_draw_precedes_energy_check_and_follows_body_check() {
+        for sexual in [false, true] {
+            for (body, energy) in [(4.5, 100.0), (5.0, 0.0), (5.0, -1.0)] {
+                let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+                let dna = LegacyDna::parse("start stop").unwrap();
+                let parent = world.spawn_at(dna.clone(), [500.0; 2]).unwrap();
+                let address = if sexual { 302 } else { 300 };
+                let robot = world.slots.get_mut(parent).unwrap();
+                robot.materials.body = body;
+                robot.materials.energy = energy;
+                robot.program.memory.write(address, 50);
+                if sexual {
+                    robot.effects.fertilization_timer = 1;
+                    robot.effects.stored_sperm = Some(StoredGeneticMaterial { dna, source: None });
+                }
+                let materials = robot.materials.clone();
+                let births = world.stats.births;
+                let mut expected_random = world.native_random.clone().unwrap();
+                if body >= 5.0 {
+                    expected_random.integer(0, if sexual { 9 } else { 10 });
+                }
+                let mut trace = CycleRecorder::disabled(1);
+                let queues = world.prepare_lifecycle_queues(&mut trace);
+                assert_eq!(queues.births.len(), 1);
+                world.commit_lifecycle_queues(queues, &mut trace).unwrap();
+
+                assert_eq!(world.native_random.as_ref(), Some(&expected_random));
+                assert_eq!(world.stats.births, births);
+                assert_eq!(world.population(), 1);
+                assert_eq!(world.slots.get(parent).unwrap().materials, materials);
+                assert_eq!(world.memory_at(parent, address).unwrap(), 50);
+            }
+        }
+    }
+
+    #[test]
     fn loaded_guard_skips_first_repopulation_cooldown_but_refreshes_chloroplast_census() {
         let mut world = Engine::from_native_sim(REPRODUCTION_START).unwrap();
         world.native_loaded_census_stage = Some(NativeLoadedCensusStage::FirstCycle);

@@ -11787,16 +11787,17 @@ impl Engine {
                 .get(species.0 as usize)
                 .is_some_and(|value| value.vegetable);
             let native = self.native_random.is_some();
+            let body_too_small = if native || !birth.sexual {
+                parent_state.materials.body < 5.0
+            } else {
+                parent_state.materials.body <= 2.0
+            };
             if available_births == 0
                 || parent_state.flags.corpse
                 || (!native && parent_state.flags.dead)
                 || !parent_state.flags.can_reproduce
-                || parent_state.materials.energy <= 0.0
-                || if birth.sexual {
-                    parent_state.materials.body <= 2.0
-                } else {
-                    parent_state.materials.body < 5.0
-                }
+                || (!native && parent_state.materials.energy <= 0.0)
+                || body_too_small
                 || (!native
                     && vegetable_birth
                     && vegetable_population >= self.config.vegetable_population_cap)
@@ -11833,7 +11834,9 @@ impl Engine {
             if self.config.greedy_reproduction && birth.percentage < 3 {
                 self.slots.get_mut(birth.parent)?.flags.dead = true;
             }
-            if birth.percentage <= 0 {
+            // Both VB6 reproduction routines test energy after the eager
+            // population draw and before checking placement or creating a child.
+            if birth.percentage <= 0 || (native && parent_state.materials.energy <= 0.0) {
                 continue;
             }
 
