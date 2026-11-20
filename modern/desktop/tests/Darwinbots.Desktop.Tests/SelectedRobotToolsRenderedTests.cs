@@ -1,6 +1,12 @@
+using System.Reflection;
 using Avalonia.Controls;
 using Avalonia.Headless;
+using Avalonia.Interactivity;
+using Avalonia.VisualTree;
+using Darwinbots.Desktop.Controls;
 using Darwinbots.Desktop.Core;
+using Darwinbots.Desktop.Core.LegacyMenus;
+using Darwinbots.Desktop.ViewModels;
 using Darwinbots.Desktop.Views;
 using Xunit;
 
@@ -9,8 +15,10 @@ namespace Darwinbots.Desktop.Tests;
 public sealed class SelectedRobotToolsRenderedTests
 {
     [Fact]
-    public async Task SelectedRobotToolsRenderAndWriteDnaThroughExactFocus()
+    public async Task EyeDesignerOpensWithoutAWorldAndExportsWithoutReplacingTheFocusedGenome()
     {
+        var vision = VisionSnapshot.Default;
+        vision.Eyes[0] = vision.Eyes[0] with { Direction = 12, Width = 34 };
         var organism = new OrganismSnapshot(
             7,
             3,
@@ -21,6 +29,7 @@ public sealed class SelectedRobotToolsRenderedTests
             Species: 1,
             Parents: [new OrganismKey(2, 1), null])
         {
+            Vision = vision,
             Memory = [
                 new MemoryCellSnapshot(310, 16),
                 new MemoryCellSnapshot(311, 32),
@@ -38,12 +47,16 @@ public sealed class SelectedRobotToolsRenderedTests
         await DesktopTestApplication.Session.Dispatch(async () =>
         {
             var focus = new OrganismKey(7, 3);
-            var eye = new EyeDesignerWindow(simulation, focus);
+            var storage = new AuditStorageService();
+            var player = new MainWindow([], new WorldSetupOptions(), new AuditEngineClientFactory(), storage);
+            player.Opened -= typeof(MainWindow).GetMethod("Window_Opened", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .CreateDelegate<EventHandler>(player);
             var rgb = new RgbMemoryMonitorWindow(focus, RgbMemoryMonitorSettings.Default, _ => { });
             var phylogeny = new PhylogenyWindow(snapshot, focus);
             try
             {
-                eye.Show();
+                player.Show();
+                var eye = OpenEyeDesigner(player);
                 rgb.SetSnapshot(snapshot);
                 rgb.Show();
                 phylogeny.Show();
@@ -53,14 +66,26 @@ public sealed class SelectedRobotToolsRenderedTests
                 AssertRendered(rgb);
                 AssertRendered(phylogeny);
 
+                var fields = eye.GetVisualDescendants().OfType<TextBox>().ToArray();
+                Assert.Equal(18, fields.Length);
+                Assert.All(fields, field => Assert.Equal("0", field.Text));
+                Assert.Single(fields, field => field.Name == "Eye1Direction").Text = "17";
+                Assert.Single(fields, field => field.Name == "Eye1Width").Text = "-45";
                 await eye.WriteDnaAsync();
-                var replacement = Assert.Single(engine.DnaReplacements);
-                Assert.Equal((7u, 3u), (replacement.Slot, replacement.Generation));
-                Assert.Contains(".eye9width store", replacement.Dna, StringComparison.Ordinal);
+                Assert.Equal(EyeFile(firstDirection: 17, firstWidth: -45), storage.SavedDna);
+                Assert.Null(storage.SavedDnaMutationProfile);
+
+                DesktopTestApplication.UseSession(player, simulation);
+                Assert.IsType<MainWindowViewModel>(player.DataContext).Select(focus);
+                Assert.Same(eye, OpenEyeDesigner(player));
+                await eye.WriteDnaAsync();
+                Assert.Equal(EyeFile(firstDirection: 12, firstWidth: 34), storage.SavedDna);
+                Assert.Null(storage.SavedDnaMutationProfile);
+                Assert.Empty(engine.DnaReplacements);
             }
             finally
             {
-                if (eye.IsVisible) eye.Close();
+                player.Close();
                 if (rgb.IsVisible) rgb.Close();
                 if (phylogeny.IsVisible) phylogeny.Close();
             }
@@ -68,6 +93,19 @@ public sealed class SelectedRobotToolsRenderedTests
             return 0;
         }, CancellationToken.None);
     }
+
+    private static EyeDesignerWindow OpenEyeDesigner(MainWindow player)
+    {
+        var command = player.FindControl<LegacyMenuBar>("HistoricMenuBar")!.FindCommandItem(LegacyCommandId.EditEyeDesigner)!;
+        Assert.True(command.IsEnabled);
+        command.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        return Assert.Single(player.OwnedWindows.OfType<EyeDesignerWindow>());
+    }
+
+    private static string EyeFile(int firstDirection, int firstWidth) => "Cond\r\n*.robage 0 =\r\nStart\r\n"
+        + $"{firstDirection} .eye1dir store\r\n{firstWidth} .eye1width store\r\n'\r\n"
+        + string.Concat(Enumerable.Range(2, 8).Select(eye => $"0 .eye{eye}dir store\r\n0 .eye{eye}width store\r\n'\r\n"))
+        + "Stop\r\n";
 
     private static void AssertRendered(Window window)
     {
