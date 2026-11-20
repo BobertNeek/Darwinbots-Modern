@@ -239,6 +239,7 @@ enum EngineCommand {
     AddNativeCenteredObstacle {
         dimensions_permille: [u16; 2],
     },
+    AddNativePolarIce,
     SetShapeDrift {
         #[serde(default)]
         horizontal: Option<bool>,
@@ -1115,6 +1116,12 @@ fn db_engine_command_batch_impl(
             } => engine
                 .add_native_centered_obstacle(dimensions_permille)
                 .map(|added| serde_json::json!(added)),
+            EngineCommand::AddNativePolarIce => engine.add_native_polar_ice().map(|result| {
+                result.map_or(
+                    serde_json::Value::Null,
+                    |(added, drift)| serde_json::json!({ "added": added, "drift": drift }),
+                )
+            }),
             EngineCommand::SetShapeDrift {
                 horizontal,
                 vertical,

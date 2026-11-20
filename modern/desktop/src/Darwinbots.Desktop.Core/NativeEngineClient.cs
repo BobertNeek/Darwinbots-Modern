@@ -484,6 +484,17 @@ public sealed partial class NativeEngineClient : IEngineClient
         return result.ValueKind == JsonValueKind.Null ? null : result.GetInt32();
     }
 
+    public (int Added, Db2ShapeDriftOptions Drift)? AddNativePolarIce()
+    {
+        var result = ExecuteBatchForResult(new
+        {
+            version = 1,
+            commands = new[] { new { type = "add_native_polar_ice" } },
+        }, "add native Polar Ice maze").GetProperty("results")[0];
+        return result.ValueKind == JsonValueKind.Null ? null :
+            (result.GetProperty("added").GetInt32(), ReadShapeDrift(result.GetProperty("drift")));
+    }
+
     public Db2ShapeDriftOptions? SetShapeDrift(bool? horizontal, bool? vertical, short? rate)
     {
         var result = ExecuteBatchForResult(new
@@ -491,11 +502,13 @@ public sealed partial class NativeEngineClient : IEngineClient
             version = 1,
             commands = new[] { new { type = "set_shape_drift", horizontal, vertical, rate } },
         }, "set shape drift").GetProperty("results")[0];
-        return result.ValueKind == JsonValueKind.Null ? null : new Db2ShapeDriftOptions(
-            result.GetProperty("horizontal").GetBoolean(),
-            result.GetProperty("vertical").GetBoolean(),
-            result.GetProperty("rate").GetInt16());
+        return result.ValueKind == JsonValueKind.Null ? null : ReadShapeDrift(result);
     }
+
+    private static Db2ShapeDriftOptions ReadShapeDrift(JsonElement value) => new(
+        value.GetProperty("horizontal").GetBoolean(),
+        value.GetProperty("vertical").GetBoolean(),
+        value.GetProperty("rate").GetInt16());
 
     public void UpdateObstacle(ObstacleSnapshot obstacle)
     {
