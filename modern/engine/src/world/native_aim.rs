@@ -83,6 +83,7 @@ pub(super) fn apply(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::CycleEvent;
 
     fn robot(heading: f32, momentum: f32) -> RobotState {
         let mut world = Engine::new(EngineConfig::testing()).unwrap();
@@ -93,6 +94,76 @@ mod tests {
         robot.set_heading(heading);
         robot.kinematics.angular_momentum = momentum;
         robot
+    }
+
+    #[test]
+    fn full_native_tick_consumes_dna_aim_after_tie_resource_readback() {
+        let mut world = Engine::new_native(EngineConfig {
+            world_width: 3_000.0,
+            world_height: 2_000.0,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let source = world
+            .spawn_at(
+                LegacyDna::parse(
+                    "start 631 .setaim store 11 .tienum store -4 .tieloc store 60 .tieval store stop",
+                )
+                .unwrap(),
+                [1_000.0, 1_000.0],
+            )
+            .unwrap();
+        let target = world
+            .spawn_at(
+                LegacyDna::parse("start 438 .setaim store stop").unwrap(),
+                [1_300.0, 1_000.0],
+            )
+            .unwrap();
+        world
+            .ties
+            .push(TieState::legacy(source, target, 300.0, 11, 1));
+        world.refresh_tie_projections();
+        world.slots.get_mut(source).unwrap().materials.waste = 80.0;
+        world.set_organism_aim(source, 25).unwrap();
+        assert_eq!(world.memory_at(source, MEM_SET_AIM).unwrap(), 25);
+
+        let trace = world.tick_with_trace().unwrap();
+        assert!(trace.events.iter().any(|event| {
+            matches!(event, CycleEvent::Effect { source: Some(from), target: to, kind, .. }
+                if *from == source && *to == target && kind == "tie_resource_waste")
+        }));
+        for (id, expected) in [(source, 631), (target, 438)] {
+            let robot = world.slots.get(id).unwrap();
+            assert_eq!(robot.heading(), expected as f32 / 200.0);
+            assert_eq!(robot.program.memory.read(18), expected);
+            assert_eq!(robot.program.memory.read(MEM_SET_AIM), expected);
+        }
+    }
+
+    #[test]
+    fn genuine_cycle_282_aims_and_tie_angles_match_the_original_capture() {
+        // Original 2.48.32 cycle-282 capture SHA-256
+        // c49c002f66898a52db81645b78b11ecbb2ed1941dbeea03fe7d53dd3b24b9e91.
+        let input = include_bytes!("../../tests/fixtures/db24832-original-user.sim");
+        let mut world = Engine::from_native_sim(input).unwrap();
+        world.tick().unwrap();
+        assert_eq!(world.native_cycle, Some(282));
+        for (absolute_id, heading, aim, tie_angle) in [
+            (202, 0.6875525_f32, 138, -1),
+            (223, 2.6895747, 538, 1),
+            (275, 1.4810013, 296, -1),
+        ] {
+            let robot = world
+                .slots
+                .iter()
+                .filter_map(|slot| slot.organism.as_ref())
+                .find(|robot| robot.identity.absolute_id == absolute_id)
+                .unwrap();
+            assert_eq!(robot.heading(), heading, "absolute ID {absolute_id}");
+            assert_eq!(robot.program.memory.read(18), aim);
+            assert_eq!(robot.program.memory.read(MEM_SET_AIM), aim);
+            assert_eq!(robot.program.memory.read(MEM_TIE_ANGLE), tie_angle);
+        }
     }
 
     #[test]

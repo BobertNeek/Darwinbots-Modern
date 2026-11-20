@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 
 const MEM_MASS: i32 = 10;
 const MEM_AIM: i32 = 18;
+pub(crate) const MEM_SET_AIM: i32 = 19;
 const MEM_PAIN: i32 = 203;
 const MEM_PLEASURE: i32 = 204;
 const MEM_CHLOROPLASTS: i32 = 920;
@@ -373,7 +374,6 @@ impl RobotMaterials {
             PhaseReadbacks::Core(CoreReadbacks {
                 values: vec![
                     (MEM_AIM as u16, self.aim),
-                    (19, self.aim),
                     (
                         MEM_MASS as u16,
                         resource_readback(if native { self.mass } else { self.mass * 100.0 }),
@@ -384,6 +384,10 @@ impl RobotMaterials {
             }),
             memory,
         );
+        // Native SetAimFunc consumes the pending command before mirroring aim.
+        if !native {
+            memory.write(MEM_SET_AIM, self.aim);
+        }
     }
 }
 
@@ -503,6 +507,22 @@ mod native_material_tests {
 #[cfg(test)]
 mod native_publication55_tests {
     use super::*;
+
+    #[test]
+    fn native_resource_readbacks_keep_pending_aim_commands() {
+        let materials = RobotMaterials {
+            aim: 315,
+            ..Default::default()
+        };
+        let mut memory = VmMemory::default();
+        memory.restore_native_cell(MEM_SET_AIM, i16::MAX);
+        materials.publish_for_profile(&mut memory, true);
+        assert_eq!(memory.read(MEM_AIM), 315);
+        assert_eq!(memory.read(MEM_SET_AIM), i32::from(i16::MAX));
+
+        materials.publish(&mut memory);
+        assert_eq!(memory.read(MEM_SET_AIM), 315);
+    }
 
     #[test]
     fn native_mass_readback_rounds_the_single_mass_without_modern_scaling() {
