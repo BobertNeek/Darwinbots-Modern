@@ -191,6 +191,10 @@ enum EngineCommand {
     ExportSpeciesTemplateDna {
         species: u32,
     },
+    ListLegacyOrganismGroup {
+        slot: u32,
+        generation: u32,
+    },
     ExportOrganismGroup {
         organisms: Vec<OrganismIdCommand>,
     },
@@ -599,6 +603,7 @@ fn db_engine_command_batch_impl(
                     | EngineCommand::ReadNativeProcessCaches
                     | EngineCommand::ExportSpeciesTemplateDna { .. }
                     | EngineCommand::FindBestRobot { .. }
+                    | EngineCommand::ListLegacyOrganismGroup { .. }
             )
         })
     {
@@ -637,6 +642,11 @@ fn db_engine_command_batch_impl(
                         serde_json::Value::Null,
                         |id| serde_json::json!({"slot":id.slot(),"generation":id.generation()}),
                     ))
+                }
+                EngineCommand::ListLegacyOrganismGroup { slot, generation } => {
+                    Ok(serde_json::json!(engine.legacy_organism_group(
+                        OrganismId::new(*slot, *generation)
+                    )))
                 }
                 _ => unreachable!("pure queries were validated above"),
             })
@@ -960,6 +970,9 @@ fn db_engine_command_batch_impl(
             EngineCommand::ExportSpeciesTemplateDna { species } => engine
                 .export_species_template_dna(crate::SpeciesId(species))
                 .map(|dna| serde_json::json!({ "dna": dna })),
+            EngineCommand::ListLegacyOrganismGroup { slot, generation } => Ok(serde_json::json!(
+                engine.legacy_organism_group(OrganismId::new(slot, generation))
+            )),
             EngineCommand::ExportOrganismGroup { organisms } => {
                 let members: Vec<_> = organisms
                     .into_iter()

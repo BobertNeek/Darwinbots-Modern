@@ -1002,17 +1002,22 @@ public sealed partial class MainWindow : Window
 
     private async Task<LegacyCommandResult> KillSelectedOrganismAsync()
     {
-        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        var group = SelectedOrganismGroup();
-        if (group.Count == 0) return LegacyCommandResult.Failure("SELECT A ROBOT FIRST");
-        OrganismKey[] keys = [.. group.Select(value => new OrganismKey(value.Slot, value.Generation))];
-        await _session.RemoveManyAsync(keys, suppressDeathPoffs: true);
-        if (!_session.LatestSnapshot.PlayerBot.Enabled)
+        if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        if (SelectedRobotKey() is not { } seed) return LegacyCommandResult.Failure("SELECT A ROBOT FIRST");
+        await _advanceGate.WaitAsync();
+        try
         {
-            _viewModel.ClearSelection();
-            Viewport.SelectSlot(null);
+            var group = await session.ListLegacyOrganismGroupAsync(seed);
+            if (group.Count == 0) return LegacyCommandResult.Failure("SELECT A ROBOT FIRST");
+            await session.RemoveManyAsync(group, suppressDeathPoffs: true);
+            if (!session.LatestSnapshot.PlayerBot.Enabled)
+            {
+                _viewModel.ClearSelection();
+                Viewport.SelectSlot(null);
+            }
+            return LegacyCommandResult.Success($"ORGANISM KILLED · {group.Count:N0} BOT(S)");
         }
-        return LegacyCommandResult.Success($"ORGANISM KILLED · {keys.Length:N0} BOT(S)");
+        finally { _advanceGate.Release(); }
     }
 
     private Task<LegacyCommandResult> OpenNewSimulationSetupAsync() => ReplaceSimulationAsync(openSetup: true);
@@ -1705,54 +1710,33 @@ public sealed partial class MainWindow : Window
         return LegacyCommandResult.Success($"NEW SPECIES · {dialog.Value.ToUpperInvariant()}");
     }
 
-    private IReadOnlyList<OrganismSnapshot> SelectedOrganismGroup()
-    {
-        var selected = _viewModel.SelectedOrganism;
-        if (selected is null || _session is null) return [];
-        var snapshot = _session.LatestSnapshot;
-        var snapshotKeys = snapshot.Organisms
-            .Select(value => new OrganismKey(value.Slot, value.Generation))
-            .ToHashSet();
-        var selectedKey = new OrganismKey(selected.Slot, selected.Generation);
-        if (!snapshotKeys.Contains(selectedKey)) return [];
-        var pending = new Queue<OrganismKey>();
-        var memberKeys = new HashSet<OrganismKey> { selectedKey };
-        pending.Enqueue(selectedKey);
-        while (pending.Count > 0)
-        {
-            var current = pending.Dequeue();
-            foreach (var tie in snapshot.Ties.Where(value => value.First == current || value.Second == current))
-            {
-                var other = tie.First == current ? tie.Second : tie.First;
-                if (snapshotKeys.Contains(other) && memberKeys.Add(other)) pending.Enqueue(other);
-            }
-        }
-        return snapshot.Organisms
-            .Where(value => memberKeys.Contains(new OrganismKey(value.Slot, value.Generation)))
-            .ToArray();
-    }
-
     private async Task<LegacyCommandResult> SelectEntireOrganismAsync()
     {
-        var group = SelectedOrganismGroup();
-        var selected = _viewModel.SelectedOrganism!;
-        if (!_playerBotEnabled)
-            _playerBotHighlights.Clear();
-        _playerBotHighlights.UnionWith(group.Select(value => new OrganismKey(value.Slot, value.Generation)));
-        Viewport.SelectKeys(_playerBotHighlights, new OrganismKey(selected.Slot, selected.Generation));
+        if (_session is not { } session || SelectedRobotKey() is not { } seed)
+            return LegacyCommandResult.Failure("SELECT A ROBOT FIRST");
+        var group = await session.ListLegacyOrganismGroupAsync(seed);
+        if (group.Count == 0) return LegacyCommandResult.Failure("SELECT A ROBOT FIRST");
+        _playerBotHighlights.UnionWith(group);
+        Viewport.SelectKeys(_playerBotHighlights, SelectedRobotKey());
         await SynchronizePlayerBotTargetsAsync();
         return LegacyCommandResult.Success($"ORGANISM SELECTED · {group.Count:N0} BOT(S)");
     }
 
     private async Task<LegacyCommandResult> SaveEntireOrganismAsync()
     {
-        var group = SelectedOrganismGroup();
-        if (_session is null || group.Count == 0) return LegacyCommandResult.Failure("NO ORGANISM SELECTED");
-        var selected = SelectedRobotKey();
-        var members = group.Select(value => new OrganismKey(value.Slot, value.Generation))
-            .OrderBy(key => key == selected ? 0 : 1).ToArray();
-        var bytes = await _session.ExportOrganismGroupAsync(members);
-        var saved = await _storage.SaveOrganismAsync(this, $"organism-{members[0].Slot}.dbo",
+        if (_session is not { } session || SelectedRobotKey() is not { } seed)
+            return LegacyCommandResult.Failure("NO ORGANISM SELECTED");
+        await _advanceGate.WaitAsync();
+        IReadOnlyList<OrganismKey> group;
+        byte[] bytes;
+        try
+        {
+            group = await session.ListLegacyOrganismGroupAsync(seed);
+            if (group.Count == 0) return LegacyCommandResult.Failure("NO ORGANISM SELECTED");
+            bytes = await session.ExportOrganismGroupAsync(group);
+        }
+        finally { _advanceGate.Release(); }
+        var saved = await _storage.SaveOrganismAsync(this, $"organism-{seed.Slot}.dbo",
             async stream => await stream.WriteAsync(bytes));
         return saved
             ? LegacyCommandResult.Success($"ORGANISM SAVED · {group.Count:N0} BOT(S)")
