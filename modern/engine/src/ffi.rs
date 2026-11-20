@@ -275,6 +275,13 @@ enum EngineCommand {
         key: u32,
         pressed: bool,
     },
+    SetPlayerBotTargets {
+        focus: Option<OrganismIdCommand>,
+        highlights: Vec<OrganismIdCommand>,
+    },
+    SetPlayerBotPointer {
+        position: Option<[f32; 2]>,
+    },
     SetOrganismMemory {
         slot: u32,
         generation: u32,
@@ -641,7 +648,10 @@ fn db_engine_command_batch_impl(
         Ok(Some(candidate)) => candidate,
         Ok(None) => match SaveFile::encode(committed_engine) {
             Ok(bytes) => match SaveFile::decode(&bytes) {
-                Ok(candidate) => candidate,
+                Ok(mut candidate) => {
+                    candidate.player_bot_input = committed_engine.player_bot_input.clone();
+                    candidate
+                }
                 Err(error) => return fail(DbStatus::EngineError, error.to_string()),
             },
             Err(error) => return fail(DbStatus::EngineError, error.to_string()),
@@ -1071,6 +1081,19 @@ fn db_engine_command_batch_impl(
                 pressed,
             } => engine
                 .set_player_bot_key(OrganismId::new(slot, generation), key, pressed)
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::SetPlayerBotTargets { focus, highlights } => {
+                engine.set_player_bot_targets(
+                    focus.map(|value| OrganismId::new(value.slot, value.generation)),
+                    highlights
+                        .into_iter()
+                        .map(|value| OrganismId::new(value.slot, value.generation))
+                        .collect(),
+                );
+                Ok(serde_json::Value::Null)
+            }
+            EngineCommand::SetPlayerBotPointer { position } => engine
+                .set_player_bot_pointer(position)
                 .map(|_| serde_json::Value::Null),
             EngineCommand::SetOrganismMemory {
                 slot,
