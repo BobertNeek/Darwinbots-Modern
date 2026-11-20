@@ -41,6 +41,7 @@ public interface IEngineClient : IDisposable
     int? AddNativeCenteredObstacle(ShapeCreationDimensions dimensions) => null;
     (int Added, Db2ShapeDriftOptions Drift)? AddNativePolarIce() => null;
     int? AddNativeSimpleMaze(bool horizontal, MazeDimensions dimensions) => null;
+    int? AddNativePatternMaze(MazePreset pattern, MazeDimensions dimensions) => null;
     void AddTrashCompactor(ObstacleSnapshot left, ObstacleSnapshot right)
     {
         AddObstacle(left);

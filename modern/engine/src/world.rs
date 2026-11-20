@@ -40,6 +40,13 @@ use std::time::Instant;
 
 pub(crate) const DEFAULT_NATIVE_SHAPE_DIMENSIONS: [u16; 2] = [200; 2];
 
+#[derive(Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum NativePatternMaze {
+    Spiral,
+    Checkerboard,
+}
+
 use crate::physics::{
     MovementInput, MovementState, apply_angular_damping, apply_resistance, apply_static_friction,
     apply_voluntary_impulse, brownian_rotation, derived_mass, environment_impulse,
@@ -6215,37 +6222,16 @@ impl Engine {
         corridor: u16,
         thickness: u16,
     ) -> Result<Option<usize>, EngineError> {
-        if !(300..=5000).contains(&corridor) || !(1..=500).contains(&thickness) {
-            return Err(EngineError::Invariant(
-                "maze dimensions are outside the Shapes slider ranges".into(),
-            ));
-        }
-        if self.native_random.is_none() {
+        let Some(field) = self.native_maze_field(corridor, thickness)? else {
             return Ok(None);
-        }
-        let field = [self.config.world_width, self.config.world_height]
-            .map(|extent| f64::from(extent).round_ties_even());
-        if field
-            .iter()
-            .any(|extent| !(1.0..=f64::from(i32::MAX)).contains(extent))
-        {
-            return Err(EngineError::Invariant(
-                "native mazes require valid field dimensions".into(),
-            ));
-        }
+        };
         let [across, along] = if horizontal {
             field
         } else {
             [field[1], field[0]]
         };
         let pitch = f64::from(corridor + thickness);
-        let lines = (across / pitch).round_ties_even();
-        if lines > f64::from(i16::MAX) {
-            return Err(EngineError::Invariant(
-                "maze line count exceeds the original Integer range".into(),
-            ));
-        }
-        let lines = (lines as usize).saturating_sub(1);
+        let lines = Self::native_maze_line_count(across, pitch)?;
         let added = self.append_native_shapes(2 * lines, |shapes| {
             for line in 1..=lines {
                 let opening = shapes.random.integer(0, along as i32 - i32::from(corridor));
@@ -6272,6 +6258,144 @@ impl Engine {
             self.publish_snapshot();
         }
         Ok(added)
+    }
+
+    pub(crate) fn add_native_pattern_maze(
+        &mut self,
+        pattern: NativePatternMaze,
+        corridor: u16,
+        thickness: u16,
+    ) -> Result<Option<usize>, EngineError> {
+        let Some(field) = self.native_maze_field(corridor, thickness)? else {
+            return Ok(None);
+        };
+        let added = match pattern {
+            NativePatternMaze::Spiral => self.append_native_spiral(field, corridor, thickness),
+            NativePatternMaze::Checkerboard => self.append_native_checkerboard(field, corridor),
+        }?;
+        if added.is_some_and(|count| count != 0) {
+            self.publish_snapshot();
+        }
+        Ok(added)
+    }
+
+    fn native_maze_field(
+        &self,
+        corridor: u16,
+        thickness: u16,
+    ) -> Result<Option<[f64; 2]>, EngineError> {
+        if !(300..=5000).contains(&corridor) || !(1..=500).contains(&thickness) {
+            return Err(EngineError::Invariant(
+                "maze dimensions are outside the Shapes slider ranges".into(),
+            ));
+        }
+        if self.native_random.is_none() {
+            return Ok(None);
+        }
+        let field = [self.config.world_width, self.config.world_height]
+            .map(|extent| f64::from(extent).round_ties_even());
+        if field
+            .iter()
+            .any(|extent| !(1.0..=f64::from(i32::MAX)).contains(extent))
+        {
+            return Err(EngineError::Invariant(
+                "native mazes require valid field dimensions".into(),
+            ));
+        }
+        Ok(Some(field))
+    }
+
+    fn native_maze_line_count(across: f64, pitch: f64) -> Result<usize, EngineError> {
+        let lines = (across / pitch).round_ties_even();
+        if lines > f64::from(i16::MAX) {
+            return Err(EngineError::Invariant(
+                "maze line count exceeds the original Integer range".into(),
+            ));
+        }
+        Ok((lines as usize).saturating_sub(1))
+    }
+
+    fn append_native_spiral(
+        &mut self,
+        [width, height]: [f64; 2],
+        corridor: u16,
+        thickness: u16,
+    ) -> Result<Option<usize>, EngineError> {
+        let pitch = f64::from(corridor + thickness);
+        let layers = Self::native_maze_line_count(width, pitch)?
+            .min(Self::native_maze_line_count(height, pitch)?)
+            / 2;
+        let corridor = f32::from(corridor);
+        let thickness = f32::from(thickness);
+        // Field dimensions are Long. The inner CSng expressions round before subtraction.
+        let horizontal = |extent: f32| (width - f64::from(extent)) as f32;
+        let vertical = |extent: f32| (height - f64::from(extent)) as f32;
+        self.append_native_shapes(4 * layers, |shapes| {
+            'layers: for layer in 1..=layers {
+                let i = layer as f32;
+                let edge = corridor * i;
+                let bottom_inset =
+                    (f64::from(corridor) * 2.0 * f64::from(i) - f64::from(thickness)) as f32;
+                for wall in [
+                    [
+                        (
+                            (i - 1.0) * corridor,
+                            horizontal(corridor * (2.0 * (i - 1.0) + 1.0)),
+                        ),
+                        (edge, thickness),
+                    ],
+                    [
+                        (edge, horizontal(bottom_inset)),
+                        (vertical(edge), thickness),
+                    ],
+                    [
+                        (horizontal(edge), thickness),
+                        (edge, vertical(corridor * (2.0 * i))),
+                    ],
+                    [
+                        (edge, thickness),
+                        ((i + 1.0) * corridor, vertical(corridor * (2.0 * i + 1.0))),
+                    ],
+                ] {
+                    if !shapes.add(wall) {
+                        break 'layers;
+                    }
+                }
+            }
+        })
+    }
+
+    fn append_native_checkerboard(
+        &mut self,
+        [width, height]: [f64; 2],
+        corridor: u16,
+    ) -> Result<Option<usize>, EngineError> {
+        let corridor = f32::from(corridor);
+        let block = ((width / 10.0) as f32).min(5000.0);
+        let pitch = block + corridor;
+        let [columns, rows] = [width, height].map(|field| (field / f64::from(pitch)).floor());
+        if columns.max(rows) > f64::from(i16::MAX) {
+            return Err(EngineError::Invariant(
+                "checkerboard count exceeds the original Integer range".into(),
+            ));
+        }
+        let gap =
+            |count: f64, field| ((f64::from(count as f32 * pitch + corridor) - field) / 2.0) as f32;
+        let across_gap = gap(columns, width);
+        let down_gap = gap(rows, height);
+        let position =
+            |index: usize, gap| index as f32 * block + (index + 1) as f32 * corridor - gap;
+        let (columns, rows) = (columns as usize, rows as usize);
+        self.append_native_shapes(columns * rows, |shapes| {
+            'columns: for column in 0..columns {
+                let x = position(column, across_gap);
+                for row in 0..rows {
+                    if !shapes.add([(x, block), (position(row, down_gap), block)]) {
+                        break 'columns;
+                    }
+                }
+            }
+        })
     }
 
     fn append_native_shapes(
@@ -14505,6 +14629,149 @@ const fn default_snapshot_schema_version() -> u32 {
 mod tests {
     use super::*;
     use crate::SaveFile;
+
+    #[test]
+    fn native_spiral_preserves_wall_order_and_signed_last_wall() {
+        let mut world = Engine::new_native(EngineConfig {
+            world_width: 2700.0,
+            world_height: 2255.0,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        world.native_random = Some(Default::default());
+        assert_eq!(
+            world
+                .add_native_pattern_maze(NativePatternMaze::Spiral, 500, 1)
+                .unwrap(),
+            Some(8)
+        );
+        let expected = [
+            ([0.0, 500.0], [2200.0, 501.0], 0xff27_b500),
+            ([500.0, 1755.0], [2201.0, 1756.0], 0xff6f_4a00),
+            ([2200.0, 500.0], [2201.0, 1755.0], 0xff59_0400),
+            ([500.0, 1000.0], [501.0, 1755.0], 0xff8f_b500),
+            ([500.0, 1000.0], [1700.0, 1001.0], 0xff9f_dd00),
+            ([1000.0, 1255.0], [1701.0, 1256.0], 0xff21_f700),
+            ([1700.0, 1000.0], [1701.0, 1255.0], 0xff73_f300),
+            ([1000.0, 1500.0], [1001.0, 1255.0], 0xff70_c400),
+        ];
+        for (wall, (minimum, maximum, color)) in world.obstacles.iter().zip(expected) {
+            assert_eq!(
+                (wall.minimum, wall.maximum, wall.color),
+                (minimum, maximum, color)
+            );
+            assert_eq!(wall.drift, [0.0; 2]);
+        }
+        let last = world.obstacles.last().unwrap();
+        assert_eq!(world.native_obstacle_extents[&last.id], [1.0, -245.0]);
+        assert_eq!(world.native_random.as_ref().unwrap().state(), 0x97_ab58);
+    }
+
+    #[test]
+    fn native_checkerboard_preserves_single_precision_column_order_and_ignores_thickness() {
+        for thickness in [1, 500] {
+            let mut world = Engine::new_native(EngineConfig {
+                world_width: 1253.0,
+                world_height: 950.0,
+                shape_creation: Some(crate::ShapeCreationSettings {
+                    black: false,
+                    transparent: true,
+                    see_through: true,
+                    absorb_shots: false,
+                }),
+                ..EngineConfig::testing()
+            })
+            .unwrap();
+            world.native_random = Some(Default::default());
+            assert_eq!(
+                world
+                    .add_native_pattern_maze(NativePatternMaze::Checkerboard, 300, thickness)
+                    .unwrap(),
+                Some(4)
+            );
+            let expected = [
+                (
+                    [0x43af_999a, 0x4347_b334],
+                    [0x43ee_4000, 0x43a2_8000],
+                    0xff27_b500,
+                ),
+                (
+                    [0x43af_999a, 0x441c_4000],
+                    [0x43ee_4000, 0x443b_9333],
+                    0xff6f_4a00,
+                ),
+                (
+                    [0x4442_2000, 0x4347_b334],
+                    [0x4461_7333, 0x43a2_8000],
+                    0xff59_0400,
+                ),
+                (
+                    [0x4442_2000, 0x441c_4000],
+                    [0x4461_7333, 0x443b_9333],
+                    0xff8f_b500,
+                ),
+            ];
+            for (block, (minimum, maximum, color)) in world.obstacles.iter().zip(expected) {
+                assert_eq!(
+                    (
+                        block.minimum.map(f32::to_bits),
+                        block.maximum.map(f32::to_bits),
+                        block.color
+                    ),
+                    (minimum, maximum, color)
+                );
+                assert_eq!(
+                    world.native_obstacle_extents[&block.id].map(f32::to_bits),
+                    [0x42fa_999a; 2]
+                );
+                assert_eq!(block.opacity, 0.0);
+                assert_eq!(block.vision_policy, ShapeVisionPolicy::SeeThrough);
+                assert_eq!(block.shot_policy, ShapeShotPolicy::Reflect);
+            }
+            assert_eq!(world.native_random.as_ref().unwrap().state(), 0x69_fe0c);
+        }
+    }
+
+    #[test]
+    fn native_pattern_mazes_only_draw_color_for_available_slots() {
+        for (pattern, extent) in [
+            (NativePatternMaze::Spiral, [59700.0, 1.0]),
+            (NativePatternMaze::Checkerboard, [5000.0; 2]),
+        ] {
+            let mut world = Engine::new_native(EngineConfig {
+                world_width: 60_000.0,
+                world_height: 30_000.0,
+                ..EngineConfig::testing()
+            })
+            .unwrap();
+            world.obstacles = (1..=999)
+                .map(|id| Obstacle::new(id, [0.0; 2], [1.0; 2]))
+                .collect();
+            world.native_random = Some(Default::default());
+            assert_eq!(
+                world.add_native_pattern_maze(pattern, 300, 1).unwrap(),
+                Some(1)
+            );
+            let shape = world.obstacles.last().unwrap();
+            assert_eq!(shape.color, 0xff27_b500);
+            assert_eq!(world.native_obstacle_extents[&shape.id], extent);
+            let random = world.native_random.clone();
+            assert_eq!(
+                world
+                    .add_native_pattern_maze(NativePatternMaze::Spiral, 300, 1)
+                    .unwrap(),
+                Some(0)
+            );
+            assert_eq!(
+                world
+                    .add_native_pattern_maze(NativePatternMaze::Checkerboard, 300, 1)
+                    .unwrap(),
+                Some(0)
+            );
+            assert_eq!(world.obstacles.len(), 1000);
+            assert_eq!(world.native_random, random);
+        }
+    }
 
     #[test]
     fn native_simple_mazes_use_ties_even_counts_and_interleaved_live_openings_and_colors() {

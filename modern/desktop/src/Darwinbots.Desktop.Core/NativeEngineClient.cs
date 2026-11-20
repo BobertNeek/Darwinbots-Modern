@@ -439,6 +439,25 @@ public sealed partial class NativeEngineClient : IEngineClient
         return result.ValueKind == JsonValueKind.Null ? null : result.GetInt32();
     }
 
+    public int? AddNativePatternMaze(MazePreset pattern, MazeDimensions dimensions)
+    {
+        var name = pattern switch
+        {
+            MazePreset.Spiral => "spiral",
+            MazePreset.Checkerboard => "checkerboard",
+            _ => throw new ArgumentOutOfRangeException(nameof(pattern)),
+        };
+        var result = ExecuteBatchForResult(new
+        {
+            version = 1,
+            commands = new[]
+            {
+                new { type = "add_native_pattern_maze", pattern = name, corridor = dimensions.CorridorWidth, thickness = dimensions.WallThickness },
+            },
+        }, "add native maze").GetProperty("results")[0];
+        return result.ValueKind == JsonValueKind.Null ? null : result.GetInt32();
+    }
+
     public Db2ShapeDriftOptions? SetShapeDrift(bool? horizontal, bool? vertical, short? rate)
     {
         var result = ExecuteBatchForResult(new

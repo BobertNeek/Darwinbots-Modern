@@ -254,6 +254,13 @@ public sealed class SimulationSession : IAsyncDisposable
         return result;
     }
 
+    public async Task<int?> AddNativePatternMazeAsync(MazePreset pattern, MazeDimensions dimensions, CancellationToken cancellationToken = default)
+    {
+        int? result = null;
+        await Enqueue(engine => result = engine.AddNativePatternMaze(pattern, dimensions), cancellationToken).ConfigureAwait(false);
+        return result;
+    }
+
     public async Task<Db2ShapeDriftOptions?> SetShapeDriftAsync(
         bool? horizontal, bool? vertical, short? rate, CancellationToken cancellationToken = default)
     {
