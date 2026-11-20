@@ -229,6 +229,7 @@ enum EngineCommand {
         left: crate::Obstacle,
         right: crate::Obstacle,
     },
+    AddNativeTrashCompactor,
     SetShapeDrift {
         #[serde(default)]
         horizontal: Option<bool>,
@@ -1045,6 +1046,9 @@ fn db_engine_command_batch_impl(
             EngineCommand::AddTrashCompactor { left, right } => engine
                 .add_trash_compactor(left, right)
                 .map(|_| serde_json::Value::Null),
+            EngineCommand::AddNativeTrashCompactor => engine
+                .add_native_trash_compactor()
+                .map(|added| serde_json::json!(added)),
             EngineCommand::SetShapeDrift {
                 horizontal,
                 vertical,

@@ -415,6 +415,16 @@ public sealed partial class NativeEngineClient : IEngineClient
         }, "add trash compactor");
     }
 
+    public int? AddNativeTrashCompactor()
+    {
+        var result = ExecuteBatchForResult(new
+        {
+            version = 1,
+            commands = new[] { new { type = "add_native_trash_compactor" } },
+        }, "add native trash compactor").GetProperty("results")[0];
+        return result.ValueKind == JsonValueKind.Null ? null : result.GetInt32();
+    }
+
     public (int Added, Db2ShapeDriftOptions Drift)? AddNativePolarIce()
     {
         var result = ExecuteBatchForResult(new
