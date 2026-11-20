@@ -66,17 +66,17 @@ public sealed class RobotDetailsWindow : Window
         Background = Brush.Parse("#F4F0E6");
 
         _subtitle.Foreground = Brush.Parse("#537B43");
-        _subtitle.FontFamily = new FontFamily("Bahnschrift");
+        _subtitle.FontFamily = DesktopFonts.Heading;
         _subtitle.FontSize = 11;
         _subtitle.FontWeight = FontWeight.Bold;
         _subtitle.Text = $"LIVE ROBOT {focus.Slot}:{focus.Generation}";
 
         _facts.TextWrapping = TextWrapping.Wrap;
-        _facts.FontFamily = new FontFamily("Consolas");
+        _facts.FontFamily = DesktopFonts.Inspector;
         _facts.FontSize = 12;
         _facts.Foreground = Brush.Parse("#1D2824");
         _factsTab.TextWrapping = TextWrapping.Wrap;
-        _factsTab.FontFamily = new FontFamily("Consolas");
+        _factsTab.FontFamily = DesktopFonts.Inspector;
         _factsTab.FontSize = 12;
         _factsTab.Foreground = Brush.Parse("#1D2824");
 
@@ -84,7 +84,7 @@ public sealed class RobotDetailsWindow : Window
         _dna.AcceptsReturn = true;
         _dna.TextWrapping = TextWrapping.Wrap;
         _dna.Background = Brush.Parse("#FFFCF5");
-        _dna.FontFamily = new FontFamily("Consolas");
+        _dna.FontFamily = DesktopFonts.Inspector;
         _dna.FontSize = 12;
         _dna.Text = dna;
 
@@ -92,10 +92,10 @@ public sealed class RobotDetailsWindow : Window
         _memory.AcceptsReturn = true;
         _memory.TextWrapping = TextWrapping.NoWrap;
         _memory.Background = Brush.Parse("#FFFCF5");
-        _memory.FontFamily = new FontFamily("Consolas");
+        _memory.FontFamily = DesktopFonts.Inspector;
         _memory.FontSize = 12;
 
-        _activationSummary.FontFamily = new FontFamily("Bahnschrift");
+        _activationSummary.FontFamily = DesktopFonts.Heading;
         _activationSummary.FontWeight = FontWeight.Bold;
         _activationSummary.Foreground = Brush.Parse("#2D826F");
         _activationTimeline.Spacing = 5;
@@ -162,7 +162,7 @@ public sealed class RobotDetailsWindow : Window
                     new TextBlock
                     {
                         Text = "ROBOT DETAILS",
-                        FontFamily = new FontFamily("Bahnschrift"),
+                        FontFamily = DesktopFonts.Heading,
                         FontSize = 22,
                         FontWeight = FontWeight.Bold,
                         LetterSpacing = 1.4,
@@ -312,7 +312,7 @@ public sealed class RobotDetailsWindow : Window
                 Child = new TextBlock
                 {
                     Text = $"TICK {frame.Tick:N0}    {FormatActivations(frame.Activations)}    ACTIVE {frame.ActiveGeneCount:N0}",
-                    FontFamily = new FontFamily("Consolas"),
+                    FontFamily = DesktopFonts.Inspector,
                     FontSize = 12,
                 },
             });

@@ -29,18 +29,23 @@ internal static class LegacySettingsAdapter
         int footer = shapes + 9 + 7 * settings.Obstacles.Count;
         int end = footer + 13 + 3 * count;
         var fields = Enumerable.Repeat("0", end).ToList();
+        Number(footer, 5); Number(footer + 1, 1); Number(footer + 2, 15000); Number(footer + 3, 700);
         if (settings.LegacySettingsFields is { Count: > 1 } original
             && original[1] == (count - 1).ToString(CultureInfo.InvariantCulture))
         {
-            // The footer moves when walls are added or removed; retain unknown fields.
-            int oldCount = int.Parse(original[shapes + 8], CultureInfo.InvariantCulture);
-            int oldFooter = shapes + 9 + 7 * oldCount;
             for (int i = 0; i < Math.Min(shapes + 9, original.Count); i++) fields[i] = original[i];
-            for (int i = oldFooter; i < original.Count; i++)
+            // Old settings can end before the obstacle count and the movable footer.
+            if (original.Count > shapes + 8
+                && int.TryParse(original[shapes + 8], NumberStyles.Integer, CultureInfo.InvariantCulture, out int oldCount)
+                && oldCount is >= 0 and <= 32000)
             {
-                int target = footer + i - oldFooter;
-                while (fields.Count <= target) fields.Add("0");
-                fields[target] = original[i];
+                int oldFooter = shapes + 9 + 7 * oldCount;
+                for (int i = oldFooter; i < original.Count; i++)
+                {
+                    int target = footer + i - oldFooter;
+                    while (fields.Count <= target) fields.Add("0");
+                    fields[target] = original[i];
+                }
             }
         }
         while (fields.Count < end) fields.Add("0");
@@ -152,10 +157,6 @@ internal static class LegacySettingsAdapter
             Number(o + 2, obstacle.Maximum[1] - obstacle.Minimum[1]);
             Number(o + 3, obstacle.Drift[0]); Number(o + 4, obstacle.Drift[1]);
             Number(o + 5, obstacle.Minimum[0]); Number(o + 6, obstacle.Minimum[1]);
-        }
-        if (settings.LegacySettingsFields is null)
-        {
-            Number(footer, 5); Number(footer + 1, 1); Number(footer + 2, 15000); Number(footer + 3, 700);
         }
         for (int i = 0; i < count; i++)
         {
@@ -296,6 +297,10 @@ internal static class LegacySettingsAdapter
             Tides = (uint)Math.Max(0, Number(footer + 10 + 3 * count)),
             TidesOffset = Integer(footer + 11 + 3 * count),
         };
+        // ReadSettFromFile supplies the missing-field defaults. A stored zero is
+        // normalized by ReadSettFromFile for velocity and HandleWaste for waste.
+        var maxVelocity = (float)Number(tail + 6, 40);
+        var wasteThreshold = Integer(tail + 1, -1);
         return new DesktopSettings
         {
             OrganismCapacity = 32000, WorldWidth = Float(3), WorldHeight = Float(4),
@@ -310,13 +315,13 @@ internal static class LegacySettingsAdapter
             WrapY = Flag(global + 84, Flag(global + 9)), Vegetation = vegetation,
             Physics = Db2PhysicsOptions.Default with
             {
-                SurfaceGravity = Float(19), MaxVelocity = (float)Number(tail + 6, 60),
+                SurfaceGravity = Float(19), MaxVelocity = maxVelocity == 0 ? 60 : maxVelocity,
                 MovementEfficiency = Float(21, 0.66f), StaticFriction = (float)Number(extra + 2),
                 KineticFriction = (float)Number(extra + 3), PlanetEaters = Flag(extra + 4),
                 PlanetEatersG = (float)Number(extra + 5), Viscosity = Number(extra + 6), Density = Number(extra + 7),
                 Elasticity = (float)Number(tail + 5), ZeroMomentum = Flag(global + 87),
             },
-            Waste = new(Integer(tail + 1, 400), 32000),
+            Waste = new(wasteThreshold == 0 ? 400 : wasteThreshold, 32000),
             Recording = new(DeadSnapshotEnabled: Flag(global + 32), ExcludeRepopulatingRobots: Flag(global + 33), SamplingInterval: Math.Max(1, Integer(tail + 2, 200))),
             Shots = Db2ShotOptions.Default with { EnergyShotsDoNotDecay = Flag(tail + 7), WasteShotsDoNotDecay = Flag(tail + 17 + 5 * count),
                 FeedingProportional = Flag(global + 17, true), FeedingFixedPower = Integer(global + 16, 200), FeedingProportion = Float(15, 1) },

@@ -106,7 +106,7 @@ public sealed class SetupControlSurfaceTests
         var session = DesktopTestApplication.Session;
         await session.Dispatch(() =>
         {
-            var window = new SetupWindow();
+            var window = new SetupWindow(new AuditStorageService());
             window.Show();
 
             Assert.Equal(WindowState.Maximized, window.WindowState);
@@ -148,7 +148,7 @@ public sealed class SetupControlSurfaceTests
         var session = DesktopTestApplication.Session;
         await session.Dispatch(() =>
         {
-            var window = new SetupWindow();
+            var window = new SetupWindow(new AuditStorageService());
             window.Show();
             SetEnvironment(window, EnvironmentUpdate.Default with { BrownianMotion = 9f, ToroidalWorld = false });
             window.FindControl<ComboBox>("Backend")!.SelectedIndex = 2;

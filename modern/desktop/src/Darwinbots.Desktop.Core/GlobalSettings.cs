@@ -182,6 +182,8 @@ public sealed record GlobalSettings
 
     private void Validate()
     {
+        if (Main is null || AdvancedMutation?.NativeDelta2 is null || Costs is null || League is null || Evolution is null)
+            throw new InvalidDataException("Global settings groups must be objects.");
         if (League.RecognitionFudging is < 0 or > 2) throw new InvalidDataException("Recognition fudging must be None, Eyes only or All recognition methods.");
         if (League.DisqualificationRule is < 0 or > 2) throw new InvalidDataException("Disqualification rule must be None, F2 or F3.");
         if (Main.EffectiveFindBestWeight is < 0 or > 200)

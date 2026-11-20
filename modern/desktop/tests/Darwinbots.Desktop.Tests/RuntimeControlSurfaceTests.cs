@@ -92,14 +92,20 @@ public sealed class RuntimeControlSurfaceTests
                 window.GetType().GetMethod("RefreshLegacyMenuStates", BindingFlags.Instance | BindingFlags.NonPublic)!
                     .Invoke(window, null);
 
-                var catalogGestures = Core.LegacyMenus.LegacyMenuCatalog.FlattenLeaves()
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                var shortcuts = Core.LegacyMenus.LegacyMenuCatalog.FlattenLeaves()
                     .Where(item => item.Shortcut is not null)
-                    .Select(item => KeyGesture.Parse(item.Shortcut!))
                     .ToArray();
-                Assert.Equal(28, catalogGestures.Length);
-                foreach (var gesture in catalogGestures)
+                Assert.Equal(28, shortcuts.Length);
+                foreach (var item in shortcuts)
                 {
-                    Assert.Single(window.KeyBindings, binding => Equals(binding.Gesture, gesture));
+                    var gesture = KeyGesture.Parse(item.Shortcut!);
+                    if (item.Command == Core.LegacyMenus.LegacyCommandId.HelpAbout)
+                    {
+                        Assert.DoesNotContain(window.KeyBindings, binding => Equals(binding.Gesture, gesture));
+                        Assert.Equal(gesture, menu.FindCommandItem(item.Command.Value)!.InputGesture);
+                    }
+                    else Assert.Single(window.KeyBindings, binding => Equals(binding.Gesture, gesture));
                 }
 
                 var speed = window.FindControl<ComboBox>("RuntimeSpeed")!;

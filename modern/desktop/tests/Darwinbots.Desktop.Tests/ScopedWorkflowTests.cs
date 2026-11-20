@@ -14,7 +14,7 @@ public sealed class ScopedWorkflowTests
     {
         await DesktopTestApplication.Session.Dispatch(() =>
         {
-            var window = new SetupWindow();
+            var window = new SetupWindow(new AuditStorageService());
             try
             {
                 var tabs = window.FindControl<TabControl>("SimulationSettingsTabs");
@@ -135,7 +135,7 @@ public sealed class ScopedWorkflowTests
     {
         await DesktopTestApplication.Session.Dispatch(() =>
         {
-            var setup = new SetupWindow();
+            var setup = new SetupWindow(new AuditStorageService());
             var runtime = new MainWindow([], new WorldSetupOptions());
             try
             {

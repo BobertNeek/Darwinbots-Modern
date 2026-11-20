@@ -34,9 +34,9 @@ public sealed class RgbMemoryMonitorWindow : Window, IPersistentSnapshotToolWind
         Background = Brush.Parse("#F4F0E6");
 
         _status.Foreground = Brush.Parse("#537B43");
-        _status.FontFamily = new FontFamily("Bahnschrift");
+        _status.FontFamily = DesktopFonts.Heading;
         _status.FontSize = 11;
-        _values.FontFamily = new FontFamily("Consolas");
+        _values.FontFamily = DesktopFonts.Inspector;
         _values.FontSize = 16;
         _values.Text = "NO PUBLISHED ROBOT SNAPSHOT";
 
@@ -87,7 +87,7 @@ public sealed class RgbMemoryMonitorWindow : Window, IPersistentSnapshotToolWind
         var cancel = Button("CLOSE", (_, _) => Close());
         var actions = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Spacing = 8, Children = { apply, cancel } };
         var root = new Grid { RowDefinitions = new RowDefinitions("62,*,54") };
-        root.Children.Add(new Border { Background = Brush.Parse("#FBF9F2"), BorderBrush = Brush.Parse("#C8C3B6"), BorderThickness = new Thickness(0, 0, 0, 1), Padding = new Thickness(20, 12), Child = new StackPanel { Spacing = 2, Children = { new TextBlock { Text = "RGB MEMORY MONITOR", FontFamily = new FontFamily("Bahnschrift"), FontSize = 21, FontWeight = FontWeight.Bold, LetterSpacing = 1.3 }, _status } } });
+        root.Children.Add(new Border { Background = Brush.Parse("#FBF9F2"), BorderBrush = Brush.Parse("#C8C3B6"), BorderThickness = new Thickness(0, 0, 0, 1), Padding = new Thickness(20, 12), Child = new StackPanel { Spacing = 2, Children = { new TextBlock { Text = "RGB MEMORY MONITOR", FontFamily = DesktopFonts.Heading, FontSize = 21, FontWeight = FontWeight.Bold, LetterSpacing = 1.3 }, _status } } });
         Grid.SetRow(body, 1);
         root.Children.Add(new ScrollViewer { Content = body });
         Grid.SetRow(actions, 2);

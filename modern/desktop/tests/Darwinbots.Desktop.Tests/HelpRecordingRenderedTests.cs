@@ -1,6 +1,8 @@
 using System.Reflection;
 using Avalonia.Controls;
 using Avalonia.Headless;
+using Avalonia.Input;
+using Avalonia.Input.Raw;
 using Avalonia.Interactivity;
 using Avalonia.Media.Imaging;
 using Avalonia.VisualTree;
@@ -15,6 +17,59 @@ namespace Darwinbots.Desktop.Tests;
 
 public sealed class HelpRecordingRenderedTests
 {
+    [Fact]
+    public async Task AboutShortcutLeavesSelectAllToLeagueEditors()
+    {
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], new WorldSetupOptions(), new AuditEngineClientFactory(), new AuditStorageService())
+            {
+                WindowState = WindowState.Normal,
+                Width = 1280,
+                Height = 900,
+            };
+
+            try
+            {
+                window.Show();
+                window.FindControl<Expander>("LeagueExpander")!.IsExpanded = true;
+                window.UpdateLayout();
+                var entrants = window.FindControl<TextBox>("ModeEntrantOrder")!;
+                entrants.Text = "1,2";
+                var cycles = window.FindControl<NumericUpDown>("ModeMaximumCycles")!;
+                var cycleText = Assert.Single(cycles.GetVisualDescendants().OfType<TextBox>());
+
+                foreach (var editor in new[] { entrants, cycleText })
+                {
+                    Assert.False(string.IsNullOrEmpty(editor.Text));
+                    Assert.True(editor.Focus());
+                    editor.CaretIndex = editor.Text!.Length;
+                    PressAboutShortcut(window);
+                    Assert.Equal(editor.Text, editor.SelectedText);
+                    Assert.Empty(window.OwnedWindows.OfType<LegacyDocumentWindow>());
+                }
+
+                Assert.True(window.FindControl<WorldViewport>("Viewport")!.Focus());
+                PressAboutShortcut(window);
+                await WaitFor(
+                    () => window.OwnedWindows.OfType<LegacyDocumentWindow>()
+                        .Any(dialog => dialog.Title.Contains("About Darwinbots Modern", StringComparison.Ordinal)),
+                    "Ctrl+A on the playfield did not open About.");
+            }
+            finally
+            {
+                foreach (var owned in window.OwnedWindows.ToArray()) owned.Close();
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
+    private static void PressAboutShortcut(Window window)
+    {
+        window.KeyPress(Key.A, RawInputModifiers.Control, PhysicalKey.A, null);
+        window.KeyRelease(Key.A, RawInputModifiers.Control, PhysicalKey.A, null);
+    }
+
     [Fact]
     public async Task MainWindowMenuRoutesRenderRecordingHelpAboutAndSafeError()
     {

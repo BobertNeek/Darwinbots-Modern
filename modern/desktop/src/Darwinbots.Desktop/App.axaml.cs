@@ -15,6 +15,7 @@ public sealed partial class App : Application
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
+        Resources["ContentControlThemeFontFamily"] = DesktopFonts.Body;
         ApplyUiPreferences();
     }
 

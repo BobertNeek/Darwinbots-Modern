@@ -2,7 +2,6 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using Avalonia.Layout;
 using Avalonia.Media;
 using Darwinbots.Desktop.Core;
 
@@ -30,7 +29,7 @@ public sealed class RobotConsoleWindow : Window
         Background = Brush.Parse("#F4F0E6");
         _controller = new RobotConsoleController(session, focus, play, pause);
 
-        var root = new Grid { RowDefinitions = new RowDefinitions("66,*,86") };
+        var root = new Grid { RowDefinitions = new RowDefinitions("66,*,Auto") };
         root.Children.Add(new Border
         {
             Background = Brush.Parse("#FBF9F2"),
@@ -42,8 +41,8 @@ public sealed class RobotConsoleWindow : Window
                 Spacing = 2,
                 Children =
                 {
-                    new TextBlock { Text = "ROBOT CONSOLE", FontFamily = new FontFamily("Bahnschrift"), FontSize = 21, FontWeight = FontWeight.Bold, LetterSpacing = 1.3 },
-                    new TextBlock { Text = "COMMANDS RUN AGAINST THE FOCUSED RUST SESSION", Foreground = Brush.Parse("#537B43"), FontFamily = new FontFamily("Bahnschrift"), FontSize = 10, FontWeight = FontWeight.Bold, LetterSpacing = 1.0 },
+                    new TextBlock { Text = "ROBOT CONSOLE", FontFamily = DesktopFonts.Heading, FontSize = 21, FontWeight = FontWeight.Bold, LetterSpacing = 1.3 },
+                    new TextBlock { Text = "COMMANDS RUN AGAINST THE FOCUSED RUST SESSION", Foreground = Brush.Parse("#537B43"), FontFamily = DesktopFonts.Heading, FontSize = 10, FontWeight = FontWeight.Bold, LetterSpacing = 1.0 },
                 },
             },
         });
@@ -59,7 +58,7 @@ public sealed class RobotConsoleWindow : Window
             BorderThickness = new Thickness(1),
             Padding = new Thickness(16),
             Margin = new Thickness(16, 14, 16, 8),
-            FontFamily = new FontFamily("Cascadia Mono"),
+            FontFamily = DesktopFonts.Editor,
             FontSize = 13,
             Text = "Darwinbots robot console\nType help for commands.\n",
         };
@@ -69,7 +68,7 @@ public sealed class RobotConsoleWindow : Window
         _command = new TextBox
         {
             PlaceholderText = "command, for example: cycle 1 or set 50 100",
-            FontFamily = new FontFamily("Cascadia Mono"),
+            FontFamily = DesktopFonts.Editor,
             FontSize = 13,
             MinWidth = 280,
         };
@@ -81,11 +80,23 @@ public sealed class RobotConsoleWindow : Window
         var dna = Button("DNA", (_, _) => _ = RunCommandAsync("showdna"));
         var playButton = Button("PLAY", async (_, _) => await RunCommandAsync("play"));
         var pauseButton = Button("PAUSE", async (_, _) => await RunCommandAsync("pause"));
+        var commandRow = new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitions("*,Auto"),
+            ColumnSpacing = 6,
+            Children = { _command, run },
+        };
+        Grid.SetColumn(run, 1);
+        var shortcuts = new WrapPanel
+        {
+            ItemSpacing = 6,
+            LineSpacing = 6,
+            Children = { step, eyes, debug, dna, playButton, pauseButton },
+        };
         var controls = new StackPanel
         {
-            Orientation = Orientation.Horizontal,
             Spacing = 6,
-            Children = { _command, run, step, eyes, debug, dna, playButton, pauseButton },
+            Children = { commandRow, shortcuts },
         };
         var footer = new Border
         {

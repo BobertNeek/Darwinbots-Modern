@@ -8,6 +8,37 @@ namespace Darwinbots.Desktop.Tests;
 public sealed class LegacySettingsNativeTests
 {
     [Fact]
+    public void OriginalSettingsResolveWindowsRelativeDnaDirectory()
+    {
+        var directory = Directory.CreateTempSubdirectory("db-legacy-settings-");
+        try
+        {
+            const string name = "Custom Test Bot.txt";
+            const string dna = "' custom DNA\r\nstart stop\r\n";
+            var dnaDirectory = directory.CreateSubdirectory(Path.Combine("Robots", "Colony"));
+            var dnaPath = Path.Combine(dnaDirectory.FullName, name);
+            File.WriteAllBytes(dnaPath, LegacyDnaText.Encode(dna));
+
+            var settings = new DesktopSettings
+            {
+                Species = [new(name, dna, false, 0xff123456, 1, 1000, 0, false, 0)],
+            };
+            var fields = LegacyDnaText.Decode(Db2SettingsCodec.Encode(settings)).Split("\r\n");
+            // The first species directory is field 5 after the two header fields.
+            fields[2 + 5] = "\".\\Robots\\Colony\"";
+            var modernExtension = Array.IndexOf(fields, "#DARWINBOTS_MODERN_SETTINGS_V1#");
+            var legacyBytes = LegacyDnaText.Encode(string.Join("\r\n", fields[..modernExtension]));
+            var loaded = SetupStorageService.DecodeSettings(
+                Path.Combine(directory.FullName, "legacy.set"), legacyBytes);
+
+            var species = Assert.Single(loaded.Species);
+            Assert.Equal(dnaPath, species.DnaPath);
+            Assert.Equal(dna, species.Dna);
+        }
+        finally { directory.Delete(recursive: true); }
+    }
+
+    [Fact]
     public void OriginalSettingsSidecarsDecodeAnsiDnaAndModernJsonKeepsUnicode()
     {
         var directory = Path.Combine(Path.GetTempPath(), "db-ansi-settings-" + Guid.NewGuid().ToString("N"));

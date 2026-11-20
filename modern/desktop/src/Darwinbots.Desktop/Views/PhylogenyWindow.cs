@@ -25,13 +25,13 @@ public sealed class PhylogenyWindow : Window, IPersistentSnapshotToolWindow
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         Background = Brush.Parse("#F4F0E6");
         _status.Foreground = Brush.Parse("#537B43");
-        _status.FontFamily = new FontFamily("Bahnschrift");
+        _status.FontFamily = DesktopFonts.Heading;
         _status.FontSize = 11;
         _depth.ValueChanged += (_, _) => RenderGraph();
 
         var controls = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = { new TextBlock { Text = "DEPTH", FontWeight = FontWeight.Bold, VerticalAlignment = VerticalAlignment.Center }, _depth } };
         var body = new StackPanel { Spacing = 10, Margin = new Thickness(18), Children = { controls, _status, new ScrollViewer { Content = _nodes } } };
-        Content = new Border { Background = Brush.Parse("#FBF9F2"), Padding = new Thickness(0), Child = new Grid { RowDefinitions = new RowDefinitions("62,*"), Children = { new Border { Background = Brush.Parse("#FBF9F2"), BorderBrush = Brush.Parse("#C8C3B6"), BorderThickness = new Thickness(0, 0, 0, 1), Padding = new Thickness(20, 12), Child = new StackPanel { Spacing = 2, Children = { new TextBlock { Text = "PHILOGENY", FontFamily = new FontFamily("Bahnschrift"), FontSize = 21, FontWeight = FontWeight.Bold, LetterSpacing = 1.3 }, new TextBlock { Text = "AUTHORITATIVE PARENT / CHILD IDENTITIES", Foreground = Brush.Parse("#537B43"), FontSize = 10, FontWeight = FontWeight.Bold } } } }, body.With(Grid.RowProperty, 1) } } };
+        Content = new Border { Background = Brush.Parse("#FBF9F2"), Padding = new Thickness(0), Child = new Grid { RowDefinitions = new RowDefinitions("62,*"), Children = { new Border { Background = Brush.Parse("#FBF9F2"), BorderBrush = Brush.Parse("#C8C3B6"), BorderThickness = new Thickness(0, 0, 0, 1), Padding = new Thickness(20, 12), Child = new StackPanel { Spacing = 2, Children = { new TextBlock { Text = "PHILOGENY", FontFamily = DesktopFonts.Heading, FontSize = 21, FontWeight = FontWeight.Bold, LetterSpacing = 1.3 }, new TextBlock { Text = "AUTHORITATIVE PARENT / CHILD IDENTITIES", Foreground = Brush.Parse("#537B43"), FontSize = 10, FontWeight = FontWeight.Bold } } } }, body.With(Grid.RowProperty, 1) } } };
         SetSnapshot(snapshot);
     }
 
@@ -64,7 +64,7 @@ public sealed class PhylogenyWindow : Window, IPersistentSnapshotToolWindow
                 Background = node.IsFocused ? Brush.Parse("#D9E8C6") : Brush.Parse("#FFFCF5"),
                 BorderBrush = node.IsHighlighted ? Brush.Parse("#7BA25F") : Brush.Parse("#C8C3B6"),
                 BorderThickness = new Thickness(1),
-                Child = new TextBlock { Text = text, FontFamily = new FontFamily("Consolas"), FontSize = 12 },
+                Child = new TextBlock { Text = text, FontFamily = DesktopFonts.Inspector, FontSize = 12 },
             });
         }
     }
