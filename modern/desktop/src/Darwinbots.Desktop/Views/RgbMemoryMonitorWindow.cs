@@ -5,6 +5,7 @@ using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Darwinbots.Desktop.Core;
+using Darwinbots.Desktop.Services;
 
 namespace Darwinbots.Desktop.Views;
 
@@ -12,6 +13,7 @@ public sealed class RgbMemoryMonitorWindow : Window, IPersistentSnapshotToolWind
 {
     private readonly OrganismKey? _focus;
     private readonly Action<RgbMemoryMonitorSettings> _applySettings;
+    private readonly IDesktopStorageService _storage;
     private readonly NumericUpDown[] _addresses = new NumericUpDown[3];
     private readonly NumericUpDown[] _floors = new NumericUpDown[3];
     private readonly NumericUpDown[] _ceilings = new NumericUpDown[3];
@@ -20,11 +22,14 @@ public sealed class RgbMemoryMonitorWindow : Window, IPersistentSnapshotToolWind
     private readonly ComboBox _presets = new();
     private RgbMemoryMonitorSettings _settings;
 
-    public RgbMemoryMonitorWindow(OrganismKey? focus, RgbMemoryMonitorSettings settings, Action<RgbMemoryMonitorSettings> applySettings, bool closeOnApply = false)
+    public RgbMemoryMonitorWindow(
+        OrganismKey? focus, RgbMemoryMonitorSettings settings, Action<RgbMemoryMonitorSettings> applySettings,
+        bool closeOnApply = false, IDesktopStorageService? storage = null)
     {
         _focus = focus;
         _settings = settings;
         _applySettings = applySettings ?? throw new ArgumentNullException(nameof(applySettings));
+        _storage = storage ?? AvaloniaDesktopStorageService.Instance;
         CloseOnApply = closeOnApply;
         Title = closeOnApply || focus is not { } robot
             ? "Darwinbots — RGB Memory Monitor Settings"
@@ -81,7 +86,22 @@ public sealed class RgbMemoryMonitorWindow : Window, IPersistentSnapshotToolWind
         }
 
         var body = new StackPanel { Spacing = 9, Margin = new Thickness(18) };
-        body.Children.Add(new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = { new TextBlock { Text = "PRESET", VerticalAlignment = VerticalAlignment.Center, FontWeight = FontWeight.Bold }, _presets } });
+        var presetActions = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 8,
+            Children =
+            {
+                new TextBlock { Text = "PRESET", VerticalAlignment = VerticalAlignment.Center, FontWeight = FontWeight.Bold },
+                _presets,
+            },
+        };
+        if (closeOnApply)
+        {
+            presetActions.Children.Add(Button("LOAD PRESET", LoadPreset_Click));
+            presetActions.Children.Add(Button("SAVE PRESET", SavePreset_Click));
+        }
+        body.Children.Add(presetActions);
         body.Children.Add(grid);
         body.Children.Add(_values);
         body.Children.Add(new TextBlock { Text = "Each channel is normalized from its floor and ceiling to 0–255. The viewport uses this color for live Rust snapshot organisms.", TextWrapping = TextWrapping.Wrap, Foreground = Brush.Parse("#69716D"), FontSize = 11 });
@@ -106,6 +126,11 @@ public sealed class RgbMemoryMonitorWindow : Window, IPersistentSnapshotToolWind
     public void SetSettings(RgbMemoryMonitorSettings settings)
     {
         _settings = settings;
+        StageSettings(settings);
+    }
+
+    private void StageSettings(RgbMemoryMonitorSettings settings)
+    {
         _presets.SelectedItem = RgbMemoryMonitorSettings.Presets.FirstOrDefault(value => value.Settings == settings)?.Name;
         SetControls(settings);
     }
@@ -125,12 +150,33 @@ public sealed class RgbMemoryMonitorWindow : Window, IPersistentSnapshotToolWind
         _values.Text = $"RGB  {color.Red,3}  {color.Green,3}  {color.Blue,3}    #{color.Red:X2}{color.Green:X2}{color.Blue:X2}";
     }
 
-    private void Apply_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    private async void LoadPreset_Click(object? sender, RoutedEventArgs e)
     {
         try
         {
-            var settings = new RgbMemoryMonitorSettings(
-                Channel(0), Channel(1), Channel(2));
+            if (await _storage.OpenRgbMonitorPresetAsync(this) is not { } bytes) return;
+            StageSettings(Db2RgbMonitorPresetCodec.Decode(bytes));
+            _status.Text = "RGB PRESET LOADED";
+        }
+        catch (Exception error) { _status.Text = $"RGB PRESET LOAD FAILED · {error.Message}"; }
+    }
+
+    private async void SavePreset_Click(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var bytes = Db2RgbMonitorPresetCodec.Encode(ReadControls());
+            if (await _storage.SaveRgbMonitorPresetAsync(this, bytes))
+                _status.Text = "RGB PRESET SAVED";
+        }
+        catch (Exception error) { _status.Text = $"RGB PRESET SAVE FAILED · {error.Message}"; }
+    }
+
+    private void Apply_Click(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var settings = ReadControls();
             settings.Validate();
             _applySettings(settings);
             _settings = settings;
@@ -140,6 +186,8 @@ public sealed class RgbMemoryMonitorWindow : Window, IPersistentSnapshotToolWind
         }
         catch (Exception error) { _status.Text = $"RGB SETTINGS INVALID · {error.Message}"; }
     }
+
+    private RgbMemoryMonitorSettings ReadControls() => new(Channel(0), Channel(1), Channel(2));
 
     private RgbMemoryChannel Channel(int index) => new(
         (ushort)(_addresses[index].Value ?? 1),
