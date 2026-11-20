@@ -5,6 +5,19 @@ namespace Darwinbots.Desktop.Core.Tests;
 public sealed class SelectedRobotDiagnosticDomainTests
 {
     [Fact]
+    public void RgbChannelsUseTheOriginalIntegerRoundingAndLimits()
+    {
+        var robot = new OrganismSnapshot(1, 0, [0, 0], [0, 0], 100, 1)
+        {
+            Memory = [new MemoryCellSnapshot(1, 1), new MemoryCellSnapshot(2, 3), new MemoryCellSnapshot(3, 5)],
+        };
+        var settings = new RgbMemoryMonitorSettings(new(1, 0, 510), new(2, 0, 510), new(3, 0, 510));
+        Assert.Equal(new RgbColor(0, 2, 2), RgbMemoryMonitor.ColorFor(robot, settings));
+        Assert.Equal(new RgbColor(0, 255, 2), RgbMemoryMonitor.ColorFor(robot,
+            settings with { Red = new(1, 10, 20), Green = new(2, 0, 1) }));
+    }
+
+    [Fact]
     public void EyeRgbAndPhylogenyModelsKeepTheSelectedRobotDiagnosticStateCausal()
     {
         var parent = new OrganismSnapshot(2, 1, [10f, 10f], [0f, 0f], 100, 1)
