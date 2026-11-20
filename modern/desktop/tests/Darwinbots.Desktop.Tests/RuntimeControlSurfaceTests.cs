@@ -100,7 +100,8 @@ public sealed class RuntimeControlSurfaceTests
                 foreach (var item in shortcuts)
                 {
                     var gesture = KeyGesture.Parse(item.Shortcut!);
-                    if (item.Command == Core.LegacyMenus.LegacyCommandId.HelpAbout)
+                    if (item.Command is Core.LegacyMenus.LegacyCommandId.HelpAbout
+                        or Core.LegacyMenus.LegacyCommandId.FilePauseSimulation)
                     {
                         Assert.DoesNotContain(window.KeyBindings, binding => Equals(binding.Gesture, gesture));
                         Assert.Equal(gesture, menu.FindCommandItem(item.Command.Value)!.InputGesture);
