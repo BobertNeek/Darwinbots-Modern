@@ -1914,14 +1914,15 @@ public sealed partial class MainWindow : Window
 
     private async Task<LegacyCommandResult> AddMazeCommandAsync(MazePreset pattern)
     {
-        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        var snapshot = _session.LatestSnapshot;
+        if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        if (pattern == MazePreset.PolarIce) return await AddPolarIceMazeAsync(session);
+        var snapshot = session.LatestSnapshot;
         var size = snapshot.WorldSize;
         var shapes = MazePresetBuilder.Build(pattern, size[0], size[1]);
         if (pattern == MazePreset.TrashCompactor)
         {
             var id = checked(snapshot.Obstacles.Select(obstacle => obstacle.Id).DefaultIfEmpty().Max() + 1);
-            await _session.AddTrashCompactorAsync(
+            await session.AddTrashCompactorAsync(
                 new ObstacleSnapshot(id, shapes[0].Minimum, shapes[0].Maximum) { Drift = shapes[0].Drift },
                 new ObstacleSnapshot(checked(id + 1), shapes[1].Minimum, shapes[1].Maximum) { Drift = shapes[1].Drift });
         }
@@ -1930,6 +1931,31 @@ public sealed partial class MainWindow : Window
             await AddObstaclesAsync(shapes);
         }
         return LegacyCommandResult.Success($"{pattern.ToString().ToUpperInvariant()} MAZE ADDED · {shapes.Count} SHAPES");
+    }
+
+    private async Task<LegacyCommandResult> AddPolarIceMazeAsync(SimulationSession session)
+    {
+        var generation = _shapeWorldGeneration;
+        await _advanceGate.WaitAsync();
+        try
+        {
+            if (_loadingSimulation || _navigationInFlight || !IsVisible || _session != session
+                || generation != _shapeWorldGeneration)
+                return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+
+            if (await session.AddNativePolarIceAsync() is { } result)
+            {
+                _shapeDrift = result.Drift;
+                _shapesWindow?.SetDrift(result.Drift);
+                return LegacyCommandResult.Success($"POLARICE MAZE ADDED · {result.Added} SHAPES");
+            }
+
+            var size = session.LatestSnapshot.WorldSize;
+            var shapes = MazePresetBuilder.Build(MazePreset.PolarIce, size[0], size[1]);
+            await AddObstaclesAsync(shapes);
+            return LegacyCommandResult.Success($"POLARICE MAZE ADDED · {shapes.Count} SHAPES");
+        }
+        finally { _advanceGate.Release(); }
     }
 
     private async Task AddObstaclesAsync(IEnumerable<MazePresetShape> shapes)

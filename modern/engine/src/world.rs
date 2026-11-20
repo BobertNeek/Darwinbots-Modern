@@ -6065,9 +6065,9 @@ impl Engine {
                 "shape width and height must be within 1 to 1000 per mille".to_owned(),
             ));
         }
-        let Some(random) = self.native_random.as_mut() else {
+        if self.native_random.is_none() {
             return Ok(None);
-        };
+        }
         let dimensions = [self.config.world_width, self.config.world_height].map(f64::from);
         if dimensions.iter().any(|dimension| {
             !dimension.is_finite()
@@ -6078,6 +6078,91 @@ impl Engine {
                 "native shape creation requires valid field dimensions".to_owned(),
             ));
         }
+        // Each original slider scales the integer value and stores it as Single.
+        let extent_fractions =
+            dimensions_permille.map(|size| f64::from((f64::from(size) * 0.001) as f32));
+        let added = self.append_native_shapes(count, |random| {
+            if centered {
+                // ObstacleForm.MakeShape uses integer centers and full fixed extents.
+                [0, 1].map(|axis| {
+                    let dimension = dimensions[axis];
+                    let fraction = extent_fractions[axis];
+                    let center = random.integer(0, dimension.round_ties_even() as i32);
+                    let minimum = (f64::from(center) - dimension * (fraction / 2.0)) as f32;
+                    (minimum, (dimension * fraction) as f32)
+                })
+            } else {
+                let position = [random.unit(), random.unit()];
+                let extent = [random.unit(), random.unit()];
+                [0, 1].map(|axis| {
+                    let dimension = dimensions[axis];
+                    let fraction = extent_fractions[axis];
+                    let coordinate = (f64::from(position[axis]) * dimension) as f32;
+                    let minimum =
+                        ((f64::from(coordinate) - dimension * (fraction / 2.0)) as f32).max(0.0);
+                    let size = (f64::from(extent[axis]) * dimension * fraction) as f32;
+                    let limit = dimension as f32;
+                    if minimum + size > limit {
+                        (minimum, limit - minimum)
+                    } else {
+                        (minimum, size)
+                    }
+                })
+            }
+        })?;
+        if added.is_some_and(|count| count != 0) {
+            self.publish_snapshot();
+        }
+        Ok(added)
+    }
+
+    pub(crate) fn add_native_polar_ice(
+        &mut self,
+    ) -> Result<Option<(usize, crate::ShapeDriftSettings)>, EngineError> {
+        if self.native_random.is_none() {
+            return Ok(None);
+        }
+        let field_size = [self.config.world_width, self.config.world_height];
+        if field_size
+            .iter()
+            .any(|field| !field.is_finite() || *field <= 0.0)
+        {
+            return Err(EngineError::Invariant(
+                "native shape creation requires valid field dimensions".to_owned(),
+            ));
+        }
+        let geometry = field_size.map(|field| {
+            let extent = field / 2.0;
+            (extent / 2.0, extent)
+        });
+        let Some(added) = self.append_native_shapes(9, |_| geometry)? else {
+            return Ok(None);
+        };
+        // The maze changes SimOpts directly. Only the Shapes slider immediately
+        // rescales an existing trash compactor's velocity.
+        let drift = crate::ShapeDriftSettings {
+            horizontal: true,
+            vertical: true,
+            rate: 20,
+        };
+        self.config.shape_drift = Some(drift);
+        for shape in &self.obstacles {
+            self.native_obstacle_extents
+                .entry(shape.id)
+                .or_insert_with(|| shape.extents());
+        }
+        self.publish_snapshot();
+        Ok(Some((added, drift)))
+    }
+
+    fn append_native_shapes(
+        &mut self,
+        count: usize,
+        mut geometry: impl FnMut(&mut crate::native_random::NativeRandom) -> [(f32, f32); 2],
+    ) -> Result<Option<usize>, EngineError> {
+        let Some(random) = self.native_random.as_mut() else {
+            return Ok(None);
+        };
         let added = count.min(1000_usize.saturating_sub(self.obstacles.len()));
         let last_id = self
             .obstacles
@@ -6120,39 +6205,10 @@ impl Engine {
             );
             (black, transparent, vision, shot)
         };
-        // Each original slider scales the integer value and stores it as Single.
-        let extent_fractions =
-            dimensions_permille.map(|size| f64::from((f64::from(size) * 0.001) as f32));
         for offset in 0..count {
-            let [(left, width), (top, height)] = if centered {
-                // ObstacleForm.MakeShape uses integer centers and full fixed extents.
-                [0, 1].map(|axis| {
-                    let dimension = dimensions[axis];
-                    let fraction = extent_fractions[axis];
-                    let center = random.integer(0, dimension.round_ties_even() as i32);
-                    let minimum = (f64::from(center) - dimension * (fraction / 2.0)) as f32;
-                    (minimum, (dimension * fraction) as f32)
-                })
-            } else {
-                let position = [random.unit(), random.unit()];
-                let extent = [random.unit(), random.unit()];
-                [0, 1].map(|axis| {
-                    let dimension = dimensions[axis];
-                    let fraction = extent_fractions[axis];
-                    let coordinate = (f64::from(position[axis]) * dimension) as f32;
-                    let minimum =
-                        ((f64::from(coordinate) - dimension * (fraction / 2.0)) as f32).max(0.0);
-                    let size = (f64::from(extent[axis]) * dimension * fraction) as f32;
-                    let limit = dimension as f32;
-                    if minimum + size > limit {
-                        (minimum, limit - minimum)
-                    } else {
-                        (minimum, size)
-                    }
-                })
-            };
+            let [(left, width), (top, height)] = geometry(random);
             if offset == added {
-                // VB6 prepares geometry before NewObstacle checks the cap and stops.
+                // VB6 prepares the next shape's geometry before checking the slot limit.
                 break;
             }
             let mut shape = Obstacle::new(
@@ -6177,9 +6233,6 @@ impl Engine {
             self.native_obstacle_extents
                 .insert(shape.id, [width, height]);
             self.obstacles.push(shape);
-        }
-        if added != 0 {
-            self.publish_snapshot();
         }
         Ok(Some(added))
     }
@@ -14351,6 +14404,101 @@ const fn default_snapshot_schema_version() -> u32 {
 mod tests {
     use super::*;
     use crate::SaveFile;
+
+    #[test]
+    fn native_polar_ice_starts_stationary_then_drifts_with_the_existing_shapes() {
+        let mut world = Engine::new_native(EngineConfig {
+            world_width: 16_001.0,
+            world_height: 12_003.0,
+            shape_drift: Some(crate::ShapeDriftSettings {
+                horizontal: false,
+                vertical: true,
+                rate: 37,
+            }),
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        world
+            .add_obstacle(Obstacle::new(1, [100.0; 2], [110.0; 2]))
+            .unwrap();
+        let mut left = Obstacle::new(2, [0.0; 2], [100.0; 2]);
+        left.drift[0] = 3.7;
+        let mut right = Obstacle::new(3, [900.0, 0.0], [1000.0, 100.0]);
+        right.drift[0] = -3.7;
+        world.add_trash_compactor(left, right).unwrap();
+        let existing = world.obstacles.clone();
+        let mut random = world.native_random.clone().unwrap();
+        for _ in 0..27 {
+            random.unit();
+        }
+
+        let (added, drift) = world.add_native_polar_ice().unwrap().unwrap();
+        assert_eq!(added, 9);
+        assert_eq!(
+            drift,
+            crate::ShapeDriftSettings {
+                horizontal: true,
+                vertical: true,
+                rate: 20
+            }
+        );
+        assert_eq!(world.config.shape_drift, Some(drift));
+        assert_eq!(&world.obstacles[..3], existing.as_slice());
+        assert_eq!(world.native_random.as_ref(), Some(&random));
+        for ice in &world.obstacles[3..] {
+            assert_eq!(ice.minimum, [4000.25, 3000.75]);
+            assert_eq!(ice.maximum, [12000.75, 9002.25]);
+            assert_eq!(ice.drift, [0.0; 2]);
+            assert_eq!(world.native_obstacle_extents[&ice.id], [8000.5, 6001.5]);
+        }
+
+        let expected = [0; 2].map(|_| {
+            let magnitude = random.integer(-20, 20);
+            (f64::from(magnitude) * f64::from(random.unit()) * 0.01) as f32
+        });
+        let mut restored = SaveFile::decode(&SaveFile::encode(&world).unwrap()).unwrap();
+        world.move_obstacles();
+        restored.move_obstacles();
+        assert_eq!(world.obstacles[0].drift, expected);
+        assert_eq!(world.obstacles[1].drift, [3.7, 0.0]);
+        assert_eq!(world.obstacles[2].drift, [-3.7, 0.0]);
+        assert_eq!(world.obstacles, restored.obstacles);
+        assert_eq!(world.native_random, restored.native_random);
+    }
+
+    #[test]
+    fn native_polar_ice_honors_shape_appearance_and_sets_drift_at_capacity() {
+        let mut world = Engine::new_native(EngineConfig {
+            shape_creation: Some(crate::ShapeCreationSettings {
+                black: true,
+                transparent: true,
+                see_through: true,
+                absorb_shots: false,
+            }),
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        world.obstacles = (1..=998)
+            .map(|id| Obstacle::new(id, [0.0; 2], [1.0; 2]))
+            .collect();
+        let random = world.native_random.clone();
+        let (added, drift) = world.add_native_polar_ice().unwrap().unwrap();
+        assert_eq!(added, 2);
+        assert_eq!(world.obstacles.len(), 1000);
+        assert_eq!(world.native_obstacle_extents.len(), 1000);
+        for ice in &world.obstacles[998..] {
+            assert_eq!(ice.color, 0xff00_0000);
+            assert_eq!(ice.opacity, 0.0);
+            assert_eq!(ice.vision_policy, ShapeVisionPolicy::SeeThrough);
+            assert_eq!(ice.shot_policy, ShapeShotPolicy::Reflect);
+        }
+        world
+            .set_shape_drift(Some(false), Some(false), Some(1))
+            .unwrap();
+        assert_eq!(world.add_native_polar_ice().unwrap(), Some((0, drift)));
+        assert_eq!(world.config.shape_drift, Some(drift));
+        assert_eq!(world.native_random, random);
+    }
 
     #[test]
     fn live_shape_drift_preserves_zero_and_edits_only_the_requested_motion() {
