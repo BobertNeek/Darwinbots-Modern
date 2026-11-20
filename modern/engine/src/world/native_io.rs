@@ -933,6 +933,9 @@ impl Engine {
             tele.outbound = w("outbound")? != 0;
             tele.local = w("local")? != 0;
             tele.internet = w("internet")? != 0;
+            if !tele.internet {
+                tele.native_top_left = Some(position);
+            }
             // DB2 stores the gateway geometry, not a fixed output position.
             tele.random_destination = tele.local && !tele.outbound && !tele.internet;
             tele.drift_horizontal = w("horizontal")? != 0;

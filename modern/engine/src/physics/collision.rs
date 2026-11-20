@@ -89,7 +89,7 @@ pub(crate) fn segment_aabb_fraction(
     (0.0..=1.0).contains(&entry).then_some(entry)
 }
 
-fn native_magnitude(vector: [f32; 2]) -> f32 {
+pub(crate) fn native_magnitude(vector: [f32; 2]) -> f32 {
     let maximum = vector[0].abs().max(vector[1].abs());
     let minimum = vector[0].abs().min(vector[1].abs());
     if maximum < 0.00001 {
@@ -100,7 +100,7 @@ fn native_magnitude(vector: [f32; 2]) -> f32 {
     }
 }
 
-fn native_scalar(vector: [f32; 2], scale: f32) -> [f32; 2] {
+pub(crate) fn native_scalar(vector: [f32; 2], scale: f32) -> [f32; 2] {
     let scale = scale.clamp(-32_000.0, 32_000.0);
     vector.map(|component| component.clamp(-32_000.0, 32_000.0) * scale)
 }

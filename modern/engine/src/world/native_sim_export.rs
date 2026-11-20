@@ -731,9 +731,13 @@ impl Engine {
         // transfers. Store the complete configuration in DB3S when needed.
         for (i, tele) in self.teleporters.iter().enumerate() {
             let p = format!("teleporter[{i}].");
+            let [x, y] = tele.native_top_left.unwrap_or([
+                tele.center[0] - tele.width / 2.0,
+                tele.center[1] - tele.height / 2.0,
+            ]);
             for (name, value) in [
-                ("x", (tele.center[0] - tele.width / 2.0) as f64),
-                ("y", (tele.center[1] - tele.height / 2.0) as f64),
+                ("x", f64::from(x)),
+                ("y", f64::from(y)),
                 ("width", tele.width as f64),
                 ("height", tele.height as f64),
                 ("color", bgr(tele.color)),
