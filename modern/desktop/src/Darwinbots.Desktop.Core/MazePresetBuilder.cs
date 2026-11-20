@@ -10,6 +10,11 @@ public enum MazePreset
     TrashCompactor,
 }
 
+public readonly record struct MazeDimensions(int CorridorWidth, int WallThickness)
+{
+    public static MazeDimensions Default { get; } = new(500, 50);
+}
+
 public sealed record MazePresetShape(float[] Minimum, float[] Maximum, float[] Drift)
 {
     public MazePresetShape(float[] minimum, float[] maximum) : this(minimum, maximum, [0f, 0f])
@@ -40,33 +45,8 @@ public static class MazePresetBuilder
         switch (preset)
         {
             case MazePreset.Horizontal:
-            {
-                var lineCount = RoundedInteger(width / (CorridorWidth + WallThickness)) - 1;
-                var random = new Random(unchecked((int)width * 31 + (int)height));
-                for (var line = 1; line <= lineCount; line++)
-                {
-                    var opening = Math.Max(1f, (float)(random.NextDouble() * Math.Max(1f, height - CorridorWidth)));
-                    var x = line * (CorridorWidth + WallThickness);
-                    Add(x, -100f, WallThickness, opening);
-                    if (opening + CorridorWidth < height + 100f)
-                        Add(x, opening + CorridorWidth, WallThickness, height + 100f - opening - CorridorWidth);
-                }
-                break;
-            }
             case MazePreset.Vertical:
-            {
-                var lineCount = RoundedInteger(height / (CorridorWidth + WallThickness)) - 1;
-                var random = new Random(unchecked((int)width * 31 + (int)height));
-                for (var line = 1; line <= lineCount; line++)
-                {
-                    var opening = Math.Max(1f, (float)(random.NextDouble() * Math.Max(1f, width - CorridorWidth)));
-                    var y = line * (CorridorWidth + WallThickness);
-                    Add(-100f, y, opening, WallThickness);
-                    if (opening + CorridorWidth < width + 100f)
-                        Add(opening + CorridorWidth, y, width + 100f - opening - CorridorWidth, WallThickness);
-                }
-                break;
-            }
+                return BuildSimple(preset == MazePreset.Horizontal, width, height, MazeDimensions.Default);
             case MazePreset.Spiral:
             {
                 var horizontalLines = RoundedInteger(height / (CorridorWidth + WallThickness)) - 1;
@@ -123,6 +103,40 @@ public static class MazePresetBuilder
             }
         }
 
+        return shapes;
+    }
+
+    public static IReadOnlyList<MazePresetShape> BuildSimple(bool horizontal, float width, float height, MazeDimensions dimensions)
+    {
+        if (!float.IsFinite(width) || !float.IsFinite(height) || width <= 0f || height <= 0f)
+            throw new ArgumentOutOfRangeException(nameof(width));
+        if (dimensions.CorridorWidth is < 300 or > 5000 || dimensions.WallThickness is < 1 or > 500)
+            throw new ArgumentOutOfRangeException(nameof(dimensions));
+
+        var across = horizontal ? width : height;
+        var along = horizontal ? height : width;
+        var corridor = (float)dimensions.CorridorWidth;
+        var thickness = (float)dimensions.WallThickness;
+        var pitch = corridor + thickness;
+        var lineCount = RoundedInteger(across / pitch) - 1;
+        var random = new Random(unchecked((int)width * 31 + (int)height));
+        var shapes = new List<MazePresetShape>();
+        for (var line = 1; line <= lineCount; line++)
+        {
+            var opening = Math.Max(1f, (float)(random.NextDouble() * Math.Max(1f, along - corridor)));
+            var cross = line * pitch;
+            AddSegment(-100f, opening);
+            if (opening + corridor < along + 100f)
+                AddSegment(opening + corridor, along + 100f - opening - corridor);
+
+            void AddSegment(float start, float length)
+            {
+                if (length <= 0f) return;
+                shapes.Add(horizontal
+                    ? new([cross, start], [cross + thickness, start + length])
+                    : new([start, cross], [start + length, cross + thickness]));
+            }
+        }
         return shapes;
     }
 

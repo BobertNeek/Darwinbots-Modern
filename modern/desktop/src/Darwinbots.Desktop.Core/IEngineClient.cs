@@ -40,6 +40,7 @@ public interface IEngineClient : IDisposable
     int? AddNativeRandomObstacles(int count, ShapeCreationDimensions? dimensions = null) => null;
     int? AddNativeCenteredObstacle(ShapeCreationDimensions dimensions) => null;
     (int Added, Db2ShapeDriftOptions Drift)? AddNativePolarIce() => null;
+    int? AddNativeSimpleMaze(bool horizontal, MazeDimensions dimensions) => null;
     void AddTrashCompactor(ObstacleSnapshot left, ObstacleSnapshot right)
     {
         AddObstacle(left);

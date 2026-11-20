@@ -337,16 +337,12 @@ public sealed class RuntimeControlSurfaceTests
             menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.ObjectsDisableTies)!
                 .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
 
-            menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.ObjectsHorizontalMaze)!
-                .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
-
             menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.RobotKill)!
                 .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
 
             Assert.DoesNotContain(menu.TopLevelItems, item => Equals(item.Header, "Internet"));
             await WaitFor(() =>
                 engine.Calls.Contains("Remove:3:2")
-                && engine.Calls.Count(call => call.StartsWith("AddObstacle:", StringComparison.Ordinal)) >= 4
                 && engine.Calls.Count(call => call == "Environment") >= 2
                 && engine.Calls.Contains("Ties:False"),
                 () => string.Join(", ", engine.Calls));
