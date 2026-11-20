@@ -5,6 +5,7 @@ public interface IEngineClient : IDisposable
     string Backend { get; }
     EngineCapabilities Capabilities();
     void Tick(uint count = 1);
+    void TickRecordingDeaths(uint count, Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted) => Tick(count);
     DnaImportReport ImportDna(string dna, float[]? position = null);
     int ImportOrganism(ReadOnlyMemory<byte> payload) => throw new NotSupportedException("This engine client does not support organism interchange.");
     DnaImportReport ImportSpecies(SpeciesImport species);

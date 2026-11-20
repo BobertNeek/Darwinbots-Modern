@@ -82,6 +82,10 @@ use file_transfer_transaction::FileTransferTransaction;
 #[path = "world/native_corpses.rs"]
 mod native_corpses;
 
+#[path = "world/death_recording.rs"]
+mod death_recording;
+use death_recording::DeathRecord;
+
 #[path = "world/native_graphs.rs"]
 mod native_graphs;
 
@@ -2366,6 +2370,8 @@ pub struct Engine {
     native_skin_timer_seconds: Option<[f32; 2]>,
     #[serde(default = "default_true", skip_serializing_if = "is_true")]
     death_poffs_enabled: bool,
+    #[serde(skip)]
+    recorded_deaths: Option<Vec<DeathRecord>>,
     config: EngineConfig,
     #[serde(flatten)]
     slots: RobotArena,
@@ -2661,6 +2667,7 @@ impl Engine {
             native_energy: native_energy::NativeEnergyRuntime::default(),
             native_skin_timer_seconds: None,
             death_poffs_enabled: true,
+            recorded_deaths: None,
         })
     }
 
@@ -2874,6 +2881,7 @@ impl Engine {
             native_energy: native_energy::NativeEnergyRuntime::default(),
             native_skin_timer_seconds: None,
             death_poffs_enabled: true,
+            recorded_deaths: None,
         };
         // Match restore publication without advancing a cycle or publishing a snapshot.
         engine.project_native_energy_stats();
@@ -3636,7 +3644,7 @@ impl Engine {
                 .count();
             // Master.ReStart invokes KillRobot, not ManageDeath. Validate the
             // whole deletion batch before changing any actor or shot slot.
-            self.remove_many_at_boundary(&removed, false)?;
+            self.remove_many_at_boundary(&removed, false, true)?;
             self.stats.deaths = self.stats.deaths.saturating_add(living as u64);
             for id in removed {
                 trace.queue_change(CyclePhase::Restart, id, QueueChangeKind::DeathCommitted);
@@ -4417,7 +4425,7 @@ impl Engine {
             .map(|(_, id)| id)
             .collect();
         if !remove.is_empty() {
-            self.remove_many_at_boundary(&remove, false)?;
+            self.remove_many_at_boundary(&remove, false, true)?;
         }
         Ok(())
     }
@@ -4778,7 +4786,7 @@ impl Engine {
         ids: &[OrganismId],
         suppress_death_poffs: bool,
     ) -> Result<(), EngineError> {
-        self.remove_many_at_boundary(ids, suppress_death_poffs)?;
+        self.remove_many_at_boundary(ids, suppress_death_poffs, false)?;
         self.publish_snapshot();
         Ok(())
     }
@@ -4787,6 +4795,7 @@ impl Engine {
         &mut self,
         ids: &[OrganismId],
         suppress_death_poffs: bool,
+        record_deaths: bool,
     ) -> Result<(), EngineError> {
         if ids.is_empty() {
             return Err(EngineError::Invariant(
@@ -4807,6 +4816,9 @@ impl Engine {
         }
         let plan = self.preflight_native_deaths(ids, suppress_death_poffs)?;
         for &id in ids {
+            if record_deaths {
+                self.capture_death_record(id)?;
+            }
             if self.native_random.is_some() {
                 // KillRobot deletes ties before its poffs; the preflight plan
                 // already preserves each actor's poff/stored-virus slot order.
@@ -5928,6 +5940,7 @@ impl Engine {
             native_energy: self.native_energy.clone(),
             native_skin_timer_seconds: self.native_skin_timer_seconds,
             death_poffs_enabled: self.death_poffs_enabled,
+            recorded_deaths: None,
             config: self.config.clone(),
             slots: self.slots.clone(),
             tick: self.tick,
@@ -11729,6 +11742,7 @@ impl Engine {
                 {
                     self.become_native_corpse(id)?;
                 } else {
+                    self.capture_death_record(id)?;
                     if self.native_random.is_some() {
                         let partners = self
                             .tie_indices_for(id)
