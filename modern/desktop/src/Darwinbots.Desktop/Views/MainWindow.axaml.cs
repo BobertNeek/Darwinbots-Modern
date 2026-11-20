@@ -991,7 +991,8 @@ public sealed partial class MainWindow : Window
         if (_viewModel.SelectedOrganism is not { } organism)
             return LegacyCommandResult.Failure("SELECT A ROBOT FIRST");
         await _session.RemoveAsync(organism.Slot, organism.Generation);
-        Viewport.SelectSlot(null);
+        if (!_session.LatestSnapshot.PlayerBot.Enabled)
+            Viewport.SelectSlot(null);
         return LegacyCommandResult.Success("ROBOT KILLED");
     }
 
@@ -1002,9 +1003,11 @@ public sealed partial class MainWindow : Window
         if (group.Count == 0) return LegacyCommandResult.Failure("SELECT A ROBOT FIRST");
         OrganismKey[] keys = [.. group.Select(value => new OrganismKey(value.Slot, value.Generation))];
         await _session.RemoveManyAsync(keys, suppressDeathPoffs: true);
-        _viewModel.ClearSelection();
-        Viewport.SelectSlot(null);
-        await SynchronizePlayerBotTargetsAsync();
+        if (!_session.LatestSnapshot.PlayerBot.Enabled)
+        {
+            _viewModel.ClearSelection();
+            Viewport.SelectSlot(null);
+        }
         return LegacyCommandResult.Success($"ORGANISM KILLED · {keys.Length:N0} BOT(S)");
     }
 
@@ -2053,7 +2056,8 @@ public sealed partial class MainWindow : Window
                     if (_zerobotProgression is not null && !_progressionInFlight
                         && _zerobotProgression.Observe(snapshot) is { } transition)
                         _ = ApplyZerobotTransitionAsync(transition);
-                    if (!loading && previousSelection is not null && _viewModel.SelectedKey is null)
+                    if (!loading && previousSelection is not null && _viewModel.SelectedKey is null
+                        && snapshot.PlayerBot.Focus is not null)
                         await SynchronizePlayerBotTargetsAsync();
                 });
             };
