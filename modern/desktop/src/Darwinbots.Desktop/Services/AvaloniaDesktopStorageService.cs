@@ -1,3 +1,4 @@
+using System.Globalization;
 using Avalonia.Controls;
 using Avalonia.Platform.Storage;
 using Darwinbots.Desktop.Core;
@@ -263,6 +264,33 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         File.Move(temporary, path, true);
         foreach (var stale in Directory.GetFiles(directory, "*.db3s").OrderByDescending(File.GetLastWriteTimeUtc).Skip(5))
             File.Delete(stale);
+    }
+
+    public async Task<string?> ArchiveLatestAutosaveAsync(DateTime localBoundary, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var directory = Path.Combine(AutosaveDirectory(), "Backups");
+        var stamp = localBoundary.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
+        var path = Path.Combine(directory, $"autosave-{stamp}.db3s");
+        if (File.Exists(path)) return path;
+        if (FindLatestAutosave() is not { } sourcePath) return null;
+
+        await using var source = new FileStream(sourcePath, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete,
+            bufferSize: 81920, useAsync: true);
+        Directory.CreateDirectory(directory);
+        var temporary = $"{path}.{Guid.NewGuid():N}.tmp";
+        try
+        {
+            await using (var copy = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None,
+                bufferSize: 81920, useAsync: true))
+                await source.CopyToAsync(copy, cancellationToken);
+
+            cancellationToken.ThrowIfCancellationRequested();
+            try { File.Move(temporary, path); }
+            catch (IOException) when (File.Exists(path)) { /* Another window already archived this boundary. */ }
+            return path;
+        }
+        finally { File.Delete(temporary); }
     }
 
     public string? FindLastStart()

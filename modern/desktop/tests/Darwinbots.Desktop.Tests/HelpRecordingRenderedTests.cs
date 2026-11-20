@@ -121,11 +121,10 @@ public sealed class HelpRecordingRenderedTests
                         item => Equals(item.Header, "Snapshot of the dead") && item.IsVisible);
 
                     var safemode = menu.FindCommandItem(LegacyCommandId.RecordingSafemodeBackup)!;
-                    Assert.True(safemode.IsChecked);
+                    Assert.Equal(MenuItemToggleType.None, safemode.ToggleType);
                     safemode.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
-                    await WaitFor(() => safemode.IsChecked == false, "Safemode recording command did not turn off.");
-                    safemode.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
-                    await WaitFor(() => safemode.IsChecked == true, "Safemode recording command did not turn on.");
+                    await WaitFor(() => window.OwnedWindows.OfType<SafeModeBackupWindow>().Any(), "Safemode backup viewer did not open.");
+                    Assert.Single(window.OwnedWindows.OfType<SafeModeBackupWindow>()).Close();
 
                     var deadRecording = menu.FindCommandItem(LegacyCommandId.RecordingDeadEnable)!;
                     var deadFilter = menu.FindCommandItem(LegacyCommandId.RecordingDeadExcludeRepopulating)!;

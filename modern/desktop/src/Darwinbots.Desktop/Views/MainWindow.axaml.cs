@@ -797,8 +797,8 @@ public sealed partial class MainWindow : Window
             EngineState,
             _ => FindBestRobotAsync());
         handlers[LegacyCommandId.RecordingSafemodeBackup] = Handler(
-            () => new LegacyCommandState(true, _safemodeBackup),
-            async _ => await ToggleSafemodeBackupAsync());
+            () => LegacyCommandState.Available,
+            _ => Task.FromResult(OpenSafeModeBackup()));
         handlers[LegacyCommandId.RecordingRecoverLatestAutosave] = Handler(
             () => new LegacyCommandState(
                 _session is not null && RecoveryArtifactPath() is not null,
@@ -1870,11 +1870,10 @@ public sealed partial class MainWindow : Window
         };
     }
 
-    private async Task<LegacyCommandResult> ToggleSafemodeBackupAsync()
+    private LegacyCommandResult OpenSafeModeBackup()
     {
-        SynchronizeSafemodePreference(!_safemodeBackup);
-        if (_session is not null) await _session.UpdateEnvironmentAsync(_liveEnvironment);
-        return LegacyCommandResult.Success(_safemodeBackup ? "SAFEMODE BACKUP ON" : "SAFEMODE BACKUP OFF");
+        _toolWindows.ShowOrActivate("safemode-backup", () => new SafeModeBackupWindow(_storage));
+        return LegacyCommandResult.Success("SAFEMODE BACKUP OPEN");
     }
 
     private string? RecoveryArtifactPath()
