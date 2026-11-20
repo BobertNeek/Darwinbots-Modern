@@ -35,7 +35,8 @@ public sealed partial class SetupWindow : Window
     {
     }
 
-    public SetupWindow(IDesktopStorageService storage, float? nativeGaussianSpare = null, byte? nativeSunChange = null, NativeProcessCachesSnapshot? nativeProcessCaches = null, WorldSetupOptions? speciesEditor = null)
+    public SetupWindow(IDesktopStorageService storage, float? nativeGaussianSpare = null, byte? nativeSunChange = null,
+        NativeProcessCachesSnapshot? nativeProcessCaches = null, WorldSetupOptions? speciesEditor = null, bool allowLastExitResume = true)
     {
         _speciesEditor = speciesEditor is not null;
         _storage = storage ?? throw new ArgumentNullException(nameof(storage));
@@ -64,6 +65,7 @@ public sealed partial class SetupWindow : Window
         }
         _workflow.Reset(ReadSetupOptions());
         OnboardingPanel.IsVisible = !_speciesEditor && _storage.IsFirstRun;
+        ResumeMenuItem.IsVisible = !_speciesEditor && allowLastExitResume && _storage.FindLastExitSimulation() is not null;
         if (speciesEditor is not null)
         {
             ApplySetupOptions(speciesEditor);
@@ -449,6 +451,18 @@ public sealed partial class SetupWindow : Window
     {
         if (await _storage.PickSimulationPathAsync(this) is { } path)
             PublishWorld(new WorldSetupOptions { LoadSavePath = path, GlobalSettings = _profileSettings });
+    }
+
+    private void Resume_Click(object? sender, RoutedEventArgs e)
+    {
+        if (!ResumeMenuItem.IsVisible) return;
+        if (_storage.FindLastExitSimulation() is { } path)
+            PublishWorld(new WorldSetupOptions { LoadSavePath = path, GlobalSettings = _profileSettings });
+        else
+        {
+            ResumeMenuItem.IsVisible = false;
+            SetupStatus.Text = "No last simulation is available.";
+        }
     }
 
     private void Exit_Click(object? sender, RoutedEventArgs e) => Close();
