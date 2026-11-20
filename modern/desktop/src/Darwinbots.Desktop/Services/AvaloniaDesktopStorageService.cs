@@ -120,6 +120,34 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         return true;
     }
 
+    public async Task<SimulationSaveFormat?> SaveSimulationWithMutationOptionsAsync(
+        TopLevel owner, Func<SimulationSaveFormat, Task<byte[]>> createSave)
+    {
+        var file = await owner.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Save Darwinbots simulation without mutations",
+            SuggestedFileName = "simulation.sim",
+            DefaultExtension = "sim",
+            FileTypeChoices =
+            [
+                new("Darwinbots 2 simulation without mutation details") { Patterns = ["*.sim"] },
+                new("Darwinbots Modern save with mutations disabled") { Patterns = ["*.db3s"] },
+            ],
+        });
+        if (file is null) return null;
+        var format = Path.GetExtension(file.Name).ToLowerInvariant() switch
+        {
+            ".sim" => SimulationSaveFormat.Legacy,
+            ".db3s" => SimulationSaveFormat.Modern,
+            _ => throw new InvalidDataException("Use .sim or .db3s for the simulation file."),
+        };
+        var save = await createSave(format);
+        await using var stream = await file.OpenWriteAsync();
+        stream.SetLength(0);
+        await stream.WriteAsync(save);
+        return format;
+    }
+
     public async Task<bool> SaveSettingsAsync(TopLevel owner, DesktopSettings settings)
     {
         ArgumentNullException.ThrowIfNull(settings);

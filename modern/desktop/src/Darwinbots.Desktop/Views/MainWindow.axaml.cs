@@ -640,7 +640,7 @@ public sealed partial class MainWindow : Window
             async _ => await SaveNativeSimulationCommandAsync());
         handlers[LegacyCommandId.FileSaveWithoutMutations] = Handler(
             EngineState,
-            async _ => await SaveSimulationCommandAsync("SAVED WITHOUT MUTATION SETTINGS", withoutMutations: true));
+            async _ => await SaveSimulationWithoutMutationsCommandAsync());
         handlers[LegacyCommandId.FileQuit] = Handler(
             () => LegacyCommandState.Available,
             _ => Task.FromResult(QuitApplication()));
@@ -1066,15 +1066,19 @@ public sealed partial class MainWindow : Window
         return LegacyCommandResult.Success("QUIT");
     }
 
-    private async Task<LegacyCommandResult> SaveSimulationCommandAsync(string status, bool withoutMutations)
+    private async Task<LegacyCommandResult> SaveSimulationWithoutMutationsCommandAsync()
     {
-        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        var bytes = withoutMutations
-            ? await _session.SaveWithoutMutationsAsync()
-            : await _session.SaveAsync();
-        return await _storage.SaveSimulationAsync(this, bytes)
-            ? LegacyCommandResult.Success(status)
-            : LegacyCommandResult.Cancel();
+        if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        var format = await _storage.SaveSimulationWithMutationOptionsAsync(this, format =>
+            format == SimulationSaveFormat.Legacy
+                ? session.SaveLegacyWithoutMutationDetailsAsync()
+                : session.SaveWithoutMutationsAsync());
+        return format switch
+        {
+            SimulationSaveFormat.Legacy => LegacyCommandResult.Success("DARWINBOTS 2 SIMULATION SAVED WITHOUT MUTATION DETAILS"),
+            SimulationSaveFormat.Modern => LegacyCommandResult.Success("SAVED WITHOUT MUTATION SETTINGS"),
+            _ => LegacyCommandResult.Cancel(),
+        };
     }
 
     private async Task<LegacyCommandResult> SaveSimulationCommandAsync()

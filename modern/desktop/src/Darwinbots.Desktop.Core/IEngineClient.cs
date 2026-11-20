@@ -84,6 +84,7 @@ public interface IEngineClient : IDisposable
     }
     byte[] Save();
     byte[] SaveLegacy() => throw new NotSupportedException("This engine client does not support legacy simulation export.");
+    byte[] SaveLegacyWithoutMutationDetails() => throw new NotSupportedException("This engine client does not support legacy simulation export without mutation details.");
     byte[] SaveWithoutMutations();
     void Load(byte[] save);
     EngineSnapshot Snapshot();

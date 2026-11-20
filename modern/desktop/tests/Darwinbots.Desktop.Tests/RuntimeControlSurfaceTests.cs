@@ -1005,6 +1005,19 @@ public sealed class RuntimeControlSurfaceTests
                     Marshal.FreeHGlobal(pixelBuffer);
                 }
                 Assert.True(ContainsApproximateColor(pixelBytes, 0xDC, 0xD8, 0xCD));
+
+                storage.MutationSaveFormat = SimulationSaveFormat.Legacy;
+                saveMenu.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => storage.SaveRequests == 3
+                    && viewModel.Status == "DARWINBOTS 2 SIMULATION SAVED WITHOUT MUTATION DETAILS");
+                var legacyBytes = Assert.IsType<byte[]>(storage.SavedSimulation);
+                Assert.Contains("Mutation Details removed in last save.", Encoding.ASCII.GetString(legacyBytes), StringComparison.Ordinal);
+                using var legacy = new NativeEngineClient(setup with { Species = [] });
+                legacy.Load(legacyBytes);
+                Assert.True(legacy.Snapshot().MutationSettings.Enabled);
+                Assert.Equal(2.5f, legacy.Snapshot().MutationSettings.GlobalMultiplier);
+                Assert.Equal(1_250, Assert.Single(legacy.Snapshot().Organisms).MutationProfile.Point.OneIn);
+                Assert.Equal(liveBeforeSave.MutationSettings, session.LatestSnapshot.MutationSettings);
             }, CancellationToken.None);
         }
         finally
@@ -1941,6 +1954,7 @@ public sealed class RuntimeControlSurfaceTests
         public bool AcceptSave { get; set; }
         public int SaveRequests { get; private set; }
         public byte[]? SavedSimulation { get; private set; }
+        public SimulationSaveFormat MutationSaveFormat { get; set; }
         public byte[]? OpenedSimulation { get; set; }
         public int OpenRequests { get; private set; }
 
@@ -1967,6 +1981,15 @@ public sealed class RuntimeControlSurfaceTests
             SaveRequests++;
             if (AcceptSave) SavedSimulation = save.ToArray();
             return Task.FromResult(AcceptSave);
+        }
+
+        public async Task<SimulationSaveFormat?> SaveSimulationWithMutationOptionsAsync(
+            TopLevel owner, Func<SimulationSaveFormat, Task<byte[]>> createSave)
+        {
+            SaveRequests++;
+            if (!AcceptSave) return null;
+            SavedSimulation = await createSave(MutationSaveFormat);
+            return MutationSaveFormat;
         }
 
         public MutationProfileUpdate? SavedDnaMutationProfile { get; private set; }

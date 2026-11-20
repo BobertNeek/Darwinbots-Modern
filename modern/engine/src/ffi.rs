@@ -1278,6 +1278,27 @@ pub extern "C" fn db_engine_save_legacy(
     engine: *const Engine,
     out_buffer: *mut DbBuffer,
 ) -> DbStatus {
+    save_legacy(engine, out_buffer, Engine::export_native_sim)
+}
+
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
+#[unsafe(no_mangle)]
+pub extern "C" fn db_engine_save_legacy_without_mutation_details(
+    engine: *const Engine,
+    out_buffer: *mut DbBuffer,
+) -> DbStatus {
+    save_legacy(
+        engine,
+        out_buffer,
+        Engine::export_native_sim_without_mutation_details,
+    )
+}
+
+fn save_legacy(
+    engine: *const Engine,
+    out_buffer: *mut DbBuffer,
+    export: fn(&Engine) -> Result<Vec<u8>, crate::EngineError>,
+) -> DbStatus {
     let (Some(engine), Some(out_buffer)) =
         (unsafe { engine.as_ref() }, unsafe { out_buffer.as_mut() })
     else {
@@ -1286,7 +1307,7 @@ pub extern "C" fn db_engine_save_legacy(
     if !out_buffer.data.is_null() {
         return fail(DbStatus::EngineError, "output buffer must be empty");
     }
-    match engine.export_native_sim() {
+    match export(engine) {
         Ok(bytes) => write_buffer(out_buffer, bytes),
         Err(error) => fail(DbStatus::EngineError, error),
     }

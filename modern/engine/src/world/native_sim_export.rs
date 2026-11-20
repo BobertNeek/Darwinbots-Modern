@@ -145,6 +145,18 @@ impl Engine {
 
     /// Export the running world in the original 2.48.32 `.sim` format.
     pub fn export_native_sim(&self) -> Result<Vec<u8>, EngineError> {
+        self.export_native_sim_with_mutation_details(true)
+    }
+
+    /// Export a native simulation with Darwinbots 2's mutation-detail placeholder.
+    pub fn export_native_sim_without_mutation_details(&self) -> Result<Vec<u8>, EngineError> {
+        self.export_native_sim_with_mutation_details(false)
+    }
+
+    fn export_native_sim_with_mutation_details(
+        &self,
+        include_mutation_details: bool,
+    ) -> Result<Vec<u8>, EngineError> {
         if self.config.waste.defecation_threshold != 32_000 {
             return Err(invalid(
                 "defecation threshold cannot be represented; native HandleWaste always uses 32000",
@@ -197,11 +209,11 @@ impl Engine {
                     world.teleporters.push(tele);
                 }
             }
-            return world.export_native_sim();
+            return world.export_native_sim_with_mutation_details(include_mutation_details);
         }
         if !self.corpses.is_empty() {
             let (world, _) = self.native_world_with_corpses()?;
-            return world.export_native_sim();
+            return world.export_native_sim_with_mutation_details(include_mutation_details);
         }
         let members: Vec<_> = self
             .slots
@@ -422,7 +434,7 @@ impl Engine {
         self.write_native_shots(&mut tail, &remap)?;
         self.write_native_objects(&mut tail)?;
         NativeRecordFile {
-            robots: self.native_robot_records(&members)?,
+            robots: self.native_robot_records(&members, include_mutation_details)?,
             tail: tail.encode()?,
         }
         .encode()
@@ -771,6 +783,37 @@ impl Engine {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn native_sim_without_mutation_details_preserves_every_other_field() {
+        let original = include_bytes!("../../tests/fixtures/db24832-original-user.sim");
+        let mut world = Engine::from_native_sim(original).unwrap();
+        let id = world.slots.ids_in_slot_order()[0];
+        world
+            .slots
+            .get_mut(id)
+            .unwrap()
+            .program
+            .mutation_metadata
+            .detailed_log = vec!["A recorded mutation".into()];
+
+        let before = crate::SaveFile::encode(&world).unwrap();
+        let mut expected = NativeRecordFile::decode(&world.export_native_sim().unwrap()).unwrap();
+        assert_eq!(
+            expected.robots[0].bytes("mutation_details").unwrap(),
+            b"A recorded mutation"
+        );
+        for robot in &mut expected.robots {
+            robot
+                .set_mutation_details(b"Mutation Details removed in last save.".to_vec())
+                .unwrap();
+        }
+        assert_eq!(
+            world.export_native_sim_without_mutation_details().unwrap(),
+            expected.encode().unwrap()
+        );
+        assert_eq!(crate::SaveFile::encode(&world).unwrap(), before);
+    }
 
     #[test]
     fn live_native_sim_export_updates_resources_memory_world_and_shots() {

@@ -117,7 +117,7 @@ impl Engine {
             ));
         }
         NativeRecordFile {
-            robots: self.native_robot_records(members)?,
+            robots: self.native_robot_records(members, true)?,
             tail: vec![],
         }
         .encode()
@@ -126,6 +126,7 @@ impl Engine {
     pub(super) fn native_robot_records(
         &self,
         members: &[OrganismId],
+        include_mutation_details: bool,
     ) -> Result<Vec<NativeRobotRecord>, EngineError> {
         if members.len() > MAX_ROBOTS {
             return Err(invalid("simulation exceeds 32000 robot records"));
@@ -139,7 +140,7 @@ impl Engine {
         }
         let mut records = members
             .iter()
-            .map(|&id| self.native_robot_record(id))
+            .map(|&id| self.native_robot_record(id, include_mutation_details))
             .collect::<Result<Vec<_>, _>>()?;
         for (i, (&id, record)) in members.iter().zip(&mut records).enumerate() {
             word(record, "old_slot", i as i64 + 1)?;
@@ -148,7 +149,11 @@ impl Engine {
         Ok(records)
     }
 
-    fn native_robot_record(&self, id: OrganismId) -> Result<NativeRobotRecord, EngineError> {
+    fn native_robot_record(
+        &self,
+        id: OrganismId,
+        include_mutation_details: bool,
+    ) -> Result<NativeRobotRecord, EngineError> {
         let robot = self.slots.get(id)?;
         if let Some(index) = robot.native_record_index
             && self
@@ -291,9 +296,12 @@ impl Engine {
         };
         text(&mut record, "species_name_length", "species_name", name)?;
         text(&mut record, "owner_length", "owner", &robot.identity.owner)?;
-        record.set_mutation_details(ansi(
-            &robot.program.mutation_metadata.detailed_log.join("\r\n"),
-        )?)?;
+        let mutation_details = if include_mutation_details {
+            ansi(&robot.program.mutation_metadata.detailed_log.join("\r\n"))?
+        } else {
+            b"Mutation Details removed in last save.".to_vec()
+        };
+        record.set_mutation_details(mutation_details)?;
         let mut tag = ansi(&robot.identity.tag)?;
         tag.truncate(50);
         tag.resize(50, b' ');
@@ -741,7 +749,7 @@ mod tests {
         tie.sync_native_primary();
         engine.ties.push(tie);
         let file = NativeRecordFile {
-            robots: engine.native_robot_records(&[first, second]).unwrap(),
+            robots: engine.native_robot_records(&[first, second], true).unwrap(),
             tail: vec![],
         };
         for (index, end) in ends.into_iter().enumerate() {
@@ -785,7 +793,7 @@ mod tests {
         let origin = engine.native_origin.as_ref().unwrap();
         assert!(engine.export_native_organisms(&ids).is_err());
         let file = NativeRecordFile {
-            robots: engine.native_robot_records(&ids).unwrap(),
+            robots: engine.native_robot_records(&ids, true).unwrap(),
             tail: vec![],
         };
         assert_eq!(file.robots.len(), 196);
@@ -863,7 +871,7 @@ mod tests {
             .position(|&i| i == 0)
             .unwrap()
             + 1;
-        let records = engine.native_robot_records(&members).unwrap();
+        let records = engine.native_robot_records(&members, true).unwrap();
         let core = records[record_index].bytes("ties_core").unwrap();
         let offset = tie_index * 38 + 16;
         assert_eq!(
@@ -905,7 +913,7 @@ mod tests {
         }
         let restored = crate::SaveFile::decode(&crate::SaveFile::encode(&engine).unwrap()).unwrap();
         for record in restored
-            .native_robot_records(&restored.slots.ids_in_slot_order())
+            .native_robot_records(&restored.slots.ids_in_slot_order(), true)
             .unwrap()
         {
             for tie in record.bytes("ties_core").unwrap().chunks_exact(38).skip(1) {
@@ -950,7 +958,7 @@ mod tests {
         let engine = Engine::from_native_sim(&origin.encode().unwrap()).unwrap();
         let file = NativeRecordFile {
             robots: engine
-                .native_robot_records(&engine.slots.ids_in_slot_order())
+                .native_robot_records(&engine.slots.ids_in_slot_order(), true)
                 .unwrap(),
             tail: vec![],
         };
