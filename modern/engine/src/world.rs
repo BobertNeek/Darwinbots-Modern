@@ -13232,23 +13232,23 @@ fn apply_tie_resource(
         target
             .materials
             .publish_for_profile(&mut target.program.memory, native.is_some());
-        source.materials.mass = derived_mass(
-            source.materials.body,
-            source.materials.shell,
-            source.materials.chloroplasts,
-        )
-        .clamp(1.0, 32_000.0);
+        // Native Update_Ties runs after CalcMass. A resource transfer can
+        // change radius, but the mass remains available to UpdatePosition.
+        if native.is_none() {
+            for robot in [&mut *source, &mut *target] {
+                robot.materials.mass = derived_mass(
+                    robot.materials.body,
+                    robot.materials.shell,
+                    robot.materials.chloroplasts,
+                )
+                .clamp(1.0, 32_000.0);
+            }
+        }
         source.materials.radius = crate::physics::organism_radius(
             source.materials.body,
             source.materials.chloroplasts,
             fixed_bot_radii,
         );
-        target.materials.mass = derived_mass(
-            target.materials.body,
-            target.materials.shell,
-            target.materials.chloroplasts,
-        )
-        .clamp(1.0, 32_000.0);
         target.materials.radius = crate::physics::organism_radius(
             target.materials.body,
             target.materials.chloroplasts,

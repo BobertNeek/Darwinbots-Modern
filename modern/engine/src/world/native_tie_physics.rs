@@ -287,4 +287,70 @@ mod tests {
         assert!(!world.slots.get(second).unwrap().counters.multibot);
         assert_eq!(world.memory_at(second, MEM_MULTI).unwrap(), 0);
     }
+
+    #[test]
+    fn native_tie_keeps_the_pre_transfer_mass_through_sensing() {
+        let mut world = Engine::new_native(EngineConfig {
+            world_width: 3_000.0,
+            world_height: 2_000.0,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let recipient = world
+            .spawn_at(
+                LegacyDna::parse(
+                    "start 11 .tienum store -1 .tieloc store -1000 .tieval store stop",
+                )
+                .unwrap(),
+                [500.0, 1_000.0],
+            )
+            .unwrap();
+        let payer = world
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [800.0, 1_000.0])
+            .unwrap();
+        world
+            .ties
+            .push(TieState::legacy(recipient, payer, 300.0, 11, 1));
+        world.refresh_tie_projections();
+        let receiver = world.slots.get_mut(recipient).unwrap();
+        receiver.counters.age = 1;
+        receiver.materials.body = 490.0;
+        receiver.materials.shell = 200.0;
+        let starting_mass = derived_mass(490.0, 200.0, 0.0);
+        world.slots.get_mut(payer).unwrap().materials.energy = 3_000.0;
+
+        world.tick().unwrap();
+        let receiver = world.slots.get(recipient).unwrap();
+        assert_eq!(receiver.materials.body, 519.0);
+        assert_eq!(receiver.materials.mass, starting_mass);
+        assert_eq!(world.memory_at(recipient, 10).unwrap(), 1);
+        let next_mass = derived_mass(
+            receiver.materials.body,
+            receiver.materials.shell,
+            receiver.materials.chloroplasts,
+        );
+
+        world.tick().unwrap();
+        let receiver = world.slots.get(recipient).unwrap();
+        assert_eq!(receiver.materials.mass, next_mass);
+        assert_eq!(world.memory_at(recipient, 10).unwrap(), 2);
+    }
+
+    #[test]
+    fn genuine_cycle_283_tie_recipient_retains_the_original_mass_readback() {
+        // Original 2.48.32 cycle-283 capture SHA-256
+        // fd2cb2bd5e36044d459d238f561dcf60cec70bf1efcb6d1b90dde3078ad9927e.
+        let input = include_bytes!("../../tests/fixtures/db24832-original-user.sim");
+        let mut world = Engine::from_native_sim(input).unwrap();
+        world.tick_many(2).unwrap();
+        assert_eq!(world.native_cycle, Some(283));
+        let robot = world
+            .slots
+            .iter()
+            .filter_map(|slot| slot.organism.as_ref())
+            .find(|robot| robot.identity.absolute_id == 143)
+            .unwrap();
+        assert!(robot.materials.body > 500.0);
+        assert_eq!(robot.program.memory.read(10), 1);
+    }
 }
