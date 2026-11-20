@@ -1000,6 +1000,10 @@ mod tests {
         let mut resumed = SaveFile::decode(&modern).unwrap();
         imported.tick().unwrap();
         resumed.tick().unwrap();
+        assert_eq!(resumed.snapshot().organisms[0].position, center);
+        assert_eq!(resumed.snapshot().teleporters[0].sent, 0);
+        imported.tick().unwrap();
+        resumed.tick().unwrap();
         let moved = &resumed.snapshot().organisms[0];
         assert_ne!(moved.position, center);
         assert_ne!(moved.position, fixed_destination);

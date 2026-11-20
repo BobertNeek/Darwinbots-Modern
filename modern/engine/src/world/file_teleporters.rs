@@ -75,6 +75,14 @@ impl Engine {
         }
         for (index, (mut gateway, native_index)) in gateways.into_iter().enumerate() {
             let settings = gateway.clone();
+            let native_contact =
+                native_index.and_then(|index| self.teleporters[index].native_contact());
+            let touches_outbound = |position, radius| {
+                native_contact.map_or_else(
+                    || touches_gateway(&settings, position, radius),
+                    |contact| contact.touches(position, radius),
+                )
+            };
             let previous_guard = settings.backflow_guard.clone();
             let mut sent = 0_u64;
             let mut emitted_paths = Vec::new();
@@ -88,7 +96,7 @@ impl Engine {
                         continue;
                     };
                     let robot = self.slots.get(id)?;
-                    if !touches_gateway(&settings, organism.position, organism.radius)
+                    if !touches_outbound(organism.position, organism.radius)
                         || !settings.accepts(organism.vegetable, robot.flags.corpse)
                     {
                         continue;
@@ -127,8 +135,7 @@ impl Engine {
                         0.0,
                         self.config.fixed_bot_radii,
                     );
-                    if !touches_gateway(&settings, corpse.position, radius)
-                        || !settings.accepts(false, true)
+                    if !touches_outbound(corpse.position, radius) || !settings.accepts(false, true)
                     {
                         corpse_index += 1;
                         continue;
@@ -321,11 +328,18 @@ mod tests {
         gateway.inbound_path = root.path().to_path_buf();
         gateway.outbound_path = root.path().to_path_buf();
         world.add_teleporter(gateway.clone()).unwrap();
+        // Mixed historical flags must remain inert even with supplied cache fields.
+        gateway.native_top_left = Some([400.0; 2]);
+        gateway.native_contact_center = Some([500.0; 2]);
+        gateway.drift_horizontal = true;
+        gateway.drift_vertical = true;
+        world.teleporters[0] = gateway.clone();
         let saved = SaveFile::encode(&world).unwrap();
         let mut resumed = SaveFile::decode(&saved).unwrap();
         assert_eq!(SaveFile::encode(&resumed).unwrap(), saved);
         resumed.apply_teleporter_relocation();
         resumed.apply_file_teleporters().unwrap();
+        resumed.move_native_teleporters();
         assert_eq!(resumed.organism(id).unwrap().position, [500.0; 2]);
         assert_eq!(resumed.teleporters[0], gateway);
         assert_eq!(fs::read_dir(root.path()).unwrap().count(), 0);
@@ -447,7 +461,7 @@ mod tests {
         })
         .unwrap();
         let id = source
-            .spawn_at(LegacyDna::parse("stop").unwrap(), [500.0; 2])
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [500.0, 260.0])
             .unwrap();
         let mut tele = Teleporter::new(4, [500.0; 2], 100.0, [1000.0; 2]);
         tele.local = false;
@@ -458,6 +472,19 @@ mod tests {
         let native = source.export_native_sim().unwrap();
         let mut resumed = Engine::from_native_sim(&native).unwrap();
         assert_eq!(resumed.teleporters[0].center, [500.0; 2]);
+        resumed.apply_file_teleporters().unwrap();
+        assert_eq!(
+            resumed.population(),
+            1,
+            "the virgin contact cache is still at the origin"
+        );
+        let radius = resumed.snapshot().organisms[0].radius;
+        assert!(100.0 + radius < 240.0 && 100.0 + radius > 200.0);
+        resumed.move_native_teleporters();
+        assert_eq!(
+            resumed.teleporters[0].native_contact_center,
+            Some([500.0, 460.0])
+        );
         resumed.apply_file_teleporters().unwrap();
         assert_eq!(resumed.population(), 0);
         assert_eq!(resumed.teleporters[0].sent, 1);
