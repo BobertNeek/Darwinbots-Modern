@@ -584,6 +584,100 @@ impl LegacyDna {
         }
     }
 
+    /// Render the raw robot DNA as Darwinbots 2 writes it inside a snapshot record.
+    pub(crate) fn to_snapshot_source(&self) -> String {
+        let mut source = String::new();
+        let mut gene = 0;
+        let mut coding = false;
+        let mut following_cond = false;
+
+        // The final block is the master end sentinel. It is only needed for lookahead.
+        for (index, pair) in self.blocks.windows(2).enumerate() {
+            let block = pair[0];
+            let position = index + 1;
+            let previous_gene = gene;
+            let mut stops_gene = false;
+            if block.class == TokenClass::Flow {
+                match flow_instruction(block.value) {
+                    Some(FlowInstruction::Cond) => {
+                        if coding {
+                            source.push_str("\r\n");
+                            append_snapshot_gene_marker(&mut source, gene, "Ends", position - 1);
+                            source.push_str("\r\n");
+                        }
+                        following_cond = true;
+                        gene += 1;
+                        coding = true;
+                    }
+                    Some(FlowInstruction::Start | FlowInstruction::Else) => {
+                        if !following_cond {
+                            if coding {
+                                source.push_str("\r\n");
+                                append_snapshot_gene_marker(
+                                    &mut source,
+                                    gene,
+                                    "Ends",
+                                    position - 1,
+                                );
+                            }
+                            gene += 1;
+                        }
+                        following_cond = false;
+                        coding = true;
+                    }
+                    Some(FlowInstruction::Stop) => {
+                        stops_gene = coding;
+                        following_cond = false;
+                        coding = false;
+                    }
+                    _ => {}
+                }
+            }
+
+            if gene != previous_gene {
+                source.push_str("\r\n");
+                if gene > 1 {
+                    append_snapshot_gene_marker(&mut source, gene, "Begins", position);
+                    source.push_str("\r\n");
+                }
+            }
+
+            source.push(' ');
+            match block.class {
+                TokenClass::Number if pair[1].class != TokenClass::Store => {
+                    source.push_str(&block.value.to_string());
+                }
+                TokenClass::Number | TokenClass::Dereference => {
+                    if block.class == TokenClass::Dereference {
+                        source.push('*');
+                    }
+                    if let Some(name) = crate::sysvars::legacy_display_sysvar_name(block.value) {
+                        source.push('.');
+                        source.push_str(name);
+                    } else {
+                        source.push_str(&block.value.to_string());
+                    }
+                }
+                _ => source.push_str(block_token(block).unwrap_or("VOID")),
+            }
+            if matches!(
+                block.class,
+                TokenClass::Condition | TokenClass::Logic | TokenClass::Store | TokenClass::Flow
+            ) {
+                source.push_str("\r\n");
+            }
+            if stops_gene {
+                append_snapshot_gene_marker(&mut source, gene, "Ends", position);
+                source.push_str("\r\n");
+            }
+        }
+        if coding {
+            append_snapshot_gene_marker(&mut source, gene, "Ends", self.blocks.len() - 1);
+            source.push_str("\r\n");
+        }
+        source
+    }
+
     pub fn to_source(&self) -> String {
         let mut lines = vec![
             format!("'#generation: {}", self.metadata.generation),
@@ -629,6 +723,12 @@ impl LegacyDna {
         }
         dna.to_source()
     }
+}
+
+fn append_snapshot_gene_marker(source: &mut String, gene: usize, action: &str, position: usize) {
+    source.push_str(&format!(
+        "''''''''''''''''''''''''  Gene:  {gene} {action} at position  {position}  '''''''''''''''''''''''"
+    ));
 }
 
 fn parse_source_token(
