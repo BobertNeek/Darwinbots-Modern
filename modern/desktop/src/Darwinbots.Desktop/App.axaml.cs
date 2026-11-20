@@ -25,7 +25,8 @@ public sealed partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             var arguments = desktop.Args ?? [];
-            var setup = new SetupWindow(AvaloniaDesktopStorageService.Instance, allowLastExitResume: arguments.Length == 0);
+            var setup = new SetupWindow(AvaloniaDesktopStorageService.Instance,
+                allowLastExitResume: arguments.Length == 0, loadLastExitSettings: arguments.Length == 0);
             setup.WorldCreated += options =>
             {
                 var simulation = new MainWindow(arguments, options);

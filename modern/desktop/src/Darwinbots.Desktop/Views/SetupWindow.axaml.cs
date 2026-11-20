@@ -24,6 +24,7 @@ public sealed partial class SetupWindow : Window
     private GlobalSettings _globalSettings = new();
     private MutationSettingsUpdate _mutationSettings = MutationSettingsUpdate.Default;
     private IReadOnlyList<string>? _legacySettingsFields;
+    private bool _allowEmptyStartupRoster;
     private const string ZerobotDna = "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0";
     private const string FeederDna = "cond\r\nstart\r\n-2 .shoot store\r\n50 .shootval store\r\n314 rnd .aimdx store\r\nstop";
     private const string FeederReproducerDna = "cond\r\nstart\r\n-2 302 1 rnd rnd rnd rnd rnd rnd mult add .shoot store\r\n50 .shootval store\r\n314 rnd .aimdx store\r\nstop";
@@ -36,7 +37,8 @@ public sealed partial class SetupWindow : Window
     }
 
     public SetupWindow(IDesktopStorageService storage, float? nativeGaussianSpare = null, byte? nativeSunChange = null,
-        NativeProcessCachesSnapshot? nativeProcessCaches = null, WorldSetupOptions? speciesEditor = null, bool allowLastExitResume = true)
+        NativeProcessCachesSnapshot? nativeProcessCaches = null, WorldSetupOptions? speciesEditor = null,
+        bool allowLastExitResume = true, bool loadLastExitSettings = true)
     {
         _speciesEditor = speciesEditor is not null;
         _storage = storage ?? throw new ArgumentNullException(nameof(storage));
@@ -64,6 +66,7 @@ public sealed partial class SetupWindow : Window
             ApplyGlobalSettings(_profileSettings);
         }
         _workflow.Reset(ReadSetupOptions());
+        if (!_speciesEditor && loadLastExitSettings) RestoreLastExitSettings();
         OnboardingPanel.IsVisible = !_speciesEditor && _storage.IsFirstRun;
         ResumeMenuItem.IsVisible = !_speciesEditor && allowLastExitResume && _storage.FindLastExitSimulation() is not null;
         if (speciesEditor is not null)
@@ -80,6 +83,53 @@ public sealed partial class SetupWindow : Window
             FileMenu.IsVisible = FileMenu.IsEnabled = false;
             ViewMenu.IsVisible = ViewMenu.IsEnabled = false;
             SpeciesEditActions.IsVisible = true;
+        }
+    }
+
+    private void RestoreLastExitSettings()
+    {
+        var defaults = _workflow.Live;
+        try
+        {
+            if (_storage.LoadLastExitSettings() is not { } settings) return;
+            if (settings.GlobalSettings is not { Main: not null, League: not null, Costs: not null, AdvancedMutation: not null }
+                || settings.Recording is null || settings.Species is null || settings.Species.Any(species => species is null)
+                || settings.Gravity is not { Length: 2 } || settings.Obstacles is null)
+                throw new InvalidDataException("Last-exit settings contain incomplete world data.");
+            var setup = settings.ToWorldSetup();
+            var saved = settings.GlobalSettings;
+            // The global profile may have changed independently since the last quit.
+            setup = setup with { GlobalSettings = _profileSettings with
+            {
+                Main = _profileSettings.Main with
+                {
+                    BodyCutoff = saved.Main.BodyCutoff,
+                    GreedyEnforcement = saved.Main.GreedyEnforcement,
+                    SafeMode = settings.Recording.SafeModeBackup,
+                    EpigeneticReset = saved.Main.EpigeneticReset,
+                    EpigeneticAmplification = saved.Main.EpigeneticAmplification,
+                    TemporaryGeneData = saved.Main.TemporaryGeneData,
+                },
+                Costs = saved.Costs,
+                AdvancedMutation = saved.AdvancedMutation,
+                League = _profileSettings.League with
+                {
+                    DisqualificationRule = saved.League.DisqualificationRule,
+                    RecognitionFudging = saved.League.RecognitionFudging,
+                },
+            }};
+            _allowEmptyStartupRoster = setup.Species.Count == 0;
+            ApplySetupOptions(setup);
+            _workflow.Reset(setup);
+            SetupStatus.Text = "LAST EXIT SETTINGS LOADED";
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or JsonException
+            or ArgumentException or InvalidDataException or NotSupportedException or OverflowException
+            or InvalidOperationException or FormatException)
+        {
+            _allowEmptyStartupRoster = false;
+            ApplySetupOptions(defaults);
+            SetupStatus.Text = $"LAST EXIT SETTINGS LOAD FAILED · {error.Message}";
         }
     }
 
@@ -161,7 +211,7 @@ public sealed partial class SetupWindow : Window
 
     private void StartNew_Click(object? sender, RoutedEventArgs e)
     {
-        if (Species.Count == 0) { SetupStatus.Text = "Add at least one species."; return; }
+        if (!ValidateSpeciesRoster()) return;
         _workflow.UpdateWorkingCopy(_ => ReadSetupOptions());
         var options = _workflow.StartNew();
         if (_speciesEditor) { EditedOptions = options; StartNewRequested = true; Close(); }
@@ -170,7 +220,7 @@ public sealed partial class SetupWindow : Window
 
     private void Change_Click(object? sender, RoutedEventArgs e)
     {
-        if (Species.Count == 0) { SetupStatus.Text = "Add at least one species."; return; }
+        if (!ValidateSpeciesRoster()) return;
         _workflow.UpdateWorkingCopy(_ => ReadSetupOptions());
         var options = _workflow.Change();
         if (_speciesEditor) { EditedOptions = options; Close(); }
@@ -188,11 +238,20 @@ public sealed partial class SetupWindow : Window
     private void PublishWorld(WorldSetupOptions options) =>
         WorldCreated?.Invoke(options with { NativeGaussianSpare = _nativeGaussianSpare, NativeSunChange = _nativeSunChange, NativeProcessCaches = _nativeProcessCaches });
 
-    private WorldSetupOptions ReadSetupOptions()
+    private bool ValidateSpeciesRoster()
     {
+        if (Species.Count > 0 || (_allowEmptyStartupRoster && CurrentMode() == StartingMode.StarterBotsAndVegetables))
+            return true;
+        SetupStatus.Text = "Add at least one species.";
+        return false;
+    }
+
+    private WorldSetupOptions ReadSetupOptions(WorldSetupOptions? staged = null)
+    {
+        staged ??= _workflow.WorkingCopy;
         var sustenance = (ZerobotSustenance)Math.Max(0, Sustenance.SelectedIndex);
         var species = Species.Select((row, index) => row.ToImport(index)).ToList();
-        if (!_speciesEditor && CurrentMode() != StartingMode.StarterBotsAndVegetables)
+        if (!_speciesEditor && species.Count > 0 && CurrentMode() != StartingMode.StarterBotsAndVegetables)
         {
             if (sustenance == ZerobotSustenance.PhotosyntheticZerobots)
                 species[0] = species[0] with { Vegetable = true };
@@ -228,6 +287,10 @@ public sealed partial class SetupWindow : Window
             Recording = _environment.Recording ?? new Db2RecordingOptions(),
             AutoSpeciation = _environment.AutoSpeciation,
             SpeciationGeneticDistancePercent = _environment.SpeciationGeneticDistancePercent,
+            FixedBotRadii = staged.FixedBotRadii,
+            TiesEnabled = staged.TiesEnabled,
+            RobotFixingAllowed = staged.RobotFixingAllowed,
+            AsexualReproductionAllowed = staged.AsexualReproductionAllowed,
             ToroidalWorld = _environment.ToroidalWorld,
             WrapX = _environment.WrapX,
             WrapY = _environment.WrapY,
@@ -235,6 +298,8 @@ public sealed partial class SetupWindow : Window
             Species = species,
             GlobalSettings = _globalSettings,
             MutationSettings = _mutationSettings,
+            ShapesVisible = _environment.ShapesVisible ?? false,
+            Obstacles = staged.Obstacles,
             LegacySettingsFields = _legacySettingsFields,
         };
     }
@@ -410,7 +475,7 @@ public sealed partial class SetupWindow : Window
         ZerobotMode.IsChecked = setup.StartingMode == StartingMode.Zerobots;
         ZerobotVegetableMode.IsChecked = setup.StartingMode == StartingMode.ZerobotsAndVegetables;
         LoadMode(setup.StartingMode);
-        if (setup.Species.Count > 0)
+        if (setup.Species.Count > 0 || _allowEmptyStartupRoster)
         {
             Species.Clear();
             foreach (var species in setup.Species)
@@ -424,6 +489,7 @@ public sealed partial class SetupWindow : Window
 
     private void NewWorld_Click(object? sender, RoutedEventArgs e)
     {
+        _allowEmptyStartupRoster = false;
         _environment = EnvironmentUpdate.Default;
         ApplyGlobalSettings(_profileSettings);
         Backend.SelectedIndex = 0;
@@ -437,7 +503,7 @@ public sealed partial class SetupWindow : Window
         AutomaticProgression.IsChecked = true;
         StarterMode.IsChecked = true;
         Mode_Checked(StarterMode, e);
-        _workflow.Reset(ReadSetupOptions());
+        _workflow.Reset(ReadSetupOptions(new WorldSetupOptions()));
         SetupStatus.Text = "New world defaults restored.";
     }
 
