@@ -18,7 +18,6 @@
     <Style Selector="Window">
       <Setter Property="Background" Value="{DynamicResource WindowBrush}" />
       <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
-      <Setter Property="FontFamily" Value="{x:Static typography:DesktopFonts.Body}" />
     </Style>
     <Style Selector="TextBlock.section">
       <Setter Property="FontFamily" Value="{x:Static typography:DesktopFonts.Heading}" />
