@@ -10752,6 +10752,13 @@ impl Engine {
             first_port as i32,
             second_port as i32,
         ));
+        // DB2O records lack a Multibot flag. This adapter already reconstructs
+        // their ties as hardened, so initialize both endpoints consistently.
+        for id in [first, second] {
+            let robot = self.slots.get_mut(id)?;
+            robot.counters.multibot = true;
+            robot.program.memory.write(MEM_MULTI, 1);
+        }
         self.rebuild_native_tie_index();
         Ok(())
     }

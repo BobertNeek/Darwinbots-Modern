@@ -330,6 +330,16 @@ public sealed partial class NativeEngineClient : IEngineClient
             ?? throw new InvalidDataException("Native engine returned no startup species DNA.");
     }
 
+    public IReadOnlyList<OrganismKey> ListLegacyOrganismGroup(OrganismKey seed)
+    {
+        var result = ExecuteBatchForResult(new
+        {
+            version = 1,
+            commands = new[] { new { type = "list_legacy_organism_group", slot = seed.Slot, generation = seed.Generation } },
+        }, "resolve organism group");
+        return result.GetProperty("results")[0].EnumerateArray().Select(ReadKey).ToArray();
+    }
+
     public byte[] ExportOrganismGroup(IReadOnlyList<OrganismKey> organisms)
     {
         ArgumentNullException.ThrowIfNull(organisms);
