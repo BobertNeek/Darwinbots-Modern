@@ -260,6 +260,10 @@ enum EngineCommand {
         name: String,
         color: u32,
     },
+    ForkRobotAndDescendants {
+        slot: u32,
+        generation: u32,
+    },
     UpdateLegacyRestrictions {
         robot_fixing_allowed: bool,
         asexual_reproduction_allowed: bool,
@@ -1045,6 +1049,9 @@ fn db_engine_command_batch_impl(
             } => engine
                 .make_new_species(OrganismId::new(slot, generation), name, color)
                 .map(|species| serde_json::json!({ "species": species.0 })),
+            EngineCommand::ForkRobotAndDescendants { slot, generation } => engine
+                .fork_robot_and_descendants(OrganismId::new(slot, generation))
+                .map(|name| serde_json::json!({ "name": name })),
             EngineCommand::UpdateLegacyRestrictions {
                 robot_fixing_allowed,
                 asexual_reproduction_allowed,

@@ -267,6 +267,13 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task MakeNewSpeciesAsync(uint slot, uint generation, string name, uint color, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.MakeNewSpecies(slot, generation, name, color), cancellationToken);
 
+    public async Task<string> ForkRobotAndDescendantsAsync(uint slot, uint generation, CancellationToken cancellationToken = default)
+    {
+        var name = string.Empty;
+        await Enqueue(engine => name = engine.ForkRobotAndDescendants(slot, generation), cancellationToken).ConfigureAwait(false);
+        return name;
+    }
+
     public Task UpdateLegacyRestrictionsAsync(bool robotFixingAllowed, bool asexualReproductionAllowed, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.UpdateLegacyRestrictions(robotFixingAllowed, asexualReproductionAllowed), cancellationToken);
 
