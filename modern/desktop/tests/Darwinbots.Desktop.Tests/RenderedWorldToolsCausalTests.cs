@@ -1,11 +1,14 @@
 using System.Reflection;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using Darwinbots.Desktop.Controls;
 using Darwinbots.Desktop.Core;
 using Darwinbots.Desktop.Core.LegacyMenus;
+using Darwinbots.Desktop.ViewModels;
 using Darwinbots.Desktop.Views;
 using Xunit;
 
@@ -13,6 +16,83 @@ namespace Darwinbots.Desktop.Tests;
 
 public sealed class RenderedWorldToolsCausalTests
 {
+    [Fact]
+    public async Task DeleteTenRandomShapesUsesThePausedNativeWorldWithoutConfirmation()
+    {
+        var setup = new WorldSetupOptions
+        {
+            Backend = "Cpu", Seed = 95, PopulationCapacity = 64,
+            WorldWidth = 4_000, WorldHeight = 2_000,
+        };
+        uint[] ids = [78, 3, 240, 19, 700, 54, 7, 168, 42, 81, 130, 13, 502, 22];
+        using var fixture = new NativeEngineClient(setup);
+        for (var index = 0; index < ids.Length; index++)
+        {
+            var left = 100 + index * 260;
+            fixture.AddObstacle(new ObstacleSnapshot(ids[index], [left, 500], [left + 180, 700]));
+        }
+        var save = fixture.Save();
+        using var reference = new NativeEngineClient(setup);
+        reference.Load(save);
+        Assert.Equal(10, reference.RemoveNativeRandomObstacles());
+        var survivors = reference.Snapshot().Obstacles.Select(shape => shape.Id).ToArray();
+        Assert.Equal(ids.Where(survivors.Contains), survivors);
+        var removedId = ids.First(id => !survivors.Contains(id));
+        var storage = new AuditStorageService { OpenedSimulation = save };
+
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], setup, NativeEngineClientFactory.Instance, storage)
+            {
+                WindowState = WindowState.Normal,
+                Width = 1_200,
+                Height = 800,
+            };
+            window.Show();
+            try
+            {
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                var load = menu.FindCommandItem(LegacyCommandId.FileLoadSimulation)!;
+                await WaitFor(() => load.IsEnabled, () => "The simulation did not finish starting.");
+                var session = TryField<SimulationSession>(window, "_session")!;
+                var viewModel = Assert.IsType<MainWindowViewModel>(window.DataContext);
+                load.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => viewModel.Status == "LOADED" && session.LatestSnapshot.Obstacles.Count == ids.Length,
+                    () => "The saved shapes were not loaded.");
+                var before = session.LatestSnapshot;
+                Assert.Equal(ids, before.Obstacles.Select(shape => shape.Id));
+
+                var viewport = window.FindControl<WorldViewport>("Viewport")!;
+                var editShape = window.FindControl<Button>("EditShapeButton")!;
+                var removedShape = Assert.Single(before.Obstacles, shape => shape.Id == removedId);
+                var scaleX = viewport.Bounds.Width / before.WorldSize[0];
+                var scaleY = viewport.Bounds.Height / before.WorldSize[1];
+                if (viewport.FixedRatio) scaleX = scaleY = Math.Min(scaleX, scaleY);
+                var point = viewport.TranslatePoint(new Point(
+                    (removedShape.Minimum[0] + removedShape.Maximum[0]) * 0.5 * scaleX * viewport.Zoom + viewport.Pan.X,
+                    (removedShape.Minimum[1] + removedShape.Maximum[1]) * 0.5 * scaleY * viewport.Zoom + viewport.Pan.Y), window);
+                Assert.True(point.HasValue);
+                window.MouseDown(point.Value, MouseButton.Left, RawInputModifiers.None);
+                window.MouseUp(point.Value, MouseButton.Left, RawInputModifiers.None);
+                await WaitFor(() => editShape.IsEnabled, () => "The shape was not selected in the world viewport.");
+
+                var delete = menu.FindCommandItem(LegacyCommandId.ObjectsDeleteTenRandomShapes)!;
+                Assert.True(delete.IsEnabled);
+                delete.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => session.LatestSnapshot.Obstacles.Count == ids.Length - 10 && !editShape.IsEnabled,
+                    () => "The menu did not remove ten shapes immediately and clear the removed selection.");
+                Assert.DoesNotContain(window.OwnedWindows, owned => owned is DeleteConfirmationWindow);
+                Assert.Equal(survivors, session.LatestSnapshot.Obstacles.Select(shape => shape.Id));
+                Assert.Equal(before.Tick, session.LatestSnapshot.Tick);
+            }
+            finally
+            {
+                foreach (var ownedWindow in window.OwnedWindows.ToArray()) ownedWindow.Close();
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
     [Fact]
     public async Task ShapesToolCreatesWithLiveDimensionsAndResetsOnLoadedWorld()
     {

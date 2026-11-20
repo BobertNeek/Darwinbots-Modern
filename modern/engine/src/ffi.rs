@@ -220,6 +220,7 @@ enum EngineCommand {
     RemoveObstacle {
         id: u32,
     },
+    RemoveNativeRandomObstacles,
     AddTeleporter {
         #[serde(flatten)]
         teleporter: crate::Teleporter,
@@ -1005,6 +1006,9 @@ fn db_engine_command_batch_impl(
             EngineCommand::RemoveObstacle { id } => {
                 engine.remove_obstacle(id).map(|_| serde_json::Value::Null)
             }
+            EngineCommand::RemoveNativeRandomObstacles => engine
+                .remove_native_random_obstacles()
+                .map(|removed| serde_json::json!(removed)),
             EngineCommand::AddTeleporter { teleporter } => engine
                 .add_teleporter(teleporter)
                 .map(|_| serde_json::Value::Null),

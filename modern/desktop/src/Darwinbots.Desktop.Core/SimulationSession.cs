@@ -243,6 +243,13 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task RemoveObstacleAsync(uint id, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.RemoveObstacle(id), cancellationToken);
 
+    public async Task<int?> RemoveNativeRandomObstaclesAsync(CancellationToken cancellationToken = default)
+    {
+        int? removed = null;
+        await Enqueue(engine => removed = engine.RemoveNativeRandomObstacles(), cancellationToken).ConfigureAwait(false);
+        return removed;
+    }
+
     public Task AddTeleporterAsync(TeleporterSnapshot teleporter, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.AddTeleporter(teleporter), cancellationToken);
 

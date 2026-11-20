@@ -757,7 +757,7 @@ public sealed partial class MainWindow : Window
             async _ => await AddRandomObstaclesCommandAsync(10));
         handlers[LegacyCommandId.ObjectsDeleteTenRandomShapes] = Handler(
             EngineState,
-            async _ => await DeleteRandomObstaclesCommandAsync(10));
+            async _ => await DeleteRandomObstaclesCommandAsync());
         handlers[LegacyCommandId.ObjectsHorizontalMaze] = MazeHandler(MazePreset.Horizontal);
         handlers[LegacyCommandId.ObjectsVerticalMaze] = MazeHandler(MazePreset.Vertical);
         handlers[LegacyCommandId.ObjectsSprial] = MazeHandler(MazePreset.Spiral);
@@ -1858,17 +1858,37 @@ public sealed partial class MainWindow : Window
         finally { _advanceGate.Release(); }
     }
 
-    private async Task<LegacyCommandResult> DeleteRandomObstaclesCommandAsync(int count)
+    private async Task<LegacyCommandResult> DeleteRandomObstaclesCommandAsync()
     {
-        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        var selected = _session.LatestSnapshot.Obstacles
-            .OrderBy(obstacle => HashCode.Combine(obstacle.Id, _session.LatestSnapshot.Tick))
-            .Take(count)
+        if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        await _advanceGate.WaitAsync();
+        try
+        {
+            if (_navigationInFlight || !IsVisible || !ReferenceEquals(_session, session))
+                return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+            if (await session.RemoveNativeRandomObstaclesAsync() is { } removed)
+            {
+                if (_selectedFeature is { Kind: WorldFeatureKind.Obstacle } feature
+                    && !session.LatestSnapshot.Obstacles.Any(obstacle => obstacle.Id == feature.Id))
+                {
+                    _selectedFeature = null;
+                    Viewport.SelectFeature(null);
+                    RefreshFeatureEditorButtons();
+                }
+                return LegacyCommandResult.Success($"DELETED {removed} RANDOM SHAPES");
+            }
+        }
+        finally { _advanceGate.Release(); }
+
+        var snapshot = session.LatestSnapshot;
+        var selected = snapshot.Obstacles
+            .OrderBy(obstacle => HashCode.Combine(obstacle.Id, snapshot.Tick))
+            .Take(10)
             .ToArray();
         if (selected.Length == 0) return LegacyCommandResult.Success("DELETED 0 RANDOM SHAPES");
         if (!await ConfirmObstacleDeletionAsync(selected.Length))
             return LegacyCommandResult.Failure("DELETION CANCELLED");
-        foreach (var obstacle in selected) await _session.RemoveObstacleAsync(obstacle.Id);
+        foreach (var obstacle in selected) await session.RemoveObstacleAsync(obstacle.Id);
         return LegacyCommandResult.Success($"DELETED {selected.Length} RANDOM SHAPES");
     }
 

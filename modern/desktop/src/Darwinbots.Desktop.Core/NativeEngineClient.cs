@@ -435,6 +435,14 @@ public sealed partial class NativeEngineClient : IEngineClient
     public void RemoveObstacle(uint id) => ExecuteBatch(
         new { version = 1, commands = new[] { new { type = "remove_obstacle", id } } }, "remove obstacle");
 
+    public int? RemoveNativeRandomObstacles()
+    {
+        var result = ExecuteBatchForResult(
+            new { version = 1, commands = new[] { new { type = "remove_native_random_obstacles" } } },
+            "remove native random obstacles").GetProperty("results")[0];
+        return result.ValueKind == JsonValueKind.Null ? null : result.GetInt32();
+    }
+
     public void AddTeleporter(TeleporterSnapshot teleporter)
     {
         ValidateTeleporter(teleporter);
