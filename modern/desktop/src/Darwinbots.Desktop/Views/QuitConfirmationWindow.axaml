@@ -1,0 +1,13 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Darwinbots.Desktop.Views.QuitConfirmationWindow"
+        Title="Warning!" Width="360" SizeToContent="Height" CanResize="False"
+        WindowStartupLocation="CenterOwner">
+  <Grid RowDefinitions="Auto,Auto" Margin="20" RowSpacing="20">
+    <TextBlock x:Name="QuitMessage" Text="Are you sure you want to quit?" TextWrapping="Wrap"/>
+    <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+      <Button x:Name="YesButton" Content="Yes" IsDefault="True" Click="Yes_Click"/>
+      <Button x:Name="NoButton" Content="No" IsCancel="True" Click="No_Click"/>
+    </StackPanel>
+  </Grid>
+</Window>
