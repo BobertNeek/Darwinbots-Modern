@@ -86,6 +86,72 @@ public sealed record DesktopSettings
         GlobalSettings = setup.GlobalSettings,
     };
 
+    public static DesktopSettings FromLiveWorld(
+        WorldSetupOptions startup, WorldConfiguration configuration, EngineSnapshot snapshot)
+    {
+        var environment = configuration.Environment;
+        var settings = startup.GlobalSettings;
+        return FromWorldSetup(startup with
+        {
+            Backend = snapshot.Backend is "CPU" or "GPU" ? snapshot.Backend : startup.Backend,
+            Seed = configuration.Seed ?? startup.Seed,
+            PopulationCapacity = configuration.PopulationCapacity,
+            VegetablePopulationCap = configuration.VegetablePopulationCap,
+            WorldWidth = snapshot.WorldSize[0],
+            WorldHeight = snapshot.WorldSize[1],
+            MetabolismCost = environment.MetabolismCost,
+            VegetableEnergyPerTick = environment.VegetableEnergyPerTick,
+            SunlightEnergy = environment.SunlightEnergy,
+            Gravity = environment.Gravity,
+            Drag = environment.Drag,
+            BrownianMotion = environment.BrownianMotion,
+            Physics = environment.Physics,
+            Shots = environment.Shots,
+            CorpseDecay = environment.CorpseDecay ?? new(),
+            Waste = environment.Waste ?? new(),
+            Vegetation = environment.Vegetation,
+            Recording = environment.Recording ?? new(),
+            AutoSpeciation = environment.AutoSpeciation,
+            SpeciationGeneticDistancePercent = environment.SpeciationGeneticDistancePercent,
+            ToroidalWorld = environment.ToroidalWorld,
+            WrapX = environment.WrapX,
+            WrapY = environment.WrapY,
+            ShapesVisible = environment.ShapesVisible ?? startup.ShapesVisible,
+            FixedBotRadii = configuration.FixedBotRadii ?? startup.FixedBotRadii,
+            TiesEnabled = snapshot.TiesEnabled,
+            RobotFixingAllowed = snapshot.RobotFixingAllowed,
+            AsexualReproductionAllowed = snapshot.AsexualReproductionAllowed,
+            Obstacles = snapshot.Obstacles,
+            Species = (configuration.StartupSpecies ?? configuration.Species)
+                .Select(species => species with { SpeciesId = null })
+                .ToArray(),
+            MutationSettings = new(snapshot.MutationSettings.Enabled, snapshot.MutationSettings.GlobalMultiplier, [])
+            {
+                Profile = snapshot.MutationSettings.Profile,
+            },
+            GlobalSettings = settings with
+            {
+                Main = settings.Main with
+                {
+                    BodyCutoff = configuration.BodyCutoff,
+                    GreedyEnforcement = configuration.GreedyReproduction,
+                    SafeMode = environment.Recording?.SafeModeBackup ?? false,
+                    // Configuration already contains the main epigenetic factors.
+                    EpigeneticReset = false,
+                    EpigeneticAmplification = 1.0,
+                    TemporaryGeneData = false,
+                },
+                Costs = configuration.Costs,
+                AdvancedMutation = configuration.AdvancedMutation,
+                League = settings.League with
+                {
+                    DisqualificationRule = configuration.DisqualificationRule,
+                    RecognitionFudging = configuration.RecognitionFudging,
+                },
+            },
+        });
+    }
+
     public WorldSetupOptions ToWorldSetup(WorldSetupOptions? fallback = null)
     {
         fallback ??= new WorldSetupOptions();

@@ -346,6 +346,20 @@ public sealed class SimulationSession : IAsyncDisposable
         return save ?? throw new InvalidDataException("Engine returned no save data.");
     }
 
+    public async Task<(DesktopSettings Settings, byte[] Simulation)> CaptureLastExitAsync(
+        WorldSetupOptions startup, CancellationToken cancellationToken = default)
+    {
+        (DesktopSettings, byte[])? captured = null;
+        await Enqueue(engine =>
+        {
+            var configuration = engine.ReadConfiguration()
+                ?? throw new InvalidOperationException("Live simulation settings are unavailable.");
+            var settings = DesktopSettings.FromLiveWorld(startup, configuration, engine.Snapshot());
+            captured = (settings, engine.Save());
+        }, cancellationToken).ConfigureAwait(false);
+        return captured ?? throw new InvalidDataException("Engine returned no last-exit data.");
+    }
+
     public async Task<float?> ReadNativeGaussianSpareAsync(CancellationToken cancellationToken = default)
     {
         float? spare = null;
