@@ -35,7 +35,11 @@ public sealed class SimulationSession : IAsyncDisposable
 
     public Task StepRecordingDeathsAsync(
         uint count, Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted, CancellationToken cancellationToken = default) =>
-        Enqueue(engine => engine.TickRecordingDeaths(count, onCommitted), cancellationToken, measureTicks: true);
+        StepRecordingDeathsAsync(count, 100, onCommitted, cancellationToken);
+
+    public Task StepRecordingDeathsAsync(uint count, int weightPercent,
+        Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted, CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.TickRecordingDeaths(count, weightPercent, onCommitted), cancellationToken, measureTicks: true);
 
     public async Task<OrganismKey?> FindBestRobotAsync(bool energyWeighting, CancellationToken cancellationToken = default)
         => await FindBestRobotAsync(energyWeighting ? 100 : 0, cancellationToken).ConfigureAwait(false);
@@ -145,21 +149,57 @@ public sealed class SimulationSession : IAsyncDisposable
         {
             // Read the still-live state and remove it at one session boundary.
             snapshot = engine.Snapshot();
-            foreach (var key in stableKeys)
-            {
-                var robot = snapshot.Organisms.FirstOrDefault(value => value.Slot == key.Slot && value.Generation == key.Generation)
-                    ?? throw new InvalidDataException("A selected robot is no longer available.");
-                if (robot.DnaLength == 1 || (excludeVegetables && robot.Vegetable)) continue;
-                var source = engine.ExportDna(key.Slot, key.Generation);
-                if (!string.IsNullOrWhiteSpace(source)) dna[key] = source;
-            }
-
-            if (stableKeys.Length == 1 && !suppressDeathPoffs)
-                engine.Remove(stableKeys[0].Slot, stableKeys[0].Generation);
-            else
-                engine.RemoveMany(stableKeys, suppressDeathPoffs);
+            dna = CaptureSelectedDna(engine, snapshot, stableKeys, excludeVegetables);
+            RemoveSelected(engine, stableKeys, suppressDeathPoffs);
         }, cancellationToken).ConfigureAwait(false);
         return (snapshot, dna);
+    }
+
+    public async Task<IReadOnlyList<DeathRecordSnapshot>> RemoveRecordingDeathsAsync(
+        IReadOnlyList<OrganismKey> organisms, bool suppressDeathPoffs, bool excludeVegetables,
+        int weightPercent, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(organisms);
+        if (organisms.Count == 0)
+            throw new ArgumentException("At least one organism is required.", nameof(organisms));
+        var stableKeys = organisms.ToArray();
+        IReadOnlyList<DeathRecordSnapshot> records = [];
+        await Enqueue(engine =>
+        {
+            if (engine.RemoveRecordingDeaths(stableKeys, suppressDeathPoffs, excludeVegetables, weightPercent) is { } native)
+            {
+                records = native;
+                return;
+            }
+            var snapshot = engine.Snapshot();
+            var dna = CaptureSelectedDna(engine, snapshot, stableKeys, excludeVegetables);
+            records = Db2GenomeRecordFile.ProjectLiving(snapshot, dna).ToArray();
+            RemoveSelected(engine, stableKeys, suppressDeathPoffs);
+        }, cancellationToken).ConfigureAwait(false);
+        return records;
+    }
+
+    private static Dictionary<OrganismKey, string> CaptureSelectedDna(IEngineClient engine, EngineSnapshot snapshot,
+        IReadOnlyList<OrganismKey> keys, bool excludeVegetables)
+    {
+        var dna = new Dictionary<OrganismKey, string>();
+        foreach (var key in keys)
+        {
+            var robot = snapshot.Organisms.FirstOrDefault(value => value.Slot == key.Slot && value.Generation == key.Generation)
+                ?? throw new InvalidDataException("A selected robot is no longer available.");
+            if (robot.DnaLength == 1 || (excludeVegetables && robot.Vegetable)) continue;
+            var source = engine.ExportDna(key.Slot, key.Generation);
+            if (!string.IsNullOrWhiteSpace(source)) dna[key] = source;
+        }
+        return dna;
+    }
+
+    private static void RemoveSelected(IEngineClient engine, OrganismKey[] keys, bool suppressDeathPoffs)
+    {
+        if (keys.Length == 1 && !suppressDeathPoffs)
+            engine.Remove(keys[0].Slot, keys[0].Generation);
+        else
+            engine.RemoveMany(keys, suppressDeathPoffs);
     }
 
     public Task SetDeathPoffsEnabledAsync(bool enabled, CancellationToken cancellationToken = default) =>
@@ -177,6 +217,28 @@ public sealed class SimulationSession : IAsyncDisposable
                 dna[new OrganismKey(robot.Slot, robot.Generation)] = engine.ExportDna(robot.Slot, robot.Generation);
         }, cancellationToken).ConfigureAwait(false);
         return (snapshot, dna);
+    }
+
+    public async Task<GenomeRecordCapture> CaptureLivingSnpAsync(int weightPercent, CancellationToken cancellationToken = default)
+    {
+        GenomeRecordCapture capture = new(0, []);
+        await Enqueue(engine =>
+        {
+            if (engine.CaptureLivingSnp(weightPercent) is { } native)
+            {
+                capture = native;
+                return;
+            }
+            var snapshot = engine.Snapshot();
+            var dna = new Dictionary<OrganismKey, string>();
+            foreach (var robot in snapshot.Organisms)
+            {
+                if (robot.DnaLength == 1) continue;
+                dna[new OrganismKey(robot.Slot, robot.Generation)] = engine.ExportDna(robot.Slot, robot.Generation);
+            }
+            capture = new(snapshot.Tick, Db2GenomeRecordFile.ProjectLiving(snapshot, dna).ToArray());
+        }, cancellationToken).ConfigureAwait(false);
+        return capture;
     }
 
     public Task MoveAsync(uint slot, uint generation, float[] position, CancellationToken cancellationToken = default) =>

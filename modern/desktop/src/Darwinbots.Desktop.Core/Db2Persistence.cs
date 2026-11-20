@@ -147,17 +147,19 @@ public static class Db2GenomeRecordFile
     internal static string EncodeLiving(
         EngineSnapshot snapshot,
         IReadOnlyDictionary<OrganismKey, string> dnaByOrganism,
-        bool includeHeader)
+        bool includeHeader) => EncodeGenomeRecords(ProjectLiving(snapshot, dnaByOrganism), includeHeader);
+
+    internal static IEnumerable<DeathRecordSnapshot> ProjectLiving(
+        EngineSnapshot snapshot, IReadOnlyDictionary<OrganismKey, string> dnaByOrganism)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         ArgumentNullException.ThrowIfNull(dnaByOrganism);
-        var builder = new StringBuilder();
-        if (includeHeader) builder.Append(Header).Append("\r\n");
         foreach (var organism in snapshot.Organisms)
         {
             var key = new OrganismKey(organism.Slot, organism.Generation);
             if (!dnaByOrganism.TryGetValue(key, out var dna)) continue;
-            Append(builder, Record(
+            yield return new DeathRecordSnapshot(
+                snapshot.Tick,
                 organism.UniqueId == 0 ? organism.Slot : organism.UniqueId,
                 organism.ParentAbsoluteId ?? organism.Parents?.FirstOrDefault()?.Slot ?? 0,
                 organism.IsCorpse ? "Corpse" : SpeciesName(snapshot, organism.Species),
@@ -171,22 +173,26 @@ public static class Db2GenomeRecordFile
                 organism.Kills,
                 organism.Energy + organism.Body * 10,
                 organism.Chloroplasts,
-                dna));
+                dna,
+                organism.MutationLog);
         }
-        return builder.ToString();
     }
 
     public static string EncodeDead(
         IReadOnlyList<DeathRecordSnapshot> deaths,
+        bool includeHeader) => EncodeGenomeRecords(deaths, includeHeader);
+
+    public static string EncodeGenomeRecords(
+        IEnumerable<DeathRecordSnapshot> records,
         bool includeHeader)
     {
         var builder = new StringBuilder();
         if (includeHeader) builder.Append(Header).Append("\r\n");
-        foreach (var record in deaths)
+        foreach (var record in records)
             Append(builder, Record(
                 record.Id, record.ParentId, record.Founder, record.Generation, record.BirthCycle,
                 record.Age, record.Mutations, record.NewMutations, record.DnaLength, record.Offspring,
-                record.Kills, record.Energy, record.Chloroplasts, record.Dna));
+                record.Kills, record.Energy, record.Chloroplasts, record.Dna, record.Fitness));
         return builder.ToString();
     }
 
@@ -270,9 +276,9 @@ public static class Db2GenomeRecordFile
         ParseUInt32(fields[8], "DNA length"),
         ParseUInt64(fields[9], "offspring number"),
         ParseUInt64(fields[10], "kills"),
-        ParseInt(fields[11], "fitness"),
-        ParseInt(fields[12], "energy"),
-        ParseInt(fields[13], "chloroplasts"),
+        ParseFitness(fields[11]),
+        ParseResource(fields[12], "energy"),
+        ParseResource(fields[13], "chloroplasts"),
         string.Empty);
 
     private static Db2GenomeRecord Record(
@@ -287,10 +293,11 @@ public static class Db2GenomeRecordFile
         uint dnaLength,
         ulong offspring,
         ulong kills,
-        int energy,
-        int chloroplasts,
-        string dna) => new(id, parentId, founder, generation, birthCycle, age, mutations, newMutations,
-        dnaLength, offspring, kills, Math.Max(0, energy), energy, chloroplasts, dna);
+        float energy,
+        float chloroplasts,
+        string dna,
+        double? fitness = null) => new(id, parentId, founder, generation, birthCycle, age, mutations, newMutations,
+        dnaLength, offspring, kills, fitness ?? Math.Max(0, energy), energy, chloroplasts, dna);
 
     private static bool LooksLikeRecord(string line)
     {
@@ -354,8 +361,13 @@ public static class Db2GenomeRecordFile
             ? parsed
             : throw new InvalidDataException($"DB2 genome record {label} is invalid.");
 
-    private static int ParseInt(string value, string label) =>
-        int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed)
+    private static double ParseFitness(string value) =>
+        double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed) && double.IsFinite(parsed)
+            ? parsed
+            : throw new InvalidDataException("DB2 genome record fitness is invalid.");
+
+    private static float ParseResource(string value, string label) =>
+        float.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed) && float.IsFinite(parsed)
             ? parsed
             : throw new InvalidDataException($"DB2 genome record {label} is invalid.");
 
@@ -380,9 +392,9 @@ public static class Db2GenomeRecordFile
             record.DnaLength.ToString(CultureInfo.InvariantCulture),
             record.Offspring.ToString(CultureInfo.InvariantCulture),
             record.Kills.ToString(CultureInfo.InvariantCulture),
-            record.Fitness.ToString(CultureInfo.InvariantCulture),
-            record.Energy.ToString(CultureInfo.InvariantCulture),
-            record.Chloroplasts.ToString(CultureInfo.InvariantCulture),
+            record.Fitness.ToString("G15", CultureInfo.InvariantCulture),
+            record.Energy.ToString("G7", CultureInfo.InvariantCulture),
+            record.Chloroplasts.ToString("G7", CultureInfo.InvariantCulture),
         })).Append("\r\n");
         builder.Append(record.Dna);
         if (!record.Dna.EndsWith('\n')) builder.Append("\r\n");
@@ -407,9 +419,9 @@ public sealed record Db2GenomeRecord(
     uint DnaLength,
     ulong Offspring,
     ulong Kills,
-    int Fitness,
-    int Energy,
-    int Chloroplasts,
+    double Fitness,
+    float Energy,
+    float Chloroplasts,
     string Dna);
 
 public sealed record Db2OrganismFile(

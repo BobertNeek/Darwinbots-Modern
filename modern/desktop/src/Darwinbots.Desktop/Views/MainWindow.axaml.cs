@@ -988,9 +988,10 @@ public sealed partial class MainWindow : Window
     private async Task<LegacyCommandResult> KillRobotsAsync(
         SimulationSession session, OrganismKey[] keys, bool suppressDeathPoffs, string status)
     {
-        (EngineSnapshot Snapshot, IReadOnlyDictionary<OrganismKey, string> Dna)? recording = null;
+        IReadOnlyList<DeathRecordSnapshot> removed = [];
         if (_deadRecordingEnabled)
-            recording = await session.RemoveWithDnaAsync(keys, suppressDeathPoffs, _excludeRepopulatingDead);
+            removed = await session.RemoveRecordingDeathsAsync(keys, suppressDeathPoffs, _excludeRepopulatingDead,
+                _globalSettings.Main.EffectiveFindBestWeight);
         else if (suppressDeathPoffs)
             await session.RemoveManyAsync(keys, suppressDeathPoffs: true);
         else
@@ -998,15 +999,13 @@ public sealed partial class MainWindow : Window
         _viewModel.ClearSelection();
         Viewport.SelectSlot(null);
 
-        if (recording is not { } removed || removed.Dna.Count == 0)
+        if (removed.Count == 0)
             return LegacyCommandResult.Success(status);
 
         await DeadRecordingGate.WaitAsync();
         try
         {
-            var (appended, error) = await AppendDeadRecordsAsync(
-                (includeHeader, format) => LegacyRecordingSerializer.SerializeRemoved(removed.Snapshot, removed.Dna, includeHeader, format),
-                MutationHistories(removed.Snapshot, removed.Dna).ToArray());
+            var (appended, error) = await AppendDeadRecordsAsync(removed);
             return LegacyCommandResult.Success(appended ? status : $"{status} · {error ?? "DEAD RECORDING UNAVAILABLE"}");
         }
         finally { DeadRecordingGate.Release(); }
@@ -1368,13 +1367,12 @@ public sealed partial class MainWindow : Window
     private async Task<LegacyCommandResult> SaveLivingSnapshotAsync()
     {
         if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        var (snapshot, dna) = await _session.CaptureLivingGenomeRecordsAsync();
-        var suggestedFileName = $"darwinbots-living-{snapshot.Tick}.snp";
-        var format = LegacyRecordingSerializer.Select(LegacyCommandId.RecordingSnapshotLiving).Format;
-        var bytes = LegacyDnaText.Encode(LegacyRecordingSerializer.SerializeLiving(snapshot, dna, format));
+        var capture = await _session.CaptureLivingSnpAsync(_globalSettings.Main.EffectiveFindBestWeight);
+        var suggestedFileName = $"darwinbots-living-{capture.Tick}.snp";
+        var bytes = LegacyDnaText.Encode(Db2GenomeRecordFile.EncodeGenomeRecords(capture.Records, includeHeader: true));
         var saved = await _storage.SaveLivingSnapshotAsync(this, suggestedFileName, bytes, async () =>
             await ChooseLivingMutationHistoryAsync()
-                ? LegacyDnaText.Encode(Db2GenomeRecordFile.EncodeMutationHistory(MutationHistories(snapshot, dna), includeHeader: true))
+                ? LegacyDnaText.Encode(Db2GenomeRecordFile.EncodeMutationHistory(MutationHistories(capture.Records), includeHeader: true))
                 : null);
         return saved
             ? LegacyCommandResult.Success($"LIVING SNAPSHOT · {suggestedFileName}")
@@ -1415,10 +1413,7 @@ public sealed partial class MainWindow : Window
     }
 
     private static IEnumerable<(ulong Id, IReadOnlyList<string> Log)> MutationHistories(
-        EngineSnapshot snapshot, IReadOnlyDictionary<OrganismKey, string> dna) =>
-        snapshot.Organisms
-            .Where(robot => dna.ContainsKey(new OrganismKey(robot.Slot, robot.Generation)))
-            .Select(robot => (robot.UniqueId == 0 ? robot.Slot : robot.UniqueId, robot.MutationLog));
+        IEnumerable<DeathRecordSnapshot> records) => records.Select(record => (record.Id, record.MutationLog));
 
     private void SynchronizeRecordingPreferences()
     {
@@ -1459,25 +1454,22 @@ public sealed partial class MainWindow : Window
         await DeadRecordingGate.WaitAsync();
         try
         {
-            var (appended, error) = await AppendDeadRecordsAsync(
-                (includeHeader, _) => Db2GenomeRecordFile.EncodeDead(deaths, includeHeader),
-                deaths.Select(death => (death.Id, death.MutationLog)).ToArray());
+            var (appended, error) = await AppendDeadRecordsAsync(deaths);
             if (!appended) _viewModel.Status = error ?? "DEAD RECORDING UNAVAILABLE";
         }
         finally { DeadRecordingGate.Release(); }
     }
 
     private async Task<(bool Appended, string? Error)> AppendDeadRecordsAsync(
-        Func<bool, LegacyRecordingFormat, string> serialize,
-        IReadOnlyList<(ulong Id, IReadOnlyList<string> Log)> histories)
+        IReadOnlyList<DeathRecordSnapshot> records)
     {
         try
         {
-            var format = LegacyRecordingSerializer.Select(LegacyCommandId.RecordingDeadEnable).Format;
             var appended = await _storage.AppendDeadSnapshotAsync(
-                async stream => await stream.WriteAsync(LegacyDnaText.Encode(serialize(stream.Length == 0, format))),
-                histories.Count == 0 ? null : async stream => await stream.WriteAsync(LegacyDnaText.Encode(
-                    Db2GenomeRecordFile.EncodeMutationHistory(histories, includeHeader: stream.Length == 0))));
+                async stream => await stream.WriteAsync(LegacyDnaText.Encode(
+                    Db2GenomeRecordFile.EncodeGenomeRecords(records, includeHeader: stream.Length == 0))),
+                async stream => await stream.WriteAsync(LegacyDnaText.Encode(
+                    Db2GenomeRecordFile.EncodeMutationHistory(MutationHistories(records), includeHeader: stream.Length == 0))));
             return (appended, null);
         }
         catch (Exception error)
@@ -3024,7 +3016,7 @@ public sealed partial class MainWindow : Window
                 if (_deadRecordingEnabled)
                 {
                     var deaths = new List<DeathRecordSnapshot>();
-                    try { await _session.StepRecordingDeathsAsync(batch, deaths.AddRange); }
+                    try { await _session.StepRecordingDeathsAsync(batch, _globalSettings.Main.EffectiveFindBestWeight, deaths.AddRange); }
                     finally { await RecordSimulationDeathsAsync(deaths); }
                 }
                 else await _session.StepAsync(batch);

@@ -57,6 +57,11 @@ enum EngineCommand {
         count: u32,
         #[serde(default)]
         capture_deaths: bool,
+        #[serde(default)]
+        recording_weight: Option<u16>,
+    },
+    CaptureLivingGenomeRecords {
+        weight_percent: u16,
     },
     SetNativeRestartSeed {
         seed: u64,
@@ -123,6 +128,10 @@ enum EngineCommand {
         organisms: Vec<OrganismIdCommand>,
         #[serde(default)]
         suppress_death_poffs: bool,
+        #[serde(default)]
+        recording_weight: Option<u16>,
+        #[serde(default)]
+        exclude_repopulating: bool,
     },
     SetDeathPoffsEnabled {
         enabled: bool,
@@ -579,6 +588,7 @@ fn db_engine_command_batch_impl(
                     | EngineCommand::ReadNativeProcessCaches
                     | EngineCommand::ExportSpeciesTemplateDna { .. }
                     | EngineCommand::FindBestRobot { .. }
+                    | EngineCommand::CaptureLivingGenomeRecords { .. }
             )
         })
     {
@@ -608,6 +618,9 @@ fn db_engine_command_batch_impl(
                 EngineCommand::ExportSpeciesTemplateDna { species } => engine
                     .export_species_template_dna(crate::SpeciesId(*species))
                     .map(|dna| serde_json::json!({ "dna": dna })),
+                EngineCommand::CaptureLivingGenomeRecords { weight_percent } => engine
+                    .living_genome_records(*weight_percent)
+                    .map(|records| serde_json::json!(records)),
                 EngineCommand::FindBestRobot {
                     energy_weighting,
                     weight_percent,
@@ -679,12 +692,20 @@ fn db_engine_command_batch_impl(
             EngineCommand::SetNativeProcessCaches { caches } => engine
                 .set_native_process_caches(caches)
                 .map(|_| serde_json::Value::Null),
-            EngineCommand::Tick { count, capture_deaths } => {
+            EngineCommand::CaptureLivingGenomeRecords { weight_percent } => engine
+                .living_genome_records(weight_percent)
+                .map(|records| serde_json::json!(records)),
+            EngineCommand::Tick {
+                count,
+                capture_deaths,
+                recording_weight,
+            } => {
                 if count > 1_000_000 {
                     return fail(DbStatus::InvalidCommand, "tick count exceeds batch limit");
                 }
                 if capture_deaths {
-                    engine.tick_many_with_death_records(count)
+                    engine
+                        .tick_many_with_death_records(count, recording_weight.unwrap_or(100))
                         .map(|records| serde_json::json!({ "death_records": records }))
                 } else {
                     engine.tick_many(count).map(|_| serde_json::Value::Null)
@@ -767,14 +788,27 @@ fn db_engine_command_batch_impl(
             EngineCommand::RemoveMany {
                 organisms,
                 suppress_death_poffs,
+                recording_weight,
+                exclude_repopulating,
             } => {
                 let ids: Vec<_> = organisms
                     .into_iter()
                     .map(|organism| OrganismId::new(organism.slot, organism.generation))
                     .collect();
-                engine
-                    .remove_many_with_death_poffs(&ids, suppress_death_poffs)
-                    .map(|_| serde_json::Value::Null)
+                if let Some(weight) = recording_weight {
+                    engine
+                        .remove_many_recording_deaths(
+                            &ids,
+                            suppress_death_poffs,
+                            weight,
+                            exclude_repopulating,
+                        )
+                        .map(|records| serde_json::json!(records))
+                } else {
+                    engine
+                        .remove_many_with_death_poffs(&ids, suppress_death_poffs)
+                        .map(|_| serde_json::Value::Null)
+                }
             }
             EngineCommand::ImportSpecies {
                 comment,
@@ -1944,22 +1978,30 @@ mod tests {
             ..EngineConfig::testing()
         })
         .unwrap();
-        let id = engine.spawn(LegacyDna::parse("start\nstop").unwrap()).unwrap();
+        let id = engine
+            .spawn(LegacyDna::parse("start\nstop").unwrap())
+            .unwrap();
         engine.set_organism_energy(id, 1).unwrap();
         let absolute_id = engine.snapshot().organisms[0].unique_id;
         let before = SaveFile::encode(&engine).unwrap();
-        let (status, result) = classic_test_batch(&mut engine, serde_json::json!([
-            {"type":"tick","count":3,"capture_deaths":true},
-            {"type":"set_organism_energy","slot":id.slot(),"generation":id.generation(),"energy":500}
-        ]));
+        let (status, result) = classic_test_batch(
+            &mut engine,
+            serde_json::json!([
+                {"type":"tick","count":3,"capture_deaths":true},
+                {"type":"set_organism_energy","slot":id.slot(),"generation":id.generation(),"energy":500}
+            ]),
+        );
         assert_eq!(status, DbStatus::EngineError);
         assert!(result.is_empty());
         assert_eq!(before, SaveFile::encode(&engine).unwrap());
 
-        let (status, result) = classic_test_batch(&mut engine, serde_json::json!([
-            {"type":"tick","count":3,"capture_deaths":true},
-            {"type":"tick","count":1}
-        ]));
+        let (status, result) = classic_test_batch(
+            &mut engine,
+            serde_json::json!([
+                {"type":"tick","count":3,"capture_deaths":true},
+                {"type":"tick","count":1}
+            ]),
+        );
         assert_eq!(status, DbStatus::Ok);
         let result: serde_json::Value = serde_json::from_slice(&result).unwrap();
         let records = result["results"][0]["death_records"].as_array().unwrap();

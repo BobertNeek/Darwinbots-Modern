@@ -101,10 +101,13 @@ public sealed record DeathRecordSnapshot(
     uint DnaLength,
     ulong Offspring,
     ulong Kills,
-    int Energy,
-    int Chloroplasts,
+    float Energy,
+    float Chloroplasts,
     string Dna,
-    IReadOnlyList<string> MutationLog);
+    IReadOnlyList<string> MutationLog,
+    double? Fitness = null);
+
+public sealed record GenomeRecordCapture(ulong Tick, IReadOnlyList<DeathRecordSnapshot> Records);
 
 public sealed record MemoryCellSnapshot(ushort Address, int Value);
 

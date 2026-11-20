@@ -235,8 +235,9 @@ impl Engine {
                         && transfers.claim_input(&path, &bytes).is_ok()
                     {
                         // Importing into a candidate must preserve the active
-                        // backend, including its runtime failure state.
+                        // backend and the transient recorder for the current tick batch.
                         std::mem::swap(&mut candidate.physics, &mut self.physics);
+                        std::mem::swap(&mut candidate.recorded_deaths, &mut self.recorded_deaths);
                         *self = candidate;
                         received = received.saturating_add(1);
                     }
