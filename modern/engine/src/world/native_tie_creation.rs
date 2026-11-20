@@ -90,6 +90,18 @@ impl Engine {
     }
 
     pub(super) fn native_delete_pair(&mut self, first: OrganismId, second: OrganismId) {
+        // DeleteTie checks the runtime count of both robots before compaction.
+        if [first, second].into_iter().any(|id| {
+            self.slots
+                .get(id)
+                .is_ok_and(|robot| robot.native_tie_count_pending)
+        }) {
+            return;
+        }
+        self.remove_native_tie_pair(first, second);
+    }
+
+    pub(super) fn remove_native_tie_pair(&mut self, first: OrganismId, second: OrganismId) {
         let Some(index) = self.ties.iter().position(|tie| {
             (tie.first == first && tie.second == second)
                 || (tie.first == second && tie.second == first)
@@ -172,6 +184,7 @@ impl Engine {
             self.ties.push(tie);
             self.native_refresh_tie_ends(first, second);
             let source = self.slots.get_mut(first).unwrap();
+            source.native_tie_count_pending = false;
             source
                 .program
                 .memory
@@ -186,6 +199,7 @@ impl Engine {
                 }
             }
             let target = self.slots.get_mut(second).unwrap();
+            target.native_tie_count_pending = false;
             target
                 .program
                 .memory
@@ -198,7 +212,11 @@ impl Engine {
         }
         let target = self.slots.get_mut(second).unwrap();
         target.materials.slime = (target.materials.slime - 20.0).max(0.0);
-        let count = self.tie_indices_for(first).len();
+        let count = if self.slots.get(first).unwrap().native_tie_count_pending {
+            0
+        } else {
+            self.tie_indices_for(first).len()
+        };
         let fee = self.active_dna_costs().action_cost_for(
             SimulationCostAction::TieFormation,
             1.0,
