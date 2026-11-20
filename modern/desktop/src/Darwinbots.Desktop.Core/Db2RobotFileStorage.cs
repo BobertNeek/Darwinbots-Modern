@@ -41,13 +41,16 @@ public static class Db2RobotFileStorage
         if (profileBytes is not null) sidecarPath = ResolveSidecar(sidecarPath);
         EnsureDistinct(dnaPath, sidecarPath);
 
+        var files = new List<(string Path, byte[] Bytes)> { (dnaPath, dnaBytes) };
+        if (profileBytes is not null) files.Add((sidecarPath, profileBytes));
+        await WriteFilesAsync(files, cancellationToken);
+    }
+
+    internal static async Task WriteFilesAsync(
+        IEnumerable<(string Path, byte[] Bytes)> files, CancellationToken cancellationToken = default)
+    {
         // Validate both named targets before creating even a staging file.
-        var writes = new List<(string Path, byte[] Bytes, bool Existed)>
-        {
-            (dnaPath, dnaBytes, ValidateTarget(dnaPath)),
-        };
-        if (profileBytes is not null)
-            writes.Add((sidecarPath, profileBytes, ValidateTarget(sidecarPath)));
+        var writes = files.Select(file => (file.Path, file.Bytes, Existed: ValidateTarget(file.Path))).ToArray();
 
         var staged = new Dictionary<string, string>(StringComparer.Ordinal);
         var backups = new Dictionary<string, string>(StringComparer.Ordinal);

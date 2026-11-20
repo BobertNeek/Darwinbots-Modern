@@ -162,6 +162,20 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task SetDeathPoffsEnabledAsync(bool enabled, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.SetDeathPoffsEnabled(enabled), cancellationToken);
 
+    public async Task<(EngineSnapshot Snapshot, IReadOnlyDictionary<OrganismKey, string> Dna)> CaptureLivingGenomeRecordsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var snapshot = EngineSnapshot.Empty;
+        var dna = new Dictionary<OrganismKey, string>();
+        await Enqueue(engine =>
+        {
+            snapshot = engine.Snapshot();
+            foreach (var robot in snapshot.Organisms)
+                dna[new OrganismKey(robot.Slot, robot.Generation)] = engine.ExportDna(robot.Slot, robot.Generation);
+        }, cancellationToken).ConfigureAwait(false);
+        return (snapshot, dna);
+    }
+
     public Task MoveAsync(uint slot, uint generation, float[] position, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.Move(slot, generation, position), cancellationToken);
 

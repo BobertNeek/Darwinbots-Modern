@@ -12,8 +12,11 @@ public interface IDesktopStorageService
     Task<bool> SaveLivingSnapshotAsync(
         TopLevel owner,
         string suggestedFileName,
-        Func<Stream, Task> writeAsync) => Task.FromResult(false);
-    Task<bool> AppendDeadSnapshotAsync(Func<Stream, Task> writeAsync) => Task.FromResult(false);
+        byte[] snapshot,
+        Func<Task<byte[]?>> chooseMutationHistoryAsync) => Task.FromResult(false);
+    Task<bool> AppendDeadSnapshotAsync(
+        Func<Stream, Task> writeAsync,
+        Func<Stream, Task>? writeMutationHistoryAsync) => Task.FromResult(false);
     Task<byte[]?> OpenOrganismAsync(TopLevel owner) => Task.FromResult<byte[]?>(null);
     Task<DesktopSettings?> OpenSettingsAsync(TopLevel owner);
     Task<string?> PickSimulationPathAsync(TopLevel owner);
