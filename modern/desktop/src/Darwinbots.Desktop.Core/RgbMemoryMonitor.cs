@@ -66,9 +66,11 @@ public static class RgbMemoryMonitor
             Normalize(memory.GetValueOrDefault(settings.Blue.Address), settings.Blue));
     }
 
-    private static byte Normalize(int value, RgbMemoryChannel channel) =>
-        (byte)Math.Clamp(
-            Math.Round((value - channel.Floor) * 255d / (channel.Ceiling - channel.Floor), MidpointRounding.AwayFromZero),
-            0,
-            255);
+    private static byte Normalize(int value, RgbMemoryChannel channel)
+    {
+        var rangePerLevel = (channel.Ceiling - channel.Floor) / 255d;
+        var level = Math.Clamp((value - channel.Floor) / rangePerLevel, 0, 255);
+        // VB6 passes the Double channel values to RGB as integers.
+        return (byte)Math.Round(level, MidpointRounding.ToEven);
+    }
 }
