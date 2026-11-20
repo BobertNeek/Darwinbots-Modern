@@ -17,13 +17,20 @@ public sealed class EyeDesignerWindow : Window, IPersistentSnapshotToolWindow
     private readonly TextBox[] _widths = new TextBox[EyeDesignerModel.EyeCount];
     private readonly TextBlock _status = new();
     private readonly EyePreviewControl _preview = new();
+    private readonly Button _resetAim;
+    private readonly Button _disableBrownianMotion;
+    private readonly Button _disableCosts;
     private EyeDesignerModel _model = EyeDesignerModel.CreateDefault();
     private EngineSnapshot _snapshot = EngineSnapshot.Empty;
     private OrganismKey? _focus;
     private bool _syncing;
     private bool _dirty;
 
-    public EyeDesignerWindow(IDesktopStorageService storage, Func<OrganismKey, ushort, int, Task> writeMemory)
+    public EyeDesignerWindow(
+        IDesktopStorageService storage,
+        Func<OrganismKey, ushort, int, Task> writeMemory,
+        Func<Task> disableBrownianMotion,
+        Func<Task> disableCosts)
     {
         _storage = storage ?? throw new ArgumentNullException(nameof(storage));
         _writeMemory = writeMemory ?? throw new ArgumentNullException(nameof(writeMemory));
@@ -94,6 +101,19 @@ public sealed class EyeDesignerWindow : Window, IPersistentSnapshotToolWindow
         _preview.Height = 260;
         previewPanel.Children.Add(_preview);
         previewPanel.Children.Add(new TextBlock { Text = "Direction and width use DB2 memory units. Width zero keeps the standard eye width.", TextWrapping = TextWrapping.Wrap, Foreground = Brush.Parse("#69716D"), FontSize = 11 });
+        _resetAim = Button("Reset Aim", async (_, _) => await ResetAimAsync());
+        _disableBrownianMotion = Button("Turn Off Brownian Motion", async (_, _) =>
+            await RunSimulationActionAsync(disableBrownianMotion, "BROWNIAN MOTION OFF"));
+        _disableCosts = Button("Disable Costs", async (_, _) =>
+            await RunSimulationActionAsync(disableCosts, "SIMULATION COSTS DISABLED"));
+        previewPanel.Children.Add(Label("SIMULATION CONTROLS", true));
+        previewPanel.Children.Add(_disableBrownianMotion);
+        previewPanel.Children.Add(new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 8,
+            Children = { _resetAim, _disableCosts },
+        });
         Grid.SetColumn(previewPanel, 1);
         body.Children.Add(previewPanel);
 
@@ -111,6 +131,7 @@ public sealed class EyeDesignerWindow : Window, IPersistentSnapshotToolWindow
         root.Children.Add(footer);
         Content = root;
         SetModel(_model);
+        RefreshSimulationControlStates(hasFocus: false);
     }
 
     public void SetFocus(EngineSnapshot snapshot, OrganismKey? focus)
@@ -123,21 +144,18 @@ public sealed class EyeDesignerWindow : Window, IPersistentSnapshotToolWindow
 
         _snapshot = snapshot;
         _focus = focus;
-        if (Find(snapshot) is { } organism)
-        {
-            SetModel(EyeDesignerModel.FromOrganism(organism));
-            return;
-        }
-
-        _focus = null;
-        SetModel(EyeDesignerModel.CreateDefault());
+        var organism = Find(snapshot);
+        if (organism is null) _focus = null;
+        SetModel(organism is null ? EyeDesignerModel.CreateDefault() : EyeDesignerModel.FromOrganism(organism));
+        RefreshSimulationControlStates(organism is not null);
     }
 
     public void SetSnapshot(EngineSnapshot snapshot)
     {
         _snapshot = snapshot;
-        if (_focus is not { } focus) return;
         var organism = Find(snapshot);
+        RefreshSimulationControlStates(organism is not null);
+        if (_focus is not { } focus) return;
         if (organism is null)
         {
             _status.Text = $"ROBOT {focus.Slot}:{focus.Generation} IS NO LONGER AVAILABLE";
@@ -149,6 +167,25 @@ public sealed class EyeDesignerWindow : Window, IPersistentSnapshotToolWindow
     private OrganismSnapshot? Find(EngineSnapshot snapshot) => _focus is { } focus
         ? snapshot.Organisms.FirstOrDefault(value => value.Slot == focus.Slot && value.Generation == focus.Generation)
         : null;
+
+    private void RefreshSimulationControlStates(bool hasFocus)
+    {
+        var active = !ReferenceEquals(_snapshot, EngineSnapshot.Empty) && !_snapshot.NativeF1Enabled;
+        _resetAim.IsEnabled = active && hasFocus;
+        _disableBrownianMotion.IsEnabled = active;
+        _disableCosts.IsEnabled = active;
+    }
+
+    private Task ResetAimAsync() => _focus is { } focus && Find(_snapshot) is not null
+        ? RunSimulationActionAsync(() => _writeMemory(focus, 19, 0), "AIM RESET REQUESTED", focus)
+        : Task.CompletedTask;
+
+    private async Task RunSimulationActionAsync(Func<Task> action, string status, OrganismKey? focus = null)
+    {
+        try { await action(); }
+        catch (Exception error) { status = $"SIMULATION UPDATE FAILED · {error.Message}"; }
+        if (IsVisible && (focus is null || focus == _focus)) _status.Text = status;
+    }
 
     private void SetModel(EyeDesignerModel model)
     {

@@ -1243,7 +1243,7 @@ public sealed partial class MainWindow : Window
     {
         var window = _toolWindows.ShowOrActivate("eye-designer", () =>
         {
-            var designer = new EyeDesignerWindow(_storage, WriteEyeMemoryAsync);
+            var designer = new EyeDesignerWindow(_storage, WriteEyeMemoryAsync, DisableEyeBrownianMotionAsync, DisableEyeCostsAsync);
             void OnSelectionChanged(object? sender, PropertyChangedEventArgs change)
             {
                 if (change.PropertyName == nameof(MainWindowViewModel.SelectedId)) UpdateEyeDesignerFocus(designer);
@@ -1260,9 +1260,33 @@ public sealed partial class MainWindow : Window
         window.SetFocus(_session?.LatestSnapshot ?? EngineSnapshot.Empty, SelectedRobotKey());
 
     private Task WriteEyeMemoryAsync(OrganismKey focus, ushort address, int value) =>
-        _session is { } session && F1ToolState(LegacyCommandState.Available).Enabled
-            ? session.SetOrganismMemoryAsync(focus.Slot, focus.Generation, address, value)
-            : Task.CompletedTask;
+        RequireEyeDesignerSession().SetOrganismMemoryAsync(focus.Slot, focus.Generation, address, value);
+
+    private SimulationSession RequireEyeDesignerSession()
+    {
+        if (_session is not { } session || _loadingSimulation || _navigationInFlight)
+            throw new InvalidOperationException("The simulation is not ready.");
+        if (session.LatestSnapshot.NativeF1Enabled)
+            throw new InvalidOperationException("Unavailable in F1 competition.");
+        return session;
+    }
+
+    private async Task DisableEyeBrownianMotionAsync()
+    {
+        var session = RequireEyeDesignerSession();
+        await session.SetBrownianMotionAsync(0f);
+        if (IsVisible && ReferenceEquals(_session, session))
+            _liveEnvironment = _liveEnvironment with { BrownianMotion = 0f };
+    }
+
+    private async Task DisableEyeCostsAsync()
+    {
+        var session = RequireEyeDesignerSession();
+        await session.SetGlobalCostMultiplierAsync(0.0);
+        if (!IsVisible || !ReferenceEquals(_session, session)) return;
+        _activeCostMultiplier = 0.0;
+        await session.RefreshSnapshotAsync();
+    }
 
     private async Task<LegacyCommandResult> ShowRestrictionOverridesAsync()
     {

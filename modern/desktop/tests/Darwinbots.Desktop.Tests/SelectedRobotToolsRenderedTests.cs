@@ -57,6 +57,9 @@ public sealed class SelectedRobotToolsRenderedTests
             {
                 player.Show();
                 var eye = OpenEyeDesigner(player);
+                Assert.False(EyeButton(eye, "Reset Aim").IsEnabled);
+                Assert.False(EyeButton(eye, "Turn Off Brownian Motion").IsEnabled);
+                Assert.False(EyeButton(eye, "Disable Costs").IsEnabled);
                 rgb.SetSnapshot(snapshot);
                 rgb.Show();
                 phylogeny.Show();
@@ -145,8 +148,87 @@ public sealed class SelectedRobotToolsRenderedTests
         }, CancellationToken.None);
     }
 
+    [Fact]
+    public async Task EyeDesignerControlsApplyToTheLiveWorldAndKeepSetupDefaults()
+    {
+        var setup = new WorldSetupOptions
+        {
+            Backend = "Cpu", WorldWidth = 1000, WorldHeight = 1000, PopulationCapacity = 8, BrownianMotion = 0.75f,
+            GlobalSettings = new() { Costs = new() { GlobalMultiplier = 2.5 } },
+        };
+        await using var session = new SimulationSession(new NativeEngineClient(setup));
+        await session.ImportDnaAsync("start\nstop", [300, 300]);
+        await session.ImportDnaAsync("start\nstop", [600, 300]);
+        var bots = session.LatestSnapshot.Organisms.OrderBy(bot => bot.Position[0]).ToArray();
+        var first = new OrganismKey(bots[0].Slot, bots[0].Generation);
+        var second = new OrganismKey(bots[1].Slot, bots[1].Generation);
+        await session.UpdateCostSettingsAsync(setup.GlobalSettings.Costs with { GlobalMultiplier = 3.0, Movement = 0.125 });
+        var before = Assert.IsType<WorldConfiguration>(await session.ReadConfigurationAsync());
+        Assert.Equal(0.75f, before.Environment.BrownianMotion);
+        Assert.Equal(3.0, before.GlobalCostMultiplier);
+
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var player = new MainWindow([], setup, new AuditEngineClientFactory(), new AuditStorageService());
+            DesktopTestApplication.UseSession(player, session);
+            try
+            {
+                player.Show();
+                var model = Assert.IsType<MainWindowViewModel>(player.DataContext);
+                model.ClearSelection();
+                var eye = OpenEyeDesigner(player);
+                var resetAim = EyeButton(eye, "Reset Aim");
+                Assert.False(resetAim.IsEnabled);
+                Click(EyeButton(eye, "Turn Off Brownian Motion"));
+                Click(EyeButton(eye, "Disable Costs"));
+
+                var checkpoint = await session.SaveAsync();
+                using (var reopened = new NativeEngineClient(setup))
+                {
+                    reopened.Load(checkpoint);
+                    var saved = Assert.IsType<WorldConfiguration>(reopened.ReadConfiguration());
+                    Assert.Equal(0f, saved.Environment.BrownianMotion);
+                    Assert.Equal(0.0, saved.GlobalCostMultiplier);
+                    Assert.Equal(before.Costs with { GlobalMultiplier = 0.0 }, saved.Costs);
+                }
+
+                var next = Assert.IsType<WorldSetupOptions>(typeof(MainWindow)
+                    .GetMethod("CreateNextWorldSetup", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(player, null));
+                Assert.Equal(setup.BrownianMotion, next.BrownianMotion);
+                Assert.Equal(setup.GlobalSettings.Costs, next.GlobalSettings.Costs);
+
+                await session.SetOrganismMemoryAsync(first.Slot, first.Generation, 19, 300);
+                await session.SetOrganismMemoryAsync(second.Slot, second.Generation, 19, 700);
+                await session.StepAsync();
+                Assert.Equal(300, ReadRobot(session, first).Aim);
+                Assert.Equal(700, ReadRobot(session, second).Aim);
+                model.Select(first);
+                Click(resetAim);
+                await session.RefreshSnapshotAsync();
+                Assert.Equal(0, ReadRobot(session, first).Memory.SingleOrDefault(cell => cell.Address == 19)?.Value ?? 0);
+                Assert.Equal(300, ReadRobot(session, first).Aim);
+                await session.StepAsync();
+                Assert.Equal(0, ReadRobot(session, first).Aim);
+                Assert.Equal(700, ReadRobot(session, second).Aim);
+            }
+            finally { player.Close(); }
+        }, CancellationToken.None);
+    }
+
     private static EyeSnapshot ReadEye(SimulationSession session, OrganismKey key) => session.LatestSnapshot.Organisms
         .Single(bot => bot.Slot == key.Slot && bot.Generation == key.Generation).Vision.Eyes[0];
+
+    private static OrganismSnapshot ReadRobot(SimulationSession session, OrganismKey key) => session.LatestSnapshot.Organisms
+        .Single(bot => bot.Slot == key.Slot && bot.Generation == key.Generation);
+
+    private static Button EyeButton(EyeDesignerWindow window, string label) => Assert.Single(
+        window.GetVisualDescendants().OfType<Button>(), button => Equals(button.Content, label));
+
+    private static void Click(Button button)
+    {
+        Assert.True(button.IsEnabled);
+        button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+    }
 
     private static async Task WaitFor(Func<bool> condition)
     {
