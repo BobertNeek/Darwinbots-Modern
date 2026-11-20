@@ -185,7 +185,8 @@ public sealed class RgbMonitorRenderedTests
                     label => label.Text?.StartsWith("RGB PRESET LOAD FAILED", StringComparison.Ordinal) == true);
                 Assert.Equal(98m, Number(dialog, "RED address").Value);
                 Click(DialogButton(dialog, "CANCEL"));
-                await WaitFor(() => !dialog.IsVisible, () => "RGB settings did not close.");
+                await WaitFor(() => viewModel.Status == "CANCELED" && !window.OwnedWindows.Contains(dialog),
+                    () => viewModel.Status);
                 Assert.Equal(RgbMemoryMonitorSettings.LegacyDefaults, Field<RgbMemoryMonitorSettings>(viewport, "_rgbMemoryMonitor"));
 
                 dialog = await OpenSettings();
