@@ -426,6 +426,19 @@ public sealed partial class NativeEngineClient : IEngineClient
             (result.GetProperty("added").GetInt32(), ReadShapeDrift(result.GetProperty("drift")));
     }
 
+    public int? AddNativeSimpleMaze(bool horizontal, MazeDimensions dimensions)
+    {
+        var result = ExecuteBatchForResult(new
+        {
+            version = 1,
+            commands = new[]
+            {
+                new { type = "add_native_simple_maze", horizontal, corridor = dimensions.CorridorWidth, thickness = dimensions.WallThickness },
+            },
+        }, "add native maze").GetProperty("results")[0];
+        return result.ValueKind == JsonValueKind.Null ? null : result.GetInt32();
+    }
+
     public Db2ShapeDriftOptions? SetShapeDrift(bool? horizontal, bool? vertical, short? rate)
     {
         var result = ExecuteBatchForResult(new

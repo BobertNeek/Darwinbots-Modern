@@ -160,6 +160,12 @@ public sealed class RenderedWorldToolsCausalTests
                 var height = tool.FindControl<Slider>("ShapeHeightSlider")!;
                 Assert.Equal(200d, width.Value);
                 Assert.Equal(200d, height.Value);
+                var corridor = tool.FindControl<Slider>("MazeCorridorSlider")!;
+                var thickness = tool.FindControl<Slider>("MazeWallThicknessSlider")!;
+                Assert.Equal((300d, 500d, 5000d), (corridor.Minimum, corridor.Value, corridor.Maximum));
+                Assert.Equal((1d, 50d, 500d), (thickness.Minimum, thickness.Value, thickness.Maximum));
+                corridor.Value = 300;
+                thickness.Value = 60;
                 width.Value = 80;
                 height.Value = 125;
 
@@ -215,12 +221,18 @@ public sealed class RenderedWorldToolsCausalTests
                 height = tool.FindControl<Slider>("ShapeHeightSlider")!;
                 Assert.Equal(80d, width.Value);
                 Assert.Equal(125d, height.Value);
+                corridor = tool.FindControl<Slider>("MazeCorridorSlider")!;
+                thickness = tool.FindControl<Slider>("MazeWallThicknessSlider")!;
+                Assert.Equal(300d, corridor.Value);
+                Assert.Equal(60d, thickness.Value);
 
                 load.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
                 await WaitFor(() => session.LatestSnapshot.WorldSize.SequenceEqual([1_100f, 800f])
                     && width.Value == 200 && height.Value == 200,
                     () => "Loading the saved world did not reset the visible Shapes controls.");
                 Assert.Empty(session.LatestSnapshot.Obstacles);
+                Assert.Equal(300d, corridor.Value);
+                Assert.Equal(60d, thickness.Value);
 
                 add = tool.FindControl<Button>("AddShapeButton")!;
                 await WaitFor(() => add.IsEnabled, () => "The Shapes tool did not become available after load.");
@@ -230,6 +242,22 @@ public sealed class RenderedWorldToolsCausalTests
                 var loadedShape = Assert.Single(session.LatestSnapshot.Obstacles);
                 Assert.Equal(220f, loadedShape.Maximum[0] - loadedShape.Minimum[0], 2);
                 Assert.Equal(160f, loadedShape.Maximum[1] - loadedShape.Minimum[1], 2);
+
+                menu.FindCommandItem(LegacyCommandId.ObjectsHorizontalMaze)!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => session.LatestSnapshot.Obstacles.Count == 5,
+                    () => "Horizontal Maze did not use the live field and persistent Maze Properties.");
+                var horizontal = session.LatestSnapshot.Obstacles.Skip(1).ToArray();
+                Assert.Equal([360f, 360f, 720f, 720f], horizontal.Select(shape => shape.Minimum[0]).ToArray());
+                Assert.All(horizontal, shape => Assert.Equal(60f, shape.Maximum[0] - shape.Minimum[0]));
+
+                menu.FindCommandItem(LegacyCommandId.ObjectsVerticalMaze)!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => session.LatestSnapshot.Obstacles.Count == 7,
+                    () => "Vertical Maze did not use the live field and persistent Maze Properties.");
+                Assert.All(session.LatestSnapshot.Obstacles.Skip(5), shape =>
+                {
+                    Assert.Equal(360f, shape.Minimum[1]);
+                    Assert.Equal(420f, shape.Maximum[1]);
+                });
             }
             finally
             {

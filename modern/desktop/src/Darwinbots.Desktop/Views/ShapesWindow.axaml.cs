@@ -8,6 +8,7 @@ namespace Darwinbots.Desktop.Views;
 public sealed partial class ShapesWindow : Window
 {
     private readonly Action<ShapeCreationDimensions> _dimensionsChanged;
+    private readonly Action<MazeDimensions> _mazeDimensionsChanged;
     private readonly Func<Task<LegacyCommandResult>> _addShape;
     private readonly Func<bool?, bool?, short?, Task<LegacyCommandResult>> _changeDrift;
     private bool _updatingDimensions;
@@ -18,14 +19,22 @@ public sealed partial class ShapesWindow : Window
         Action<ShapeCreationDimensions> dimensionsChanged,
         Func<Task<LegacyCommandResult>> addShape,
         Db2ShapeDriftOptions? drift,
-        Func<bool?, bool?, short?, Task<LegacyCommandResult>> changeDrift)
+        Func<bool?, bool?, short?, Task<LegacyCommandResult>> changeDrift,
+        MazeDimensions mazeDimensions,
+        Action<MazeDimensions> mazeDimensionsChanged)
     {
         _dimensionsChanged = dimensionsChanged;
+        _mazeDimensionsChanged = mazeDimensionsChanged;
         _addShape = addShape;
         _changeDrift = changeDrift;
         InitializeComponent();
         SetDimensions(dimensions);
         SetDrift(drift);
+        MazeCorridorSlider.Value = mazeDimensions.CorridorWidth;
+        MazeWallThicknessSlider.Value = mazeDimensions.WallThickness;
+        ShowMazeDimensions(mazeDimensions);
+        MazeCorridorSlider.ValueChanged += (_, _) => UpdateMazeDimensions();
+        MazeWallThicknessSlider.ValueChanged += (_, _) => UpdateMazeDimensions();
         ShapeWidthSlider.ValueChanged += (_, _) => UpdateDimensions();
         ShapeHeightSlider.ValueChanged += (_, _) => UpdateDimensions();
         HorizontalDriftCheck.IsCheckedChanged += async (_, _) =>
@@ -58,6 +67,19 @@ public sealed partial class ShapesWindow : Window
     {
         ShapeWidthValue.Text = $"{dimensions.WidthPermille / 10m:0.0}%";
         ShapeHeightValue.Text = $"{dimensions.HeightPermille / 10m:0.0}%";
+    }
+
+    private void UpdateMazeDimensions()
+    {
+        var dimensions = new MazeDimensions((int)MazeCorridorSlider.Value, (int)MazeWallThicknessSlider.Value);
+        ShowMazeDimensions(dimensions);
+        _mazeDimensionsChanged(dimensions);
+    }
+
+    private void ShowMazeDimensions(MazeDimensions dimensions)
+    {
+        MazeCorridorValue.Text = dimensions.CorridorWidth.ToString();
+        MazeWallThicknessValue.Text = dimensions.WallThickness.ToString();
     }
 
     public void SetDrift(Db2ShapeDriftOptions? drift)
