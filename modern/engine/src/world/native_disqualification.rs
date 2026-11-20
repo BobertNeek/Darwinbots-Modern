@@ -300,6 +300,8 @@ mod tests {
             });
             world.local_mode.status = LocalModeStatus::Running;
             assert_eq!(world.native_f1_enabled(), f1);
+            world.publish_snapshot();
+            assert_eq!(world.snapshot().native_f1_enabled, f1);
             world.native_disqualify_action(actor, DisqualificationAction::Shell);
             assert_eq!(world.pending_disqualifications, [actor]);
         }
@@ -407,6 +409,7 @@ mod tests {
             crate::SaveFile::decode(&crate::SaveFile::encode(&world).unwrap()).unwrap();
         assert_eq!(resumed.config.disqualification, 2);
         assert!(resumed.native_f1_enabled());
+        assert!(resumed.snapshot().native_f1_enabled);
         resumed.native_disqualify_action(actor, DisqualificationAction::Shell);
         assert_eq!(resumed.pending_disqualifications, [actor, same_file]);
         resumed.flush_native_disqualifications().unwrap();

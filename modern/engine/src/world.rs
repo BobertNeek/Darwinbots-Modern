@@ -541,6 +541,8 @@ pub struct Snapshot {
     /// Original signed SimOpts.TotRunCycle, separate from the monotonic API tick.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub native_cycle: Option<i32>,
+    #[serde(default)]
+    pub native_f1_enabled: bool,
     #[serde(default = "default_true")]
     pub death_poffs_enabled: bool,
     #[serde(default = "default_world_size")]
@@ -592,6 +594,7 @@ impl Default for Snapshot {
             schema_version: 0,
             tick: 0,
             native_cycle: None,
+            native_f1_enabled: false,
             death_poffs_enabled: true,
             world_size: [0.0; 2],
             organisms: Vec::new(),
@@ -623,6 +626,7 @@ impl PartialEq for Snapshot {
     fn eq(&self, other: &Self) -> bool {
         self.tick == other.tick
             && self.native_cycle == other.native_cycle
+            && self.native_f1_enabled == other.native_f1_enabled
             && self.death_poffs_enabled == other.death_poffs_enabled
             && self.schema_version == other.schema_version
             && self.world_size == other.world_size
@@ -1976,6 +1980,7 @@ impl From<Db3sV2Snapshot> for Snapshot {
             schema_version: default_snapshot_schema_version(),
             tick: value.tick,
             native_cycle: None,
+            native_f1_enabled: false,
             death_poffs_enabled: true,
             world_size: value.world_size,
             organisms: value.organisms.into_iter().map(Into::into).collect(),
@@ -2803,6 +2808,7 @@ impl Engine {
                 schema_version: default_snapshot_schema_version(),
                 tick: 0,
                 native_cycle: None,
+                native_f1_enabled: false,
                 death_poffs_enabled: true,
                 world_size,
                 organisms: Vec::new(),
@@ -13008,6 +13014,7 @@ impl Engine {
             schema_version: default_snapshot_schema_version(),
             tick: self.tick,
             native_cycle: self.native_cycle,
+            native_f1_enabled: self.native_f1_enabled(),
             death_poffs_enabled: self.death_poffs_enabled,
             world_size: [self.config.world_width, self.config.world_height],
             organisms,
