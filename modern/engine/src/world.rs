@@ -1,6 +1,7 @@
 use crate::biology::resource_readback;
 use crate::environment::{
-    TeleporterBackflow, blocks_backflow, inside_teleporter, teleporter_blocked_by_obstacles,
+    TeleporterBackflow, TrashCompactor, blocks_backflow, inside_teleporter,
+    teleporter_blocked_by_obstacles,
 };
 use crate::modes::{
     LocalModeAdjudication, LocalModeConfig, LocalModeKind, LocalModeResult, LocalModeState,
@@ -2424,6 +2425,8 @@ pub struct Engine {
     zerobot_checkpoint_score: i64,
     #[serde(default)]
     obstacles: Vec<Obstacle>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    trash_compactor: Option<TrashCompactor>,
     #[serde(default)]
     teleporters: Vec<Teleporter>,
     #[serde(default)]
@@ -2478,6 +2481,7 @@ struct CycleCheckpoint {
     zerobot_checkpoint: Option<RobotState>,
     zerobot_checkpoint_score: i64,
     obstacles: Vec<Obstacle>,
+    trash_compactor: Option<TrashCompactor>,
     teleporters: Vec<Teleporter>,
     file_teleporters: Vec<FileTeleporter>,
     corpses: Vec<CorpseSnapshot>,
@@ -2633,6 +2637,7 @@ impl Engine {
             zerobot_checkpoint: None,
             zerobot_checkpoint_score: 0,
             obstacles: legacy.obstacles.into_iter().map(Into::into).collect(),
+            trash_compactor: None,
             teleporters: legacy.teleporters.into_iter().map(Into::into).collect(),
             file_teleporters: Vec::new(),
             corpses: legacy.corpses.into_iter().map(Into::into).collect(),
@@ -2846,6 +2851,7 @@ impl Engine {
             zerobot_checkpoint: None,
             zerobot_checkpoint_score: 0,
             obstacles: Vec::new(),
+            trash_compactor: None,
             teleporters: Vec::new(),
             file_teleporters: Vec::new(),
             corpses: Vec::new(),
@@ -5552,6 +5558,7 @@ impl Engine {
                 zerobot_checkpoint: self.zerobot_checkpoint.clone(),
                 zerobot_checkpoint_score: self.zerobot_checkpoint_score,
                 obstacles: self.obstacles.clone(),
+                trash_compactor: self.trash_compactor,
                 teleporters: self.teleporters.clone(),
                 file_teleporters: self.file_teleporters.clone(),
                 corpses: self.corpses.clone(),
@@ -5623,6 +5630,7 @@ impl Engine {
         self.zerobot_checkpoint = checkpoint.zerobot_checkpoint;
         self.zerobot_checkpoint_score = checkpoint.zerobot_checkpoint_score;
         self.obstacles = checkpoint.obstacles;
+        self.trash_compactor = checkpoint.trash_compactor;
         self.teleporters = checkpoint.teleporters;
         self.file_teleporters = checkpoint.file_teleporters;
         self.corpses = checkpoint.corpses;
@@ -5960,6 +5968,7 @@ impl Engine {
             zerobot_checkpoint: self.zerobot_checkpoint.clone(),
             zerobot_checkpoint_score: self.zerobot_checkpoint_score,
             obstacles: self.obstacles.clone(),
+            trash_compactor: self.trash_compactor,
             teleporters: self.teleporters.clone(),
             file_teleporters: self.file_teleporters.clone(),
             corpses: self.corpses.clone(),
@@ -6014,7 +6023,7 @@ impl Engine {
         Ok(())
     }
 
-    pub fn add_obstacle(&mut self, obstacle: Obstacle) -> Result<(), EngineError> {
+    fn validate_obstacle_addition(&self, obstacle: &Obstacle) -> Result<(), EngineError> {
         if obstacle
             .minimum
             .iter()
@@ -6041,7 +6050,40 @@ impl Engine {
                 obstacle.id
             )));
         }
+        Ok(())
+    }
+
+    pub fn add_obstacle(&mut self, obstacle: Obstacle) -> Result<(), EngineError> {
+        self.validate_obstacle_addition(&obstacle)?;
         self.obstacles.push(obstacle);
+        self.publish_snapshot();
+        Ok(())
+    }
+
+    pub fn add_trash_compactor(
+        &mut self,
+        left: Obstacle,
+        right: Obstacle,
+    ) -> Result<(), EngineError> {
+        self.validate_obstacle_addition(&left)?;
+        self.validate_obstacle_addition(&right)?;
+        let speed = left.drift[0];
+        if left.id == right.id
+            || left.minimum[0] >= right.minimum[0]
+            || speed <= 0.0
+            || right.drift != [-speed, 0.0]
+            || left.drift[1] != 0.0
+        {
+            return Err(EngineError::Invariant(
+                "trash compactor walls are invalid".into(),
+            ));
+        }
+        self.trash_compactor = Some(TrashCompactor {
+            left: left.id,
+            right: right.id,
+            speed,
+        });
+        self.obstacles.extend([left, right]);
         self.publish_snapshot();
         Ok(())
     }
@@ -6081,6 +6123,12 @@ impl Engine {
             return Err(EngineError::Invariant(format!(
                 "obstacle {id} does not exist"
             )));
+        }
+        if self
+            .trash_compactor
+            .is_some_and(|compactor| compactor.contains(id))
+        {
+            self.trash_compactor = None;
         }
         self.publish_snapshot();
         Ok(())
@@ -10551,7 +10599,21 @@ impl Engine {
 
     fn move_obstacles(&mut self) {
         let world_size = [self.config.world_width, self.config.world_height];
+        let compactor = self.trash_compactor;
+        if let Some(compactor) = compactor {
+            let [left, right] = compactor
+                .wall_indices(&self.obstacles)
+                .expect("active compactor walls exist");
+            let [left, right] = self
+                .obstacles
+                .get_disjoint_mut([left, right])
+                .expect("compactor walls are distinct");
+            compactor.move_walls(left, right, world_size);
+        }
         for obstacle in &mut self.obstacles {
+            if compactor.is_some_and(|compactor| compactor.contains(obstacle.id)) {
+                continue;
+            }
             for (axis, extent) in world_size.iter().enumerate() {
                 let extent = extent.max(1.0);
                 let delta = obstacle.drift[axis];
@@ -12981,6 +13043,15 @@ impl Engine {
     }
 
     pub(crate) fn restore(mut engine: Self) -> Result<Self, EngineError> {
+        if engine.trash_compactor.is_some_and(|compactor| {
+            !compactor.speed.is_finite()
+                || compactor.speed <= 0.0
+                || compactor.wall_indices(&engine.obstacles).is_none()
+        }) {
+            return Err(EngineError::InvalidSave(
+                "invalid trash compactor walls".into(),
+            ));
+        }
         // Reject process caches before migration or snapshot-derived ring indexing.
         engine.native_energy.validate().map_err(|error| {
             EngineError::InvalidSave(format!("invalid native energy cache: {error}"))
