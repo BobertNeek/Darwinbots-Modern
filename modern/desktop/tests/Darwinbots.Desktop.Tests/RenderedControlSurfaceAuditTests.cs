@@ -795,13 +795,11 @@ public sealed class RenderedControlSurfaceAuditTests
 
                     var menu = Named<LegacyMenuBar>(window, "HistoricMenuBar");
                     var safemode = menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.RecordingSafemodeBackup)!;
-                    Assert.True(safemode.IsChecked);
+                    Assert.Equal(MenuItemToggleType.None, safemode.ToggleType);
                     safemode.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
-                    await WaitFor(() => safemode.IsChecked == false);
-                    Assert.Equal("SAFEMODE BACKUP OFF", viewModel.Status);
-                    safemode.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
-                    await WaitFor(() => safemode.IsChecked == true);
-                    Assert.Equal("SAFEMODE BACKUP ON", viewModel.Status);
+                    await WaitFor(() => viewModel.Status == "SAFEMODE BACKUP OPEN");
+                    Assert.Single(window.OwnedWindows.OfType<SafeModeBackupWindow>()).Close();
+                    Assert.True(Field<EnvironmentUpdate>(window, "_liveEnvironment").Recording!.SafeModeBackup);
 
                     var handleError = typeof(MainWindow).GetMethod("HandleEngineErrorAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
                     await (Task)handleError.Invoke(window, [new AccessViolationException("IO-05 rendered recovery fault"), true])!;
@@ -2039,6 +2037,7 @@ internal sealed class AuditStorageService : IDesktopStorageService
     public byte[]? OpenedSimulation { get; set; }
     public DesktopSettings? SettingsToOpen { get; init; }
     public string? LatestAutosave { get; init; }
+    public Func<DateTime, CancellationToken, Task<string?>>? ArchiveAutosave { get; init; }
     public byte[]? SavedSimulation { get; private set; }
     public string? SavedDna { get; private set; }
     public string? PickedPopulationSeedDirectory { get; set; }
@@ -2118,6 +2117,9 @@ internal sealed class AuditStorageService : IDesktopStorageService
     }
 
     public string? FindLatestAutosave() => LatestAutosave;
+
+    public Task<string?> ArchiveLatestAutosaveAsync(DateTime localBoundary, CancellationToken cancellationToken) =>
+        ArchiveAutosave?.Invoke(localBoundary, cancellationToken) ?? Task.FromResult<string?>(null);
 
     public async Task SaveAutosaveAsync(ReadOnlyMemory<byte> save)
     {
