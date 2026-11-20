@@ -246,10 +246,12 @@ internal static class LegacySettingsAdapter
         for (int index = 0; index < obstacleCount; index++)
         {
             int o = shapes + 9 + 7 * index;
-            float x = (float)Number(o + 5) * worldWidth, y = (float)Number(o + 6) * worldHeight;
-            float width = (float)Number(o + 1) * worldWidth, height = (float)Number(o + 2) * worldHeight;
-            obstacles.Add(new((uint)(index + 1), [x, y], [x + width, y + height])
+            var bounds = new LegacySettingsObstacleBounds(
+                (float)Number(o + 5), (float)Number(o + 6), (float)Number(o + 1), (float)Number(o + 2));
+            var (minimum, maximum) = bounds.InField(worldWidth, worldHeight);
+            obstacles.Add(new((uint)(index + 1), minimum, maximum)
             {
+                LegacySettingsBounds = bounds,
                 Color = FromVbColor(Integer(o)),
                 Opacity = Flag(shapes) ? 0 : 1,
                 Drift = [(float)Number(o + 3), (float)Number(o + 4)],
