@@ -14407,20 +14407,19 @@ fn apply_tie_resource(
         _ => None,
     };
     if result.is_some() {
-        let native_energy_transfer = native.is_some() && location == -1;
-        // In the native energy path, WriteSenses refreshes the prior-cycle energy.
-        if !native_energy_transfer {
-            source.materials.previous_energy = source.materials.energy;
-            target.materials.previous_energy = target.materials.energy;
+        let native = native.is_some();
+        for robot in [&mut *source, &mut *target] {
+            // Native WriteSenses refreshes the previous energy after Shock.
+            if !native {
+                robot.materials.previous_energy = robot.materials.energy;
+            }
+            robot
+                .materials
+                .publish_for_profile(&mut robot.program.memory, native);
         }
-        source
-            .materials
-            .publish_for_profile(&mut source.program.memory, native.is_some());
-        target
-            .materials
-            .publish_for_profile(&mut target.program.memory, native.is_some());
-        // The original CalcMass precedes tie updates. Keep that mass through movement.
-        if native.is_none() {
+        // Native Update_Ties runs after CalcMass. A resource transfer can
+        // change radius, but the mass remains available to UpdatePosition.
+        if !native {
             for robot in [&mut *source, &mut *target] {
                 robot.materials.mass = derived_mass(
                     robot.materials.body,
@@ -14428,21 +14427,19 @@ fn apply_tie_resource(
                     robot.materials.chloroplasts,
                 )
                 .clamp(1.0, 32_000.0);
+                robot.materials.radius = crate::physics::organism_radius(
+                    robot.materials.body,
+                    robot.materials.chloroplasts,
+                    fixed_bot_radii,
+                );
             }
-        }
-        // Native energy ties refresh the receiver's radius after storing body.
-        // The payer may still carry its body-only radius from LoadRobotBody.
-        if !native_energy_transfer || requested < 0 {
-            source.materials.radius = crate::physics::organism_radius(
-                source.materials.body,
-                source.materials.chloroplasts,
-                fixed_bot_radii,
-            );
-        }
-        if !native_energy_transfer || requested > 0 {
-            target.materials.radius = crate::physics::organism_radius(
-                target.materials.body,
-                target.materials.chloroplasts,
+        } else if matches!(location, -1 | -6) {
+            // Update_Ties refreshes the receiver on energy and body branches.
+            // Poison can cancel a take after entry without skipping FindRadius.
+            let receiver = if requested > 0 { target } else { source };
+            receiver.materials.radius = crate::physics::native_organism_radius(
+                receiver.materials.body,
+                receiver.materials.chloroplasts,
                 fixed_bot_radii,
             );
         }
