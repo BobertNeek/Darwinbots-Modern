@@ -49,6 +49,10 @@ public sealed record RobotSelectionResult(OrganismKey? Robot, bool Restarted)
 public sealed record StagedEvolutionSnapshot(uint Stage, string Phase, bool Hidden,
     float ReductionUnit, uint HideCycles, uint TestWins, uint OpponentStage, double Handicap)
 {
+    public uint? CurrentDnaSize { get; init; }
+    public uint? TargetDnaSize { get; init; }
+    public double RawHandicap { get; init; } = Handicap;
+    public double InverseHandicap { get; init; }
     public IReadOnlyList<uint> BaselineSpecies { get; init; } = [];
     public IReadOnlyList<uint> MutatorSpecies { get; init; } = [];
     public int TestResultCursor { get; init; }

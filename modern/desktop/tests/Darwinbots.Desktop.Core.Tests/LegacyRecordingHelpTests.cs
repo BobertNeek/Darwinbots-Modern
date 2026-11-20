@@ -47,7 +47,6 @@ public sealed class LegacyRecordingHelpTests
         {
             LegacyCommandId.HelpDna,
             LegacyCommandId.HelpRobotTagInformation,
-            LegacyCommandId.HelpSurvivalInfo,
             LegacyCommandId.HelpAbout,
         };
         Assert.Equal(expectedHelpCommands, LegacyHelpResolver.Topics.Select(topic => topic.Command));
