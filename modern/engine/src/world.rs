@@ -13275,21 +13275,7 @@ fn apply_tie_energy(
             return None;
         }
         source.materials.energy -= amount;
-        add_tie_store(
-            &mut target.materials.energy,
-            scale_tie_amount(amount, 0.70),
-            true,
-        );
-        add_tie_store(
-            &mut target.materials.body,
-            scale_tie_amount(amount, 0.029),
-            true,
-        );
-        add_tie_store(
-            &mut target.materials.waste,
-            scale_tie_amount(amount, 0.01),
-            false,
-        );
+        credit_tied_energy(&mut target.materials, amount, native.is_some());
         return Some("tie_resource_energy");
     }
 
@@ -13301,22 +13287,22 @@ fn apply_tie_energy(
         return Some("tie_resource_poison_defense");
     }
     target.materials.energy -= amount;
-    add_tie_store(
-        &mut source.materials.energy,
-        scale_tie_amount(amount, 0.70),
-        true,
-    );
-    add_tie_store(
-        &mut source.materials.body,
-        scale_tie_amount(amount, 0.029),
-        true,
-    );
-    add_tie_store(
-        &mut source.materials.waste,
-        scale_tie_amount(amount, 0.01),
-        false,
-    );
+    credit_tied_energy(&mut source.materials, amount, native.is_some());
     Some("tie_resource_energy")
+}
+
+fn credit_tied_energy(receiver: &mut BiologyState, amount: f32, native: bool) {
+    if native {
+        // Update_Ties uses Double factors and rounds each complete sum to Single.
+        let amount = f64::from(amount);
+        receiver.energy = (f64::from(receiver.energy) + amount * 0.7).min(32_000.0) as f32;
+        receiver.body = (f64::from(receiver.body) + amount * 0.029).min(32_000.0) as f32;
+        receiver.waste = (f64::from(receiver.waste) + amount * 0.01) as f32;
+        return;
+    }
+    add_tie_store(&mut receiver.energy, scale_tie_amount(amount, 0.70), true);
+    add_tie_store(&mut receiver.body, scale_tie_amount(amount, 0.029), true);
+    add_tie_store(&mut receiver.waste, scale_tie_amount(amount, 0.01), false);
 }
 
 fn apply_tie_venom(
