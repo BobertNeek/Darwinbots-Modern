@@ -218,6 +218,13 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task AddObstacleAsync(ObstacleSnapshot obstacle, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.AddObstacle(obstacle), cancellationToken);
 
+    public async Task<int?> AddNativeRandomObstaclesAsync(int count, CancellationToken cancellationToken = default)
+    {
+        int? added = null;
+        await Enqueue(engine => added = engine.AddNativeRandomObstacles(count), cancellationToken).ConfigureAwait(false);
+        return added;
+    }
+
     public Task UpdateObstacleAsync(ObstacleSnapshot obstacle, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.UpdateObstacle(obstacle), cancellationToken);
 

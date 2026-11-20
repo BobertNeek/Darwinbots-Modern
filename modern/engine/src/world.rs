@@ -6014,6 +6014,95 @@ impl Engine {
         Ok(())
     }
 
+    pub(crate) fn add_native_random_obstacles(
+        &mut self,
+        count: usize,
+    ) -> Result<Option<usize>, EngineError> {
+        let Some(random) = self.native_random.as_mut() else {
+            return Ok(None);
+        };
+        let dimensions = [self.config.world_width, self.config.world_height];
+        if dimensions
+            .iter()
+            .any(|dimension| !dimension.is_finite() || *dimension <= 0.0)
+        {
+            return Err(EngineError::Invariant(
+                "random shapes require positive finite field dimensions".to_owned(),
+            ));
+        }
+        let added = count.min(1000_usize.saturating_sub(self.obstacles.len()));
+        let last_id = self
+            .obstacles
+            .iter()
+            .map(|shape| shape.id)
+            .max()
+            .unwrap_or(0);
+        last_id
+            .checked_add(added as u32)
+            .ok_or_else(|| EngineError::Invariant("shape ID capacity exhausted".to_owned()))?;
+
+        let origin = self.native_origin.as_ref().and_then(|origin| {
+            crate::native_binary::NativeSimulationTail::decode(&origin.tail).ok()
+        });
+        let native_flag = |name| origin.as_ref().and_then(|tail| tail.integer(name).ok());
+        let black = native_flag("shapes_black").is_some_and(|value| value != 0);
+        let transparent = native_flag("shapes_transparent").is_some_and(|value| value != 0);
+        // Keep the live vision and shot policies when shapes already exist.
+        // A loaded simulation also carries global policies when it has no shapes.
+        let (vision, shot) = self.obstacles.first().map_or_else(
+            || {
+                let vision = match native_flag("shapes_see_through") {
+                    Some(value) if value != 0 => ShapeVisionPolicy::SeeThrough,
+                    _ => ShapeVisionPolicy::default(),
+                };
+                let shot = match native_flag("shapes_absorb") {
+                    Some(0) => ShapeShotPolicy::Reflect,
+                    _ => ShapeShotPolicy::default(),
+                };
+                (vision, shot)
+            },
+            |shape| (shape.vision_policy, shape.shot_policy),
+        );
+        let extent_fraction = f64::from(0.2_f32);
+        for offset in 0..count {
+            let position = [random.unit(), random.unit()];
+            let extent = [random.unit(), random.unit()];
+            if offset == added {
+                // VB6 prepares geometry before NewObstacle checks the cap and stops.
+                break;
+            }
+            let [(left, right), (top, bottom)] = [0, 1].map(|axis| {
+                let dimension = f64::from(dimensions[axis]);
+                let coordinate = (f64::from(position[axis]) * dimension) as f32;
+                let minimum =
+                    ((f64::from(coordinate) - dimension * (extent_fraction / 2.0)) as f32).max(0.0);
+                let size = (f64::from(extent[axis]) * dimension * extent_fraction) as f32;
+                (minimum, (minimum + size).min(dimensions[axis]))
+            });
+            let mut shape =
+                Obstacle::new(last_id + offset as u32 + 1, [left, top], [right, bottom]);
+            let bgr = if black {
+                0
+            } else {
+                (f64::from(random.unit()) * 65_536.0
+                    + f64::from(random.unit()) * 255.0
+                    + f64::from(random.unit()))
+                .round_ties_even() as i32
+            };
+            shape.color = native_io::color(bgr);
+            if transparent {
+                shape.opacity = 0.0;
+            }
+            shape.vision_policy = vision;
+            shape.shot_policy = shot;
+            self.obstacles.push(shape);
+        }
+        if added != 0 {
+            self.publish_snapshot();
+        }
+        Ok(Some(added))
+    }
+
     pub fn add_obstacle(&mut self, obstacle: Obstacle) -> Result<(), EngineError> {
         if obstacle
             .minimum
@@ -13964,6 +14053,94 @@ const fn default_snapshot_schema_version() -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn native_random_shapes_use_ordered_draws_clipped_geometry_and_saved_stream() {
+        let mut world = Engine::new(EngineConfig {
+            world_width: 1100.0,
+            world_height: 800.0,
+            seed: 1338,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        assert_eq!(world.add_native_random_obstacles(1).unwrap(), Some(1));
+        let shape = &world.snapshot().obstacles[0];
+        // VB6 seed 1338 clamps X to zero and clips the far edge of Y.
+        assert_eq!(shape.minimum.map(f32::to_bits), [0, 0x4430_5f77]);
+        assert_eq!(shape.maximum.map(f32::to_bits), [0x4317_35f9, 0x4448_0000]);
+        assert_eq!(shape.color, 0xffd7_6d00);
+        assert_eq!(shape.drift, [0.0; 2]);
+        assert_eq!(world.native_random.as_ref().unwrap().state(), 0x8e_ffa9);
+
+        let saved = crate::SaveFile::encode(&world).unwrap();
+        let mut restored = crate::SaveFile::decode(&saved).unwrap();
+        assert_eq!(world.add_native_random_obstacles(10).unwrap(), Some(10));
+        assert_eq!(restored.add_native_random_obstacles(10).unwrap(), Some(10));
+        assert_eq!(world.obstacles, restored.obstacles);
+        assert_eq!(world.native_random, restored.native_random);
+        assert_eq!(world.snapshot().tick, 0);
+    }
+
+    #[test]
+    fn native_random_shapes_stop_at_capacity_after_a_failed_geometry_draw() {
+        let mut world = Engine::new(EngineConfig::testing()).unwrap();
+        world.obstacles = (1..1000)
+            .map(|id| Obstacle::new(id, [0.0; 2], [1.0; 2]))
+            .collect();
+        let mut expected = world.native_random.clone().unwrap();
+        for _ in 0..11 {
+            expected.unit();
+        }
+        assert_eq!(world.add_native_random_obstacles(10).unwrap(), Some(1));
+        assert_eq!(world.snapshot().obstacles.len(), 1000);
+        assert_eq!(world.snapshot().obstacles.last().unwrap().id, 1000);
+        assert_eq!(world.native_random.as_ref(), Some(&expected));
+
+        for _ in 0..4 {
+            expected.unit();
+        }
+        assert_eq!(world.add_native_random_obstacles(10).unwrap(), Some(0));
+        assert_eq!(world.native_random.as_ref(), Some(&expected));
+
+        world.native_random = None;
+        assert_eq!(world.add_native_random_obstacles(10).unwrap(), None);
+        assert_eq!(world.snapshot().obstacles.len(), 1000);
+    }
+
+    #[test]
+    fn native_random_shapes_honor_imported_global_options_from_an_empty_world() {
+        use crate::native_binary::{NativeRecordFile, NativeSimulationTail, NativeValue};
+
+        let initial = Engine::new(EngineConfig::testing()).unwrap();
+        let mut file = NativeRecordFile::decode(&initial.export_native_sim().unwrap()).unwrap();
+        let mut tail = NativeSimulationTail::decode(&file.tail).unwrap();
+        for name in ["shapes_black", "shapes_transparent", "shapes_see_through"] {
+            tail.set_value(name, NativeValue::Word(-1)).unwrap();
+        }
+        tail.set_value("shapes_absorb", NativeValue::Word(0))
+            .unwrap();
+        file.tail = tail.encode().unwrap();
+        let mut world = Engine::from_native_sim(&file.encode().unwrap()).unwrap();
+        assert!(world.obstacles.is_empty());
+        let mut expected = world.native_random.clone().unwrap();
+        for _ in 0..8 {
+            expected.unit();
+        }
+        assert_eq!(world.add_native_random_obstacles(2).unwrap(), Some(2));
+        assert_eq!(world.native_random.as_ref(), Some(&expected));
+        let saved = crate::SaveFile::encode(&world).unwrap();
+        let mut restored = crate::SaveFile::decode(&saved).unwrap();
+        assert_eq!(restored.add_native_random_obstacles(1).unwrap(), Some(1));
+        let encoded = restored.export_native_sim().unwrap();
+        let imported = Engine::from_native_sim(&encoded).unwrap();
+        assert_eq!(imported.obstacles.len(), 3);
+        for shape in imported.obstacles {
+            assert_eq!(shape.color, 0xff00_0000);
+            assert_eq!(shape.opacity, 0.0);
+            assert_eq!(shape.vision_policy, ShapeVisionPolicy::SeeThrough);
+            assert_eq!(shape.shot_policy, ShapeShotPolicy::Reflect);
+        }
+    }
 
     #[test]
     fn render_readout_publication_preserves_native_edge_positions() {
