@@ -12,6 +12,46 @@ namespace Darwinbots.Desktop.Tests;
 public sealed class NativeRobotFileIntegrationTests
 {
     [Fact]
+    public async Task GenomeRowsKeepAbsoluteParentsAndBiologicalGenerationAfterSlotReuse()
+    {
+        await using var session = new SimulationSession(new NativeEngineClient(new WorldSetupOptions
+        {
+            Backend = "Cpu", PopulationCapacity = 16,
+        }));
+        const string dna = "start\nstop";
+        await session.ImportDnaAsync(dna, [500f, 500f]);
+        var filler = Assert.Single(session.LatestSnapshot.Organisms);
+        await session.RemoveAsync(filler.Slot, filler.Generation);
+        await session.ImportDnaAsync(dna, [500f, 500f]);
+        var parent = Assert.Single(session.LatestSnapshot.Organisms);
+        var childKey = await session.CloneAsync(parent.Slot, parent.Generation, [900f, 900f]);
+        var child = Assert.Single(session.LatestSnapshot.Organisms,
+            robot => robot.Slot == childKey.Slot && robot.Generation == childKey.Generation);
+        Assert.NotEqual((ulong)parent.Slot, parent.UniqueId);
+        Assert.NotEqual(1u, childKey.Generation);
+
+        await session.RemoveAsync(parent.Slot, parent.Generation);
+        await session.ImportDnaAsync(dna, [1300f, 1300f]);
+        var replacement = Assert.Single(session.LatestSnapshot.Organisms, robot => robot.Slot == parent.Slot);
+        Assert.NotEqual(parent.Generation, replacement.Generation);
+        Assert.NotEqual(parent.UniqueId, replacement.UniqueId);
+
+        var living = await session.CaptureLivingGenomeRecordsAsync();
+        var rows = Db2GenomeRecordFile.Decode(Db2GenomeRecordFile.EncodeLiving(living.Snapshot, living.Dna));
+        var livingChild = Assert.Single(rows, row => row.Id == child.UniqueId);
+        Assert.Equal(parent.UniqueId, livingChild.ParentId);
+        Assert.Equal(1u, livingChild.Generation);
+        var livingReplacement = Assert.Single(rows, row => row.Id == replacement.UniqueId);
+        Assert.Equal(0UL, livingReplacement.ParentId);
+        Assert.Equal(0u, livingReplacement.Generation);
+
+        var removed = await session.RemoveWithDnaAsync([childKey], suppressDeathPoffs: false, excludeVegetables: false);
+        var manualChild = Assert.Single(Db2GenomeRecordFile.Decode(LegacyRecordingSerializer.SerializeRemoved(
+            removed.Snapshot, removed.Dna, includeHeader: true, format: LegacyRecordingFormat.Db2GenomeRecords)));
+        Assert.Equal(livingChild, manualChild);
+    }
+
+    [Fact]
     public async Task PickedSidecarProfileReachesOnlyItsActualNativeSpeciesAndSelectedExport()
     {
         await DesktopTestApplication.Session.Dispatch(async () =>
