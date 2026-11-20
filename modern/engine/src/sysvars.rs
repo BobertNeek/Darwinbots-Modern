@@ -66,6 +66,24 @@ pub(crate) fn sysvar_name(address: i32) -> Option<String> {
         .cloned()
 }
 
+pub(crate) fn legacy_display_sysvar_name(address: i32) -> Option<&'static str> {
+    static NAMES: OnceLock<HashMap<i32, &'static str>> = OnceLock::new();
+    NAMES
+        .get_or_init(|| {
+            let mut names = HashMap::new();
+            let mut entries = LEGACY_SYSVARS.split_whitespace();
+            while let (Some(name), Some(address)) = (entries.next(), entries.next()) {
+                if let Ok(address) = address.parse() {
+                    // SysvarDetok scans to the end, giving the last alias precedence.
+                    names.insert(address, name);
+                }
+            }
+            names
+        })
+        .get(&address)
+        .copied()
+}
+
 pub(crate) fn canonical_sysvar_addresses() -> &'static BTreeSet<u16> {
     static ADDRESSES: OnceLock<BTreeSet<u16>> = OnceLock::new();
     ADDRESSES.get_or_init(|| {
