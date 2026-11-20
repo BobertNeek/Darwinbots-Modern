@@ -161,6 +161,9 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task MoveAsync(uint slot, uint generation, float[] position, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.Move(slot, generation, position), cancellationToken);
 
+    public Task DragHighlightedRobotsAsync(HighlightedRobotDrag drag) =>
+        Enqueue(engine => engine.DragHighlightedRobots(drag), CancellationToken.None);
+
     public async Task<OrganismKey> CloneAsync(uint slot, uint generation, float[] position, CancellationToken cancellationToken = default)
     {
         OrganismKey? result = null;

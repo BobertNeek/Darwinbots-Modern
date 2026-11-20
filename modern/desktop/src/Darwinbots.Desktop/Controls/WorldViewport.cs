@@ -29,6 +29,10 @@ public sealed class WorldViewport : Control
     private Point? _dragOrigin;
     private bool _dragMoved;
     private IPointer? _playerBotPointer;
+    private GroupDrag? _groupDrag;
+
+    private sealed record GroupDrag(IPointer Pointer, OrganismKey Anchor, OrganismKey Grabbed,
+        RobotDragPlacement[] Offsets);
     private bool _renderWaste = true;
     private bool _showSelectedVision = true;
     private bool _wrapX = true;
@@ -56,6 +60,8 @@ public sealed class WorldViewport : Control
     public event Action<uint, float[]>? OrganismDragCompleted;
     public event Action<OrganismKey, float[]>? OrganismKeyDragCompleted;
     public event Action<OrganismKey>? PlayerBotHighlightRequested;
+    public event Action<HighlightedRobotDrag>? HighlightedRobotDragMoved;
+    public Func<IReadOnlyCollection<OrganismKey>>? HighlightedRobotKeys { get; set; }
     public event Action<float[]?>? PlayerBotPointerChanged;
     public Func<bool>? IsPlayerBotEnabled { get; set; }
     public Func<bool>? CanAimPlayerBot { get; set; }
@@ -505,12 +511,22 @@ public sealed class WorldViewport : Control
             ]);
             return;
         }
+        // A group uses the focus and marks from before the hit changes selection.
+        var groupDrag = point.Properties.IsLeftButtonPressed && e.ClickCount == 1
+            ? CaptureGroupDrag(e.Pointer, selected.Value) : null;
         SelectKey(selected);
         OrganismSelected?.Invoke(selected.Value.Slot);
         OrganismKeySelected?.Invoke(selected.Value);
         if (e.ClickCount >= 2)
         {
             OrganismDoubleClicked?.Invoke(selected.Value);
+            e.Handled = true;
+            return;
+        }
+        if (groupDrag is not null)
+        {
+            _groupDrag = groupDrag;
+            e.Pointer.Capture(this);
             e.Handled = true;
             return;
         }
@@ -534,6 +550,20 @@ public sealed class WorldViewport : Control
             {
                 ClearPlayerBotPointer();
                 e.Pointer.Capture(null);
+            }
+            e.Handled = true;
+            return;
+        }
+        if (_groupDrag is { } group && ReferenceEquals(group.Pointer, e.Pointer))
+        {
+            var current = e.GetCurrentPoint(this);
+            if (current.Properties.IsLeftButtonPressed && !current.Properties.IsRightButtonPressed
+                && !current.Properties.IsMiddleButtonPressed)
+            {
+                var position = WorldPoint(current.Position, clamp: false);
+                var placements = group.Offsets.Select(offset => new RobotDragPlacement(
+                    offset.Key, position[0] + offset.X, position[1] + offset.Y)).ToArray();
+                HighlightedRobotDragMoved?.Invoke(new HighlightedRobotDrag(group.Anchor, group.Grabbed, placements));
             }
             e.Handled = true;
             return;
@@ -566,6 +596,12 @@ public sealed class WorldViewport : Control
             e.Handled = true;
             return;
         }
+        if (_groupDrag is { } group && ReferenceEquals(group.Pointer, e.Pointer))
+        {
+            CancelHighlightedDrag();
+            e.Handled = true;
+            return;
+        }
         _panAnchor = null;
         if (_dragMoved && _dragKey is { } key && _dragPosition is { } position)
         {
@@ -583,6 +619,36 @@ public sealed class WorldViewport : Control
         base.OnPointerCaptureLost(e);
         if (ReferenceEquals(_playerBotPointer, e.Pointer))
             ClearPlayerBotPointer();
+        if (_groupDrag is { } group && ReferenceEquals(group.Pointer, e.Pointer))
+            _groupDrag = null;
+    }
+
+    public void CancelHighlightedDrag()
+    {
+        var group = _groupDrag;
+        _groupDrag = null;
+        group?.Pointer.Capture(null);
+    }
+
+    private GroupDrag? CaptureGroupDrag(IPointer pointer, OrganismKey grabbed)
+    {
+        if (_selectedKey is not { } anchor || HighlightedRobotKeys?.Invoke() is not { } marks
+            || !marks.Contains(anchor) || !_organismsByKey.TryGetValue(anchor, out var origin)
+            || origin.IsHidden)
+            return null;
+
+        var offsets = new List<RobotDragPlacement>();
+        foreach (var key in marks.OrderBy(key => key.Slot))
+        {
+            if (!_organismsByKey.TryGetValue(key, out var member) || member.IsHidden) continue;
+            offsets.Add(new RobotDragPlacement(key,
+                -(origin.Position[0] - member.Position[0]), -(origin.Position[1] - member.Position[1])));
+            if (offsets.Count == 50) break;
+        }
+        // The legacy highlighted placement overwrites the initial snap when the grabbed robot is marked.
+        if (offsets.All(offset => offset.Key != grabbed))
+            offsets.Add(new RobotDragPlacement(grabbed, 0, 0));
+        return new GroupDrag(pointer, anchor, grabbed, offsets.ToArray());
     }
 
     private void ClearPlayerBotPointer()
