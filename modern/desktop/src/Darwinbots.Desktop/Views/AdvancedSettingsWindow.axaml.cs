@@ -13,8 +13,12 @@ public sealed partial class AdvancedSettingsWindow : Window
     private bool _updatingTopology;
     private MutationProfileUpdate _mutationProfile = MutationProfileUpdate.Default;
     private readonly HashSet<NumericUpDown> _editedMutationRates = [];
+    private readonly GlobalSimulationCostSettings? _initialCosts;
+    private GlobalSimulationCostSettings? _stagedCosts;
 
     public bool Accepted { get; private set; }
+    public bool LiveSettingsEdited { get; private set; }
+    public GlobalSimulationCostSettings? CostUpdate => _stagedCosts != _initialCosts ? _stagedCosts : null;
     public MutationSettingsUpdate MutationUpdate => new(
         MutationsEnabled.IsChecked == true,
         (float)(GlobalMutationRate.Value ?? 1m),
@@ -50,10 +54,20 @@ public sealed partial class AdvancedSettingsWindow : Window
             (int)(SamplingInterval.Value ?? 200)));
 
     public AdvancedSettingsWindow() : this(EnvironmentUpdate.Default, EngineSnapshot.Empty) { }
-    public AdvancedSettingsWindow(EnvironmentUpdate update, EngineSnapshot? snapshot = null, int selectedTab = 0)
+    public AdvancedSettingsWindow(EnvironmentUpdate update, EngineSnapshot? snapshot = null, int selectedTab = 0,
+        GlobalSimulationCostSettings? costs = null)
     {
+        _initialCosts = _stagedCosts = costs;
         InitializeComponent();
         SettingsTabs.SelectedIndex = Math.Clamp(selectedTab, 0, 3);
+        if (costs is not null)
+        {
+            SimulationCostsPanel.IsVisible = true;
+            CostPreset.SelectedIndex = costs == GlobalSimulationCostSettings.NoCosts ? 0
+                : costs == GlobalSimulationCostSettings.F1Default ? 1 : 2;
+            LiveCustomSimulationCostsButton.IsEnabled = CostPreset.SelectedIndex == 2;
+            CostPreset.SelectionChanged += (_, _) => SelectCostPreset();
+        }
         ToroidalWorld.IsCheckedChanged += (_, _) =>
         {
             if (_initializing || _updatingTopology || ToroidalWorld.IsChecked is null) return;
@@ -231,9 +245,38 @@ public sealed partial class AdvancedSettingsWindow : Window
         foreach (var numeric in this.GetLogicalDescendants().OfType<NumericUpDown>()) numeric.ValueChanged += (_, _) => MarkDirty();
         foreach (var checkBox in this.GetLogicalDescendants().OfType<CheckBox>()) checkBox.IsCheckedChanged += (_, _) => MarkDirty();
         foreach (var slider in this.GetLogicalDescendants().OfType<Slider>()) slider.PropertyChanged += (_, e) => { if (e.Property == Slider.ValueProperty) MarkDirty(); };
+        foreach (var box in this.GetLogicalDescendants().OfType<ComboBox>().Where(box => box != CostPreset))
+            box.SelectionChanged += (_, _) => MarkDirty();
     }
 
-    private void MarkDirty() { if (!_initializing) DirtyBadge.IsVisible = true; }
+    private void SelectCostPreset()
+    {
+        _stagedCosts = CostPreset.SelectedIndex switch
+        {
+            0 => GlobalSimulationCostSettings.NoCosts,
+            1 => GlobalSimulationCostSettings.F1Default,
+            _ => _stagedCosts,
+        };
+        LiveCustomSimulationCostsButton.IsEnabled = CostPreset.SelectedIndex == 2;
+        DirtyBadge.IsVisible = LiveSettingsEdited || CostUpdate is not null;
+    }
+
+    private async void LiveCustomSimulationCosts_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_stagedCosts is not { } current) return;
+        var dialog = new CustomSimulationCostsWindow(current, stageForLiveSettings: true);
+        await dialog.ShowDialog(this);
+        if (!dialog.Accepted) return;
+        _stagedCosts = dialog.Costs;
+        DirtyBadge.IsVisible = LiveSettingsEdited || CostUpdate is not null;
+    }
+
+    private void MarkDirty()
+    {
+        if (_initializing) return;
+        LiveSettingsEdited = true;
+        DirtyBadge.IsVisible = true;
+    }
     private void Apply_Click(object? sender, RoutedEventArgs e) { Accepted = true; Close(); }
     private void Cancel_Click(object? sender, RoutedEventArgs e) => Close();
 }

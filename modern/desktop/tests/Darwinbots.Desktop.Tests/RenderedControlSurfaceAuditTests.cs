@@ -1647,6 +1647,7 @@ public sealed class RenderedControlSurfaceAuditTests
 
                 var generalSettingsCommand = menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.EditGeneralSettings)!;
                 ActivateMenu(generalSettingsCommand);
+                await WaitFor(() => window.OwnedWindows.OfType<AdvancedSettingsWindow>().Any(), () => viewModel.Status);
                 var generalSettings = Assert.Single(window.OwnedWindows.OfType<AdvancedSettingsWindow>());
                 Assert.True(generalSettings.IsVisible);
                 // Render the actual Energy tab before editing its numeric text
@@ -1679,6 +1680,7 @@ public sealed class RenderedControlSurfaceAuditTests
 
                 var mutationSettingsCommand = menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.EditGeneralSettings)!;
                 ActivateMenu(mutationSettingsCommand);
+                await WaitFor(() => window.OwnedWindows.OfType<AdvancedSettingsWindow>().Any(), () => viewModel.Status);
                 var mutationSettings = Assert.Single(window.OwnedWindows.OfType<AdvancedSettingsWindow>());
                 Assert.True(mutationSettings.IsVisible);
                 Named<TabControl>(mutationSettings, "SettingsTabs").SelectedIndex = 0;
@@ -1824,7 +1826,8 @@ public sealed class RenderedControlSurfaceAuditTests
                 Assert.Equal(2.25f, staged.GlobalMultiplier);
                 Assert.Equal(12.5f, Assert.Single(staged.SpeciesRates).Rate);
                 Click(settings, Named<Button>(settings, "ApplyButton"));
-                await WaitFor(() => engine.MutationUpdates.Count == 1);
+                await WaitFor(() => engine.MutationUpdates.Count == 1
+                    && Field<MainWindowViewModel>(window, "_viewModel").Status == "LIVE SETTINGS APPLIED");
                 var applied = engine.MutationUpdates.Single();
                 Assert.Equal(2.25f, applied.GlobalMultiplier);
                 Assert.Equal(12.5f, Assert.Single(applied.SpeciesRates).Rate);
