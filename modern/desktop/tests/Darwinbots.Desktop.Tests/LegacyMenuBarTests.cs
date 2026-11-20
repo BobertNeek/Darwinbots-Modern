@@ -32,7 +32,7 @@ public sealed class LegacyMenuBarTests
                 if (catalogItem.Shortcut is not null)
                 {
                     var gesture = KeyGesture.Parse(catalogItem.Shortcut);
-                    if (command == LegacyCommandId.HelpAbout)
+                    if (command is LegacyCommandId.HelpAbout or LegacyCommandId.FilePauseSimulation)
                     {
                         Assert.Null(commandItem.HotKey);
                         Assert.Equal(gesture, commandItem.InputGesture);
