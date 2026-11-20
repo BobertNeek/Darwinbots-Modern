@@ -764,6 +764,84 @@ public sealed class RuntimeControlSurfaceTests
         finally { File.Delete(path); }
     }
 
+    [Theory]
+    [InlineData(LocalModeKind.League)]
+    [InlineData(LocalModeKind.Contest)]
+    public async Task MatchSettingsKeepAdaptiveAndUnlimitedLimitsThroughConfigureAndReopen(LocalModeKind kind)
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"darwinbots-match-limits-{Guid.NewGuid():N}.db3s");
+        var setup = new WorldSetupOptions { Backend = "Cpu", PopulationCapacity = 16, VegetablePopulationCap = 0 };
+        using (var source = new NativeEngineClient(setup))
+        {
+            source.ConfigureLocalMode(LocalModeConfig.Default with
+            {
+                Kind = kind, MaximumRounds = 0, MaximumCycles = 0, MaximumPopulation = 0,
+            });
+            File.WriteAllBytes(path, source.Save());
+        }
+        try
+        {
+            await DesktopTestApplication.Session.Dispatch(async () =>
+            {
+                var storage = new AuditStorageService();
+                var window = new MainWindow([], setup with { LoadSavePath = path }, NativeEngineClientFactory.Instance, storage);
+                try
+                {
+                    window.Show();
+                    var model = Field<MainWindowViewModel>(window, "_viewModel");
+                    await WaitFor(() => model.Status == "LOADED", () => model.Status);
+                    var session = Field<SimulationSession>(window, "_session");
+                    window.FindControl<ComboBox>("RuntimeSpeed")!.Focus();
+                    window.KeyPress(Key.F, RawInputModifiers.Control, PhysicalKey.F, null);
+                    window.KeyRelease(Key.F, RawInputModifiers.Control, PhysicalKey.F, null);
+                    await WaitFor(() => window.FindControl<Expander>("LeagueExpander")!.IsExpanded);
+
+                    var limits = new[] { "ModeMaximumRounds", "ModeMaximumCycles", "ModePopulationCap" }
+                        .Select(name => window.FindControl<NumericUpDown>(name)!).ToArray();
+                    Assert.All(limits, input =>
+                    {
+                        Assert.Equal(0m, input.Minimum);
+                        Assert.Equal(0m, input.Value);
+                    });
+                    Assert.Equal(1m, window.FindControl<NumericUpDown>("ModeMinimumRounds")!.Minimum);
+                    window.FindControl<NumericUpDown>("ModeEnergyHandicap")!.Value = 25;
+                    void Click(string name) => window.FindControl<Button>(name)!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    Click("ConfigureModeButton");
+                    await WaitFor(() => model.Status == $"LOCAL MODE CONFIGURED · {kind.ToString().ToUpperInvariant()}", () => model.Status);
+                    var match = Assert.IsType<LocalModeConfig>(session.LatestSnapshot.LocalMode.Configuration);
+                    Assert.Equal((0u, 0ul, 0, 25), (match.MaximumRounds, match.MaximumCycles, match.MaximumPopulation, match.EnergyHandicap));
+
+                    Click("SaveButton");
+                    await WaitFor(() => storage.SavedSimulation is not null);
+                    window.FindControl<ComboBox>("LocalModeKindSelector")!.SelectedIndex = (int)LocalModeKind.SimpleSurvival;
+                    Assert.All(limits, input =>
+                    {
+                        Assert.Equal(1m, input.Minimum);
+                        Assert.Equal(1m, input.Value);
+                    });
+                    Click("ConfigureModeButton");
+                    await WaitFor(() => model.Status == "LOCAL MODE CONFIGURED · SIMPLESURVIVAL", () => model.Status);
+
+                    storage.OpenedSimulation = storage.SavedSimulation;
+                    Click("LoadButton");
+                    await WaitFor(() => model.Status == "LOADED", () => model.Status);
+                    Assert.All(limits, input =>
+                    {
+                        Assert.Equal(0m, input.Minimum);
+                        Assert.Equal(0m, input.Value);
+                    });
+                    var reopened = Assert.IsType<LocalModeConfig>(session.LatestSnapshot.LocalMode.Configuration);
+                    Assert.Equal(kind, reopened.Kind);
+                    Assert.Equal((0u, 0ul, 0, 25),
+                        (reopened.MaximumRounds, reopened.MaximumCycles, reopened.MaximumPopulation, reopened.EnergyHandicap));
+                    Assert.Equal(0ul, session.LatestSnapshot.Tick);
+                }
+                finally { window.Close(); }
+            }, CancellationToken.None);
+        }
+        finally { File.Delete(path); }
+    }
+
     [Fact]
     public async Task LoadedNativeWorldHydratesControlsAndChangingTopologyPreservesItsRules()
     {
