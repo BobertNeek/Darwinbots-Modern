@@ -43,11 +43,20 @@ public sealed class SelectedRobotToolsRenderedTests
                 var select = (Action<OrganismKey>)typeof(WorldViewport)
                     .GetField("OrganismKeySelected", BindingFlags.Instance | BindingFlags.NonPublic)!
                     .GetValue(viewport)!;
-                select(new OrganismKey(root.Slot, root.Generation));
                 var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
                 var action = menu.FindCommandItem(LegacyCommandId.RobotMakeNewSpecies)!;
 
                 using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                model.ClearSelection();
+                Assert.True(action.IsEnabled);
+                action.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                while (model.Status != "CANCELED")
+                    await Task.Delay(10, timeout.Token);
+                Assert.Empty(window.OwnedWindows.OfType<LegacyConfirmationWindow>());
+                Assert.Equal(before.Species.Count, simulation.LatestSnapshot.Species.Count);
+
+                model.Status = "READY";
+                select(new OrganismKey(root.Slot, root.Generation));
                 action.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
                 Choose("NO");
                 while (model.Status != "CANCELED")

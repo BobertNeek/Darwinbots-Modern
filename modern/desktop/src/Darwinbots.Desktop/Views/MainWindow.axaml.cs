@@ -107,7 +107,6 @@ public sealed partial class MainWindow : Window
     private readonly OfflineDiagnosticRecovery _diagnostics = new();
     private bool _safemodeBackup;
     private ulong? _lastAutomaticSaveTick;
-    private bool _hasBackgroundImage;
     private bool _deadRecordingEnabled;
     private bool _excludeRepopulatingDead;
     private int _recordedCorpseCount;
@@ -715,7 +714,7 @@ public sealed partial class MainWindow : Window
             () => new LegacyCommandState(true, false),
             async _ => await ImportBackgroundAsync());
         handlers[LegacyCommandId.ViewRemoveBackground] = Handler(
-            () => new LegacyCommandState(_hasBackgroundImage, false, _hasBackgroundImage ? null : "No background picture is loaded."),
+            () => LegacyCommandState.Available,
             _ => Task.FromResult(RemoveBackground()));
         handlers[LegacyCommandId.ObjectsNewTeleporter] = Handler(
             () => LegacyCommandState.Available,
@@ -785,7 +784,7 @@ public sealed partial class MainWindow : Window
             SelectedRobotState,
             async _ => await SaveSelectedDnaCommandAsync());
         handlers[LegacyCommandId.RobotMakeNewSpecies] = Handler(
-            SelectedRobotState,
+            () => LegacyCommandState.Available,
             async _ => await MakeSelectedNewSpeciesAsync());
         handlers[LegacyCommandId.RobotSelectEntireOrganism] = Handler(
             SelectedRobotState,
@@ -1313,14 +1312,12 @@ public sealed partial class MainWindow : Window
         if (files.Count == 0) return LegacyCommandResult.Cancel();
         await using var stream = await files[0].OpenReadAsync();
         Viewport.SetBackgroundImage(new Avalonia.Media.Imaging.Bitmap(stream));
-        _hasBackgroundImage = true;
         return LegacyCommandResult.Success($"BACKGROUND · {files[0].Name}");
     }
 
     private LegacyCommandResult RemoveBackground()
     {
         Viewport.SetBackgroundImage(null);
-        _hasBackgroundImage = false;
         return LegacyCommandResult.Success("BACKGROUND REMOVED");
     }
 
@@ -1672,11 +1669,12 @@ public sealed partial class MainWindow : Window
 
     private async Task<LegacyCommandResult> MakeSelectedNewSpeciesAsync()
     {
-        var organism = _viewModel.SelectedOrganism!;
+        if (_session is not { } session || _viewModel.SelectedOrganism is not { } organism)
+            return LegacyCommandResult.Cancel();
         if (organism.IsCorpse) return LegacyCommandResult.Failure("A CORPSE CANNOT START A NEW SPECIES");
         var dialog = new LegacyConfirmationWindow("Make New Species", "Start new species using this robot?");
         if (!await dialog.ShowDialog<bool>(this)) return LegacyCommandResult.Cancel();
-        var name = await _session!.ForkRobotAndDescendantsAsync(organism.Slot, organism.Generation);
+        var name = await session.ForkRobotAndDescendantsAsync(organism.Slot, organism.Generation);
         return LegacyCommandResult.Success($"NEW SPECIES · {name.ToUpperInvariant()}");
     }
 
