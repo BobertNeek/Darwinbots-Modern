@@ -6215,6 +6215,30 @@ impl Engine {
         Ok(())
     }
 
+    pub(crate) fn remove_native_random_obstacles(&mut self) -> Result<Option<usize>, EngineError> {
+        if self.native_random.is_none() {
+            return Ok(None);
+        }
+        let initial = i32::try_from(self.obstacles.len()).map_err(|_| {
+            EngineError::Invariant("too many shapes for native deletion".to_owned())
+        })?;
+        if initial == 0 {
+            return Ok(Some(0));
+        }
+
+        let mut remaining = initial;
+        for _ in 0..10 {
+            let slot = self.native_random.as_mut().unwrap().integer(1, remaining);
+            // Random(1, 0) still advances the stream and returns zero.
+            if slot != 0 {
+                let id = self.obstacles[(slot - 1) as usize].id;
+                self.remove_obstacle(id)?;
+                remaining = self.obstacles.len() as i32;
+            }
+        }
+        Ok(Some((initial - remaining) as usize))
+    }
+
     pub fn remove_obstacle(&mut self, id: u32) -> Result<(), EngineError> {
         let previous = self.obstacles.len();
         self.obstacles.retain(|value| value.id != id);
@@ -14105,6 +14129,77 @@ const fn default_snapshot_schema_version() -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn native_random_obstacle_deletion_draws_from_the_shrinking_slot_order() {
+        let mut world = Engine::new(EngineConfig {
+            seed: 1338,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        world.obstacles = [42, 17, 99, 5, 31, 8, 74, 62, 21, 93, 13, 44]
+            .into_iter()
+            .map(|id| Obstacle::new(id, [0.0; 2], [1.0; 2]))
+            .collect();
+
+        assert_eq!(world.remove_native_random_obstacles().unwrap(), Some(10));
+        // Expected 1-based draws: 1, 11, 7, 6, 4, 2, 4, 1, 2, 1.
+        let survivor_ids: Vec<_> = world.obstacles.iter().map(|shape| shape.id).collect();
+        assert_eq!(survivor_ids, [93, 13]);
+        assert_eq!(world.native_random.as_ref().unwrap().state(), 0x0d_7082);
+
+        let save = crate::SaveFile::encode(&world).unwrap();
+        let mut restored = crate::SaveFile::decode(&save).unwrap();
+        assert_eq!(world.remove_native_random_obstacles().unwrap(), Some(2));
+        assert_eq!(restored.remove_native_random_obstacles().unwrap(), Some(2));
+        assert!(restored.obstacles.is_empty());
+        assert_eq!(world.native_random, restored.native_random);
+    }
+
+    #[test]
+    fn native_random_obstacle_deletion_draws_ten_times_if_initially_nonempty() {
+        let mut world = Engine::new(EngineConfig::testing()).unwrap();
+        let mut expected = world.native_random.clone().unwrap();
+        assert_eq!(world.remove_native_random_obstacles().unwrap(), Some(0));
+        assert_eq!(world.native_random.as_ref(), Some(&expected));
+
+        world.obstacles.push(Obstacle::new(99, [0.0; 2], [1.0; 2]));
+        for _ in 0..10 {
+            expected.unit();
+        }
+        assert_eq!(world.remove_native_random_obstacles().unwrap(), Some(1));
+        assert!(world.obstacles.is_empty());
+        assert_eq!(world.native_random.as_ref(), Some(&expected));
+        assert_eq!(world.remove_native_random_obstacles().unwrap(), Some(0));
+        assert_eq!(world.native_random.as_ref(), Some(&expected));
+    }
+
+    #[test]
+    fn native_random_obstacle_deletion_safely_frees_slots_at_capacity() {
+        let mut world = Engine::new(EngineConfig::testing()).unwrap();
+        world.obstacles = (1..=1000)
+            .map(|id| Obstacle::new(id, [0.0; 2], [1.0; 2]))
+            .collect();
+        assert_eq!(world.remove_native_random_obstacles().unwrap(), Some(10));
+        assert_eq!(world.snapshot().obstacles.len(), 990);
+        assert!(
+            world
+                .obstacles
+                .windows(2)
+                .all(|pair| pair[0].id < pair[1].id)
+        );
+        assert_eq!(
+            world
+                .add_native_random_obstacles(10, DEFAULT_NATIVE_SHAPE_DIMENSIONS)
+                .unwrap(),
+            Some(10)
+        );
+        assert_eq!(world.snapshot().obstacles.len(), 1000);
+
+        world.native_random = None;
+        assert_eq!(world.remove_native_random_obstacles().unwrap(), None);
+        assert_eq!(world.snapshot().obstacles.len(), 1000);
+    }
 
     #[test]
     fn native_shapes_dialog_uses_fixed_extents_integer_centers_and_unclipped_edges() {
