@@ -53,6 +53,43 @@ mod tests {
     }
 
     #[test]
+    fn native_energy_steal_leaves_the_victims_loaded_radius_visible_to_an_earlier_robot() {
+        let mut world = world();
+        let observer = bot(&mut world, [1000.0, 1000.0], 150.0);
+        let thief = bot(&mut world, [1500.0, 1500.0], 100.0);
+        let victim = bot(&mut world, [1500.0, 1000.0], 100.0);
+        world
+            .ties
+            .push(TieState::legacy(thief, victim, 500.0, 1, 1));
+        world.set_organism_energy(victim, 50).unwrap();
+        world.slots.get_mut(victim).unwrap().materials.chloroplasts = 29_269.0;
+        let thief_state = world.slots.get_mut(thief).unwrap();
+        thief_state.counters.age = 1;
+        thief_state.program.memory.write(455, 1);
+        thief_state.program.memory.write(452, -1);
+        thief_state.program.memory.write(453, -25);
+
+        world.tie_exchange_phase(&mut CycleRecorder::disabled(0));
+        assert_eq!(world.slots.get(victim).unwrap().materials.energy, 25.0);
+        assert_eq!(world.slots.get(victim).unwrap().materials.radius, 100.0);
+        assert!(world.slots.get(thief).unwrap().materials.radius > 100.0);
+        sense(&mut world);
+        assert_eq!(world.memory_at(observer, MEM_EYE1 + 4).unwrap(), 31);
+
+        // Once the victim reaches ManageChlr, its chloroplasts count toward size.
+        world.native_phase = Some(NativeRobotPhase {
+            actor: victim,
+            cost_population: 3,
+            chloroplast_total: 29_269.0,
+            radius_bound: 415.0,
+        });
+        world.chloroplast_phase();
+        world.native_phase = None;
+        sense(&mut world);
+        assert_eq!(world.memory_at(observer, MEM_EYE1 + 4).unwrap(), 32_000);
+    }
+
+    #[test]
     fn equal_integer_eye_strength_uses_bucket_order_before_slot_order() {
         let mut world = world();
         let observer = bot(&mut world, [3990.0, 3999.0], 100.0);

@@ -13214,6 +13214,7 @@ fn apply_tie_resource(
         _ => None,
     };
     if result.is_some() {
+        let native_energy_transfer = native.is_some() && location == -1;
         source.materials.previous_energy = source.materials.energy;
         target.materials.previous_energy = target.materials.energy;
         source
@@ -13228,22 +13229,28 @@ fn apply_tie_resource(
             source.materials.chloroplasts,
         )
         .clamp(1.0, 32_000.0);
-        source.materials.radius = crate::physics::organism_radius(
-            source.materials.body,
-            source.materials.chloroplasts,
-            fixed_bot_radii,
-        );
+        // Native energy ties refresh the receiver's radius after storing body.
+        // The payer may still carry its body-only radius from LoadRobotBody.
+        if !native_energy_transfer || requested < 0 {
+            source.materials.radius = crate::physics::organism_radius(
+                source.materials.body,
+                source.materials.chloroplasts,
+                fixed_bot_radii,
+            );
+        }
         target.materials.mass = derived_mass(
             target.materials.body,
             target.materials.shell,
             target.materials.chloroplasts,
         )
         .clamp(1.0, 32_000.0);
-        target.materials.radius = crate::physics::organism_radius(
-            target.materials.body,
-            target.materials.chloroplasts,
-            fixed_bot_radii,
-        );
+        if !native_energy_transfer || requested > 0 {
+            target.materials.radius = crate::physics::organism_radius(
+                target.materials.body,
+                target.materials.chloroplasts,
+                fixed_bot_radii,
+            );
+        }
     }
     result
 }
