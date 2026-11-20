@@ -1083,11 +1083,15 @@ public sealed partial class MainWindow : Window
 
     private async Task<LegacyCommandResult> SaveSimulationCommandAsync()
     {
-        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        var bytes = await _session.SaveAsync();
-        return await _storage.SaveSimulationAsync(this, bytes)
-            ? LegacyCommandResult.Success("SAVED")
-            : LegacyCommandResult.Cancel();
+        if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        var format = await _storage.SaveSimulationWithFormatAsync(this, format =>
+            format == SimulationSaveFormat.Legacy ? session.SaveLegacyAsync() : session.SaveAsync());
+        return format switch
+        {
+            SimulationSaveFormat.Legacy => LegacyCommandResult.Success("DARWINBOTS 2 SIMULATION SAVED"),
+            SimulationSaveFormat.Modern => LegacyCommandResult.Success("SAVED"),
+            _ => LegacyCommandResult.Cancel(),
+        };
     }
 
     private async Task<LegacyCommandResult> SaveNativeSimulationCommandAsync()
