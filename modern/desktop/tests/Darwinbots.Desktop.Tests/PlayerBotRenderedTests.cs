@@ -89,6 +89,98 @@ public sealed class PlayerBotRenderedTests
     }
 
     [Fact]
+    public async Task F11AndMappedKeysWorkWithNoFocusedRobotAndAfterFocusDies()
+    {
+        var setup = new WorldSetupOptions
+        {
+            Backend = "Cpu", WorldWidth = 1000, WorldHeight = 1000, PopulationCapacity = 8,
+        };
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], setup, NativeEngineClientFactory.Instance, new AuditStorageService());
+            window.Show();
+            try
+            {
+                await WaitFor(() => TryField<SimulationSession>(window, "_session") is not null);
+                var session = Field<SimulationSession>(window, "_session");
+                var viewModel = (MainWindowViewModel)window.DataContext!;
+                var viewport = window.FindControl<WorldViewport>("Viewport")!;
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                var toggle = menu.FindCommandItem(LegacyCommandId.EditEnablePlayerBot)!;
+                await WaitFor(() => toggle.IsEnabled);
+                Assert.Null(viewModel.SelectedKey);
+                await session.ConfigurePlayerBotAsync(new PlayerBotConfig(false, null,
+                    [new PlayerBotBinding((int)Key.W, 19, 77)]));
+                viewport.Focus();
+
+                PressF11();
+                await WaitFor(() => toggle.IsChecked && session.LatestSnapshot.PlayerBot.Enabled);
+                Assert.Null(session.LatestSnapshot.PlayerBot.Focus);
+                const string dna = "start\nstop";
+                await session.ImportDnaAsync(dna, [500, 300]);
+                await session.ImportDnaAsync(dna, [800, 300]);
+                var robots = session.LatestSnapshot.Organisms;
+                var highlighted = robots[0];
+                var focus = robots[1];
+                await WaitFor(() => viewModel.Population == 2);
+                Assert.Null(viewModel.SelectedKey);
+                window.KeyPress(Key.W, RawInputModifiers.None, PhysicalKey.W, null);
+                await WaitFor(() => session.LatestSnapshot.PlayerBot.PressedKeys.SequenceEqual([(int)Key.W]));
+                await session.StepAsync();
+                Assert.Equal(0, Aim(highlighted.Slot));
+                Assert.Equal(0, Aim(focus.Slot));
+
+                ClickRobot(highlighted, RawInputModifiers.Shift);
+                await session.StepAsync();
+                Assert.Null(viewModel.SelectedKey);
+                Assert.Null(session.LatestSnapshot.PlayerBot.Focus);
+                Assert.Equal(77, Aim(highlighted.Slot));
+                Assert.Equal(0, Aim(focus.Slot));
+
+                ClickRobot(focus, RawInputModifiers.None);
+                await WaitFor(() => session.LatestSnapshot.PlayerBot.Focus == new OrganismKey(focus.Slot, focus.Generation));
+                ClickRobot(highlighted, RawInputModifiers.Shift);
+                await session.StepAsync();
+                Assert.Equal(77, Aim(focus.Slot));
+                await session.RemoveAsync(focus.Slot, focus.Generation);
+                await WaitFor(() => viewModel.SelectedKey is null && session.LatestSnapshot.PlayerBot.Focus is null);
+                Assert.True(toggle.IsChecked);
+                window.KeyRelease(Key.W, RawInputModifiers.None, PhysicalKey.W, null);
+                await WaitFor(() => session.LatestSnapshot.PlayerBot.PressedKeys.Count == 0);
+                await session.SetOrganismMemoryAsync(highlighted.Slot, highlighted.Generation, 19, 0);
+                await session.StepAsync();
+                Assert.Equal(0, Aim(highlighted.Slot));
+
+                PressF11();
+                await WaitFor(() => !toggle.IsChecked && !session.LatestSnapshot.PlayerBot.Enabled);
+
+                int Aim(uint slot) => session.LatestSnapshot.Organisms.Single(robot => robot.Slot == slot).Aim;
+                void PressF11()
+                {
+                    window.KeyPress(Key.F11, RawInputModifiers.None, PhysicalKey.F11, null);
+                    window.KeyRelease(Key.F11, RawInputModifiers.None, PhysicalKey.F11, null);
+                }
+
+                void ClickRobot(OrganismSnapshot robot, RawInputModifiers modifiers)
+                {
+                    var scaleX = viewport.Bounds.Width / setup.WorldWidth;
+                    var scaleY = viewport.Bounds.Height / setup.WorldHeight;
+                    if (viewport.FixedRatio) scaleX = scaleY = Math.Min(scaleX, scaleY);
+                    var point = viewport.TranslatePoint(new Point(robot.Position[0] * scaleX * viewport.Zoom + viewport.Pan.X,
+                        robot.Position[1] * scaleY * viewport.Zoom + viewport.Pan.Y), window)!.Value;
+                    window.MouseDown(point, MouseButton.Left, modifiers);
+                    window.MouseUp(point, MouseButton.Left, modifiers);
+                }
+            }
+            finally
+            {
+                foreach (var ownedWindow in window.OwnedWindows.ToArray()) ownedWindow.Close();
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
     public async Task RealPlayerBotKeyMapRoutesVisibleKeysToTheNextAuthoritativeCycle()
     {
         var factory = new PlayerBotTestEngineFactory();
@@ -185,7 +277,7 @@ public sealed class PlayerBotRenderedTests
                 window.KeyPress(Key.W, RawInputModifiers.None, PhysicalKey.W, null);
                 await WaitFor(() => session.LatestSnapshot.PlayerBot.PressedKeys.SequenceEqual([(int)Key.W]));
                 Assert.Equal(0, MemoryValue(session.LatestSnapshot, 50));
-                Assert.Equal("PlayerBotKey:7:3:W:True", factory.Client.LastKeyCommand);
+                Assert.Equal("PlayerBotKey:W:True", factory.Client.LastKeyCommand);
 
                 await session.StepAsync(1);
                 await WaitFor(() => MemoryValue(session.LatestSnapshot, 50) == 123);
@@ -194,7 +286,7 @@ public sealed class PlayerBotRenderedTests
 
                 window.KeyRelease(Key.W, RawInputModifiers.None, PhysicalKey.W, null);
                 await WaitFor(() => session.LatestSnapshot.PlayerBot.PressedKeys.Count == 0);
-                Assert.Equal("PlayerBotKey:7:3:W:False", factory.Client.LastKeyCommand);
+                Assert.Equal("PlayerBotKey:W:False", factory.Client.LastKeyCommand);
                 await session.StepAsync(1);
                 await WaitFor(() => session.LatestSnapshot.Tick == 2);
                 Assert.Equal(123, MemoryValue(session.LatestSnapshot, 50));
@@ -371,9 +463,15 @@ internal sealed class PlayerBotAuthorityEngineClient : IEngineClient
 
     public void SetPlayerBotKey(uint slot, uint generation, int keyCode, bool pressed)
     {
+        _config = _config with { Focus = new OrganismKey(slot, generation) };
+        SetPlayerBotKeyState(keyCode, pressed);
+    }
+
+    public void SetPlayerBotKeyState(int keyCode, bool pressed)
+    {
         if (pressed) _pressed.Add(keyCode);
         else _pressed.Remove(keyCode);
-        Commands.Enqueue($"PlayerBotKey:{slot}:{generation}:{(Key)keyCode}:{pressed}");
+        Commands.Enqueue($"PlayerBotKey:{(Key)keyCode}:{pressed}");
         _snapshot = _snapshot with { PlayerBot = CurrentPlayerBot() };
     }
 

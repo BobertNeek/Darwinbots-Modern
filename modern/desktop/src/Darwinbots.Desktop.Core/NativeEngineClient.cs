@@ -679,6 +679,17 @@ public sealed partial class NativeEngineClient : IEngineClient
         }, "update PlayerBot key state");
     }
 
+    public void SetPlayerBotKeyState(int keyCode, bool pressed)
+    {
+        if (keyCode is < 0 or > 65_535)
+            throw new ArgumentOutOfRangeException(nameof(keyCode));
+        ExecuteBatch(new
+        {
+            version = 1,
+            commands = new[] { new { type = "set_player_bot_key_state", key = keyCode, pressed } },
+        }, "update PlayerBot key state");
+    }
+
     public void SetPlayerBotTargets(OrganismKey? focus, IReadOnlyList<OrganismKey> highlights)
     {
         ExecuteBatch(new

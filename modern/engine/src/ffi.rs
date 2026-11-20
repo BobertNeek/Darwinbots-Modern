@@ -275,6 +275,10 @@ enum EngineCommand {
         key: u32,
         pressed: bool,
     },
+    SetPlayerBotKeyState {
+        key: u32,
+        pressed: bool,
+    },
     SetPlayerBotTargets {
         focus: Option<OrganismIdCommand>,
         highlights: Vec<OrganismIdCommand>,
@@ -1081,6 +1085,9 @@ fn db_engine_command_batch_impl(
                 pressed,
             } => engine
                 .set_player_bot_key(OrganismId::new(slot, generation), key, pressed)
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::SetPlayerBotKeyState { key, pressed } => engine
+                .set_player_bot_key_state(key, pressed)
                 .map(|_| serde_json::Value::Null),
             EngineCommand::SetPlayerBotTargets { focus, highlights } => {
                 engine.set_player_bot_targets(

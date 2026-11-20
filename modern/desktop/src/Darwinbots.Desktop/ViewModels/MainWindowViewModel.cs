@@ -161,12 +161,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             ?? snapshot.Tick.ToString(CultureInfo.InvariantCulture);
         Population = snapshot.Population;
         Backend = snapshot.Backend;
-        if (_selectedKey is null)
-        {
-            if (!_selectionWasLost) _selectedKey = SelectDefaultOrganism(snapshot);
-        }
-        else if (snapshot.Organisms.All(organism =>
-                     organism.Slot != _selectedKey.Value.Slot || organism.Generation != _selectedKey.Value.Generation))
+        if (_selectedKey is null && !_selectionWasLost)
+            _selectedKey = snapshot.PlayerBot.Enabled ? snapshot.PlayerBot.Focus : SelectDefaultOrganism(snapshot);
+        if (_selectedKey is { } selected && snapshot.Organisms.All(organism =>
+                organism.Slot != selected.Slot || organism.Generation != selected.Generation))
         {
             _selectedKey = null;
             _selectionWasLost = true;
