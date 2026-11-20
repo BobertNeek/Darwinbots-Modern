@@ -220,6 +220,11 @@ enum EngineCommand {
         corridor: u16,
         thickness: u16,
     },
+    AddNativePatternMaze {
+        pattern: crate::world::NativePatternMaze,
+        corridor: u16,
+        thickness: u16,
+    },
     AddTrashCompactor {
         left: crate::Obstacle,
         right: crate::Obstacle,
@@ -1029,6 +1034,13 @@ fn db_engine_command_batch_impl(
                 thickness,
             } => engine
                 .add_native_simple_maze(horizontal, corridor, thickness)
+                .map(|added| serde_json::json!(added)),
+            EngineCommand::AddNativePatternMaze {
+                pattern,
+                corridor,
+                thickness,
+            } => engine
+                .add_native_pattern_maze(pattern, corridor, thickness)
                 .map(|added| serde_json::json!(added)),
             EngineCommand::AddTrashCompactor { left, right } => engine
                 .add_trash_compactor(left, right)
