@@ -296,6 +296,18 @@ public sealed partial class NativeEngineClient : IEngineClient
         ExecuteBatch(new { version = 1, commands = new[] { new { type = "replace_dna", slot, generation, dna } } }, "replace DNA");
     }
 
+    public int TagOrganismsByName(string founderName, string tag)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(founderName);
+        ArgumentNullException.ThrowIfNull(tag);
+        var result = ExecuteBatchForResult(new
+        {
+            version = 1,
+            commands = new[] { new { type = "tag_organisms_by_name", founder_name = founderName, tag } },
+        }, "tag robots by founder name");
+        return result.GetProperty("results")[0].GetProperty("count").GetInt32();
+    }
+
     public string ExportDna(uint slot, uint generation)
     {
         var result = ExecuteBatchForResult(new { version = 1, commands = new[] { new { type = "export_dna", slot, generation } } }, "export DNA");

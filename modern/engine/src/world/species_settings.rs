@@ -55,7 +55,19 @@ impl Engine {
         for (entry, dna) in prepared {
             let mut definition = entry.definition;
             let id = if let Some(id) = entry.species_id {
-                definition.lineage_id = self.species[id.0 as usize].lineage_id;
+                let previous = &self.species[id.0 as usize];
+                definition.lineage_id = previous.lineage_id;
+                if definition.name != previous.name {
+                    for robot in self
+                        .slots
+                        .iter_mut()
+                        .filter_map(|slot| slot.organism.as_mut())
+                    {
+                        if robot.identity.species == id && robot.identity.species_file.is_empty() {
+                            robot.identity.species_file.clone_from(&previous.name);
+                        }
+                    }
+                }
                 self.species[id.0 as usize] = definition;
                 id
             } else {

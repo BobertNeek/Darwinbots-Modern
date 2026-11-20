@@ -5180,6 +5180,46 @@ impl Engine {
         Ok(())
     }
 
+    pub fn tag_organisms_by_name(
+        &mut self,
+        founder_name: &str,
+        tag: &str,
+    ) -> Result<usize, EngineError> {
+        if founder_name.is_empty() {
+            return Err(EngineError::Invariant("A founder name is required.".into()));
+        }
+        // VB6 replacechars replaces ANSI bytes 0–31 and 127–254. Preserve
+        // byte 255 (ÿ in Windows-1252) and map unsupported input to '?'.
+        let tag: String = tag
+            .chars()
+            .take(45)
+            .map(|ch| match ch {
+                ' '..='~' | 'ÿ' => ch,
+                _ => '?',
+            })
+            .collect();
+        let mut count = 0;
+        for robot in self
+            .slots
+            .iter_mut()
+            .filter_map(|slot| slot.organism.as_mut())
+        {
+            if !robot.flags.exists || native_census_filename(robot, &self.species) != founder_name {
+                continue;
+            }
+            robot.identity.tag.clone_from(&tag);
+            // A blank runtime tag must also clear the DNA export's metadata fallback.
+            let dna = &mut robot.program.dna;
+            let (generation, mutations) = (dna.metadata().generation, dna.metadata().mutations);
+            dna.synchronize_runtime_metadata(generation, mutations, &tag);
+            count += 1;
+        }
+        if count != 0 {
+            self.publish_snapshot();
+        }
+        Ok(count)
+    }
+
     pub fn export_dna(&self, id: OrganismId) -> Result<String, EngineError> {
         let organism = self.slots.get(id)?;
         let dna = &organism.program.dna;

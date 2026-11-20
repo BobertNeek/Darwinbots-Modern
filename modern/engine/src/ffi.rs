@@ -173,6 +173,10 @@ enum EngineCommand {
         generation: u32,
         dna: String,
     },
+    TagOrganismsByName {
+        founder_name: String,
+        tag: String,
+    },
     ExportDna {
         slot: u32,
         generation: u32,
@@ -910,6 +914,9 @@ fn db_engine_command_batch_impl(
                 .load_dna_source(&dna)
                 .and_then(|dna| engine.replace_dna(OrganismId::new(slot, generation), dna))
                 .map(|_| serde_json::Value::Null),
+            EngineCommand::TagOrganismsByName { founder_name, tag } => engine
+                .tag_organisms_by_name(&founder_name, &tag)
+                .map(|count| serde_json::json!({ "count": count })),
             EngineCommand::ExportDna { slot, generation } => engine
                 .export_dna(OrganismId::new(slot, generation))
                 .map(|dna| serde_json::json!({ "dna": dna })),
