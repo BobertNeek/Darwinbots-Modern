@@ -23,6 +23,7 @@ impl Engine {
 mod tests {
     use super::*;
     use crate::eye_value;
+    use crate::world::native_pipeline::NativeRobotPhase;
 
     fn world() -> Engine {
         Engine::new(EngineConfig {
@@ -50,6 +51,92 @@ mod tests {
         );
         world.spatial_index_phase();
         world.sensing_phase().unwrap();
+    }
+
+    fn request_energy_steal(
+        world: &mut Engine,
+        thief: OrganismId,
+        victim: OrganismId,
+        amount: i32,
+    ) {
+        world
+            .ties
+            .push(TieState::legacy(thief, victim, 500.0, 1, 1));
+        let thief_state = world.slots.get_mut(thief).unwrap();
+        thief_state.counters.age = 1;
+        thief_state.program.memory.write(455, 1);
+        thief_state.program.memory.write(452, -1);
+        thief_state.program.memory.write(453, -amount);
+    }
+
+    #[test]
+    fn native_energy_steal_leaves_the_victims_loaded_radius_visible_to_an_earlier_robot() {
+        let mut world = world();
+        let observer = bot(&mut world, [1000.0, 1000.0], 150.0);
+        let thief = bot(&mut world, [1500.0, 1500.0], 100.0);
+        let victim = bot(&mut world, [1500.0, 1000.0], 100.0);
+        world.set_organism_energy(victim, 50).unwrap();
+        world.slots.get_mut(victim).unwrap().materials.chloroplasts = 29_269.0;
+        request_energy_steal(&mut world, thief, victim, 25);
+
+        world.tie_exchange_phase(&mut CycleRecorder::disabled(0));
+        assert_eq!(world.slots.get(victim).unwrap().materials.energy, 25.0);
+        assert_eq!(world.slots.get(victim).unwrap().materials.radius, 100.0);
+        assert!(world.slots.get(thief).unwrap().materials.radius > 100.0);
+        sense(&mut world);
+        assert_eq!(world.memory_at(observer, MEM_EYE1 + 4).unwrap(), 31);
+
+        // Once the victim reaches ManageChlr, its chloroplasts count toward size.
+        world.native_phase = Some(NativeRobotPhase {
+            actor: victim,
+            cost_population: 3,
+            chloroplast_total: 29_269.0,
+            radius_bound: 415.0,
+        });
+        world.chloroplast_phase();
+        world.native_phase = None;
+        sense(&mut world);
+        assert_eq!(world.memory_at(observer, MEM_EYE1 + 4).unwrap(), 32_000);
+    }
+
+    #[test]
+    fn native_energy_steals_publish_kills_before_death_is_processed() {
+        let mut world = world();
+        let observer = bot(&mut world, [1000.0, 1000.0], 100.0);
+        let first_thief = bot(&mut world, [1500.0, 1000.0], 100.0);
+        let second_thief = bot(&mut world, [1500.0, 1500.0], 100.0);
+        let victim = bot(&mut world, [2000.0, 1000.0], 100.0);
+        world.set_organism_energy(victim, 25).unwrap();
+        request_energy_steal(&mut world, first_thief, victim, 25);
+        request_energy_steal(&mut world, second_thief, victim, 25);
+
+        world.tie_exchange_phase(&mut CycleRecorder::disabled(0));
+        assert_eq!(world.slots.get(victim).unwrap().materials.energy, 0.0);
+        assert!(!world.slots.get(victim).unwrap().flags.dead);
+        assert_eq!(world.memory_at(first_thief, 220).unwrap(), 1);
+        assert_eq!(world.memory_at(second_thief, 220).unwrap(), 1);
+        sense(&mut world);
+        assert_eq!(world.memory_at(observer, MEM_REF_KILLS).unwrap(), 1);
+    }
+
+    #[test]
+    fn native_energy_steal_preserves_previous_cycle_energy_for_pain_and_pleasure() {
+        let mut world = world();
+        let thief = bot(&mut world, [1000.0, 1000.0], 100.0);
+        let victim = bot(&mut world, [1500.0, 1000.0], 100.0);
+        // LoadRobotBody leaves the previous-cycle energy at zero on load.
+        for (id, energy) in [(thief, 1000), (victim, 200)] {
+            world.set_organism_energy(id, energy).unwrap();
+            world.slots.get_mut(id).unwrap().materials.previous_energy = 0.0;
+        }
+        request_energy_steal(&mut world, thief, victim, 100);
+
+        world.tie_exchange_phase(&mut CycleRecorder::disabled(0));
+        world.publish_core_senses_phase();
+        for (id, energy) in [(thief, 1070), (victim, 100)] {
+            assert_eq!(world.memory_at(id, 203).unwrap(), -energy);
+            assert_eq!(world.memory_at(id, 204).unwrap(), energy);
+        }
     }
 
     #[test]
