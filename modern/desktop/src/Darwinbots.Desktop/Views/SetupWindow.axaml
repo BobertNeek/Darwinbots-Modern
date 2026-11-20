@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:typography="using:Darwinbots.Desktop"
         x:Class="Darwinbots.Desktop.Views.SetupWindow"
         x:CompileBindings="False"
         Title="Darwinbots Modern — New World"
@@ -9,7 +10,7 @@
   <Grid x:Name="SetupSurfaceGrid" RowDefinitions="64,*,34" ColumnDefinitions="210,*,290">
     <Border Grid.Row="0" Grid.ColumnSpan="3" Background="#FBF9F2" BorderBrush="#BEBBB2" BorderThickness="0,0,0,1">
       <Grid ColumnDefinitions="210,*" Margin="18,0">
-        <TextBlock Text="DARWINBOTS" FontFamily="Bahnschrift" FontWeight="Bold" FontSize="27" VerticalAlignment="Center" />
+        <TextBlock Text="DARWINBOTS" FontFamily="{x:Static typography:DesktopFonts.Heading}" FontWeight="Bold" FontSize="27" VerticalAlignment="Center" />
         <Menu Grid.Column="1" Background="Transparent" VerticalAlignment="Center">
           <MenuItem x:Name="FileMenu" Header="_FILE">
             <MenuItem x:Name="NewWorldMenuItem" Header="NEW WORLD" HotKey="Ctrl+N" Click="NewWorld_Click"/>
@@ -148,7 +149,7 @@
     </Border>
 
     <Border Grid.Row="2" Grid.ColumnSpan="3" Background="#E6E2D8" BorderBrush="#BEBBB2" BorderThickness="0,1,0,0" Padding="12,7">
-      <Grid ColumnDefinitions="*,Auto"><TextBlock Text="READY — CONFIGURE A NEW EVOLUTION"/><TextBlock Grid.Column="1" Text="WINDOWS 10 ALPHA"/></Grid>
+      <TextBlock Text="READY — CONFIGURE A NEW EVOLUTION"/>
     </Border>
 
     <Border x:Name="OnboardingPanel" Grid.Row="1" Grid.ColumnSpan="3" IsVisible="False" Background="#F8F5ED" BorderBrush="#47763A" BorderThickness="2" Padding="44" HorizontalAlignment="Center" VerticalAlignment="Center" Width="620">

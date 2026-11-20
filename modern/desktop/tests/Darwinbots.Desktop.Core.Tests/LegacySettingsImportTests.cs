@@ -177,6 +177,61 @@ public sealed class LegacySettingsImportTests
         Assert.Equal(settings.Species.Count, actual.Species.Count);
     }
 
+    [Theory]
+    [InlineData(null, -1)]
+    [InlineData("0", 400)]
+    public void OriginalSettingsUseLegacyDefaultsWhenTheWasteFieldIsAbsentOrZero(string? storedThreshold, int expected)
+    {
+        const int wasteField = 172; // The second field in SaveSett's zero-species tail.
+        var imported = ImportWithTailField(wasteField, storedThreshold);
+
+        Assert.Equal(expected, imported.Waste.AlzheimerThreshold);
+    }
+
+    [Theory]
+    [InlineData(null, 40f)]
+    [InlineData("0", 60f)]
+    [InlineData("72.5", 72.5f)]
+    public void OriginalSettingsUseTheLaterMaximumVelocityField(string? storedVelocity, float expected)
+    {
+        const int velocityField = 177; // The later of SaveSett's two velocity fields.
+        var imported = ImportWithTailField(velocityField, storedVelocity);
+
+        Assert.Equal(expected, imported.Physics.MaxVelocity);
+    }
+
+    [Fact]
+    public void OriginalSettingsWithoutAnObstacleCountCanBeSavedAgain()
+    {
+        var fields = NativeFields(Db2SettingsCodec.Encode(new DesktopSettings()));
+        const int obstacleCountField = 197; // The last field before shape records and the footer.
+        const int obsoleteBlockedPlantsField = 8;
+        fields[obsoleteBlockedPlantsField] = "17";
+        var imported = Db2SettingsCodec.Decode(LegacyDnaText.Encode(string.Join("\r\n", fields[..obstacleCountField]) + "\r\n"));
+
+        var resaved = NativeFields(Db2SettingsCodec.Encode(imported));
+
+        Assert.Equal("17", resaved[obsoleteBlockedPlantsField]);
+        Assert.Equal("0", resaved[obstacleCountField]);
+        Assert.Equal("15000", resaved[obstacleCountField + 3]);
+    }
+
+    private static string[] NativeFields(byte[] bytes)
+    {
+        var text = LegacyDnaText.Decode(bytes);
+        return text.Split("\r\n").TakeWhile(field => field != "#DARWINBOTS_MODERN_SETTINGS_V1#").ToArray();
+    }
+
+    private static DesktopSettings ImportWithTailField(int index, string? value)
+    {
+        var fields = NativeFields(Db2SettingsCodec.Encode(new DesktopSettings()));
+        if (value is null)
+            fields = fields[..index];
+        else
+            fields[index] = value;
+        return Db2SettingsCodec.Decode(LegacyDnaText.Encode(string.Join("\r\n", fields) + "\r\n"));
+    }
+
     internal static string RepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

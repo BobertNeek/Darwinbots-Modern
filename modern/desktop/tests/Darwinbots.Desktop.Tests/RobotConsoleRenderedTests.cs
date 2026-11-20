@@ -55,6 +55,8 @@ public sealed class RobotConsoleRenderedTests
                 openConsole.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
                 await WaitForAsync(() => window.OwnedWindows.OfType<RobotConsoleWindow>().Any());
                 var console = window.OwnedWindows.OfType<RobotConsoleWindow>().Single();
+                console.Width = console.MinWidth;
+                console.Height = console.MinHeight;
                 console.UpdateLayout();
                 AvaloniaHeadlessPlatform.ForceRenderTimerTick();
 
@@ -66,13 +68,14 @@ public sealed class RobotConsoleRenderedTests
                 Assert.Contains("Darwinbots robot console", transcript.Text, StringComparison.Ordinal);
                 Assert.Contains("Type help for commands.", transcript.Text, StringComparison.Ordinal);
                 Assert.Equal("command, for example: cycle 1 or set 50 100", command.PlaceholderText);
-                Assert.Contains("RUN", buttons.Keys);
-                Assert.Contains("STEP", buttons.Keys);
-                Assert.Contains("EYES", buttons.Keys);
-                Assert.Contains("DEBUG", buttons.Keys);
-                Assert.Contains("DNA", buttons.Keys);
-                Assert.Contains("PLAY", buttons.Keys);
-                Assert.Contains("PAUSE", buttons.Keys);
+                var consoleArea = new Rect(console.Bounds.Size);
+                foreach (var label in new[] { "RUN", "STEP", "EYES", "DEBUG", "DNA", "PLAY", "PAUSE" })
+                {
+                    var button = buttons[label];
+                    var corner = button.TranslatePoint(new Point(button.Bounds.Width, button.Bounds.Height), console);
+                    Assert.True(corner is { } point && consoleArea.Contains(point),
+                        $"{label} is clipped at the minimum console size.");
+                }
 
                 Assert.True(console.Bounds.Width >= 560);
                 Assert.True(console.Bounds.Height >= 420);

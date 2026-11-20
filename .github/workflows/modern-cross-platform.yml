@@ -102,6 +102,40 @@ jobs:
           } finally {
             $process.Dispose()
           }
+      - name: Verify Linux desktop opens its setup window
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xauth x11-utils xvfb
+          profile="$(mktemp -d)"
+          export XDG_DATA_HOME="$profile/data"
+          export XDG_CONFIG_HOME="$profile/config"
+          export DARWINBOTS_AUTOSAVE_DIRECTORY="$profile/autosaves"
+          export DARWINBOTS_GUI_LOG="$profile/startup.log"
+          ulimit -c 0
+          timeout --kill-after=5s 45s xvfb-run -a -s '-screen 0 1440x1000x24' bash -euo pipefail <<'BASH'
+          cd artifacts/linux-x64
+          ./Darwinbots.Desktop >"$DARWINBOTS_GUI_LOG" 2>&1 &
+          app_pid=$!
+          trap 'kill "$app_pid" 2>/dev/null || true; wait "$app_pid" 2>/dev/null || true' EXIT
+          for attempt in {1..30}; do
+            kill -0 "$app_pid" 2>/dev/null || break
+            window="$(xwininfo -root -tree | awk '/"Darwinbots Modern .*New World"/ && !found { print $1; found=1 }')"
+            if [[ -n "$window" ]] && xwininfo -id "$window" | grep -F 'Map State: IsViewable'; then
+              sleep 1
+              if kill -0 "$app_pid" 2>/dev/null; then
+                echo 'Darwinbots setup window is visible.'
+                exit 0
+              fi
+              break
+            fi
+            sleep 1
+          done
+          cat "$DARWINBOTS_GUI_LOG"
+          echo 'Darwinbots did not open a usable setup window.' >&2
+          exit 1
+          BASH
       - uses: actions/upload-artifact@v4
         with:
           name: darwinbots-${{ matrix.rid }}

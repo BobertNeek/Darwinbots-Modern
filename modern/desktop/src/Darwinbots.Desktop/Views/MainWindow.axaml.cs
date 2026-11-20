@@ -302,6 +302,8 @@ public sealed partial class MainWindow : Window
         DataContext = _viewModel;
         _runTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(_maximumSpeed ? 1 : 16) };
         _runTimer.Tick += RunTimer_Tick;
+        if (setup.LoadSavePath is null && _globalSettings.Main.VideoOff)
+            SetTurboMode(true);
         Opened += Window_Opened;
         Closed += Window_Closed;
         _controlsReady = true;
@@ -556,12 +558,7 @@ public sealed partial class MainWindow : Window
         AutomationProperties.SetName(ToolbarSlot13, enabled ? "DEATH EFFECTS ON" : "DEATH EFFECTS OFF");
     }
 
-    private void ToolbarNoGraphics_Click(object? sender, RoutedEventArgs e)
-    {
-        Turbo_Click(sender, e);
-        ToolbarSlot14.Content = _turbo ? "GRAPHICS OFF" : "GRAPHICS ON";
-        AutomationProperties.SetName(ToolbarSlot14, _turbo ? "WORLD GRAPHICS OFF" : "WORLD GRAPHICS ON");
-    }
+    private void ToolbarNoGraphics_Click(object? sender, RoutedEventArgs e) => Turbo_Click(sender, e);
 
     private async void ToolbarFindBest_Click(object? sender, RoutedEventArgs e)
     {
@@ -1550,6 +1547,14 @@ public sealed partial class MainWindow : Window
         }
         if (_trayIcon is not null)
             _trayIcon.IsVisible = !_globalSettings.Main.HideTray;
+        try
+        {
+            await _storage.SaveGlobalSettingsAsync(dialog.Settings);
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            return LegacyCommandResult.Failure($"GLOBAL SETTINGS APPLIED · PROFILE SAVE FAILED · {error.Message}", error);
+        }
         _viewModel.Status = _session is null ? "GLOBAL SETTINGS SAVED FOR NEXT WORLD" : "GLOBAL RULES AND COSTS APPLIED";
         return LegacyCommandResult.Success("GLOBAL SETTINGS SAVED");
     }
@@ -2351,14 +2356,19 @@ public sealed partial class MainWindow : Window
 
     private void Turbo_Click(object? sender, RoutedEventArgs e)
     {
-        _turbo = !_turbo;
+        SetTurboMode(!_turbo);
+        _viewModel.Status = _turbo ? "TURBO · RENDERING SUSPENDED" : "VIEWPORT RESTORED";
+        if (_turbo) _runTimer.Start();
+    }
+
+    private void SetTurboMode(bool enabled)
+    {
+        _turbo = enabled;
         UpdateRunTimerInterval();
         Viewport.IsVisible = !_turbo;
         TurboButton.Content = _turbo ? "SHOW WORLD" : "TURBO";
         ToolbarSlot14.Content = _turbo ? "GRAPHICS OFF" : "GRAPHICS ON";
         AutomationProperties.SetName(ToolbarSlot14, _turbo ? "WORLD GRAPHICS OFF" : "WORLD GRAPHICS ON");
-        _viewModel.Status = _turbo ? "TURBO · RENDERING SUSPENDED" : "VIEWPORT RESTORED";
-        if (_turbo) _runTimer.Start();
     }
 
     private async void SwitchBackend_Click(object? sender, RoutedEventArgs e)

@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Text.Json;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -19,6 +20,7 @@ public sealed partial class SetupWindow : Window
     private readonly NativeProcessCachesSnapshot? _nativeProcessCaches;
     private readonly SimulationSettingsWorkflow _workflow;
     private EnvironmentUpdate _environment = EnvironmentUpdate.Default;
+    private GlobalSettings _profileSettings = new();
     private GlobalSettings _globalSettings = new();
     private MutationSettingsUpdate _mutationSettings = MutationSettingsUpdate.Default;
     private IReadOnlyList<string>? _legacySettingsFields;
@@ -47,6 +49,19 @@ public sealed partial class SetupWindow : Window
         DataContext = this;
         _controlsReady = true;
         LoadMode(StartingMode.StarterBotsAndVegetables);
+        if (!_speciesEditor)
+        {
+            try
+            {
+                _profileSettings = _storage.LoadGlobalSettings() ?? new();
+            }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException
+                or JsonException or ArgumentException or InvalidDataException)
+            {
+                SetupStatus.Text = $"GLOBAL SETTINGS LOAD FAILED · {error.Message}";
+            }
+            ApplyGlobalSettings(_profileSettings);
+        }
         _workflow.Reset(ReadSetupOptions());
         OnboardingPanel.IsVisible = !_speciesEditor && _storage.IsFirstRun;
         if (speciesEditor is not null)
@@ -290,17 +305,24 @@ public sealed partial class SetupWindow : Window
             dialog.FindControl<TabControl>("Tabs")!.SelectedIndex = selectedTab;
             await dialog.ShowDialog(this);
             if (!dialog.Accepted) return;
-            _globalSettings = dialog.Settings;
-            _environment = _environment with
-            {
-                Recording = (_environment.Recording ?? new()) with { SafeModeBackup = _globalSettings.Main.SafeMode },
-            };
+            await _storage.SaveGlobalSettingsAsync(dialog.Settings);
+            _profileSettings = dialog.Settings;
+            ApplyGlobalSettings(_profileSettings);
             SetupStatus.Text = "GLOBAL SETTINGS SAVED";
         }
         catch (Exception error)
         {
             SetupStatus.Text = $"GLOBAL SETTINGS FAILED: {error.Message}";
         }
+    }
+
+    private void ApplyGlobalSettings(GlobalSettings settings)
+    {
+        _globalSettings = settings;
+        _environment = _environment with
+        {
+            Recording = (_environment.Recording ?? new()) with { SafeModeBackup = settings.Main.SafeMode },
+        };
     }
 
     private async void SaveSettings_Click(object? sender, RoutedEventArgs e)
@@ -401,7 +423,7 @@ public sealed partial class SetupWindow : Window
     private void NewWorld_Click(object? sender, RoutedEventArgs e)
     {
         _environment = EnvironmentUpdate.Default;
-        _globalSettings = new GlobalSettings();
+        ApplyGlobalSettings(_profileSettings);
         Backend.SelectedIndex = 0;
         WorldWidth.Value = 16_000;
         WorldHeight.Value = 12_000;
@@ -426,7 +448,7 @@ public sealed partial class SetupWindow : Window
     private async void OpenSave_Click(object? sender, RoutedEventArgs e)
     {
         if (await _storage.PickSimulationPathAsync(this) is { } path)
-            PublishWorld(new WorldSetupOptions { LoadSavePath = path });
+            PublishWorld(new WorldSetupOptions { LoadSavePath = path, GlobalSettings = _profileSettings });
     }
 
     private void Exit_Click(object? sender, RoutedEventArgs e) => Close();
@@ -448,7 +470,6 @@ public sealed partial class SetupWindow : Window
                 Children =
                 {
                     new TextBlock { Text = "DARWINBOTS MODERN", FontSize = 25, FontWeight = Avalonia.Media.FontWeight.Bold },
-                    new TextBlock { Text = "Windows 10 alpha", FontWeight = Avalonia.Media.FontWeight.SemiBold },
                     new TextBlock
                     {
                         Text = "A modern, legacy-DNA-compatible artificial life simulator with CPU and portable GPU backends.",
@@ -513,7 +534,7 @@ public sealed partial class SetupWindow : Window
     {
         var latest = _storage.FindLatestAutosave();
         if (latest is null) { SetupStatus.Text = "No autosave is available."; return; }
-        PublishWorld(new WorldSetupOptions { LoadSavePath = latest, IsAutosaveRecovery = true });
+        PublishWorld(new WorldSetupOptions { LoadSavePath = latest, IsAutosaveRecovery = true, GlobalSettings = _profileSettings });
     }
 
     private async void OnboardingGotIt_Click(object? sender, RoutedEventArgs e)

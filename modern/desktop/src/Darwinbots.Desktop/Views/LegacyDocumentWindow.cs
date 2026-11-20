@@ -24,7 +24,7 @@ public sealed class LegacyDocumentWindow : Window
         _titleText = new TextBlock
         {
             Text = title.ToUpperInvariant(),
-            FontFamily = new FontFamily("Bahnschrift"),
+            FontFamily = DesktopFonts.Heading,
             FontSize = 22,
             FontWeight = FontWeight.Bold,
             LetterSpacing = 1.4,
@@ -33,7 +33,7 @@ public sealed class LegacyDocumentWindow : Window
         {
             Text = section.ToUpperInvariant(),
             Foreground = Brush.Parse("#537B43"),
-            FontFamily = new FontFamily("Bahnschrift"),
+            FontFamily = DesktopFonts.Heading,
             FontSize = 11,
             FontWeight = FontWeight.Bold,
             LetterSpacing = 1.2,
@@ -69,7 +69,7 @@ public sealed class LegacyDocumentWindow : Window
             BorderThickness = new Thickness(1),
             Padding = new Thickness(18),
             Margin = new Thickness(18),
-            FontFamily = new FontFamily("Georgia"),
+            FontFamily = DesktopFonts.Document,
             FontSize = 14,
         };
         Grid.SetRow(_documentText, 1);

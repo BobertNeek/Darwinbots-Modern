@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:typography="using:Darwinbots.Desktop"
              x:Class="Darwinbots.Desktop.Controls.LegacyMenuBar"
              Height="34">
   <Border Background="#FBFAF5"
@@ -7,7 +8,7 @@
           BorderThickness="0,0,0,1">
     <Menu x:Name="RootMenu"
           Background="Transparent"
-          FontFamily="Bahnschrift, DIN Alternate, sans-serif"
+          FontFamily="{x:Static typography:DesktopFonts.Heading}"
           FontSize="12"
           VerticalAlignment="Stretch">
       <Menu.Styles>

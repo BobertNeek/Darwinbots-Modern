@@ -1,18 +1,18 @@
-<Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+<Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:typography="using:Darwinbots.Desktop"
         x:Class="Darwinbots.Desktop.Views.AdvancedSettingsWindow"
         Title="Darwinbots Live Settings" Width="900" Height="760" MinWidth="760" MinHeight="620"
         WindowStartupLocation="CenterOwner" Background="#F4F0E6">
   <Window.Styles>
-    <Style Selector="TextBlock.section"><Setter Property="FontFamily" Value="Bahnschrift"/><Setter Property="FontSize" Value="13"/><Setter Property="FontWeight" Value="Bold"/><Setter Property="Foreground" Value="#1D2824"/><Setter Property="LetterSpacing" Value="1.5"/></Style>
+    <Style Selector="TextBlock.section"><Setter Property="FontFamily" Value="{x:Static typography:DesktopFonts.Heading}"/><Setter Property="FontSize" Value="13"/><Setter Property="FontWeight" Value="Bold"/><Setter Property="Foreground" Value="#1D2824"/><Setter Property="LetterSpacing" Value="1.5"/></Style>
     <Style Selector="Border.card"><Setter Property="Background" Value="#FFFCF5"/><Setter Property="BorderBrush" Value="#D4CFC1"/><Setter Property="BorderThickness" Value="1"/><Setter Property="CornerRadius" Value="3"/><Setter Property="Padding" Value="18"/></Style>
-    <Style Selector="TabItem"><Setter Property="FontFamily" Value="Bahnschrift"/><Setter Property="FontSize" Value="13"/><Setter Property="Padding" Value="18,14"/><Setter Property="HorizontalContentAlignment" Value="Left"/></Style>
+    <Style Selector="TabItem"><Setter Property="FontFamily" Value="{x:Static typography:DesktopFonts.Heading}"/><Setter Property="FontSize" Value="13"/><Setter Property="Padding" Value="18,14"/><Setter Property="HorizontalContentAlignment" Value="Left"/></Style>
     <Style Selector="Button.primary"><Setter Property="Background" Value="#416E35"/><Setter Property="Foreground" Value="White"/><Setter Property="FontWeight" Value="Bold"/></Style>
   </Window.Styles>
   <Grid RowDefinitions="68,*,62">
     <Border Background="#FBF9F2" BorderBrush="#C8C3B6" BorderThickness="0,0,0,1" Padding="22,13">
       <Grid ColumnDefinitions="*,Auto">
-        <StackPanel Spacing="2"><TextBlock Text="LIVE SETTINGS" FontFamily="Bahnschrift" FontSize="23" FontWeight="Bold" LetterSpacing="1.5"/><TextBlock Text="Tune the running ecosystem without interrupting evolution" Foreground="#66706B" FontSize="12"/></StackPanel>
-        <Border x:Name="DirtyBadge" Grid.Column="1" Background="#E7EEDC" BorderBrush="#AEBE9D" BorderThickness="1" CornerRadius="12" Padding="10,4" VerticalAlignment="Center" IsVisible="False"><TextBlock x:Name="DirtyIndicator" Text="●  STAGED CHANGES" Foreground="#416E35" FontFamily="Bahnschrift" FontSize="11" FontWeight="Bold"/></Border>
+        <StackPanel Spacing="2"><TextBlock Text="LIVE SETTINGS" FontFamily="{x:Static typography:DesktopFonts.Heading}" FontSize="23" FontWeight="Bold" LetterSpacing="1.5"/><TextBlock Text="Tune the running ecosystem without interrupting evolution" Foreground="#66706B" FontSize="12"/></StackPanel>
+        <Border x:Name="DirtyBadge" Grid.Column="1" Background="#E7EEDC" BorderBrush="#AEBE9D" BorderThickness="1" CornerRadius="12" Padding="10,4" VerticalAlignment="Center" IsVisible="False"><TextBlock x:Name="DirtyIndicator" Text="●  STAGED CHANGES" Foreground="#416E35" FontFamily="{x:Static typography:DesktopFonts.Heading}" FontSize="11" FontWeight="Bold"/></Border>
       </Grid>
     </Border>
 

@@ -30,4 +30,6 @@ public interface IDesktopStorageService
     Task MarkFirstRunCompleteAsync() => Task.CompletedTask;
     string? FindLastStart() => null;
     Task SaveLastStartAsync(ReadOnlyMemory<byte> settings) => Task.CompletedTask;
+    GlobalSettings? LoadGlobalSettings() => null;
+    Task SaveGlobalSettingsAsync(GlobalSettings settings) => Task.CompletedTask;
 }

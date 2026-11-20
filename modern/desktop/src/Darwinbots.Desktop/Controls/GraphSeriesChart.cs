@@ -69,7 +69,7 @@ public sealed class GraphSeriesChart : Control
             text,
             System.Globalization.CultureInfo.InvariantCulture,
             FlowDirection.LeftToRight,
-            new Typeface("Bahnschrift"),
+            new Typeface(DesktopFonts.Heading),
             10,
             new SolidColorBrush(Color.Parse("#69716D")));
         context.DrawText(label, new Point(6, top ? 4 : Math.Max(4, (area.Height - label.Height) / 2)));

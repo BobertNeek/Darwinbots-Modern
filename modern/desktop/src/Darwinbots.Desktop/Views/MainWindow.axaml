@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:typography="using:Darwinbots.Desktop"
         xmlns:controls="using:Darwinbots.Desktop.Controls"
         xmlns:vm="using:Darwinbots.Desktop.ViewModels"
         x:Class="Darwinbots.Desktop.Views.MainWindow"
@@ -13,7 +14,7 @@
   <Grid x:Name="MainSurfaceGrid" Grid.Row="1" RowDefinitions="Auto,0,*,170,62,40" ColumnDefinitions="250,*,280">
     <Border x:Name="RuntimeToolbarShell" Grid.Row="0" Grid.ColumnSpan="3" Background="{DynamicResource HeaderBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="6,2">
       <Grid ColumnDefinitions="Auto,*,Auto">
-        <TextBlock Text="DARWINBOTS" FontFamily="Bahnschrift, DIN Alternate, sans-serif" FontWeight="Bold" FontSize="18" VerticalAlignment="Center" Margin="6,0,12,0" />
+        <TextBlock Text="DARWINBOTS" FontFamily="{x:Static typography:DesktopFonts.Heading}" FontWeight="Bold" FontSize="18" VerticalAlignment="Center" Margin="6,0,12,0" />
         <ScrollViewer x:Name="LegacyToolbarScroller" Grid.Column="1" Height="48" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Hidden">
         <StackPanel x:Name="LegacyToolbar" Orientation="Horizontal" Spacing="4" Height="34" HorizontalAlignment="Left">
           <Button x:Name="ToolbarSlot01" Content="NEW" ToolTip.Tip="Create a new simulation" AutomationProperties.Name="NEW SIMULATION" AutomationProperties.HelpText="Open the new simulation setup." KeyboardNavigation.TabIndex="0" Click="ToolbarNew_Click" />
