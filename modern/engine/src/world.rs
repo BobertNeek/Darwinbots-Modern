@@ -9998,6 +9998,11 @@ impl Engine {
         projectile_energy: f32,
         native_boundary: bool,
     ) -> Result<bool, EngineError> {
+        let radius_after_hit: fn(f32, f32, bool) -> f32 = if native_boundary {
+            crate::physics::native_organism_radius
+        } else {
+            crate::physics::organism_radius
+        };
         Ok(match target {
             ProjectileTarget::Obstacle => false,
             ProjectileTarget::Corpse(corpse) => {
@@ -10145,7 +10150,7 @@ impl Engine {
                             let body_loss = scale_tie_amount(packet_value, 0.01);
                             target_robot.materials.body =
                                 (target_robot.materials.body - body_loss).max(0.0);
-                            target_robot.materials.radius = crate::physics::organism_radius(
+                            target_robot.materials.radius = radius_after_hit(
                                 target_robot.materials.body,
                                 target_robot.materials.chloroplasts,
                                 self.config.fixed_bot_radii,
@@ -10211,7 +10216,7 @@ impl Engine {
                             target_robot.materials.waste += packet_waste;
                             packet_energy
                         };
-                        target_robot.materials.radius = crate::physics::organism_radius(
+                        target_robot.materials.radius = radius_after_hit(
                             target_robot.materials.body,
                             target_robot.materials.chloroplasts,
                             self.config.fixed_bot_radii,
@@ -10349,7 +10354,7 @@ impl Engine {
                                 )
                                 .clamp(1.0, 32_000.0);
                             }
-                            target_robot.materials.radius = crate::physics::organism_radius(
+                            target_robot.materials.radius = radius_after_hit(
                                 target_robot.materials.body,
                                 target_robot.materials.chloroplasts,
                                 self.config.fixed_bot_radii,
