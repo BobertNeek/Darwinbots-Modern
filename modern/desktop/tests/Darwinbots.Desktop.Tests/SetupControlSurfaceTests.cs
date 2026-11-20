@@ -525,10 +525,18 @@ public sealed class SetupControlSurfaceTests
     }
 
     [Fact]
-    public async Task OriginalEmptyShapeSettingsReachTheNewWorldAndSaveFromSetup()
+    public async Task OriginalWorldFlagsAndEmptyRosterReachTheNewWorldAndSaveFromSetup()
     {
         var expected = new Db2ShapeCreationOptions(Black: true, Transparent: true, SeeThrough: false, AbsorbShots: false);
-        var legacy = LegacyDnaText.Decode(Db2SettingsCodec.Encode(new DesktopSettings { ShapeCreation = expected }));
+        var legacy = LegacyDnaText.Decode(Db2SettingsCodec.Encode(new DesktopSettings
+        {
+            ShapeCreation = expected,
+            ShapesVisible = true,
+            FixedBotRadii = true,
+            TiesEnabled = false,
+            RobotFixingAllowed = false,
+            AsexualReproductionAllowed = false,
+        }));
         var marker = legacy.IndexOf("#DARWINBOTS_MODERN_SETTINGS_V1#", StringComparison.Ordinal);
         var storage = new SettingsWorkflowStorage
         {
@@ -542,23 +550,48 @@ public sealed class SetupControlSurfaceTests
             window.Show();
             try
             {
+                Assert.Equal(2, window.Species.Count);
                 window.FindControl<Button>("LoadSettingsButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 await WaitFor(() => window.FindControl<TextBlock>("SetupStatus")!.Text == "SETTINGS LOADED");
+                Assert.Empty(window.Species);
                 window.FindControl<Button>("SaveSettingsButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 await WaitFor(() => storage.SavedSettings is not null);
-                Assert.Equal(expected, storage.SavedSettings!.ShapeCreation);
+                var saved = storage.SavedSettings!;
+                Assert.Equal(expected, saved.ShapeCreation);
+                Assert.True(saved.ShapesVisible);
+                Assert.True(saved.FixedBotRadii);
+                Assert.False(saved.TiesEnabled);
+                Assert.False(saved.RobotFixingAllowed);
+                Assert.False(saved.AsexualReproductionAllowed);
+                Assert.Empty(Db2SettingsCodec.Decode(Db2SettingsCodec.Encode(saved)).Species);
 
                 window.FindControl<Button>("StartNewButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 Assert.NotNull(created);
+                Assert.Empty(created.Species);
                 Assert.Equal(expected, created.ShapeCreation);
                 using var engine = new NativeEngineClient(created with { Backend = "Cpu" });
-                Assert.Empty(engine.Snapshot().Obstacles);
+                var initial = engine.Snapshot();
+                Assert.Equal(0, initial.Population);
+                Assert.Empty(initial.Obstacles);
+                Assert.False(initial.TiesEnabled);
+                Assert.False(initial.RobotFixingAllowed);
+                Assert.False(initial.AsexualReproductionAllowed);
+                engine.ImportDna("start stop", [1_000, 1_000]);
+                Assert.Equal(60f, Assert.Single(engine.Snapshot().RenderInstances).Radius);
                 Assert.Equal(1, engine.AddNativeRandomObstacles(1));
                 var shape = Assert.Single(engine.Snapshot().Obstacles);
                 Assert.Equal(0xff000000u, shape.Color);
                 Assert.Equal(0, shape.Opacity);
                 Assert.Equal("opaque", shape.VisionPolicy);
                 Assert.Equal("reflect", shape.ShotPolicy);
+
+                window.FindControl<MenuItem>("NewWorldMenuItem")!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                window.FindControl<Button>("StartNewButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Assert.Equal(2, created!.Species.Count);
+                Assert.False(created.FixedBotRadii);
+                Assert.True(created.TiesEnabled);
+                Assert.True(created.RobotFixingAllowed);
+                Assert.True(created.AsexualReproductionAllowed);
             }
             finally
             {

@@ -127,7 +127,7 @@ public sealed record DesktopSettings
             WrapX = WrapX,
             WrapY = WrapY,
             TicksPerUpdate = TicksPerUpdate,
-            Species = Species.Count == 0 ? fallback.Species.ToArray() : Species.ToArray(),
+            Species = Species.Count == 0 && LegacySettingsFields is null ? fallback.Species.ToArray() : Species.ToArray(),
             GlobalSettings = GlobalSettings,
             LoadSavePath = fallback.LoadSavePath,
         };
