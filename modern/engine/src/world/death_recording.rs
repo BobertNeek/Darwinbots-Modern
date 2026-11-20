@@ -47,17 +47,10 @@ impl Engine {
         {
             return Ok(());
         }
-        let parent_id = if robot.identity.parent_absolute_id != 0 {
-            robot.identity.parent_absolute_id
-        } else {
-            robot.identity.parents[0]
-                .and_then(|parent| self.slots.get(parent).ok())
-                .map_or(0, |state| state.identity.absolute_id)
-        };
         let record = DeathRecord {
             tick: self.tick,
             id: robot.identity.absolute_id,
-            parent_id,
+            parent_id: self.absolute_parent_id(robot),
             founder: native_census_filename(robot, &self.species).to_owned(),
             generation: robot.counters.generation,
             birth_cycle: robot.counters.birth_cycle,
