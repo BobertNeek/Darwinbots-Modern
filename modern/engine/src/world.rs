@@ -3194,6 +3194,16 @@ impl Engine {
                 });
                 let fields = value.as_object_mut().unwrap();
                 fields.insert("species_id".into(), serde_json::json!(index));
+                // The configuration editor can show a living genome as a fallback.
+                // Startup settings must distinguish it from the saved startup roster.
+                fields.insert(
+                    "startup_species".into(),
+                    serde_json::json!(template.is_some_and(|template| {
+                        self.native_origin.is_none()
+                            || definition.reseed
+                            || template.source_text.is_some()
+                    })),
+                );
                 fields.insert(
                     "comment".into(),
                     serde_json::json!(

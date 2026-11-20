@@ -152,6 +152,9 @@ public sealed class GlobalSettingsProfileTests
 
     private static async Task CloseRuntimeAsync(MainWindow owner)
     {
+        // This fixture exercises the global profile with a fake engine, not graceful quit.
+        typeof(MainWindow).GetField("_skipLastExitCheckpoint", System.Reflection.BindingFlags.Instance
+            | System.Reflection.BindingFlags.NonPublic)!.SetValue(owner, true);
         Close(owner);
         await WaitFor(() => !owner.IsVisible);
     }

@@ -30,6 +30,7 @@ public sealed partial class SetupWindow : Window
     private Db2ShapeDriftOptions? _shapeDrift;
     private IReadOnlyList<ObstacleSnapshot> _obstacles = [];
     private IReadOnlyList<string>? _legacySettingsFields;
+    private bool _allowEmptyStartupRoster;
     private const string ZerobotDna = "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0";
     private const string FeederDna = "cond\r\nstart\r\n-2 .shoot store\r\n50 .shootval store\r\n314 rnd .aimdx store\r\nstop";
     private const string FeederReproducerDna = "cond\r\nstart\r\n-2 302 1 rnd rnd rnd rnd rnd rnd mult add .shoot store\r\n50 .shootval store\r\n314 rnd .aimdx store\r\nstop";
@@ -43,7 +44,7 @@ public sealed partial class SetupWindow : Window
 
     public SetupWindow(IDesktopStorageService storage, float? nativeGaussianSpare = null, byte? nativeSunChange = null,
         NativeProcessCachesSnapshot? nativeProcessCaches = null, WorldSetupOptions? speciesEditor = null, bool allowLastExitResume = true,
-        bool nativeSpeciesImport = true,
+        bool loadLastExitSettings = true, bool nativeSpeciesImport = true,
         Func<string, string, bool, Task<NativeSpeciesAppearance?>>? stageNativeAppearance = null)
     {
         _speciesEditor = speciesEditor is not null;
@@ -67,6 +68,7 @@ public sealed partial class SetupWindow : Window
             ApplyGlobalSettings(_profileSettings);
         }
         _workflow.Reset(ReadSetupOptions());
+        if (!_speciesEditor && loadLastExitSettings) RestoreLastExitSettings();
         OnboardingPanel.IsVisible = !_speciesEditor && _storage.IsFirstRun;
         ResumeMenuItem.IsVisible = !_speciesEditor && allowLastExitResume && _storage.FindLastExitSimulation() is not null;
         if (speciesEditor is not null)
@@ -99,6 +101,53 @@ public sealed partial class SetupWindow : Window
     }
 
     internal void ShowStartupLoadError(string error) => SetupStatus.Text = $"STARTUP LOAD FAILED · {error}";
+
+    private void RestoreLastExitSettings()
+    {
+        var defaults = _workflow.Live;
+        try
+        {
+            if (_storage.LoadLastExitSettings() is not { } settings) return;
+            if (settings.GlobalSettings is not { Main: not null, League: not null, Costs: not null, AdvancedMutation: not null }
+                || settings.Recording is null || settings.Species is null || settings.Species.Any(species => species is null)
+                || settings.Gravity is not { Length: 2 } || settings.Obstacles is null)
+                throw new InvalidDataException("Last-exit settings contain incomplete world data.");
+            var setup = settings.ToWorldSetup();
+            var saved = settings.GlobalSettings;
+            // The global profile may have changed independently since the last quit.
+            setup = setup with { GlobalSettings = _profileSettings with
+            {
+                Main = _profileSettings.Main with
+                {
+                    BodyCutoff = saved.Main.BodyCutoff,
+                    GreedyEnforcement = saved.Main.GreedyEnforcement,
+                    SafeMode = settings.Recording.SafeModeBackup,
+                    EpigeneticReset = saved.Main.EpigeneticReset,
+                    EpigeneticAmplification = saved.Main.EpigeneticAmplification,
+                    TemporaryGeneData = saved.Main.TemporaryGeneData,
+                },
+                Costs = saved.Costs,
+                AdvancedMutation = saved.AdvancedMutation,
+                League = _profileSettings.League with
+                {
+                    DisqualificationRule = saved.League.DisqualificationRule,
+                    RecognitionFudging = saved.League.RecognitionFudging,
+                },
+            }};
+            _allowEmptyStartupRoster = setup.Species.Count == 0;
+            ApplySetupOptions(setup);
+            _workflow.Reset(setup);
+            SetupStatus.Text = "LAST EXIT SETTINGS LOADED";
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or JsonException
+            or ArgumentException or InvalidDataException or NotSupportedException or OverflowException
+            or InvalidOperationException or FormatException)
+        {
+            _allowEmptyStartupRoster = false;
+            ApplySetupOptions(defaults);
+            SetupStatus.Text = $"LAST EXIT SETTINGS LOAD FAILED · {error.Message}";
+        }
+    }
 
     private void Mode_Checked(object? sender, RoutedEventArgs e)
     {
@@ -240,7 +289,8 @@ public sealed partial class SetupWindow : Window
 
     private bool ValidateSpeciesRoster()
     {
-        if (Species.Count > 0 || (!_speciesEditor && _legacySettingsFields is not null
+        if (Species.Count > 0 || (!_speciesEditor
+            && (_allowEmptyStartupRoster || _legacySettingsFields is not null)
             && CurrentMode() == StartingMode.StarterBotsAndVegetables)) return true;
         SetupStatus.Text = "Add at least one species.";
         return false;
@@ -483,7 +533,7 @@ public sealed partial class SetupWindow : Window
         StarterMode.IsChecked = setup.StartingMode == StartingMode.StarterBotsAndVegetables;
         ZerobotMode.IsChecked = setup.StartingMode == StartingMode.Zerobots;
         ZerobotVegetableMode.IsChecked = setup.StartingMode == StartingMode.ZerobotsAndVegetables;
-        if (setup.Species.Count == 0 && setup.LegacySettingsFields is null)
+        if (setup.Species.Count == 0 && setup.LegacySettingsFields is null && !_allowEmptyStartupRoster)
             LoadMode(setup.StartingMode);
         else
         {
@@ -500,6 +550,7 @@ public sealed partial class SetupWindow : Window
 
     private void NewWorld_Click(object? sender, RoutedEventArgs e)
     {
+        _allowEmptyStartupRoster = false;
         _environment = EnvironmentUpdate.Default;
         _shapeCreation = null;
         _shapeDrift = null;

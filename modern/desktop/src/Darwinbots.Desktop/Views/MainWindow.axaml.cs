@@ -1165,7 +1165,7 @@ public sealed partial class MainWindow : Window
                     ? SetupWindow.CreateNativeAppearanceProvider(_session is { } active ? await active.ReadNativeSetupUniformStateAsync() : null)
                     : null;
                 var setupWindow = new SetupWindow(_storage, spare, sunChange, caches,
-                    allowLastExitResume: _startupArguments.Count == 0, stageNativeAppearance: stageAppearance);
+                    allowLastExitResume: _startupArguments.Count == 0, loadLastExitSettings: false, stageNativeAppearance: stageAppearance);
                 setupWindow.WorldCreated += options =>
                 {
                     var replacement = new MainWindow(_startupArguments, options, _engineFactory, _storage, _launchSafeModeBackup)
@@ -1220,7 +1220,7 @@ public sealed partial class MainWindow : Window
     private LegacyCommandResult QuitApplication()
     {
         Close();
-        return LegacyCommandResult.Success(_savingLastExit ? "SAVING LAST SIMULATION" : "QUIT");
+        return LegacyCommandResult.Success(_windowClosed ? "QUIT" : _viewModel.Status);
     }
 
     private async Task<LegacyCommandResult> SaveSimulationWithoutMutationsCommandAsync()
@@ -2438,6 +2438,7 @@ public sealed partial class MainWindow : Window
 
     private async void Window_Opened(object? sender, EventArgs e)
     {
+        if (_session is not null || _windowClosed) return;
         try
         {
             await _storage.SaveLastStartAsync(
@@ -2797,6 +2798,7 @@ public sealed partial class MainWindow : Window
 
     private void Run_Click(object? sender, RoutedEventArgs e)
     {
+        if (_savingLastExit) return;
         _runTimer.Start();
         _viewModel.Status = "RUNNING";
     }
@@ -3794,7 +3796,7 @@ public sealed partial class MainWindow : Window
         catch (Exception error) { _viewModel.Status = $"AUTOSAVE ERROR · {error.Message}"; }
     }
 
-    private async void Window_Closing(object? sender, WindowClosingEventArgs e)
+    private void Window_Closing(object? sender, WindowClosingEventArgs e)
     {
         if (e.Cancel || e.CloseReason is not (WindowCloseReason.WindowClosing or WindowCloseReason.Undefined)
             || _skipLastExitCheckpoint || !_startupComplete || !_storage.SupportsLastExitSimulation
@@ -3803,30 +3805,76 @@ public sealed partial class MainWindow : Window
 
         e.Cancel = true;
         if (_savingLastExit || _navigationInFlight) return;
+        if (OwnedWindows.Any(window => window.IsVisible && window.IsDialog))
+        {
+            _viewModel.Status = "CLOSE THE OPEN DIALOG BEFORE QUITTING";
+            return;
+        }
 
         _savingLastExit = true;
+        var wasRunning = _runTimer.IsEnabled;
         _runTimer.Stop();
-        IsEnabled = false;
-        _viewModel.Status = "SAVING LAST SIMULATION";
+        Dispatcher.UIThread.Post(() => _ = CompleteWindowCloseAsync(session, wasRunning));
+    }
+
+    private async Task CompleteWindowCloseAsync(SimulationSession session, bool wasRunning)
+    {
+        var close = false;
+        var wasEnabled = IsEnabled;
+        var disablingForSave = false;
+        var failure = "LAST SIMULATION SAVE FAILED";
         await _advanceGate.WaitAsync();
         try
         {
-            if (_windowClosed) return;
-            await _storage.SaveLastExitSimulationAsync(await session.SaveAsync());
+            if (_windowClosed || !ReferenceEquals(_session, session) || _navigationInFlight) return;
+            var choice = LiveQuitChoice.KeepSettings;
+            if (_storage.SupportsLastExitSettings && session.LatestSnapshot.LocalMode.Status == LocalModeStatus.Idle)
+            {
+                if (OwnedWindows.Any(window => window.IsVisible && window.IsDialog)) return;
+                if (!IsVisible)
+                {
+                    _diagnostics.RestoreFromTray();
+                    Show();
+                    WindowState = WindowState.Normal;
+                }
+                choice = await new LiveQuitSettingsWindow(_storage.HasLastExitSettings).ShowDialog<LiveQuitChoice>(this);
+            }
+            if (choice == LiveQuitChoice.Cancel || _windowClosed || !ReferenceEquals(_session, session)) return;
+
+            IsEnabled = false;
+            disablingForSave = true;
+            _viewModel.Status = "SAVING LAST SIMULATION";
+            byte[] simulation;
+            if (choice == LiveQuitChoice.SaveSettings)
+            {
+                failure = "LAST EXIT SETTINGS SAVE FAILED";
+                var capture = await session.CaptureLastExitAsync(CreateNextWorldSetup() with { TicksPerUpdate = _ticksPerUpdate });
+                await _storage.SaveLastExitSettingsAsync(capture.Settings);
+                simulation = capture.Simulation;
+                failure = "LAST SIMULATION SAVE FAILED";
+            }
+            else simulation = await session.SaveAsync();
+            await _storage.SaveLastExitSimulationAsync(simulation);
             _skipLastExitCheckpoint = true;
-            Dispatcher.UIThread.Post(() => { if (!_windowClosed) Close(); });
+            close = true;
         }
         catch (Exception error)
         {
             _skipLastExitCheckpoint = true;
-            _savingLastExit = false;
             if (!_windowClosed)
+                _viewModel.Status = $"{failure} · {error.Message} · CLOSE AGAIN TO EXIT";
+        }
+        finally
+        {
+            _advanceGate.Release();
+            if (!close && !_windowClosed)
             {
-                IsEnabled = true;
-                _viewModel.Status = $"LAST SIMULATION SAVE FAILED · {error.Message} · CLOSE AGAIN TO EXIT";
+                _savingLastExit = false;
+                if (disablingForSave) IsEnabled = wasEnabled;
+                if (wasRunning) _runTimer.Start();
             }
         }
-        finally { _advanceGate.Release(); }
+        if (close && !_windowClosed) Close();
     }
 
     private async void Window_Closed(object? sender, EventArgs e)

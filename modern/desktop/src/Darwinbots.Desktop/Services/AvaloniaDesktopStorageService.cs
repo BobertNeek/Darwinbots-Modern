@@ -463,14 +463,30 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         return file.Exists && file.Length > 0 ? file.FullName : null;
     }
 
-    public async Task SaveLastExitSimulationAsync(ReadOnlyMemory<byte> save)
+    public Task SaveLastExitSimulationAsync(ReadOnlyMemory<byte> save) =>
+        WriteLastExitFileAsync(LastExitSimulationPath(), save);
+
+    public bool SupportsLastExitSettings => true;
+
+    public bool HasLastExitSettings => File.Exists(LastExitSettingsPath());
+
+    public DesktopSettings? LoadLastExitSettings()
     {
-        var path = LastExitSimulationPath();
+        try { return DesktopSettings.FromJson(File.ReadAllText(LastExitSettingsPath())); }
+        catch (FileNotFoundException) { return null; }
+        catch (DirectoryNotFoundException) { return null; }
+    }
+
+    public Task SaveLastExitSettingsAsync(DesktopSettings settings) =>
+        WriteLastExitFileAsync(LastExitSettingsPath(), System.Text.Encoding.UTF8.GetBytes(settings.ToJson()));
+
+    private static async Task WriteLastExitFileAsync(string path, ReadOnlyMemory<byte> bytes)
+    {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         var temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
         try
         {
-            await File.WriteAllBytesAsync(temporary, save);
+            await File.WriteAllBytesAsync(temporary, bytes);
             File.Move(temporary, path, overwrite: true);
         }
         finally
@@ -589,6 +605,8 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
     private string LastStartPath() => Path.Combine(AutosaveDirectory(), "last-start.json");
 
     private string LastExitSimulationPath() => Path.Combine(AutosaveDirectory(), "Resume", "last-exit.db3s");
+
+    private string LastExitSettingsPath() => Path.Combine(ProfileDirectory(), "last-exit-settings.json");
 
     private string FirstRunMarkerPath() => Path.Combine(AutosaveDirectory(), "first-run.complete");
 

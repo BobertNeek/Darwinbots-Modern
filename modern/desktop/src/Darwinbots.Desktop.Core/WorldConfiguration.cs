@@ -17,6 +17,9 @@ public sealed record WorldConfiguration(
     public int DisqualificationRule { get; init; }
     public int RecognitionFudging { get; init; }
     public Db2ShapeDriftOptions? ShapeDrift { get; init; }
+    public ulong? Seed { get; init; }
+    public bool? FixedBotRadii { get; init; }
+    public IReadOnlyList<SpeciesImport>? StartupSpecies { get; init; }
 }
 
 internal static class NativeConfigurationParser
@@ -97,12 +100,14 @@ internal static class NativeConfigurationParser
                 var placement = species.Placement;
                 if (value.TryGetProperty("placement_bounds", out var bounds) && bounds.GetArrayLength() == 4)
                     placement = placement with { Left = bounds[0].GetSingle(), Right = bounds[1].GetSingle(), Top = bounds[2].GetSingle(), Bottom = bounds[3].GetSingle() };
-                return species with { Placement = placement, Restrictions = species.Restrictions ?? new(), Skin = species.Skin ?? SpeciesImport.DefaultSkin() };
+                var row = species with { Placement = placement, Restrictions = species.Restrictions ?? new(), Skin = species.Skin ?? SpeciesImport.DefaultSkin() };
+                bool? startupSpecies = value.TryGetProperty("startup_species", out var startup) ? startup.GetBoolean() : null;
+                return (Row: row, Startup: startupSpecies);
             })
             .ToArray();
         return new WorldConfiguration(environment,
             config.GetProperty("dna_costs").GetProperty("global_multiplier").GetDouble(),
-            Read<int>("organism_capacity"), Read<int>("vegetable_population_cap"), species)
+            Read<int>("organism_capacity"), Read<int>("vegetable_population_cap"), species.Select(entry => entry.Row).ToArray())
         {
             Costs = costs,
             AdvancedMutation = advanced,
@@ -112,6 +117,11 @@ internal static class NativeConfigurationParser
             RecognitionFudging = config.TryGetProperty("recognition_fudging", out var fudging) ? fudging.GetInt32() : 0,
             ShapeDrift = config.TryGetProperty("shape_drift", out var drift)
                 ? drift.Deserialize<Db2ShapeDriftOptions>(Options) : null,
+            Seed = config.TryGetProperty("seed", out var seed) ? seed.GetUInt64() : null,
+            FixedBotRadii = config.TryGetProperty("fixed_bot_radii", out var radii) ? radii.GetBoolean() : null,
+            StartupSpecies = species.All(entry => entry.Startup.HasValue)
+                ? species.Where(entry => entry.Startup == true).Select(entry => entry.Row).ToArray()
+                : null,
         };
     }
 }

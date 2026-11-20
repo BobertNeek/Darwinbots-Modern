@@ -58,6 +58,10 @@ public interface IDesktopStorageService
     bool SupportsLastExitSimulation => false;
     string? FindLastExitSimulation() => null;
     Task SaveLastExitSimulationAsync(ReadOnlyMemory<byte> save) => Task.CompletedTask;
+    bool SupportsLastExitSettings => false;
+    bool HasLastExitSettings => false;
+    DesktopSettings? LoadLastExitSettings() => null;
+    Task SaveLastExitSettingsAsync(DesktopSettings settings) => Task.CompletedTask;
     bool IsFirstRun => false;
     Task MarkFirstRunCompleteAsync() => Task.CompletedTask;
     string? FindLastStart() => null;
