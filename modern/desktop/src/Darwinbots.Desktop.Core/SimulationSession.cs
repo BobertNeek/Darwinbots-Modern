@@ -237,6 +237,9 @@ public sealed class SimulationSession : IAsyncDisposable
         return added;
     }
 
+    public Task AddTrashCompactorAsync(ObstacleSnapshot left, ObstacleSnapshot right, CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.AddTrashCompactor(left, right), cancellationToken);
+
     public Task UpdateObstacleAsync(ObstacleSnapshot obstacle, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.UpdateObstacle(obstacle), cancellationToken);
 

@@ -399,6 +399,22 @@ public sealed partial class NativeEngineClient : IEngineClient
         return result.ValueKind == JsonValueKind.Null ? null : result.GetInt32();
     }
 
+    public void AddTrashCompactor(ObstacleSnapshot left, ObstacleSnapshot right)
+    {
+        static object Wall(ObstacleSnapshot shape) => new
+        {
+            id = shape.Id,
+            minimum = shape.Minimum,
+            maximum = shape.Maximum,
+            drift = shape.Drift,
+        };
+        ExecuteBatch(new
+        {
+            version = 1,
+            commands = new[] { new { type = "add_trash_compactor", left = Wall(left), right = Wall(right) } },
+        }, "add trash compactor");
+    }
+
     public void UpdateObstacle(ObstacleSnapshot obstacle)
     {
         ArgumentNullException.ThrowIfNull(obstacle);

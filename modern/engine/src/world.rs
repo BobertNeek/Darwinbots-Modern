@@ -1,6 +1,7 @@
 use crate::biology::resource_readback;
 use crate::environment::{
-    TeleporterBackflow, blocks_backflow, inside_teleporter, teleporter_blocked_by_obstacles,
+    TeleporterBackflow, TrashCompactor, blocks_backflow, inside_teleporter,
+    teleporter_blocked_by_obstacles,
 };
 use crate::modes::{
     LocalModeAdjudication, LocalModeConfig, LocalModeKind, LocalModeResult, LocalModeState,
@@ -1042,6 +1043,7 @@ impl From<Db3sV2EngineConfig> for EngineConfig {
             disqualification: 0,
             shapes_visible: false,
             shape_creation: None,
+            shape_drift: None,
             greedy_reproduction: false,
             body_cutoff: 0,
             seed: value.seed,
@@ -2427,6 +2429,11 @@ pub struct Engine {
     zerobot_checkpoint_score: i64,
     #[serde(default)]
     obstacles: Vec<Obstacle>,
+    /// Original shapes keep Single width and height independently of their origin.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    native_obstacle_extents: BTreeMap<u32, [f32; 2]>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    trash_compactor: Option<TrashCompactor>,
     #[serde(default)]
     teleporters: Vec<Teleporter>,
     #[serde(default)]
@@ -2481,6 +2488,8 @@ struct CycleCheckpoint {
     zerobot_checkpoint: Option<RobotState>,
     zerobot_checkpoint_score: i64,
     obstacles: Vec<Obstacle>,
+    native_obstacle_extents: BTreeMap<u32, [f32; 2]>,
+    trash_compactor: Option<TrashCompactor>,
     teleporters: Vec<Teleporter>,
     file_teleporters: Vec<FileTeleporter>,
     corpses: Vec<CorpseSnapshot>,
@@ -2636,6 +2645,8 @@ impl Engine {
             zerobot_checkpoint: None,
             zerobot_checkpoint_score: 0,
             obstacles: legacy.obstacles.into_iter().map(Into::into).collect(),
+            native_obstacle_extents: BTreeMap::new(),
+            trash_compactor: None,
             teleporters: legacy.teleporters.into_iter().map(Into::into).collect(),
             file_teleporters: Vec::new(),
             corpses: legacy.corpses.into_iter().map(Into::into).collect(),
@@ -2849,6 +2860,8 @@ impl Engine {
             zerobot_checkpoint: None,
             zerobot_checkpoint_score: 0,
             obstacles: Vec::new(),
+            native_obstacle_extents: BTreeMap::new(),
+            trash_compactor: None,
             teleporters: Vec::new(),
             file_teleporters: Vec::new(),
             corpses: Vec::new(),
@@ -5555,6 +5568,8 @@ impl Engine {
                 zerobot_checkpoint: self.zerobot_checkpoint.clone(),
                 zerobot_checkpoint_score: self.zerobot_checkpoint_score,
                 obstacles: self.obstacles.clone(),
+                native_obstacle_extents: self.native_obstacle_extents.clone(),
+                trash_compactor: self.trash_compactor,
                 teleporters: self.teleporters.clone(),
                 file_teleporters: self.file_teleporters.clone(),
                 corpses: self.corpses.clone(),
@@ -5626,6 +5641,8 @@ impl Engine {
         self.zerobot_checkpoint = checkpoint.zerobot_checkpoint;
         self.zerobot_checkpoint_score = checkpoint.zerobot_checkpoint_score;
         self.obstacles = checkpoint.obstacles;
+        self.native_obstacle_extents = checkpoint.native_obstacle_extents;
+        self.trash_compactor = checkpoint.trash_compactor;
         self.teleporters = checkpoint.teleporters;
         self.file_teleporters = checkpoint.file_teleporters;
         self.corpses = checkpoint.corpses;
@@ -5963,6 +5980,8 @@ impl Engine {
             zerobot_checkpoint: self.zerobot_checkpoint.clone(),
             zerobot_checkpoint_score: self.zerobot_checkpoint_score,
             obstacles: self.obstacles.clone(),
+            native_obstacle_extents: self.native_obstacle_extents.clone(),
+            trash_compactor: self.trash_compactor,
             teleporters: self.teleporters.clone(),
             file_teleporters: self.file_teleporters.clone(),
             corpses: self.corpses.clone(),
@@ -6105,14 +6124,14 @@ impl Engine {
         let extent_fractions =
             dimensions_permille.map(|size| f64::from((f64::from(size) * 0.001) as f32));
         for offset in 0..count {
-            let [(left, right), (top, bottom)] = if centered {
+            let [(left, width), (top, height)] = if centered {
                 // ObstacleForm.MakeShape uses integer centers and full fixed extents.
                 [0, 1].map(|axis| {
                     let dimension = dimensions[axis];
                     let fraction = extent_fractions[axis];
                     let center = random.integer(0, dimension.round_ties_even() as i32);
                     let minimum = (f64::from(center) - dimension * (fraction / 2.0)) as f32;
-                    (minimum, minimum + (dimension * fraction) as f32)
+                    (minimum, (dimension * fraction) as f32)
                 })
             } else {
                 let position = [random.unit(), random.unit()];
@@ -6124,15 +6143,23 @@ impl Engine {
                     let minimum =
                         ((f64::from(coordinate) - dimension * (fraction / 2.0)) as f32).max(0.0);
                     let size = (f64::from(extent[axis]) * dimension * fraction) as f32;
-                    (minimum, (minimum + size).min(dimension as f32))
+                    let limit = dimension as f32;
+                    if minimum + size > limit {
+                        (minimum, limit - minimum)
+                    } else {
+                        (minimum, size)
+                    }
                 })
             };
             if offset == added {
                 // VB6 prepares geometry before NewObstacle checks the cap and stops.
                 break;
             }
-            let mut shape =
-                Obstacle::new(last_id + offset as u32 + 1, [left, top], [right, bottom]);
+            let mut shape = Obstacle::new(
+                last_id + offset as u32 + 1,
+                [left, top],
+                [left + width, top + height],
+            );
             let bgr = if black {
                 0
             } else {
@@ -6147,6 +6174,8 @@ impl Engine {
             }
             shape.vision_policy = vision;
             shape.shot_policy = shot;
+            self.native_obstacle_extents
+                .insert(shape.id, [width, height]);
             self.obstacles.push(shape);
         }
         if added != 0 {
@@ -6155,7 +6184,7 @@ impl Engine {
         Ok(Some(added))
     }
 
-    pub fn add_obstacle(&mut self, obstacle: Obstacle) -> Result<(), EngineError> {
+    fn validate_obstacle_addition(&self, obstacle: &Obstacle) -> Result<(), EngineError> {
         if obstacle
             .minimum
             .iter()
@@ -6182,7 +6211,49 @@ impl Engine {
                 obstacle.id
             )));
         }
+        Ok(())
+    }
+
+    pub fn add_obstacle(&mut self, obstacle: Obstacle) -> Result<(), EngineError> {
+        self.validate_obstacle_addition(&obstacle)?;
+        if self.config.shape_drift.is_some() && self.native_random.is_some() {
+            self.native_obstacle_extents
+                .insert(obstacle.id, obstacle.extents());
+        }
         self.obstacles.push(obstacle);
+        self.publish_snapshot();
+        Ok(())
+    }
+
+    pub fn add_trash_compactor(
+        &mut self,
+        left: Obstacle,
+        right: Obstacle,
+    ) -> Result<(), EngineError> {
+        self.validate_obstacle_addition(&left)?;
+        self.validate_obstacle_addition(&right)?;
+        let speed = left.drift[0];
+        if left.id == right.id
+            || left.minimum[0] >= right.minimum[0]
+            || speed <= 0.0
+            || right.drift != [-speed, 0.0]
+            || left.drift[1] != 0.0
+        {
+            return Err(EngineError::Invariant(
+                "trash compactor walls are invalid".into(),
+            ));
+        }
+        self.trash_compactor = Some(TrashCompactor {
+            left: left.id,
+            right: right.id,
+            speed,
+        });
+        if self.config.shape_drift.is_some() && self.native_random.is_some() {
+            self.native_obstacle_extents.insert(left.id, left.extents());
+            self.native_obstacle_extents
+                .insert(right.id, right.extents());
+        }
+        self.obstacles.extend([left, right]);
         self.publish_snapshot();
         Ok(())
     }
@@ -6210,6 +6281,12 @@ impl Engine {
                 "obstacle geometry or properties are invalid".to_owned(),
             ));
         }
+        let previous = &self.obstacles[index];
+        if (previous.minimum != obstacle.minimum || previous.maximum != obstacle.maximum)
+            && let Some(extents) = self.native_obstacle_extents.get_mut(&obstacle.id)
+        {
+            *extents = obstacle.extents();
+        }
         self.obstacles[index] = obstacle;
         self.publish_snapshot();
         Ok(())
@@ -6222,6 +6299,13 @@ impl Engine {
             return Err(EngineError::Invariant(format!(
                 "obstacle {id} does not exist"
             )));
+        }
+        self.native_obstacle_extents.remove(&id);
+        if self
+            .trash_compactor
+            .is_some_and(|compactor| compactor.contains(id))
+        {
+            self.trash_compactor = None;
         }
         self.publish_snapshot();
         Ok(())
@@ -10690,15 +10774,85 @@ impl Engine {
         }
     }
 
+    fn obstacle_extents(&self, obstacle: &Obstacle) -> [f32; 2] {
+        self.native_obstacle_extents
+            .get(&obstacle.id)
+            .copied()
+            .unwrap_or_else(|| obstacle.extents())
+    }
+
     fn move_obstacles(&mut self) {
         let world_size = [self.config.world_width, self.config.world_height];
+        let compactor = self.trash_compactor;
+        let native_drift = self.native_random.as_ref().and(self.config.shape_drift);
+        if let Some(drift) = native_drift
+            && (drift.horizontal || drift.vertical)
+            && let Some(random) = self.native_random.as_mut()
+        {
+            let rate = i32::from(drift.rate);
+            let max_velocity = self.config.physics.max_velocity;
+            for obstacle in &mut self.obstacles {
+                if compactor.is_some_and(|pair| pair.contains(obstacle.id)) {
+                    continue;
+                }
+                for (velocity, enabled) in obstacle
+                    .drift
+                    .iter_mut()
+                    .zip([drift.horizontal, drift.vertical])
+                {
+                    if enabled {
+                        let magnitude = random.integer(-rate, rate);
+                        let factor = random.unit();
+                        *velocity = (f64::from(*velocity)
+                            + f64::from(magnitude) * f64::from(factor) * 0.01)
+                            as f32;
+                    }
+                }
+                let speed = crate::physics::native_magnitude(obstacle.drift);
+                if speed > max_velocity {
+                    // Obstacles.bas passes this ratio to VectorScalar, which multiplies.
+                    obstacle.drift =
+                        crate::physics::native_scalar(obstacle.drift, speed / max_velocity);
+                }
+            }
+        }
+        if let Some(compactor) = compactor {
+            let indices = compactor
+                .wall_indices(&self.obstacles)
+                .expect("active compactor walls exist");
+            let extents = indices.map(|index| self.obstacle_extents(&self.obstacles[index]));
+            let [left, right] = self
+                .obstacles
+                .get_disjoint_mut(indices)
+                .expect("compactor walls are distinct");
+            compactor.move_walls(left, right, world_size, extents);
+        }
         for obstacle in &mut self.obstacles {
+            if compactor.is_some_and(|compactor| compactor.contains(obstacle.id)) {
+                continue;
+            }
+            let widths = self
+                .native_obstacle_extents
+                .get(&obstacle.id)
+                .copied()
+                .unwrap_or_else(|| obstacle.extents());
             for (axis, extent) in world_size.iter().enumerate() {
-                let extent = extent.max(1.0);
                 let delta = obstacle.drift[axis];
-                let width = obstacle.maximum[axis] - obstacle.minimum[axis];
-                let minimum =
-                    (obstacle.minimum[axis] + delta).clamp(0.0, (extent - width).max(0.0));
+                let width = widths[axis];
+                let mut minimum = obstacle.minimum[axis] + delta;
+                if let Some(drift) = native_drift {
+                    let rate = i32::from(drift.rate);
+                    if minimum < -width {
+                        minimum = -width;
+                        obstacle.drift[axis] = (f64::from(rate) * 0.01) as f32;
+                    }
+                    if minimum > *extent {
+                        minimum = *extent;
+                        obstacle.drift[axis] = (f64::from(-rate) * 0.01) as f32;
+                    }
+                } else {
+                    minimum = minimum.clamp(0.0, (extent.max(1.0) - width).max(0.0));
+                }
                 obstacle.minimum[axis] = minimum;
                 obstacle.maximum[axis] = minimum + width;
             }
@@ -13122,6 +13276,15 @@ impl Engine {
     }
 
     pub(crate) fn restore(mut engine: Self) -> Result<Self, EngineError> {
+        if engine.trash_compactor.is_some_and(|compactor| {
+            !compactor.speed.is_finite()
+                || compactor.speed <= 0.0
+                || compactor.wall_indices(&engine.obstacles).is_none()
+        }) {
+            return Err(EngineError::InvalidSave(
+                "invalid trash compactor walls".into(),
+            ));
+        }
         // Reject process caches before migration or snapshot-derived ring indexing.
         engine.native_energy.validate().map_err(|error| {
             EngineError::InvalidSave(format!("invalid native energy cache: {error}"))
@@ -13146,17 +13309,36 @@ impl Engine {
                 "native population census exceeds robot capacity".into(),
             ));
         }
-        // Older DB3S files retained the original tail before F1 was projected.
-        if engine.native_f1.is_none()
+        // Older DB3S files retained native metadata before it was projected.
+        if (engine.native_f1.is_none() || engine.config.shape_drift.is_none())
             && let Some(origin) = engine
                 .native_origin
                 .as_ref()
                 .filter(|file| !file.tail.is_empty())
         {
-            engine.native_f1 = Some(
-                crate::native_binary::NativeSimulationTail::decode(&origin.tail)?.integer("f1")?
-                    != 0,
-            );
+            let tail = crate::native_binary::NativeSimulationTail::decode(&origin.tail)?;
+            if engine.native_f1.is_none() {
+                engine.native_f1 = Some(tail.integer("f1")? != 0);
+            }
+            if engine.config.shape_drift.is_none() {
+                engine.config.shape_drift = Some(native_io::shape_drift(&tail)?);
+            }
+        }
+        if !engine.native_obstacle_extents.is_empty() {
+            let ids: HashSet<_> = engine.obstacles.iter().map(|shape| shape.id).collect();
+            engine
+                .native_obstacle_extents
+                .retain(|id, _| ids.contains(id));
+        }
+        if engine.config.shape_drift.is_some() && engine.native_random.is_some() {
+            for obstacle in &engine.obstacles {
+                // Older DB3S files only kept endpoints. Stabilize those live dimensions
+                // without attributing historical .sim geometry to a reused obstacle ID.
+                engine
+                    .native_obstacle_extents
+                    .entry(obstacle.id)
+                    .or_insert_with(|| obstacle.extents());
+            }
         }
         engine.migrate_complete_archived_corpses()?;
         for (index, slot) in engine.slots.iter().enumerate() {
@@ -14292,6 +14474,63 @@ mod tests {
     }
 
     #[test]
+    fn native_shape_drift_uses_axis_order_and_skips_trash_compactor_walls() {
+        let cases = [
+            (false, false, [[0, 0], [0, 0]], 0x82_a500),
+            (true, false, [[0xbe34_fa2f, 0], [0x3d46_d42e, 0]], 0x9b_55c4),
+            (false, true, [[0, 0xbe34_fa2f], [0, 0x3d46_d42e]], 0x9b_55c4),
+            (
+                true,
+                true,
+                [[0xbe34_fa2f, 0x3d46_d42e], [0xbb9e_320d, 0x39b8_eccd]],
+                0x04_83c8,
+            ),
+        ];
+
+        for (horizontal, vertical, expected_drift, expected_rng) in cases {
+            let mut world = Engine::new(EngineConfig {
+                seed: 1338,
+                world_width: 1000.0,
+                world_height: 800.0,
+                shape_drift: Some(crate::ShapeDriftSettings {
+                    horizontal,
+                    vertical,
+                    rate: 20,
+                }),
+                ..EngineConfig::testing()
+            })
+            .unwrap();
+            world
+                .add_obstacle(Obstacle::new(27, [100.0, 110.0], [130.0, 150.0]))
+                .unwrap();
+            let mut left = Obstacle::new(61, [-999.0, -80.0], [1.0, 880.0]);
+            let mut right = Obstacle::new(30, [999.0, -80.0], [1999.0, 880.0]);
+            left.drift = [2.0, 0.0];
+            right.drift = [-2.0, 0.0];
+            world.add_trash_compactor(left, right).unwrap();
+            world
+                .add_obstacle(Obstacle::new(3, [400.0, 410.0], [430.0, 450.0]))
+                .unwrap();
+
+            world.move_obstacles();
+
+            assert_eq!(
+                world.obstacles[0].drift.map(f32::to_bits),
+                expected_drift[0]
+            );
+            assert_eq!(
+                world.obstacles[3].drift.map(f32::to_bits),
+                expected_drift[1]
+            );
+            assert_eq!(world.native_random.as_ref().unwrap().state(), expected_rng);
+            assert_eq!(world.obstacles[1].minimum, [-997.0, -80.0]);
+            assert_eq!(world.obstacles[2].minimum, [997.0, -80.0]);
+            assert_eq!(world.obstacles[1].drift, [2.0, 0.0]);
+            assert_eq!(world.obstacles[2].drift, [-2.0, 0.0]);
+        }
+    }
+
+    #[test]
     fn explicit_shape_creation_policies_survive_empty_modern_and_native_saves() {
         let world = Engine::new_native(EngineConfig {
             shape_creation: Some(crate::ShapeCreationSettings {
@@ -14324,6 +14563,82 @@ mod tests {
             assert_eq!(shape.opacity, 0.0);
             assert_eq!(shape.vision_policy, ShapeVisionPolicy::SeeThrough);
             assert_eq!(shape.shot_policy, ShapeShotPolicy::Reflect);
+        }
+    }
+
+    #[test]
+    fn native_shape_drift_multiplies_overspeed_velocity_and_draws_at_zero_rate() {
+        let mut world = Engine::new(EngineConfig {
+            seed: 1338,
+            shape_drift: Some(crate::ShapeDriftSettings {
+                horizontal: true,
+                vertical: false,
+                rate: 0,
+            }),
+            physics: PhysicsSettings {
+                max_velocity: 5.0,
+                ..Default::default()
+            },
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let mut obstacle = Obstacle::new(1, [100.0, 100.0], [120.0, 120.0]);
+        obstacle.drift = [6.0, 8.0];
+        world.add_obstacle(obstacle).unwrap();
+
+        world.move_obstacles();
+
+        assert_eq!(world.native_random.as_ref().unwrap().state(), 0xfb_5b7a);
+        assert_eq!(world.obstacles[0].drift, [12.0, 16.0]);
+        assert_eq!(world.obstacles[0].minimum, [112.0, 116.0]);
+    }
+
+    #[test]
+    fn native_shape_drift_keeps_overhang_and_rebounds_even_with_both_axes_disabled() {
+        let policy = crate::ShapeDriftSettings {
+            horizontal: false,
+            vertical: false,
+            rate: 20,
+        };
+        for (configured, rebound) in [
+            (Some(policy), [-0.2_f32, 0.2_f32]),
+            (
+                Some(crate::ShapeDriftSettings { rate: 0, ..policy }),
+                [0.0; 2],
+            ),
+            (None, [2.0, -2.0]),
+        ] {
+            let mut world = Engine::new(EngineConfig {
+                seed: 1338,
+                world_width: 1000.0,
+                world_height: 800.0,
+                shape_drift: configured,
+                ..EngineConfig::testing()
+            })
+            .unwrap();
+            let mut shape = Obstacle::new(1, [999.0, -29.0], [1019.0, 1.0]);
+            shape.drift = [2.0, -2.0];
+            world.add_obstacle(shape).unwrap();
+            world
+                .add_obstacle(Obstacle::new(2, [-5.0, 795.0], [15.0, 825.0]))
+                .unwrap();
+
+            world.move_obstacles();
+
+            let shape = &world.obstacles[0];
+            let stationary = &world.obstacles[1];
+            if configured.is_some() {
+                assert_eq!(shape.minimum, [1000.0, -30.0]);
+                assert_eq!(shape.maximum, [1020.0, 0.0]);
+                assert_eq!(stationary.minimum, [-5.0, 795.0]);
+                assert_eq!(stationary.maximum, [15.0, 825.0]);
+            } else {
+                assert_eq!(shape.minimum, [980.0, 0.0]);
+                assert_eq!(shape.maximum, [1000.0, 30.0]);
+                assert_eq!(stationary.minimum, [0.0, 770.0]);
+            }
+            assert_eq!(shape.drift.map(f32::to_bits), rebound.map(f32::to_bits));
+            assert_eq!(world.native_random.as_ref().unwrap().state(), 0x82_a500);
         }
     }
 

@@ -50,6 +50,63 @@ impl Obstacle {
             shot_policy: ShapeShotPolicy::default(),
         }
     }
+
+    pub(crate) fn extents(&self) -> [f32; 2] {
+        [
+            self.maximum[0] - self.minimum[0],
+            self.maximum[1] - self.minimum[1],
+        ]
+    }
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub(crate) struct TrashCompactor {
+    pub(crate) left: u32,
+    pub(crate) right: u32,
+    pub(crate) speed: f32,
+}
+
+impl TrashCompactor {
+    pub(crate) fn contains(self, id: u32) -> bool {
+        id == self.left || id == self.right
+    }
+
+    pub(crate) fn wall_indices(self, obstacles: &[Obstacle]) -> Option<[usize; 2]> {
+        let left = obstacles.iter().position(|shape| shape.id == self.left)?;
+        let right = obstacles.iter().position(|shape| shape.id == self.right)?;
+        (left != right).then_some([left, right])
+    }
+
+    pub(crate) fn move_walls(
+        self,
+        left: &mut Obstacle,
+        right: &mut Obstacle,
+        world_size: [f32; 2],
+        wall_extents: [[f32; 2]; 2],
+    ) {
+        // Obstacles.bas applies the coupled rules before the ordinary movement.
+        if left.minimum[0] > right.minimum[0] + 400.0 {
+            left.drift[0] = -left.drift[0];
+            right.drift[0] = -right.drift[0];
+        }
+        if left.minimum[0] <= -wall_extents[0][0] {
+            left.drift[0] = self.speed;
+            right.drift[0] = -self.speed;
+        }
+        for (wall, extents) in [left, right].into_iter().zip(wall_extents) {
+            for (axis, extent) in world_size.into_iter().enumerate() {
+                let span = extents[axis];
+                let minimum = wall.minimum[axis] + wall.drift[axis];
+                if minimum < -span {
+                    wall.drift[axis] = self.speed * 0.1;
+                } else if minimum > extent {
+                    wall.drift[axis] = -self.speed * 0.1;
+                }
+                wall.minimum[axis] = minimum.clamp(-span, extent);
+                wall.maximum[axis] = wall.minimum[axis] + span;
+            }
+        }
+    }
 }
 
 fn default_shape_color() -> u32 {

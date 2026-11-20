@@ -5,7 +5,7 @@ use super::*;
 use crate::native_binary::{
     NativeRecordFile, NativeRobotRecord, NativeSimulationTail, NativeValue,
 };
-use crate::{CorpseDecayMode, DnaBlock, MutationRate};
+use crate::{CorpseDecayMode, DnaBlock, MutationRate, ShapeDriftSettings};
 
 fn invalid(message: impl Into<String>) -> EngineError {
     EngineError::InvalidSave(format!("native DB2 {}", message.into()))
@@ -125,6 +125,15 @@ fn dna(bytes: &[u8]) -> Result<LegacyDna, EngineError> {
     Ok(LegacyDna::from_legacy_blocks(blocks))
 }
 
+pub(super) fn shape_drift(t: &NativeSimulationTail) -> Result<ShapeDriftSettings, EngineError> {
+    Ok(ShapeDriftSettings {
+        horizontal: t.integer("shapes_horizontal")? != 0,
+        vertical: t.integer("shapes_vertical")? != 0,
+        rate: i16::try_from(t.integer("shape_drift")?)
+            .map_err(|_| invalid("shape drift rate is outside the Integer range"))?,
+    })
+}
+
 fn configuration(t: &NativeSimulationTail) -> Result<EngineConfig, EngineError> {
     let n = |name| t.number(name).map(|v| v as f32);
     let b = |name| t.integer(name).map(|v| v != 0);
@@ -200,6 +209,7 @@ fn configuration(t: &NativeSimulationTail) -> Result<EngineConfig, EngineError> 
         vegetable_population_cap: u("max_population")? as usize,
         fixed_bot_radii: b("fixed_radii")?,
         shapes_visible: b("shapes_visible")?,
+        shape_drift: Some(shape_drift(t)?),
         brownian_motion: n("brownian")?,
         gravity: [0.0, n("y_gravity")?],
         physics: PhysicsSettings {
@@ -891,10 +901,11 @@ impl Engine {
                 continue;
             }
             let minimum = [n("x")?, n("y")?];
+            let extents = [n("width")?, n("height")?];
             let mut shape = Obstacle::new(
                 i as u32,
                 minimum,
-                [minimum[0] + n("width")?, minimum[1] + n("height")?],
+                [minimum[0] + extents[0], minimum[1] + extents[1]],
             );
             shape.color = color(t.integer(&(p.clone() + "color"))?);
             shape.opacity = if t.integer("shapes_transparent")? != 0 {
@@ -913,6 +924,7 @@ impl Engine {
             } else {
                 ShapeShotPolicy::Reflect
             };
+            self.native_obstacle_extents.insert(shape.id, extents);
             self.obstacles.push(shape);
         }
         for i in 0..t.integer("teleporters")? {
@@ -1360,6 +1372,138 @@ mod tests {
             engine.native_origin.as_ref().unwrap().encode().unwrap(),
             ORIGINAL
         );
+    }
+
+    #[test]
+    fn native_shape_drift_survives_db3s_and_migrates_from_retained_origin() {
+        let mut source = Engine::new(EngineConfig::testing()).unwrap();
+        let mut shape = Obstacle::new(1, [20.0, 30.0], [50.0, 70.0]);
+        shape.drift = [2.5, -1.25];
+        source.add_obstacle(shape).unwrap();
+
+        let mut file = NativeRecordFile::decode(&source.export_native_sim().unwrap()).unwrap();
+        let mut tail = NativeSimulationTail::decode(&file.tail).unwrap();
+        for (field, value) in [
+            ("shapes_horizontal", -1),
+            ("shapes_vertical", 0),
+            ("shape_drift", 23),
+        ] {
+            tail.set_value(field, NativeValue::Word(value)).unwrap();
+        }
+        file.tail = tail.encode().unwrap();
+        let mut imported = Engine::from_native_sim(&file.encode().unwrap()).unwrap();
+        let settings = imported.config.shape_drift.as_ref().unwrap();
+        assert_eq!(
+            (settings.horizontal, settings.vertical, settings.rate),
+            (true, false, 23)
+        );
+        let resumed = SaveFile::decode(&SaveFile::encode(&imported).unwrap()).unwrap();
+
+        imported.config.shape_drift = None;
+        imported.native_obstacle_extents.clear();
+        let old_save = SaveFile::encode(&imported).unwrap();
+        let old_payload: serde_json::Value = serde_json::from_slice(&old_save[10..]).unwrap();
+        assert!(old_payload["config"].get("shape_drift").is_none());
+        assert!(old_payload.get("native_obstacle_extents").is_none());
+        let mut migrated = SaveFile::decode(&old_save).unwrap();
+
+        for engine in [&resumed, &migrated] {
+            let settings = engine.config.shape_drift.as_ref().unwrap();
+            assert_eq!(
+                (settings.horizontal, settings.vertical, settings.rate),
+                (true, false, 23)
+            );
+            assert_eq!(engine.obstacles.len(), 1);
+            assert_eq!(engine.obstacles[0].drift, [2.5, -1.25]);
+            assert_eq!(
+                engine.obstacle_extents(&engine.obstacles[0]),
+                engine.obstacles[0].extents()
+            );
+        }
+
+        // DB3S and native export must prefer the current settings over the retained source.
+        let settings = migrated.config.shape_drift.as_mut().unwrap();
+        settings.horizontal = false;
+        settings.vertical = true;
+        settings.rate = 31;
+        let edited = SaveFile::decode(&SaveFile::encode(&migrated).unwrap()).unwrap();
+        let projected = NativeRecordFile::decode(&edited.export_native_sim().unwrap()).unwrap();
+        let projected_tail = NativeSimulationTail::decode(&projected.tail).unwrap();
+        assert_eq!(projected_tail.integer("shapes_horizontal").unwrap(), 0);
+        assert_eq!(projected_tail.integer("shapes_vertical").unwrap(), -1);
+        assert_eq!(projected_tail.integer("shape_drift").unwrap(), 31);
+    }
+
+    #[test]
+    fn native_shape_drift_preserves_original_extents_across_fractional_motion_and_edits() {
+        let extents = [20.2_f32, 39.51_f32];
+        let mut expected_position = [100.5_f32, 200.25_f32];
+        let velocity = [0.3_f32, -0.13_f32];
+        let mut source = Engine::new(EngineConfig::testing()).unwrap();
+        let mut shape = Obstacle::new(1, expected_position, [120.7, 239.76]);
+        shape.drift = velocity;
+        source.add_obstacle(shape).unwrap();
+        let mut file = NativeRecordFile::decode(&source.export_native_sim().unwrap()).unwrap();
+        let mut tail = NativeSimulationTail::decode(&file.tail).unwrap();
+        for (name, value) in ["obstacle[0].width", "obstacle[0].height"]
+            .into_iter()
+            .zip(extents)
+        {
+            tail.set_value(name, NativeValue::Single(value.to_bits()))
+                .unwrap();
+        }
+        file.tail = tail.encode().unwrap();
+        let mut world = Engine::from_native_sim(&file.encode().unwrap()).unwrap();
+        assert_ne!(world.obstacles[0].extents(), extents);
+
+        for _ in 0..500 {
+            world.move_obstacles();
+            expected_position[0] += velocity[0];
+            expected_position[1] += velocity[1];
+        }
+        let checkpoint = SaveFile::encode(&world).unwrap();
+        let mut world = SaveFile::decode(&checkpoint).unwrap();
+        for _ in 0..500 {
+            world.move_obstacles();
+            expected_position[0] += velocity[0];
+            expected_position[1] += velocity[1];
+        }
+        assert_eq!(world.obstacles[0].minimum, expected_position);
+        assert_eq!(
+            world.obstacles[0].maximum,
+            [
+                expected_position[0] + extents[0],
+                expected_position[1] + extents[1]
+            ]
+        );
+
+        let mut edited = world.obstacles[0].clone();
+        edited.drift = [0.0; 2];
+        world.update_obstacle(edited).unwrap();
+        let projected = NativeRecordFile::decode(&world.export_native_sim().unwrap()).unwrap();
+        let projected_tail = NativeSimulationTail::decode(&projected.tail).unwrap();
+        for (name, extent) in ["obstacle[0].width", "obstacle[0].height"]
+            .into_iter()
+            .zip(extents)
+        {
+            assert_eq!(
+                projected_tail.value(name).unwrap(),
+                &NativeValue::Single(extent.to_bits())
+            );
+        }
+
+        let mut resized = world.obstacles[0].clone();
+        resized.minimum = [10.0, 20.0];
+        resized.maximum = [40.0, 70.0];
+        let id = resized.id;
+        world.update_obstacle(resized).unwrap();
+        assert_eq!(world.obstacle_extents(&world.obstacles[0]), [30.0, 50.0]);
+        world.remove_obstacle(id).unwrap();
+        assert!(!world.native_obstacle_extents.contains_key(&id));
+        world
+            .add_obstacle(Obstacle::new(id, [20.0, 30.0], [32.0, 44.0]))
+            .unwrap();
+        assert_eq!(world.obstacle_extents(&world.obstacles[0]), [12.0, 14.0]);
     }
 
     #[test]

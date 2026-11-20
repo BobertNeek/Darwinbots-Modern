@@ -39,6 +39,11 @@ public interface IEngineClient : IDisposable
     void AddObstacle(ObstacleSnapshot obstacle);
     int? AddNativeRandomObstacles(int count, ShapeCreationDimensions? dimensions = null) => null;
     int? AddNativeCenteredObstacle(ShapeCreationDimensions dimensions) => null;
+    void AddTrashCompactor(ObstacleSnapshot left, ObstacleSnapshot right)
+    {
+        AddObstacle(left);
+        AddObstacle(right);
+    }
     void UpdateObstacle(ObstacleSnapshot obstacle);
     void RemoveObstacle(uint id);
     void AddTeleporter(TeleporterSnapshot teleporter);

@@ -214,6 +214,10 @@ enum EngineCommand {
     AddNativeCenteredObstacle {
         dimensions_permille: [u16; 2],
     },
+    AddTrashCompactor {
+        left: crate::Obstacle,
+        right: crate::Obstacle,
+    },
     UpdateObstacle {
         obstacle: crate::Obstacle,
     },
@@ -999,6 +1003,9 @@ fn db_engine_command_batch_impl(
             } => engine
                 .add_native_centered_obstacle(dimensions_permille)
                 .map(|added| serde_json::json!(added)),
+            EngineCommand::AddTrashCompactor { left, right } => engine
+                .add_trash_compactor(left, right)
+                .map(|_| serde_json::Value::Null),
             EngineCommand::UpdateObstacle { obstacle } => engine
                 .update_obstacle(obstacle)
                 .map(|_| serde_json::Value::Null),

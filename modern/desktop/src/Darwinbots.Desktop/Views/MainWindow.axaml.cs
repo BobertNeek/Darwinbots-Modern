@@ -1883,9 +1883,20 @@ public sealed partial class MainWindow : Window
     private async Task<LegacyCommandResult> AddMazeCommandAsync(MazePreset pattern)
     {
         if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        var size = _session.LatestSnapshot.WorldSize;
+        var snapshot = _session.LatestSnapshot;
+        var size = snapshot.WorldSize;
         var shapes = MazePresetBuilder.Build(pattern, size[0], size[1]);
-        await AddObstaclesAsync(shapes);
+        if (pattern == MazePreset.TrashCompactor)
+        {
+            var id = checked(snapshot.Obstacles.Select(obstacle => obstacle.Id).DefaultIfEmpty().Max() + 1);
+            await _session.AddTrashCompactorAsync(
+                new ObstacleSnapshot(id, shapes[0].Minimum, shapes[0].Maximum) { Drift = shapes[0].Drift },
+                new ObstacleSnapshot(checked(id + 1), shapes[1].Minimum, shapes[1].Maximum) { Drift = shapes[1].Drift });
+        }
+        else
+        {
+            await AddObstaclesAsync(shapes);
+        }
         return LegacyCommandResult.Success($"{pattern.ToString().ToUpperInvariant()} MAZE ADDED · {shapes.Count} SHAPES");
     }
 

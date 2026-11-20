@@ -188,8 +188,16 @@ public sealed class RenderedWorldToolsCausalTests
                     .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
                 await WaitFor(() => session.LatestSnapshot.Obstacles.Count == 22,
                     () => "The trash compactor command did not add two walls.");
-                Assert.Contains(session.LatestSnapshot.Obstacles.Skip(20), shape => shape.Minimum[0] == 1_099f);
+                var walls = session.LatestSnapshot.Obstacles.Skip(20).ToArray();
+                Assert.Equal([-999f, -80f], walls[0].Minimum);
+                Assert.Equal([1_099f, -80f], walls[1].Minimum);
+                Assert.Equal([2f, 0f], walls[0].Drift);
+                Assert.Equal([-2f, 0f], walls[1].Drift);
                 Assert.Equal(tick, session.LatestSnapshot.Tick);
+                await session.StepAsync(1);
+                var movedWalls = session.LatestSnapshot.Obstacles.Skip(20).ToArray();
+                Assert.Equal([-997f, -80f], movedWalls[0].Minimum);
+                Assert.Equal([1_097f, -80f], movedWalls[1].Minimum);
             }
             finally { window.Close(); }
         }, CancellationToken.None);
