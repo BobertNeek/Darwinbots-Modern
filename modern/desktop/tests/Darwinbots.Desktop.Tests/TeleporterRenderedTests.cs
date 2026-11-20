@@ -5,6 +5,7 @@ using Avalonia.Input;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using Darwinbots.Desktop.Core;
+using Darwinbots.Desktop.ViewModels;
 using Darwinbots.Desktop.Views;
 using System.Reflection;
 using Xunit;
@@ -61,9 +62,98 @@ public sealed class TeleporterRenderedTests
             engine.UpdateTeleporter(window.Result);
             var updated = Assert.Single(engine.Snapshot().Teleporters);
             Assert.Equal(55f, updated.Radius);
+            Assert.Equal(110f, updated.Width);
+            Assert.Equal(110f, updated.Height);
             Assert.Equal(randomDestination, updated.RandomDestination);
             window.Close();
         }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task NativeRectangularTeleporterRetainsItsGeometryThroughTheRoutedEditorAndSave()
+    {
+        const float radius = 123.45678f;
+        const float width = radius * 2f;
+        const float height = width * 2f;
+        var setup = new WorldSetupOptions { Backend = "Cpu", WorldWidth = 4_000, WorldHeight = 2_000, PopulationCapacity = 16 };
+        var path = Path.Combine(Path.GetTempPath(), $"darwinbots-rectangular-teleporter-{Guid.NewGuid():N}.sim");
+        try
+        {
+            using (var source = new NativeEngineClient(setup))
+            {
+                source.AddTeleporter(new TeleporterSnapshot(1, [1_000f, 600f], radius, [1_000f, 600f])
+                {
+                    Width = width, Height = height, RandomDestination = true,
+                });
+                await File.WriteAllBytesAsync(path, source.SaveLegacy());
+            }
+
+            await DesktopTestApplication.Session.Dispatch(async () =>
+            {
+                var player = new MainWindow([], setup with { LoadSavePath = path },
+                    NativeEngineClientFactory.Instance, new AuditStorageService())
+                {
+                    WindowState = WindowState.Normal, Width = 1_100, Height = 820,
+                };
+                player.Show();
+                try
+                {
+                    var model = Assert.IsType<MainWindowViewModel>(player.DataContext);
+                    await WaitFor(() => model.Status == "LOADED");
+                    var session = Assert.IsType<SimulationSession>(Session(player));
+                    TeleporterSnapshot Current() => Assert.Single(session.LatestSnapshot.Teleporters);
+                    AssertRectangle(Current(), width, height);
+
+                    var viewport = player.FindControl<Control>("Viewport")!;
+                    AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                    ClickAt(player, viewport, new Point(viewport.Bounds.Width * 0.25, viewport.Bounds.Height * 0.3));
+                    var edit = player.FindControl<Button>("EditTeleporterButton")!;
+                    Assert.True(edit.IsEnabled);
+
+                    async Task<TeleporterEditorWindow> OpenEditorAsync()
+                    {
+                        Click(player, edit);
+                        await WaitFor(() => player.OwnedWindows.OfType<TeleporterEditorWindow>().Any());
+                        return Assert.Single(player.OwnedWindows.OfType<TeleporterEditorWindow>());
+                    }
+
+                    var editor = await OpenEditorAsync();
+                    editor.FindControl<CheckBox>("TeleportCorpses")!.IsChecked = false;
+                    Click(editor, editor.FindControl<Button>("ApplyButton")!);
+                    await WaitFor(() => !Current().TeleportCorpses);
+                    AssertRectangle(Current(), width, height);
+
+                    using var reopened = new NativeEngineClient(setup);
+                    reopened.Load(await session.SaveAsync());
+                    var checkpoint = Assert.Single(reopened.Snapshot().Teleporters);
+                    Assert.False(checkpoint.TeleportCorpses);
+                    AssertRectangle(checkpoint, width, height);
+
+                    editor = await OpenEditorAsync();
+                    editor.FindControl<NumericUpDown>("Radius")!.Value = (decimal)(double)width;
+                    Click(editor, editor.FindControl<Button>("ApplyButton")!);
+                    await WaitFor(() => Current().Radius == width);
+                    AssertRectangle(Current(), width * 2f, height * 2f);
+                    reopened.Load(await session.SaveLegacyAsync());
+                    AssertRectangle(Assert.Single(reopened.Snapshot().Teleporters), width * 2f, height * 2f);
+                }
+                finally
+                {
+                    foreach (var owned in player.OwnedWindows.ToArray()) owned.Close();
+                    player.Close();
+                }
+            }, CancellationToken.None);
+        }
+        finally { File.Delete(path); }
+    }
+
+    private static void AssertRectangle(TeleporterSnapshot teleporter, float width, float height)
+    {
+        Assert.Equal([1_000f, 600f], teleporter.Center);
+        Assert.Equal(width / 2f, teleporter.Radius);
+        Assert.Equal(width, teleporter.Width);
+        Assert.Equal(height, teleporter.Height);
+        Assert.True(teleporter.RandomDestination);
     }
 
     [Fact]

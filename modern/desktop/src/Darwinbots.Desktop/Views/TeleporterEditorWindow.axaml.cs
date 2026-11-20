@@ -52,6 +52,16 @@ public sealed partial class TeleporterEditorWindow : Window
 
     private void Apply_Click(object? sender, RoutedEventArgs e)
     {
+        float[] center =
+        [
+            ReadGeometry(CenterX, _original.Center.ElementAtOrDefault(0)),
+            ReadGeometry(CenterY, _original.Center.ElementAtOrDefault(1)),
+        ];
+        float[] destination =
+        [
+            ReadGeometry(DestinationX, _original.Destination.ElementAtOrDefault(0)),
+            ReadGeometry(DestinationY, _original.Destination.ElementAtOrDefault(1)),
+        ];
         Result = ObjectEditorPolicy.BuildTeleporterPayload(
             _original,
             Mode.SelectedIndex switch
@@ -60,9 +70,9 @@ public sealed partial class TeleporterEditorWindow : Window
                 2 => "outbound",
                 _ => "intrasim",
             },
-            [(float)(CenterX.Value ?? 0m), (float)(CenterY.Value ?? 0m)],
-            (float)(Radius.Value ?? 1m),
-            [(float)(DestinationX.Value ?? 0m), (float)(DestinationY.Value ?? 0m)],
+            center,
+            ReadGeometry(Radius, _original.Radius, fallback: 1m),
+            destination,
             (uint)(PollInterval.Value ?? 1m),
             (int)(Capacity.Value ?? 1m),
             (uint)(BackflowLimit.Value ?? 0m),
@@ -76,6 +86,10 @@ public sealed partial class TeleporterEditorWindow : Window
             OutboundPath.Text?.Trim() ?? string.Empty);
         Close();
     }
+
+    // NumericUpDown uses decimals, which can round away bits of an imported Single.
+    private static float ReadGeometry(NumericUpDown input, float original, decimal fallback = 0m) =>
+        input.Value == (decimal)original ? original : (float)(input.Value ?? fallback);
 
     private void Cancel_Click(object? sender, RoutedEventArgs e) => Close();
 }

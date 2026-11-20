@@ -116,11 +116,15 @@ public static class ObjectEditorPolicy
         if (normalizedMode is not ("intrasim" or "inbound" or "outbound"))
             throw new ArgumentException("Choose an intrasim, inbound file, or outbound file teleporter.", nameof(mode));
 
+        // The original size control scales the two stored dimensions together.
+        var sizeFactor = float.IsFinite(original.Radius) && original.Radius > 0f ? radius / original.Radius : 1f;
         return original with
         {
             Mode = normalizedMode,
             Center = [.. center],
             Radius = radius,
+            Width = original.Width * sizeFactor,
+            Height = original.Height * sizeFactor,
             Destination = [.. destination],
             PollInterval = pollInterval,
             Capacity = capacity,
