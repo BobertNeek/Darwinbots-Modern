@@ -1065,6 +1065,68 @@ public sealed class RenderedControlSurfaceAuditTests
     }
 
     [Fact]
+    public async Task AutomaticForkingMenuPromptsBeforeEnablingAndRetainsTheThresholdWhenDisabled()
+    {
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var factory = new AuditEngineClientFactory();
+            var setup = new WorldSetupOptions { SpeciationGeneticDistancePercent = 20.5f };
+            var window = new MainWindow([], setup, factory, new AuditStorageService());
+            var priorCulture = DesktopUiPreferences.Culture.Name;
+            try
+            {
+                DesktopUiPreferences.ApplyCulture("de-DE");
+                ShowForInteraction(window, 1_200, 820);
+                var menu = Named<LegacyMenuBar>(window, "HistoricMenuBar");
+                var command = menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.EditEnableAutomaticForking)!;
+                var viewModel = Field<MainWindowViewModel>(window, "_viewModel");
+                await WaitFor(() => command.IsEnabled);
+                var engine = factory.Clients.Single();
+
+                async Task Submit(string initial, string text, string action, string status)
+                {
+                    ActivateMenu(command);
+                    await WaitFor(() => window.OwnedWindows.OfType<LegacyValueWindow>().Any() || command.IsChecked);
+                    var dialog = Assert.Single(window.OwnedWindows.OfType<LegacyValueWindow>());
+                    var input = Assert.Single(dialog.GetVisualDescendants().OfType<TextBox>());
+                    Assert.Equal(initial, input.Text);
+                    input.Text = text;
+                    Click(dialog, dialog.GetVisualDescendants().OfType<Button>().Single(button => Equals(button.Content, action)));
+                    await WaitFor(() => !dialog.IsVisible && viewModel.Status == status);
+                }
+
+                await Submit("20,5", "25,5", "CANCEL", "CANCELED");
+                Assert.False(command.IsChecked);
+                Assert.Empty(engine.EnvironmentUpdates);
+
+                await Submit("20,5", "12,5", "APPLY", "AUTOMATIC FORKING · ON");
+                Assert.True(command.IsChecked);
+                var enabled = Assert.Single(engine.EnvironmentUpdates);
+                Assert.True(enabled.AutoSpeciation);
+                Assert.Equal(12.5f, enabled.SpeciationGeneticDistancePercent);
+
+                ActivateMenu(command);
+                await WaitFor(() => viewModel.Status == "AUTOMATIC FORKING · OFF");
+                Assert.False(command.IsChecked);
+                Assert.Empty(window.OwnedWindows.OfType<LegacyValueWindow>());
+                Assert.Collection(engine.EnvironmentUpdates,
+                    update => Assert.Equal(enabled, update),
+                    update => Assert.Equal(enabled with { AutoSpeciation = false }, update));
+
+                await Submit("12,5", "10000,1", "APPLY", "MUTATION DISTANCE MUST BE 0–10.000%");
+                Assert.False(command.IsChecked);
+                Assert.Equal(2, engine.EnvironmentUpdates.Count);
+            }
+            finally
+            {
+                foreach (var owned in window.OwnedWindows.ToArray()) owned.Close();
+                window.Close();
+                DesktopUiPreferences.ApplyCulture(priorCulture);
+            }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
     public async Task DnaEditorRenderedControlsDispatchThroughVisualTree()
     {
         var engine = new AuditEngineClient();

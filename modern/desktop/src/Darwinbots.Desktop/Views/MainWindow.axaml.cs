@@ -15,6 +15,7 @@ using Darwinbots.Desktop.ViewModels;
 using Avalonia.VisualTree;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Globalization;
 
 namespace Darwinbots.Desktop.Views;
 
@@ -1157,10 +1158,28 @@ public sealed partial class MainWindow : Window
 
     private async Task<LegacyCommandResult> ToggleAutomaticForkingAsync()
     {
-        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        _liveEnvironment = _liveEnvironment with { AutoSpeciation = !_liveEnvironment.AutoSpeciation };
-        await _session.UpdateEnvironmentAsync(_liveEnvironment);
-        return LegacyCommandResult.Success($"AUTOMATIC FORKING · {(_liveEnvironment.AutoSpeciation ? "ON" : "OFF")}");
+        if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        var enabled = !_liveEnvironment.AutoSpeciation;
+        var threshold = _liveEnvironment.SpeciationGeneticDistancePercent;
+        if (enabled)
+        {
+            const int maximumPercent = 10_000;
+            var culture = DesktopUiPreferences.Culture;
+            var maximum = maximumPercent.ToString("N0", culture);
+            var dialog = new LegacyValueWindow("Automatic Forking", "Mutation distance threshold (%)",
+                threshold.ToString(culture), $"Enter the percentage of DNA mutations that triggers a new species, from 0 to {maximum}.");
+            await dialog.ShowDialog(this);
+            if (!dialog.Accepted) return LegacyCommandResult.Cancel();
+            if (!decimal.TryParse(dialog.Value, NumberStyles.Number, culture, out var value)
+                || value is < 0 or > maximumPercent)
+                return LegacyCommandResult.Failure($"MUTATION DISTANCE MUST BE 0–{maximum}%");
+            threshold = (float)value;
+        }
+
+        var update = _liveEnvironment with { AutoSpeciation = enabled, SpeciationGeneticDistancePercent = threshold };
+        await session.UpdateEnvironmentAsync(update);
+        _liveEnvironment = update;
+        return LegacyCommandResult.Success($"AUTOMATIC FORKING · {(enabled ? "ON" : "OFF")}");
     }
 
     private async Task<LegacyCommandResult> OpenPlayerBotSettingsAsync()
