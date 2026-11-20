@@ -255,6 +255,12 @@ public static class NativeCommandSerializer
                 see_through = shapeCreation.SeeThrough,
                 absorb_shots = shapeCreation.AbsorbShots,
             } : null,
+            shape_drift = options.ShapeDrift is { } shapeDrift ? new
+            {
+                horizontal = shapeDrift.Horizontal,
+                vertical = shapeDrift.Vertical,
+                rate = shapeDrift.Rate,
+            } : null,
             dna_costs = DnaCosts(options.GlobalSettings.Costs),
             advanced_mutation = AdvancedMutation(options.GlobalSettings.AdvancedMutation, options.GlobalSettings.Main),
             disqualification = options.GlobalSettings.League.DisqualificationRule,

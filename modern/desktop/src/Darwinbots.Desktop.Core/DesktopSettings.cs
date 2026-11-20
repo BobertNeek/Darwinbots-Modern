@@ -39,6 +39,8 @@ public sealed record DesktopSettings
     public bool ShapesVisible { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public Db2ShapeCreationOptions? ShapeCreation { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Db2ShapeDriftOptions? ShapeDrift { get; init; }
     public bool FixedBotRadii { get; init; }
     public bool TiesEnabled { get; init; } = true;
     public bool RobotFixingAllowed { get; init; } = true;
@@ -81,6 +83,7 @@ public sealed record DesktopSettings
         ToroidalWorld = setup.ToroidalWorld,
         ShapesVisible = setup.ShapesVisible, FixedBotRadii = setup.FixedBotRadii, TiesEnabled = setup.TiesEnabled,
         ShapeCreation = setup.ShapeCreation,
+        ShapeDrift = setup.ShapeDrift,
         RobotFixingAllowed = setup.RobotFixingAllowed, AsexualReproductionAllowed = setup.AsexualReproductionAllowed,
         Obstacles = setup.Obstacles.ToArray(),
         WrapX = setup.WrapX,
@@ -122,6 +125,7 @@ public sealed record DesktopSettings
             ToroidalWorld = ToroidalWorld,
             ShapesVisible = ShapesVisible, FixedBotRadii = FixedBotRadii, TiesEnabled = TiesEnabled,
             ShapeCreation = ShapeCreation,
+            ShapeDrift = ShapeDrift,
             RobotFixingAllowed = RobotFixingAllowed, AsexualReproductionAllowed = AsexualReproductionAllowed,
             Obstacles = Obstacles.ToArray(),
             WrapX = WrapX,
@@ -151,6 +155,8 @@ public sealed record DesktopSettings
             _ => throw new NotSupportedException($"Settings schema version {version} is not supported."),
         };
         settings.Validate();
+        if (settings.ShapeDrift is null && !root.TryGetProperty("shapeDrift", out _))
+            settings = settings with { ShapeDrift = LegacySettingsAdapter.ReadRetainedShapeDrift(settings.LegacySettingsFields) };
         return settings;
     }
 

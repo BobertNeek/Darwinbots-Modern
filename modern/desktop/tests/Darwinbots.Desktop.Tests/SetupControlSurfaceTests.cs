@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Text;
+using System.Text.Json;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
@@ -693,6 +694,50 @@ public sealed class SetupControlSurfaceTests
                 Assert.Equal(18, created.Obstacles.Count);
                 Assert.Equal(original.Obstacles[0].Minimum, created.Obstacles[0].Minimum);
                 Assert.Equal(original.Obstacles[0].Maximum, created.Obstacles[0].Maximum);
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task OriginalShapeDriftCanBeSavedInSetupBeforeStartingTheNativeWorld()
+    {
+        var fixture = OriginalSettingsFixture("Walls and Waste.set");
+        var records = File.ReadAllLines(fixture);
+        records[393] = "-37";
+        records[394] = "#FALSE#";
+        records[395] = "#TRUE#";
+        var imported = SetupStorageService.DecodeSettings(fixture, LegacyDnaText.Encode(string.Join("\r\n", records)));
+        var drift = new Db2ShapeDriftOptions(Vertical: true, Rate: -37);
+        var storage = new SettingsWorkflowStorage { SettingsToOpen = imported };
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new SetupWindow(storage);
+            WorldSetupOptions? created = null;
+            window.WorldCreated += options => created = options;
+            window.Show();
+            try
+            {
+                window.FindControl<Button>("LoadSettingsButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => window.FindControl<TextBlock>("SetupStatus")!.Text == "SETTINGS LOADED");
+                window.FindControl<Button>("SaveSettingsButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => storage.SavedSettings is not null);
+                Assert.Equal(drift, storage.SavedSettings!.ShapeDrift);
+                Assert.Null(created);
+
+                window.FindControl<Button>("StartNewButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Assert.NotNull(created);
+                Assert.Equal(drift, created.ShapeDrift);
+                using var engine = new NativeEngineClient(created with { Backend = "Cpu" });
+                using var save = JsonDocument.Parse(engine.Save().AsMemory(10));
+                var nativeDrift = save.RootElement.GetProperty("config").GetProperty("shape_drift");
+                Assert.False(nativeDrift.GetProperty("horizontal").GetBoolean());
+                Assert.True(nativeDrift.GetProperty("vertical").GetBoolean());
+                Assert.Equal(-37, nativeDrift.GetProperty("rate").GetInt32());
+                Assert.Equal([0.5954616f, 0.6160923f], engine.Snapshot().Obstacles[0].Drift);
             }
             finally
             {
