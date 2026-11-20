@@ -685,7 +685,7 @@ public sealed partial class MainWindow : Window
             () => F1ToolState(EngineState() with { Checked = _playerBotEnabled }),
             async _ => await TogglePlayerBotAsync());
         handlers[LegacyCommandId.EditEyeDesigner] = Handler(
-            () => F1ToolState(SelectedRobotState()),
+            () => F1ToolState(LegacyCommandState.Available),
             async _ => await OpenEyeDesignerAsync());
         handlers[LegacyCommandId.EditRestrictionOverwrites] = Handler(
             EngineState,
@@ -1240,12 +1240,8 @@ public sealed partial class MainWindow : Window
 
     private Task<LegacyCommandResult> OpenEyeDesignerAsync()
     {
-        if (_session is null || SelectedRobotKey() is not { } focus)
-            return Task.FromResult(LegacyCommandResult.Failure("NO ROBOT SELECTED"));
-        var window = _toolWindows.ShowOrActivate(
-            $"eye-designer:{focus.Slot}:{focus.Generation}",
-            () => new EyeDesignerWindow(_session, focus));
-        window.SetSnapshot(_session.LatestSnapshot);
+        var window = _toolWindows.ShowOrActivate("eye-designer", () => new EyeDesignerWindow(_storage));
+        window.SetFocus(_session?.LatestSnapshot ?? EngineSnapshot.Empty, SelectedRobotKey());
         return Task.FromResult(LegacyCommandResult.Success("EYE DESIGNER OPEN"));
     }
 

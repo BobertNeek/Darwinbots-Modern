@@ -4,28 +4,27 @@ using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Darwinbots.Desktop.Core;
+using Darwinbots.Desktop.Services;
 
 namespace Darwinbots.Desktop.Views;
 
 public sealed class EyeDesignerWindow : Window, IPersistentSnapshotToolWindow
 {
-    private readonly SimulationSession _session;
-    private readonly OrganismKey _focus;
+    private readonly IDesktopStorageService _storage;
     private readonly TextBox[] _directions = new TextBox[EyeDesignerModel.EyeCount];
     private readonly TextBox[] _widths = new TextBox[EyeDesignerModel.EyeCount];
     private readonly TextBlock _status = new();
     private readonly EyePreviewControl _preview = new();
-    private EyeDesignerModel _model;
+    private EyeDesignerModel _model = EyeDesignerModel.CreateDefault();
+    private EngineSnapshot _snapshot = EngineSnapshot.Empty;
+    private OrganismKey? _focus;
     private bool _syncing;
     private bool _dirty;
 
-    public EyeDesignerWindow(SimulationSession session, OrganismKey focus)
+    public EyeDesignerWindow(IDesktopStorageService storage)
     {
-        _session = session ?? throw new ArgumentNullException(nameof(session));
-        _focus = focus;
-        var organism = Find(session.LatestSnapshot);
-        _model = EyeDesignerModel.FromOrganism(organism ?? throw new InvalidOperationException("The selected robot is no longer available."));
-        Title = $"Darwinbots — Eye Designer {focus.Slot}:{focus.Generation}";
+        _storage = storage ?? throw new ArgumentNullException(nameof(storage));
+        Title = "Darwinbots — Eye Designer";
         Width = 760;
         Height = 680;
         MinWidth = 680;
@@ -61,12 +60,12 @@ public sealed class EyeDesignerWindow : Window, IPersistentSnapshotToolWindow
             var eye = new TextBlock { Text = $"eye{row}", VerticalAlignment = VerticalAlignment.Center, FontWeight = FontWeight.Bold };
             Grid.SetRow(eye, row);
             rows.Children.Add(eye);
-            _directions[index] = new TextBox { MinWidth = 120 };
+            _directions[index] = new TextBox { Name = $"Eye{row}Direction", MinWidth = 120 };
             _directions[index].TextChanged += (_, _) => DraftChanged(number);
             Grid.SetRow(_directions[index], row);
             Grid.SetColumn(_directions[index], 1);
             rows.Children.Add(_directions[index]);
-            _widths[index] = new TextBox { MinWidth = 120 };
+            _widths[index] = new TextBox { Name = $"Eye{row}Width", MinWidth = 120 };
             _widths[index].TextChanged += (_, _) => DraftChanged(number);
             Grid.SetRow(_widths[index], row);
             Grid.SetColumn(_widths[index], 2);
@@ -111,21 +110,42 @@ public sealed class EyeDesignerWindow : Window, IPersistentSnapshotToolWindow
         SetModel(_model);
     }
 
-    public string LastWrittenDna { get; private set; } = string.Empty;
+    public void SetFocus(EngineSnapshot snapshot, OrganismKey? focus)
+    {
+        if (_focus == focus)
+        {
+            SetSnapshot(snapshot);
+            return;
+        }
+
+        _snapshot = snapshot;
+        _focus = focus;
+        if (Find(snapshot) is { } organism)
+        {
+            SetModel(EyeDesignerModel.FromOrganism(organism));
+            return;
+        }
+
+        _focus = null;
+        SetModel(EyeDesignerModel.CreateDefault());
+    }
 
     public void SetSnapshot(EngineSnapshot snapshot)
     {
+        _snapshot = snapshot;
+        if (_focus is not { } focus) return;
         var organism = Find(snapshot);
         if (organism is null)
         {
-            _status.Text = $"FOCUS LOST · { _focus.Slot}:{_focus.Generation } IS NOT BOUND TO A REPLACEMENT";
+            _status.Text = $"ROBOT {focus.Slot}:{focus.Generation} IS NO LONGER AVAILABLE";
             return;
         }
         if (!_dirty) SetModel(EyeDesignerModel.FromOrganism(organism));
     }
 
-    private OrganismSnapshot? Find(EngineSnapshot snapshot) => snapshot.Organisms.FirstOrDefault(value =>
-        value.Slot == _focus.Slot && value.Generation == _focus.Generation);
+    private OrganismSnapshot? Find(EngineSnapshot snapshot) => _focus is { } focus
+        ? snapshot.Organisms.FirstOrDefault(value => value.Slot == focus.Slot && value.Generation == focus.Generation)
+        : null;
 
     private void SetModel(EyeDesignerModel model)
     {
@@ -142,7 +162,7 @@ public sealed class EyeDesignerWindow : Window, IPersistentSnapshotToolWindow
         finally { _syncing = false; }
         _dirty = false;
         _preview.SetVision(model.Preview, model.Aim);
-        _status.Text = $"LIVE ROBOT {_focus.Slot}:{_focus.Generation} · NINE EYES READY";
+        _status.Text = _focus is { } focus ? $"ROBOT {focus.Slot}:{focus.Generation}" : "STANDALONE EYE DESIGN";
     }
 
     private void DraftChanged(int index)
@@ -159,9 +179,14 @@ public sealed class EyeDesignerWindow : Window, IPersistentSnapshotToolWindow
 
     private void ResetDraft()
     {
-        if (Find(_session.LatestSnapshot) is not { } organism)
+        if (_focus is not { } focus)
         {
-            _status.Text = $"FOCUS LOST · {_focus.Slot}:{_focus.Generation} IS NOT BOUND TO A REPLACEMENT";
+            SetModel(EyeDesignerModel.CreateDefault());
+            return;
+        }
+        if (Find(_snapshot) is not { } organism)
+        {
+            _status.Text = $"ROBOT {focus.Slot}:{focus.Generation} IS NO LONGER AVAILABLE";
             return;
         }
         SetModel(EyeDesignerModel.FromOrganism(organism));
@@ -169,11 +194,6 @@ public sealed class EyeDesignerWindow : Window, IPersistentSnapshotToolWindow
 
     public async Task WriteDnaAsync()
     {
-        if (Find(_session.LatestSnapshot) is null)
-        {
-            _status.Text = $"FOCUS LOST · {_focus.Slot}:{_focus.Generation} IS NOT BOUND TO A REPLACEMENT";
-            return;
-        }
         for (var index = 0; index < EyeDesignerModel.EyeCount; index++)
         {
             if (!_model.TrySet(index, _directions[index].Text ?? string.Empty, _widths[index].Text ?? string.Empty, out var error))
@@ -182,12 +202,10 @@ public sealed class EyeDesignerWindow : Window, IPersistentSnapshotToolWindow
                 return;
             }
         }
-        LastWrittenDna = _model.WriteDna();
         try
         {
-            await _session.ReplaceDnaAsync(_focus.Slot, _focus.Generation, LastWrittenDna);
-            _dirty = false;
-            _status.Text = "WRITE DNA · SELECTED RUST ROBOT UPDATED";
+            _status.Text = await _storage.SaveDnaAsync(this, "eye-design.txt", _model.WriteDna(), null)
+                ? "EYE DNA SAVED" : "SAVE CANCELLED";
         }
         catch (Exception error) { _status.Text = $"WRITE DNA FAILED · {error.Message}"; }
     }

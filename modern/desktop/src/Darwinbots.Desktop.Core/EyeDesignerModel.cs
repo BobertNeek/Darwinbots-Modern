@@ -27,10 +27,17 @@ public sealed class EyeDesignerModel
     public byte FocusEye { get; }
     public IReadOnlyList<EyeDesignRow> Rows => _rows;
 
+    public static EyeDesignerModel CreateDefault() => FromVision(0, VisionSnapshot.Default);
+
     public static EyeDesignerModel FromOrganism(OrganismSnapshot organism)
     {
         ArgumentNullException.ThrowIfNull(organism);
-        var eyes = organism.Vision.Eyes ?? [];
+        return FromVision(organism.Aim, organism.Vision);
+    }
+
+    private static EyeDesignerModel FromVision(int aim, VisionSnapshot vision)
+    {
+        var eyes = vision.Eyes ?? [];
         var rows = Enumerable.Range(0, EyeCount)
             .Select(index =>
             {
@@ -38,7 +45,7 @@ public sealed class EyeDesignerModel
                 return new EyeDesignRow(index + 1, eye?.Direction ?? 0, eye?.Width ?? 0);
             })
             .ToArray();
-        return new EyeDesignerModel(organism.Aim, rows, organism.Vision.FocusEye);
+        return new EyeDesignerModel(aim, rows, vision.FocusEye);
     }
 
     public bool TrySet(int index, string directionText, string widthText, out string error)
@@ -92,15 +99,15 @@ public sealed class EyeDesignerModel
 
     public string WriteDna()
     {
-        var builder = new StringBuilder("cond\n*.robage 0 =\nstart\n");
+        var builder = new StringBuilder("Cond\r\n*.robage 0 =\r\nStart\r\n");
         foreach (var row in _rows)
         {
             builder.Append(row.Direction.ToString(CultureInfo.InvariantCulture))
-                .Append(" .eye").Append(row.Eye).Append("dir store\n")
+                .Append(" .eye").Append(row.Eye).Append("dir store\r\n")
                 .Append(row.Width.ToString(CultureInfo.InvariantCulture))
-                .Append(" .eye").Append(row.Eye).Append("width store\n'\n");
+                .Append(" .eye").Append(row.Eye).Append("width store\r\n'\r\n");
         }
-        builder.Append("stop");
+        builder.Append("Stop\r\n");
         return builder.ToString();
     }
 
