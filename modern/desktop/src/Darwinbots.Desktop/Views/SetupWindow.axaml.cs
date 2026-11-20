@@ -203,6 +203,8 @@ public sealed partial class SetupWindow : Window
             }
         }
         var speed = Speed.SelectedIndex switch { 0 => 1u, 1 => 5u, 2 => 20u, _ => 100u };
+        float fieldWidth = (float)(WorldWidth.Value ?? 16_000);
+        float fieldHeight = (float)(WorldHeight.Value ?? 12_000);
         return new WorldSetupOptions
         {
             StartingMode = CurrentMode(),
@@ -212,8 +214,8 @@ public sealed partial class SetupWindow : Window
             Seed = (ulong)(Seed.Value ?? 1),
             PopulationCapacity = (int)(PopulationCap.Value ?? 25_000),
             VegetablePopulationCap = (int)(VegetablePopulationCap.Value ?? 500),
-            WorldWidth = (float)(WorldWidth.Value ?? 16_000),
-            WorldHeight = (float)(WorldHeight.Value ?? 12_000),
+            WorldWidth = fieldWidth,
+            WorldHeight = fieldHeight,
             MetabolismCost = _environment.MetabolismCost,
             VegetableEnergyPerTick = _environment.VegetableEnergyPerTick,
             SunlightEnergy = _environment.SunlightEnergy,
@@ -237,7 +239,7 @@ public sealed partial class SetupWindow : Window
             MutationSettings = _mutationSettings,
             ShapesVisible = _environment.ShapesVisible ?? false,
             ShapeCreation = _shapeCreation,
-            Obstacles = _obstacles,
+            Obstacles = _obstacles.Select(obstacle => obstacle.ResolveSetupBounds(fieldWidth, fieldHeight)).ToArray(),
             LegacySettingsFields = _legacySettingsFields,
         };
     }

@@ -568,7 +568,7 @@ public sealed class SetupControlSurfaceTests
     }
 
     [Fact]
-    public async Task OriginalWallRowsSurviveSetupSaveStartAndModernResume()
+    public async Task OriginalWallRowsFollowTheCurrentSetupFieldThroughSaveStartAndResume()
     {
         var fixture = OriginalSettingsFixture("Walls and Waste.set");
         var imported = SetupStorageService.DecodeSettings(fixture, File.ReadAllBytes(fixture));
@@ -583,21 +583,61 @@ public sealed class SetupControlSurfaceTests
             {
                 window.FindControl<Button>("LoadSettingsButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 await WaitFor(() => window.FindControl<TextBlock>("SetupStatus")!.Text == "SETTINGS LOADED");
-                window.FindControl<Button>("SaveSettingsButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                await WaitFor(() => storage.SavedSettings is not null);
-                var saved = storage.SavedSettings!;
-                Assert.Equal(18, saved.Obstacles.Count);
-                Assert.Equal(4005.00, saved.Obstacles[0].Minimum[0], 2);
-                Assert.Equal(14806.19, saved.Obstacles[0].Maximum[1], 2);
+                var width = window.FindControl<NumericUpDown>("WorldWidth")!;
+                var height = window.FindControl<NumericUpDown>("WorldHeight")!;
+                var save = window.FindControl<Button>("SaveSettingsButton")!;
+                async Task<DesktopSettings> SaveSettingsAsync()
+                {
+                    var previous = storage.SavedSettings;
+                    save.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    await WaitFor(() => !ReferenceEquals(previous, storage.SavedSettings));
+                    return storage.SavedSettings!;
+                }
 
+                width.Value = 48_000;
+                height.Value = 12_000;
+                var resized = await SaveSettingsAsync();
+                Assert.Equal(48_000f, resized.WorldWidth);
+                Assert.Equal(12_000f, resized.WorldHeight);
+                Assert.Equal(18, resized.Obstacles.Count);
+                var wall = resized.Obstacles[0];
+                Assert.Equal(6007.50, wall.Minimum[0], 2);
+                Assert.Equal(1512.59, wall.Minimum[1], 2);
+                Assert.Equal(750.00, wall.Maximum[0] - wall.Minimum[0], 2);
+                Assert.Equal(5890.50, wall.Maximum[1] - wall.Minimum[1], 2);
+                Assert.Equal(imported.Obstacles[0].Color, wall.Color);
+                Assert.Equal(imported.Obstacles[0].Drift, wall.Drift);
+                Assert.Equal(resized.ToJson(), (await SaveSettingsAsync()).ToJson());
+
+                var encoded = LegacyDnaText.Decode(SetupStorageService.EncodeSettings("resized.set", resized));
+                var marker = encoded.IndexOf("#DARWINBOTS_MODERN_SETTINGS_V1#", StringComparison.Ordinal);
+                var originalFormat = Db2SettingsCodec.Decode(LegacyDnaText.Encode(encoded[..marker]));
+                Assert.Equal(resized.WorldWidth, originalFormat.WorldWidth);
+                Assert.Equal(resized.WorldHeight, originalFormat.WorldHeight);
+                Assert.Equal(18, originalFormat.Obstacles.Count);
+                Assert.Equal(6007.50, originalFormat.Obstacles[0].Minimum[0], 2);
+                Assert.Equal(7403.09, originalFormat.Obstacles[0].Maximum[1], 2);
+
+                width.Value = 32_000;
+                height.Value = 24_000;
+                var originalSize = await SaveSettingsAsync();
+                Assert.Equal(imported.Obstacles[0].Minimum, originalSize.Obstacles[0].Minimum);
+                Assert.Equal(imported.Obstacles[0].Maximum, originalSize.Obstacles[0].Maximum);
+
+                width.Value = 16_000;
+                height.Value = 36_000;
                 window.FindControl<Button>("StartNewButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 Assert.NotNull(created);
+                Assert.Equal(16_000f, created.WorldWidth);
+                Assert.Equal(36_000f, created.WorldHeight);
                 Assert.Equal(18, created.Obstacles.Count);
+                Assert.Equal(2002.50, created.Obstacles[0].Minimum[0], 2);
+                Assert.Equal(4537.78, created.Obstacles[0].Minimum[1], 2);
                 using var engine = new NativeEngineClient(created with { Backend = "Cpu" });
                 var active = engine.Snapshot().Obstacles;
                 Assert.Equal(18, active.Count);
-                Assert.Equal(saved.Obstacles[0].Minimum, active[0].Minimum);
-                Assert.Equal(saved.Obstacles[0].Maximum, active[0].Maximum);
+                Assert.Equal(created.Obstacles[0].Minimum, active[0].Minimum);
+                Assert.Equal(created.Obstacles[0].Maximum, active[0].Maximum);
                 Assert.Equal([0.5954616f, 0.6160923f], active[0].Drift);
                 engine.Load(engine.Save());
                 var restored = engine.Snapshot().Obstacles;
@@ -609,6 +649,50 @@ public sealed class SetupControlSurfaceTests
                 window.FindControl<MenuItem>("NewWorldMenuItem")!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
                 window.FindControl<Button>("StartNewButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 Assert.Empty(created!.Obstacles);
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
+    [Theory]
+    [InlineData("modern.json")]
+    [InlineData("modern.set")]
+    public async Task ModernWallRowsKeepAbsoluteBoundsWhenTheSetupFieldChanges(string fileName)
+    {
+        var fixture = OriginalSettingsFixture("Walls and Waste.set");
+        var original = SetupStorageService.DecodeSettings(fixture, File.ReadAllBytes(fixture));
+        var reopened = SetupStorageService.DecodeSettings(fileName, SetupStorageService.EncodeSettings(fileName, original));
+        Assert.NotNull(reopened.LegacySettingsFields);
+        var storage = new SettingsWorkflowStorage { SettingsToOpen = reopened };
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new SetupWindow(storage);
+            WorldSetupOptions? created = null;
+            window.WorldCreated += options => created = options;
+            window.Show();
+            try
+            {
+                window.FindControl<Button>("LoadSettingsButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => window.FindControl<TextBlock>("SetupStatus")!.Text == "SETTINGS LOADED");
+                window.FindControl<NumericUpDown>("WorldWidth")!.Value = 48_000;
+                window.FindControl<NumericUpDown>("WorldHeight")!.Value = 12_000;
+                window.FindControl<Button>("SaveSettingsButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => storage.SavedSettings is not null);
+                var saved = storage.SavedSettings!;
+                Assert.Equal(48_000f, saved.WorldWidth);
+                Assert.Equal(12_000f, saved.WorldHeight);
+                Assert.Equal(18, saved.Obstacles.Count);
+                Assert.Equal(original.Obstacles[0].Minimum, saved.Obstacles[0].Minimum);
+                Assert.Equal(original.Obstacles[0].Maximum, saved.Obstacles[0].Maximum);
+
+                window.FindControl<Button>("StartNewButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Assert.NotNull(created);
+                Assert.Equal(18, created.Obstacles.Count);
+                Assert.Equal(original.Obstacles[0].Minimum, created.Obstacles[0].Minimum);
+                Assert.Equal(original.Obstacles[0].Maximum, created.Obstacles[0].Maximum);
             }
             finally
             {
