@@ -15,6 +15,8 @@ public sealed partial class MutationRatesWindow : Window
     private MutationProfileUpdate _profile;
     private bool _loading;
     private int _loadedClass;
+    private MutationSettingsSnapshot? _initialGlobalSettings;
+    private decimal _initialMultiplier;
     private readonly HashSet<NumericUpDown> _editedNumbers = [];
     private bool _enabledEdited;
     private bool _preferenceEdited;
@@ -34,6 +36,42 @@ public sealed partial class MutationRatesWindow : Window
         LoadClass();
         WireChanges();
     }
+
+    public MutationRatesWindow(MutationSettingsSnapshot settings, GlobalAdvancedMutationSettings advanced)
+        : this(settings.Profile)
+    {
+        _initialGlobalSettings = settings;
+        _initialMultiplier = (decimal)settings.GlobalMultiplier;
+        Title = "Global Mutation Rates";
+        Heading.Text = "GLOBAL MUTATION RATES";
+        GlobalMutationPanel.IsVisible = true;
+        GlobalMutationsEnabled.IsChecked = settings.Enabled;
+        GlobalMultiplier.Value = _initialMultiplier;
+        GlobalOscillationMode.ItemsSource = new[] { "Disabled", "Sine", "Square" };
+        GlobalOscillationMode.SelectedIndex = (int)advanced.OscillationMode;
+        GlobalHighCycles.Maximum = GlobalLowCycles.Maximum = ulong.MaxValue;
+        GlobalHighCycles.Value = advanced.OscillationHighCycles;
+        GlobalLowCycles.Value = advanced.OscillationLowCycles;
+    }
+
+    public MutationSettingsUpdate ReadGlobalMutationUpdate()
+    {
+        var initial = _initialGlobalSettings ?? throw new InvalidOperationException("This window edits detailed rates only.");
+        var multiplier = GlobalMultiplier.Value == _initialMultiplier
+            ? initial.GlobalMultiplier
+            : (float)(GlobalMultiplier.Value ?? _initialMultiplier);
+        return new MutationSettingsUpdate(GlobalMutationsEnabled.IsChecked == true, multiplier, [])
+        {
+            Profile = _profile == initial.Profile ? null : _profile,
+        };
+    }
+
+    public GlobalAdvancedMutationSettings ReadOscillation(GlobalAdvancedMutationSettings advanced) => advanced with
+    {
+        OscillationMode = (GlobalMutationOscillationMode)GlobalOscillationMode.SelectedIndex,
+        OscillationHighCycles = (ulong)(GlobalHighCycles.Value ?? advanced.OscillationHighCycles),
+        OscillationLowCycles = (ulong)(GlobalLowCycles.Value ?? advanced.OscillationLowCycles),
+    };
 
     private void WireChanges()
     {
