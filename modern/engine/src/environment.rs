@@ -76,6 +76,10 @@ pub struct Teleporter {
     /// The original rectangle keeps its upper-left coordinates as Singles.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub native_top_left: Option<[f32; 2]>,
+    /// Contact uses the center cached before edge correction in the previous cycle.
+    /// The original SIM format omits it. Creation and SIM loading model a virgin VB6 slot.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub native_contact_center: Option<[f32; 2]>,
     #[serde(default = "default_shape_color")]
     pub color: u32,
     #[serde(default)]
@@ -133,6 +137,7 @@ impl Teleporter {
             width: radius * 2.0,
             height: radius * 2.0,
             native_top_left: None,
+            native_contact_center: None,
             color: default_shape_color(),
             velocity: [0.0; 2],
             path: PathBuf::new(),
@@ -156,6 +161,25 @@ impl Teleporter {
             backflow_limit: 0,
             file_backflow_guard: None,
         }
+    }
+
+    pub(crate) fn native_contact_center_at(&self, position: [f32; 2]) -> [f32; 2] {
+        [
+            (f64::from(position[0]) + f64::from(self.width) * 0.5) as f32,
+            (f64::from(position[1]) + f64::from(self.height) * 0.3) as f32,
+        ]
+    }
+
+    pub(crate) fn native_contact(&self) -> Option<NativeTeleporterContact> {
+        let anchor = self.native_top_left.filter(|_| !self.internet)?;
+        Some(NativeTeleporterContact {
+            // Older Modern checkpoints have only the corrected anchor. The exact
+            // pre-wrap center is unrecoverable until the next movement phase.
+            center: self
+                .native_contact_center
+                .unwrap_or_else(|| self.native_contact_center_at(anchor)),
+            width: self.width,
+        })
     }
 }
 
@@ -225,7 +249,31 @@ pub(crate) struct TeleporterBackflow {
     pub(crate) remaining: u32,
 }
 
-pub(crate) fn inside_teleporter(teleporter: &Teleporter, position: [f32; 2]) -> bool {
+#[derive(Clone, Copy)]
+pub(crate) struct NativeTeleporterContact {
+    pub(crate) center: [f32; 2],
+    width: f32,
+}
+
+impl NativeTeleporterContact {
+    pub(crate) fn touches(self, position: [f32; 2], robot_radius: f32) -> bool {
+        let relative = [position[0] - self.center[0], position[1] - self.center[1]];
+        f64::from(crate::physics::native_magnitude(relative))
+            < f64::from(self.width) / 2.0 + f64::from(robot_radius)
+    }
+}
+
+pub(crate) fn inside_teleporter(
+    teleporter: &Teleporter,
+    position: [f32; 2],
+    robot_radius: f32,
+) -> bool {
+    if teleporter.internet {
+        return false;
+    }
+    if let Some(contact) = teleporter.native_contact() {
+        return contact.touches(position, robot_radius);
+    }
     let dx = position[0] - teleporter.center[0];
     let dy = position[1] - teleporter.center[1];
     dx * dx + dy * dy <= teleporter.radius * teleporter.radius

@@ -6116,6 +6116,7 @@ impl Engine {
         teleporter.capacity = teleporter.capacity.max(1);
         teleporter.poll_countdown = teleporter.poll_countdown.min(teleporter.poll_interval);
         teleporter.native_top_left = None;
+        teleporter.native_contact_center = None;
         self.teleporters.push(teleporter);
         self.publish_snapshot();
         Ok(())
@@ -10824,7 +10825,7 @@ impl Engine {
                 if teleporter.internet
                     || !teleporter.local
                     || used_capacity[teleporter_index] >= teleporter.capacity.max(1)
-                    || !inside_teleporter(teleporter, positions[seed])
+                    || !inside_teleporter(teleporter, positions[seed], robot.materials.radius)
                     || !teleporter
                         .filters
                         .accepts(robot.flags.vegetable, robot.flags.corpse)
@@ -10893,10 +10894,19 @@ impl Engine {
                 ..state
             });
             for (teleporter_index, teleporter) in self.teleporters.iter().enumerate() {
+                let radius = if teleporter.native_top_left.is_some() {
+                    crate::physics::organism_radius(
+                        corpse.body as f32 + corpse.body_fraction,
+                        0.0,
+                        self.config.fixed_bot_radii,
+                    )
+                } else {
+                    0.0
+                };
                 if teleporter.internet
                     || !teleporter.local
                     || used_capacity[teleporter_index] >= teleporter.capacity.max(1)
-                    || !inside_teleporter(teleporter, corpse.position)
+                    || !inside_teleporter(teleporter, corpse.position, radius)
                     || !teleporter.filters.accepts(false, true)
                     || teleporter_blocked_by_obstacles(teleporter, &self.obstacles)
                     || blocks_backflow(teleporter, prior)
