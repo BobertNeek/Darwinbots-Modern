@@ -263,6 +263,44 @@ mod tests {
     }
 
     #[test]
+    fn native_shock_caps_body_and_refreshes_radius_without_resampling_mass() {
+        let body = f32::from_bits(0x4517_efef);
+        let chloroplasts = f32::from_bits(0x46e4_b4a6);
+        let old_radius = 50.0_f32;
+        for (native, starting_body, expected_body, expected_radius) in [
+            (true, body, body, 0x43c4_a39f),
+            (true, 33_000.0, 32_000.0, 0x43cf_852e),
+            (false, body, body, old_radius.to_bits()),
+        ] {
+            let mut engine = Engine::new_native(EngineConfig::testing()).unwrap();
+            if !native {
+                engine.native_random = None;
+            }
+            let id = engine
+                .spawn_at(LegacyDna::parse("stop").unwrap(), [500.0; 2])
+                .unwrap();
+            let robot = engine.slots.get_mut(id).unwrap();
+            robot.materials.energy = 4000.0;
+            robot.materials.previous_energy = 10000.0;
+            robot.materials.body = starting_body;
+            robot.materials.chloroplasts = chloroplasts;
+            robot.materials.radius = old_radius;
+            robot.materials.mass = 90.0;
+            robot.kinematics.native_added_mass = Some(200.0);
+
+            engine.shock_phase();
+
+            let robot = engine.slots.get(id).unwrap();
+            assert_eq!(robot.materials.energy, 0.0);
+            assert_eq!(robot.materials.previous_energy, 10000.0);
+            assert_eq!(robot.materials.body, expected_body);
+            assert_eq!(robot.materials.radius.to_bits(), expected_radius);
+            assert_eq!(robot.materials.mass, 90.0);
+            assert_eq!(robot.kinematics.native_added_mass, Some(200.0));
+        }
+    }
+
+    #[test]
     fn chloroplast_request_is_atomic_and_net_growth_is_charged_after_shots() {
         let (mut engine, id) = world("start\nstop");
         engine.config.dna_costs.chloroplast_construction = 2.0;

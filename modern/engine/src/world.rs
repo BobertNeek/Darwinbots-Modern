@@ -12772,6 +12772,7 @@ impl Engine {
     }
 
     fn shock_phase(&mut self) {
+        let native = self.native_random.is_some();
         for slot_index in self.phase_slot_range() {
             let slot = &mut self.slots[slot_index];
             let Some(robot) = slot.organism.as_mut() else {
@@ -12785,9 +12786,18 @@ impl Engine {
             let loss = previous_energy - energy;
             if energy > 3_000.0 && loss > previous_energy / 2.0 {
                 robot.materials.energy = 0.0;
+                if native {
+                    // Shock caps body and calls FindRadius after zeroing energy.
+                    robot.materials.body = robot.materials.body.min(32_000.0);
+                    robot.materials.radius = crate::physics::native_organism_radius(
+                        robot.materials.body,
+                        robot.materials.chloroplasts,
+                        self.config.fixed_bot_radii,
+                    );
+                }
                 robot
                     .materials
-                    .publish_for_profile(&mut robot.program.memory, self.native_random.is_some());
+                    .publish_for_profile(&mut robot.program.memory, native);
             }
         }
     }
