@@ -14,6 +14,7 @@ using Darwinbots.Desktop.Services;
 using Darwinbots.Desktop.ViewModels;
 using Avalonia.VisualTree;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Diagnostics;
 
 namespace Darwinbots.Desktop.Views;
@@ -1240,10 +1241,28 @@ public sealed partial class MainWindow : Window
 
     private Task<LegacyCommandResult> OpenEyeDesignerAsync()
     {
-        var window = _toolWindows.ShowOrActivate("eye-designer", () => new EyeDesignerWindow(_storage));
-        window.SetFocus(_session?.LatestSnapshot ?? EngineSnapshot.Empty, SelectedRobotKey());
+        var window = _toolWindows.ShowOrActivate("eye-designer", () =>
+        {
+            var designer = new EyeDesignerWindow(_storage, WriteEyeMemoryAsync);
+            void OnSelectionChanged(object? sender, PropertyChangedEventArgs change)
+            {
+                if (change.PropertyName == nameof(MainWindowViewModel.SelectedId)) UpdateEyeDesignerFocus(designer);
+            }
+            _viewModel.PropertyChanged += OnSelectionChanged;
+            designer.Closed += (_, _) => _viewModel.PropertyChanged -= OnSelectionChanged;
+            return designer;
+        });
+        UpdateEyeDesignerFocus(window);
         return Task.FromResult(LegacyCommandResult.Success("EYE DESIGNER OPEN"));
     }
+
+    private void UpdateEyeDesignerFocus(EyeDesignerWindow window) =>
+        window.SetFocus(_session?.LatestSnapshot ?? EngineSnapshot.Empty, SelectedRobotKey());
+
+    private Task WriteEyeMemoryAsync(OrganismKey focus, ushort address, int value) =>
+        _session is { } session && F1ToolState(LegacyCommandState.Available).Enabled
+            ? session.SetOrganismMemoryAsync(focus.Slot, focus.Generation, address, value)
+            : Task.CompletedTask;
 
     private async Task<LegacyCommandResult> ShowRestrictionOverridesAsync()
     {
