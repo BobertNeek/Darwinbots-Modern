@@ -126,6 +126,60 @@ fn assert_genuine_movement_observation(engine: &Engine, reference: &[u8], cycle:
 }
 
 #[test]
+fn imported_sim_uses_the_original_velocity_limit_on_resume() {
+    // HDRoutines.ReadSim preserves positive values through 200 and uses 40
+    // for other finite values. These cases mutate a pinned fixture's field.
+    let original = NativeRecordFile::decode(START).unwrap();
+    let original_tail = NativeSimulationTail::decode(&original.tail).unwrap();
+    for (raw, expected) in [
+        (73.0_f32, 73),
+        (200.0, 200),
+        (0.0, 40),
+        (-15.0, 40),
+        (201.0, 40),
+    ] {
+        let mut file = original.clone();
+        let mut tail = original_tail.clone();
+        tail.set_value("max_velocity", NativeValue::Single(raw.to_bits()))
+            .unwrap();
+        file.tail = tail.encode().unwrap();
+        file.robots[0].set_single("velocity_x", 500.0).unwrap();
+
+        let loaded = SaveFile::decode(&file.encode().unwrap()).unwrap();
+        let mut resumed = SaveFile::decode(&SaveFile::encode(&loaded).unwrap()).unwrap();
+        resumed.tick().unwrap();
+        let robot = &resumed.snapshot().organisms[0];
+        assert_eq!(
+            resumed.memory_at(robot.id, 11).unwrap(),
+            expected,
+            "raw .maxvel {raw}"
+        );
+        assert_eq!(robot.velocity, [expected as f32, 0.0], "raw .maxvel {raw}");
+    }
+}
+
+#[test]
+fn imported_sim_still_rejects_a_tail_truncated_before_the_velocity_limit() {
+    let mut file = NativeRecordFile::decode(START).unwrap();
+    let tail = NativeSimulationTail::decode(&file.tail).unwrap();
+    let velocity_offset = tail
+        .fields()
+        .iter()
+        .take_while(|field| field.name != "max_velocity")
+        .map(|field| match &field.value {
+            NativeValue::Byte(_) => 1,
+            NativeValue::Word(_) => 2,
+            NativeValue::Long(_) | NativeValue::Single(_) => 4,
+            NativeValue::Double(_) => 8,
+            NativeValue::Bytes(bytes) => bytes.len(),
+        })
+        .sum();
+    file.tail.truncate(velocity_offset);
+
+    assert!(Engine::from_native_sim(&file.encode().unwrap()).is_err());
+}
+
+#[test]
 fn genuine_original_first_load_tick_matches_with_or_without_a_modern_checkpoint() {
     let input = NativeRecordFile::decode(START).unwrap();
     let input_tail = NativeSimulationTail::decode(&input.tail).unwrap();
