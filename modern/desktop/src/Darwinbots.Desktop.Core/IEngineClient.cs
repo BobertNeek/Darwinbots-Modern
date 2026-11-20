@@ -37,7 +37,8 @@ public interface IEngineClient : IDisposable
             request.Position);
     void SwitchBackend(string backend);
     void AddObstacle(ObstacleSnapshot obstacle);
-    int? AddNativeRandomObstacles(int count) => null;
+    int? AddNativeRandomObstacles(int count, ShapeCreationDimensions? dimensions = null) => null;
+    int? AddNativeCenteredObstacle(ShapeCreationDimensions dimensions) => null;
     void UpdateObstacle(ObstacleSnapshot obstacle);
     void RemoveObstacle(uint id);
     void AddTeleporter(TeleporterSnapshot teleporter);

@@ -208,6 +208,11 @@ enum EngineCommand {
     },
     AddNativeRandomObstacles {
         count: usize,
+        #[serde(default)]
+        dimensions_permille: Option<[u16; 2]>,
+    },
+    AddNativeCenteredObstacle {
+        dimensions_permille: [u16; 2],
     },
     UpdateObstacle {
         obstacle: crate::Obstacle,
@@ -980,8 +985,19 @@ fn db_engine_command_batch_impl(
             } => engine
                 .add_obstacle(crate::Obstacle::new(id, minimum, maximum))
                 .map(|_| serde_json::Value::Null),
-            EngineCommand::AddNativeRandomObstacles { count } => engine
-                .add_native_random_obstacles(count)
+            EngineCommand::AddNativeRandomObstacles {
+                count,
+                dimensions_permille,
+            } => engine
+                .add_native_random_obstacles(
+                    count,
+                    dimensions_permille.unwrap_or(crate::world::DEFAULT_NATIVE_SHAPE_DIMENSIONS),
+                )
+                .map(|added| serde_json::json!(added)),
+            EngineCommand::AddNativeCenteredObstacle {
+                dimensions_permille,
+            } => engine
+                .add_native_centered_obstacle(dimensions_permille)
                 .map(|added| serde_json::json!(added)),
             EngineCommand::UpdateObstacle { obstacle } => engine
                 .update_obstacle(obstacle)

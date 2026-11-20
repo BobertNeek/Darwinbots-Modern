@@ -6,7 +6,6 @@ using Avalonia.VisualTree;
 using Darwinbots.Desktop.Controls;
 using Darwinbots.Desktop.Core;
 using Darwinbots.Desktop.Core.LegacyMenus;
-using Darwinbots.Desktop.ViewModels;
 using Darwinbots.Desktop.Views;
 using Xunit;
 
@@ -14,6 +13,126 @@ namespace Darwinbots.Desktop.Tests;
 
 public sealed class RenderedWorldToolsCausalTests
 {
+    [Fact]
+    public async Task ShapesToolCreatesWithLiveDimensionsAndResetsOnLoadedWorld()
+    {
+        var setup = new WorldSetupOptions
+        {
+            Backend = "Cpu", Seed = 95, PopulationCapacity = 64,
+            WorldWidth = 7_000, WorldHeight = 5_000,
+        };
+        using var savedWorld = new NativeEngineClient(setup with { WorldWidth = 1_100, WorldHeight = 800 });
+        var storage = new AuditStorageService { OpenedSimulation = savedWorld.Save() };
+
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], setup, NativeEngineClientFactory.Instance, storage);
+            window.Show();
+            try
+            {
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                var create = menu.FindCommandItem(LegacyCommandId.ObjectsNewShape)!;
+                var load = menu.FindCommandItem(LegacyCommandId.FileLoadSimulation)!;
+                await WaitFor(() => load.IsEnabled, () => "The simulation did not finish starting.");
+                var session = TryField<SimulationSession>(window, "_session")!;
+                Assert.Equal([7_000f, 5_000f], session.LatestSnapshot.WorldSize);
+                var tick = session.LatestSnapshot.Tick;
+
+                async Task<ShapesWindow> OpenTool()
+                {
+                    create.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    await WaitFor(() => window.OwnedWindows.OfType<ShapesWindow>().Any(tool => tool.IsVisible),
+                        () => "New Shape did not show its modeless tool.");
+                    return Assert.Single(window.OwnedWindows.OfType<ShapesWindow>(), tool => tool.IsVisible);
+                }
+
+                var tool = await OpenTool();
+                Assert.Equal("Shapes", tool.Title);
+                Assert.Same(tool, await OpenTool());
+                Assert.Empty(session.LatestSnapshot.Obstacles);
+                var width = tool.FindControl<Slider>("ShapeWidthSlider")!;
+                var height = tool.FindControl<Slider>("ShapeHeightSlider")!;
+                Assert.Equal(200d, width.Value);
+                Assert.Equal(200d, height.Value);
+                width.Value = 80;
+                height.Value = 125;
+
+                var add = tool.FindControl<Button>("AddShapeButton")!;
+                var advanceGate = TryField<SemaphoreSlim>(window, "_advanceGate")!;
+                for (var count = 1; count <= 2; count++)
+                {
+                    await WaitFor(() => add.IsEnabled, () => "The Add Shape button did not become available.");
+                    if (count == 1)
+                    {
+                        await advanceGate.WaitAsync();
+                        try
+                        {
+                            add.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                            Assert.False(add.IsEnabled);
+                            width.Value = 120;
+                            height.Value = 180;
+                        }
+                        finally { advanceGate.Release(); }
+                    }
+                    else
+                    {
+                        add.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    }
+                    await WaitFor(() => session.LatestSnapshot.Obstacles.Count == count,
+                        () => "Add Shape did not create one rectangle.");
+                    width.Value = 80;
+                    height.Value = 125;
+                    Assert.True(tool.IsVisible);
+                }
+                Assert.All(session.LatestSnapshot.Obstacles, shape =>
+                {
+                    Assert.Equal(560f, shape.Maximum[0] - shape.Minimum[0], 2);
+                    Assert.Equal(625f, shape.Maximum[1] - shape.Minimum[1], 2);
+                });
+
+                var random = menu.FindCommandItem(LegacyCommandId.ObjectsAddTenRandomShapes)!;
+                Assert.True(random.IsEnabled);
+                random.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => session.LatestSnapshot.Obstacles.Count == 12,
+                    () => "Add Ten Random Shapes did not run with the tool open.");
+                Assert.All(session.LatestSnapshot.Obstacles.Skip(2), shape =>
+                {
+                    Assert.InRange(shape.Maximum[0] - shape.Minimum[0], 0f, 560.001f);
+                    Assert.InRange(shape.Maximum[1] - shape.Minimum[1], 0f, 625.001f);
+                });
+                Assert.Equal(tick, session.LatestSnapshot.Tick);
+
+                tool.FindControl<Button>("CloseButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => !tool.IsVisible, () => "The Shapes tool did not close.");
+                tool = await OpenTool();
+                width = tool.FindControl<Slider>("ShapeWidthSlider")!;
+                height = tool.FindControl<Slider>("ShapeHeightSlider")!;
+                Assert.Equal(80d, width.Value);
+                Assert.Equal(125d, height.Value);
+
+                load.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => session.LatestSnapshot.WorldSize.SequenceEqual([1_100f, 800f])
+                    && width.Value == 200 && height.Value == 200,
+                    () => "Loading the saved world did not reset the visible Shapes controls.");
+                Assert.Empty(session.LatestSnapshot.Obstacles);
+
+                add = tool.FindControl<Button>("AddShapeButton")!;
+                await WaitFor(() => add.IsEnabled, () => "The Shapes tool did not become available after load.");
+                add.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => session.LatestSnapshot.Obstacles.Count == 1,
+                    () => "Add Shape did not create a rectangle in the loaded world.");
+                var loadedShape = Assert.Single(session.LatestSnapshot.Obstacles);
+                Assert.Equal(220f, loadedShape.Maximum[0] - loadedShape.Minimum[0], 2);
+                Assert.Equal(160f, loadedShape.Maximum[1] - loadedShape.Minimum[1], 2);
+            }
+            finally
+            {
+                foreach (var ownedWindow in window.OwnedWindows.ToArray()) ownedWindow.Close();
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
     [Fact]
     public async Task RandomShapesAndMazeCommandsUseTheLoadedWorldWhilePaused()
     {
@@ -121,7 +240,6 @@ public sealed class RenderedWorldToolsCausalTests
                     () => "MainWindow did not publish a Rust-backed selected robot.");
 
                 var session = TryField<SimulationSession>(window, "_session")!;
-                var viewModel = Assert.IsType<MainWindowViewModel>(window.DataContext);
                 var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
                 var viewport = window.FindControl<WorldViewport>("Viewport")!;
 
@@ -167,8 +285,9 @@ public sealed class RenderedWorldToolsCausalTests
                 Assert.True(newShape.IsVisible && newShape.IsEnabled);
                 newShape.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
                 await WaitFor(
-                    () => viewModel.Status.Contains("OBSTACLE", StringComparison.Ordinal),
-                    () => "Objects > Shapes > New Shape did not enter the real placement route.");
+                    () => window.OwnedWindows.OfType<ShapesWindow>().Any(tool => tool.IsVisible),
+                    () => "Objects > Shapes > New Shape did not open the Shapes tool.");
+                Assert.Single(window.OwnedWindows.OfType<ShapesWindow>(), tool => tool.IsVisible).Close();
 
                 var selected = session.LatestSnapshot.Organisms.First(organism => !organism.Vegetable);
                 viewport.SelectKey(new OrganismKey(selected.Slot, selected.Generation));
