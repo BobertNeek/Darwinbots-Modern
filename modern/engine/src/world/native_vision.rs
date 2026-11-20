@@ -52,22 +52,31 @@ mod tests {
         world.sensing_phase().unwrap();
     }
 
+    fn request_energy_steal(
+        world: &mut Engine,
+        thief: OrganismId,
+        victim: OrganismId,
+        amount: i32,
+    ) {
+        world
+            .ties
+            .push(TieState::legacy(thief, victim, 500.0, 1, 1));
+        let thief_state = world.slots.get_mut(thief).unwrap();
+        thief_state.counters.age = 1;
+        thief_state.program.memory.write(455, 1);
+        thief_state.program.memory.write(452, -1);
+        thief_state.program.memory.write(453, -amount);
+    }
+
     #[test]
     fn native_energy_steal_leaves_the_victims_loaded_radius_visible_to_an_earlier_robot() {
         let mut world = world();
         let observer = bot(&mut world, [1000.0, 1000.0], 150.0);
         let thief = bot(&mut world, [1500.0, 1500.0], 100.0);
         let victim = bot(&mut world, [1500.0, 1000.0], 100.0);
-        world
-            .ties
-            .push(TieState::legacy(thief, victim, 500.0, 1, 1));
         world.set_organism_energy(victim, 50).unwrap();
         world.slots.get_mut(victim).unwrap().materials.chloroplasts = 29_269.0;
-        let thief_state = world.slots.get_mut(thief).unwrap();
-        thief_state.counters.age = 1;
-        thief_state.program.memory.write(455, 1);
-        thief_state.program.memory.write(452, -1);
-        thief_state.program.memory.write(453, -25);
+        request_energy_steal(&mut world, thief, victim, 25);
 
         world.tie_exchange_phase(&mut CycleRecorder::disabled(0));
         assert_eq!(world.slots.get(victim).unwrap().materials.energy, 25.0);
@@ -87,6 +96,26 @@ mod tests {
         world.native_phase = None;
         sense(&mut world);
         assert_eq!(world.memory_at(observer, MEM_EYE1 + 4).unwrap(), 32_000);
+    }
+
+    #[test]
+    fn native_energy_steals_publish_kills_before_death_is_processed() {
+        let mut world = world();
+        let observer = bot(&mut world, [1000.0, 1000.0], 100.0);
+        let first_thief = bot(&mut world, [1500.0, 1000.0], 100.0);
+        let second_thief = bot(&mut world, [1500.0, 1500.0], 100.0);
+        let victim = bot(&mut world, [2000.0, 1000.0], 100.0);
+        world.set_organism_energy(victim, 25).unwrap();
+        request_energy_steal(&mut world, first_thief, victim, 25);
+        request_energy_steal(&mut world, second_thief, victim, 25);
+
+        world.tie_exchange_phase(&mut CycleRecorder::disabled(0));
+        assert_eq!(world.slots.get(victim).unwrap().materials.energy, 0.0);
+        assert!(!world.slots.get(victim).unwrap().flags.dead);
+        assert_eq!(world.memory_at(first_thief, 220).unwrap(), 1);
+        assert_eq!(world.memory_at(second_thief, 220).unwrap(), 1);
+        sense(&mut world);
+        assert_eq!(world.memory_at(observer, MEM_REF_KILLS).unwrap(), 1);
     }
 
     #[test]

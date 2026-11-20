@@ -13290,29 +13290,43 @@ fn apply_tie_energy(
     }
 
     let amount = (-requested).min(target.materials.energy.max(0.0));
-    if amount == 0.0 {
-        return None;
+    let result = if amount == 0.0 {
+        None
+    } else if apply_tie_poison_defense(source, target, amount, native) {
+        Some("tie_resource_poison_defense")
+    } else {
+        target.materials.energy -= amount;
+        add_tie_store(
+            &mut source.materials.energy,
+            scale_tie_amount(amount, 0.70),
+            true,
+        );
+        add_tie_store(
+            &mut source.materials.body,
+            scale_tie_amount(amount, 0.029),
+            true,
+        );
+        add_tie_store(
+            &mut source.materials.waste,
+            scale_tie_amount(amount, 0.01),
+            false,
+        );
+        Some("tie_resource_energy")
+    };
+    // Update_Ties can credit another thief while the victim still awaits ManageDeath.
+    if native.is_some()
+        && requested < 0.0
+        && target.materials.energy <= 0.0
+        && !target.flags.dead
+        && !target.flags.corpse
+    {
+        source.counters.kills = source.counters.kills.saturating_add(1).min(32_000);
+        source
+            .program
+            .memory
+            .write(220, source.counters.kills as i32);
     }
-    if apply_tie_poison_defense(source, target, amount, native) {
-        return Some("tie_resource_poison_defense");
-    }
-    target.materials.energy -= amount;
-    add_tie_store(
-        &mut source.materials.energy,
-        scale_tie_amount(amount, 0.70),
-        true,
-    );
-    add_tie_store(
-        &mut source.materials.body,
-        scale_tie_amount(amount, 0.029),
-        true,
-    );
-    add_tie_store(
-        &mut source.materials.waste,
-        scale_tie_amount(amount, 0.01),
-        false,
-    );
-    Some("tie_resource_energy")
+    result
 }
 
 fn apply_tie_venom(
