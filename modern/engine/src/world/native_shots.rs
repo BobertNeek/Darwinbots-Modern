@@ -106,7 +106,9 @@ impl Engine {
             if d2 == 0.0 {
                 continue;
             }
-            let dot = d[0] * p[0] + d[1] * p[1];
+            // Common.bas Dot rounds to Single at the function return.
+            let dot =
+                (f64::from(d[0]) * f64::from(p[0]) + f64::from(d[1]) * f64::from(p[1])) as f32;
             let discriminant = (f64::from(dot).powi(2)
                 - f64::from(d2) * (f64::from(p2) - f64::from(radius).powi(2)))
                 as f32;
@@ -645,6 +647,38 @@ mod native_loop_tests {
         assert_eq!(legacy.stats.native_shots_visited, None);
         let restored = crate::SaveFile::decode(&crate::SaveFile::encode(&legacy).unwrap()).unwrap();
         assert_eq!(restored.stats.native_shots_visited, None);
+    }
+
+    #[test]
+    fn native_collision_rounds_dot_at_the_single_return_boundary() {
+        let (mut world, owner, target) = feeding_world(100);
+        world.config.world_width = 16_000.0;
+        world.config.world_height = 12_000.0;
+        world.config.physics.max_velocity = 180.0;
+
+        // Genuine cycle 281: shot slot 92 and target absolute ID 77.
+        let robot = world.slots.get_mut(target).unwrap();
+        robot.kinematics.position = [0x44db55d1, 0x4517674e].map(f32::from_bits);
+        robot.kinematics.velocity = [0xbe02841c, 0xbe2c8591].map(f32::from_bits);
+        robot.kinematics.actual_velocity = [0xbe034000, 0xbe2dc000].map(f32::from_bits);
+        robot.materials.radius = f32::from_bits(0x4307416f);
+        world.spatial = SpatialIndex::build_with_slots(
+            [(target.slot() as usize, robot.kinematics.position)],
+            64.0,
+        );
+
+        let shot = feeding_shot(&mut world, owner);
+        world.projectiles.positions[shot] = [0x44f3c38a, 0x45138bc0].map(f32::from_bits);
+        world.projectiles.previous_positions[shot] = [0x44ff29a0, 0x45114bb3].map(f32::from_bits);
+        world.projectiles.velocities[shot] = [0xc2b66160, 0x4210033c].map(f32::from_bits);
+        assert_eq!(
+            world.native_shot_collision(shot, 150.0),
+            Some(target.slot() as usize)
+        );
+        assert_eq!(
+            world.projectiles.positions[shot].map(f32::to_bits),
+            [0x44eb9fe0, 0x45152714]
+        );
     }
 
     #[test]
