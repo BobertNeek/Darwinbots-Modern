@@ -544,7 +544,24 @@ impl RobotArena {
     }
 
     pub(crate) fn spawn(&mut self, state: RobotState) -> OrganismId {
-        let slot_index = if let Some(slot_index) = self.free_slots.pop() {
+        let free_slot = self.free_slots.pop();
+        self.insert_robot(state, free_slot)
+    }
+
+    pub(crate) fn spawn_first_free(&mut self, state: RobotState) -> OrganismId {
+        // Robots.bas posto scans from slot 1 for every insertion.
+        let first = self
+            .free_slots
+            .iter()
+            .copied()
+            .enumerate()
+            .min_by_key(|&(_, slot)| slot);
+        let free_slot = first.map(|(index, _)| self.free_slots.remove(index));
+        self.insert_robot(state, free_slot)
+    }
+
+    fn insert_robot(&mut self, state: RobotState, free_slot: Option<u32>) -> OrganismId {
+        let slot_index = if let Some(slot_index) = free_slot {
             self.slots[slot_index as usize].organism = Some(state);
             slot_index
         } else {
