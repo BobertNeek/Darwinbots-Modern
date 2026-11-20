@@ -261,6 +261,10 @@ public static class NativeSnapshotParser
             Ties = ties,
             PhaseTimings = timings,
             LocalMode = ParseLocalMode(native.LocalMode),
+            OrdinaryRestartOnExtinction = native.OrdinaryRestartOnExtinction,
+            OrdinaryRestartPending = native.OrdinaryRestartPending,
+            OrdinaryRestartCount = native.OrdinaryRestartCount,
+            OrdinaryRestartAvailable = native.OrdinaryRestartAvailable,
         };
     }
 
@@ -546,7 +550,11 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("ties")] NativeTie[]? Ties,
         [property: JsonPropertyName("phase_timings")] NativePhaseTimings? PhaseTimings,
         [property: JsonPropertyName("local_mode")] NativeLocalMode? LocalMode,
-        [property: JsonPropertyName("death_poffs_enabled")] bool? DeathPoffsEnabled = null);
+        [property: JsonPropertyName("death_poffs_enabled")] bool? DeathPoffsEnabled = null,
+        [property: JsonPropertyName("ordinary_restart_on_extinction")] bool OrdinaryRestartOnExtinction = false,
+        [property: JsonPropertyName("ordinary_restart_pending")] bool OrdinaryRestartPending = false,
+        [property: JsonPropertyName("ordinary_restart_count")] ulong OrdinaryRestartCount = 0,
+        [property: JsonPropertyName("ordinary_restart_available")] bool OrdinaryRestartAvailable = false);
 
     private sealed record NativePlayerBot(
         [property: JsonPropertyName("enabled")] bool Enabled,

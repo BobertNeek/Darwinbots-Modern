@@ -317,6 +317,12 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task RestartLocalModeAsync(CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.RestartLocalMode(), cancellationToken);
 
+    public Task SetOrdinaryRestartAsync(bool enabled, CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.SetOrdinaryRestart(enabled), cancellationToken);
+
+    public Task FinishOrdinaryRestartAsync(CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.FinishOrdinaryRestart(), cancellationToken);
+
     public Task AdjudicateLocalRoundAsync(uint? winner, string reason, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(reason);
