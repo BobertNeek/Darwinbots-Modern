@@ -283,6 +283,22 @@ public sealed partial class NativeEngineClient : IEngineClient
         ExecuteBatch(new { version = 1, commands = new[] { new { type = "move_organism", slot, generation, position } } }, "move organism");
     }
 
+    public void DragHighlightedRobots(HighlightedRobotDrag drag) => ExecuteBatch(new
+    {
+        version = 1,
+        commands = new[] { new
+        {
+            type = "drag_highlighted_robots",
+            anchor = OrganismPayload(drag.Anchor),
+            grabbed = OrganismPayload(drag.Grabbed),
+            placements = drag.Placements.Select(placement => new
+            {
+                id = OrganismPayload(placement.Key),
+                position = new[] { placement.X, placement.Y },
+            }).ToArray(),
+        } },
+    }, "drag highlighted robots");
+
     public OrganismKey CloneOrganism(uint slot, uint generation, float[] position)
     {
         ValidatePosition(position);
