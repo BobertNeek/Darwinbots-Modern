@@ -2026,7 +2026,18 @@ public sealed partial class MainWindow : Window
                 {
                     _playerBotEnabled = snapshot.PlayerBot.Enabled;
                     _playerBotBindings = snapshot.PlayerBot.Bindings;
+                    var replacedByRestart = _viewModel.LocalMode.RestartCount != snapshot.LocalMode.RestartCount
+                        || _viewModel.LocalMode.CurrentRound != snapshot.LocalMode.CurrentRound;
+                    var previousInfoActor = _nativeRobotInfoWindow is { IsVisible: true }
+                        ? _viewModel.SelectedOrganism : null;
                     _viewModel.Update(snapshot, _runtimeClock.Elapsed, _activeCostMultiplier);
+                    if (_nativeRobotInfoWindow is { } info)
+                    {
+                        if (replacedByRestart || !snapshot.NativeCycle.HasValue)
+                            info.ClearNativeMemoryDeath();
+                        else if (!loading && previousInfoActor is { } removed && _viewModel.SelectedKey is null)
+                            info.ShowNativeMemoryDeath(new(removed.Slot, removed.Generation));
+                    }
                     SynchronizeDeathPoffPolicy(snapshot.DeathPoffsEnabled);
                     if (snapshot.LocalMode.Evolution is { Phase: "complete" }) {
                         _runTimer.Stop();
@@ -2956,6 +2967,7 @@ public sealed partial class MainWindow : Window
             if (_session is null) return;
             _loadingSimulation = true;
             await _session.LoadAsync(save);
+            _nativeRobotInfoWindow?.ClearNativeMemoryDeath();
             _safeModeRecoveryWorld = isSafeModeRecovery;
             Viewport.SelectKey(_viewModel.SelectedKey);
             // A rejected load publishes no snapshot and must keep user-closed
