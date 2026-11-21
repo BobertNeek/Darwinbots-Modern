@@ -593,6 +593,12 @@ pub extern "C" fn db_engine_command_batch(
     })
 }
 
+fn rebuild_archive_command_candidate(committed: &Engine) -> Result<Engine, EngineError> {
+    let mut candidate = SaveFile::decode(&SaveFile::encode(committed)?)?;
+    candidate.native_restarted_this_cycle = committed.native_restarted_this_cycle;
+    Ok(candidate)
+}
+
 fn db_engine_command_batch_impl(
     engine: *mut Engine,
     command_data: *const u8,
@@ -768,11 +774,8 @@ fn db_engine_command_batch_impl(
     let committed_engine = engine;
     let mut candidate = match committed_engine.fork_cpu_command_candidate() {
         Ok(Some(candidate)) => candidate,
-        Ok(None) => match SaveFile::encode(committed_engine) {
-            Ok(bytes) => match SaveFile::decode(&bytes) {
-                Ok(candidate) => candidate,
-                Err(error) => return fail(DbStatus::EngineError, error.to_string()),
-            },
+        Ok(None) => match rebuild_archive_command_candidate(committed_engine) {
+            Ok(candidate) => candidate,
             Err(error) => return fail(DbStatus::EngineError, error.to_string()),
         },
         Err(error) => return fail(DbStatus::EngineError, error),
@@ -2286,6 +2289,24 @@ mod tests {
                 })
             );
         }
+    }
+
+    #[test]
+    fn rebuilt_command_candidate_preserves_the_native_graph_restart_boundary() {
+        let mut config = EngineConfig::testing();
+        config.recording.sampling_interval = 1;
+        let mut committed = Engine::new_native(config).unwrap();
+        committed.tick().unwrap();
+        committed.native_restarted_this_cycle = true;
+        let settings = crate::GraphSamplingSettings::default();
+        let archive = SaveFile::encode(&committed).unwrap();
+
+        let mut loaded = SaveFile::decode(&archive).unwrap();
+        assert!(loaded.feed_native_graph_sample(settings, true).is_some());
+
+        let mut candidate = rebuild_archive_command_candidate(&committed).unwrap();
+        assert!(candidate.feed_native_graph_sample(settings, true).is_none());
+        assert_eq!(SaveFile::encode(&candidate).unwrap(), archive);
     }
 
     #[test]
