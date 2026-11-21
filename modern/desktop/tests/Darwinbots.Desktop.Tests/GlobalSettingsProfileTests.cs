@@ -29,6 +29,8 @@ public sealed class GlobalSettingsProfileTests
                     setup.Show();
                     Click(setup, "GlobalSettingsButton");
                     var globals = await GlobalDialog(setup);
+                    Assert.True(Named<CheckBox>(globals, "NewSeedOnLoad").IsChecked);
+                    Named<CheckBox>(globals, "NewSeedOnLoad").IsChecked = false;
                     Named<CheckBox>(globals, "FixedRatio").IsChecked = true;
                     Named<CheckBox>(globals, "SafeMode").IsChecked = false;
                     Click(globals, "ApplyButton");
@@ -36,6 +38,7 @@ public sealed class GlobalSettingsProfileTests
                     Click(setup, "CreateWorldButton");
                     Assert.NotNull(created);
                     Assert.True(created.GlobalSettings.Main.FixedRatio);
+                    Assert.False(created.GlobalSettings.Main.NewSeedOnLoad);
                     Assert.False(created.ToEnvironmentUpdate().Recording!.SafeModeBackup);
                 }
                 finally { Close(setup); }
@@ -69,6 +72,7 @@ public sealed class GlobalSettingsProfileTests
                     Click(reopened, "GlobalSettingsButton");
                     var globals = await GlobalDialog(reopened);
                     Assert.True(Named<CheckBox>(globals, "FixedRatio").IsChecked);
+                    Assert.False(Named<CheckBox>(globals, "NewSeedOnLoad").IsChecked);
                     Assert.True(Named<CheckBox>(globals, "OldColors").IsChecked);
                     Assert.True(Named<CheckBox>(globals, "VideoOff").IsChecked);
                     Assert.False(Named<CheckBox>(globals, "SafeMode").IsChecked);
@@ -95,6 +99,31 @@ public sealed class GlobalSettingsProfileTests
                 }
                 finally { Close(next); }
             }, CancellationToken.None);
+        }
+        finally { profile.Delete(recursive: true); }
+    }
+
+    [Fact]
+    public async Task ConfiguredLegacyDirectorySuppliesTheSeparateLoadSeedPreference()
+    {
+        var profile = Directory.CreateTempSubdirectory("darwinbots-global-seed-");
+        try
+        {
+            var legacy = profile.CreateSubdirectory("Original install");
+            var legacyPath = Path.Combine(legacy.FullName, "Global.gset");
+            const string original = "#TRUE#\r\n32100\r\n#FALSE#\r\n#TRUE#\r\n#FALSE#\r\n";
+            await File.WriteAllTextAsync(legacyPath, original);
+            var storage = new AvaloniaDesktopStorageService(profile.FullName);
+            var settings = new GlobalSettings { Main = new GlobalMainSettings { MainDirectory = legacy.FullName } };
+
+            await storage.SaveGlobalSettingsAsync(settings);
+            var imported = Assert.IsType<GlobalSettings>(storage.LoadGlobalSettings());
+            Assert.False(imported.Main.EffectiveNewSeedOnLoad);
+            Assert.False(imported.Main.NewSeed);
+
+            await storage.SaveGlobalSettingsAsync(settings with { Main = settings.Main with { NewSeedOnLoad = true } });
+            Assert.True(storage.LoadGlobalSettings()!.Main.EffectiveNewSeedOnLoad);
+            Assert.Equal(original, await File.ReadAllTextAsync(legacyPath));
         }
         finally { profile.Delete(recursive: true); }
     }

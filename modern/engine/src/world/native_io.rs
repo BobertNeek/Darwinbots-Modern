@@ -284,6 +284,13 @@ fn configuration(t: &NativeSimulationTail) -> Result<EngineConfig, EngineError> 
 impl Engine {
     /// Load a genuine 2.48.32 `.sim`, retaining all source records and metadata.
     pub fn from_native_sim(bytes: &[u8]) -> Result<Self, EngineError> {
+        Self::from_native_sim_with_seed(bytes, 0)
+    }
+
+    pub(crate) fn from_native_sim_with_seed(
+        bytes: &[u8],
+        native_seed: i32,
+    ) -> Result<Self, EngineError> {
         let file = NativeRecordFile::decode(bytes)?;
         let tail = NativeSimulationTail::decode(&file.tail)?;
         // The lossless codec permits every float bit pattern. Runtime state does not.
@@ -302,7 +309,11 @@ impl Engine {
                 return Err(invalid(format!("nonfinite {}", field.name)));
             }
         }
-        let mut engine = Self::new(configuration(&tail)?)?;
+        let mut config = configuration(&tail)?;
+        if native_seed != 0 {
+            config.seed = u64::from(native_seed as u32);
+        }
+        let mut engine = Self::new(config)?;
         // SimOpts.F1 is part of the .sim stream. Global x_restartmode and
         // x_fudge live in separate .gset files and cannot be inferred here.
         engine.native_f1 = Some(tail.integer("f1")? != 0);

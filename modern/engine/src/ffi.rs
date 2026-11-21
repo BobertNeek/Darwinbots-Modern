@@ -1343,11 +1343,30 @@ pub extern "C" fn db_engine_load(
     save_len: usize,
 ) -> DbStatus {
     ffi_guard("load engine", || {
-        db_engine_load_impl(engine, save_data, save_len)
+        db_engine_load_impl(engine, save_data, save_len, 0)
     })
 }
 
-fn db_engine_load_impl(engine: *mut Engine, save_data: *const u8, save_len: usize) -> DbStatus {
+/// A nonzero VB6 Long overrides the seed of a native simulation load.
+/// Zero keeps the archive seed. Modern checkpoints always keep their RNG.
+#[unsafe(no_mangle)]
+pub extern "C" fn db_engine_load_with_native_seed(
+    engine: *mut Engine,
+    save_data: *const u8,
+    save_len: usize,
+    seed: i32,
+) -> DbStatus {
+    ffi_guard("load engine", || {
+        db_engine_load_impl(engine, save_data, save_len, seed)
+    })
+}
+
+fn db_engine_load_impl(
+    engine: *mut Engine,
+    save_data: *const u8,
+    save_len: usize,
+    native_seed: i32,
+) -> DbStatus {
     let Some(engine) = (unsafe { engine.as_mut() }) else {
         return DbStatus::NullPointer;
     };
@@ -1355,7 +1374,7 @@ fn db_engine_load_impl(engine: *mut Engine, save_data: *const u8, save_len: usiz
         return fail(DbStatus::EngineError, "save buffer is empty");
     }
     let bytes = unsafe { slice::from_raw_parts(save_data, save_len) };
-    match SaveFile::decode(bytes) {
+    match SaveFile::decode_with_native_seed(bytes, native_seed) {
         Ok(mut loaded) => {
             // Native .sim omits Global.gset preferences. DB3S instead restores
             // its complete saved policy; the two load formats stay distinct.
@@ -1467,6 +1486,53 @@ mod tests {
             }
         }))
         .unwrap()
+    }
+
+    #[test]
+    fn native_menu_load_seed_controls_only_the_installed_simulation() {
+        use crate::native_binary::{NativeRecordFile, NativeSimulationTail};
+
+        let previous_file = include_bytes!("../tests/fixtures/db24832-original-user.sim");
+        let selected_file = include_bytes!("../tests/fixtures/db24832-movement-start-48032.sim");
+        let mut current = Engine::from_native_sim(previous_file).unwrap();
+        assert_eq!(current.configuration().seed, 6_341_122);
+        current.set_native_gaussian_spare(Some(0.125)).unwrap();
+        let before = SaveFile::encode(&current).unwrap();
+        let invalid = [0];
+        assert_eq!(
+            db_engine_load_with_native_seed(&mut current, invalid.as_ptr(), invalid.len(), 1_234),
+            DbStatus::EngineError
+        );
+        assert_eq!(SaveFile::encode(&current).unwrap(), before);
+
+        for (candidate, seed, uniform) in
+            [(6_341_122, 6_341_122, 6_414_899), (0, 48_032, 4_535_603)]
+        {
+            assert_eq!(
+                db_engine_load_with_native_seed(
+                    &mut current,
+                    selected_file.as_ptr(),
+                    selected_file.len(),
+                    candidate,
+                ),
+                DbStatus::Ok
+            );
+            assert_eq!(current.configuration().seed, seed);
+            assert_eq!(current.snapshot().native_cycle, Some(0));
+            let installed = current.db3s_v3_payload().unwrap();
+            let native_random = &installed["native_random"];
+            assert_eq!(native_random["state"], uniform);
+            assert_eq!(native_random["gaussian_spare"], 0.125);
+            let exported = NativeRecordFile::decode(&current.export_native_sim().unwrap()).unwrap();
+            let tail = NativeSimulationTail::decode(&exported.tail).unwrap();
+            assert_eq!(tail.integer("seed").unwrap(), seed as i32);
+        }
+
+        assert_eq!(
+            db_engine_load_with_native_seed(&mut current, before.as_ptr(), before.len(), 1_234),
+            DbStatus::Ok
+        );
+        assert_eq!(SaveFile::encode(&current).unwrap(), before);
     }
 
     #[test]
