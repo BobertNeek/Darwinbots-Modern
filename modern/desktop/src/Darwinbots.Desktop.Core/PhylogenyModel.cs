@@ -15,6 +15,8 @@ public sealed record PhylogenyGraph(
     IReadOnlyList<PhylogenyNode> Nodes,
     IReadOnlySet<OrganismKey> Highlighted);
 
+public sealed record PhylogenyLink(OrganismKey Parent, OrganismKey Child);
+
 public static class PhylogenyModel
 {
     public static int? CountNativeDescendants(EngineSnapshot snapshot, OrganismKey focus)
@@ -43,6 +45,12 @@ public static class PhylogenyModel
             }
         }
     }
+
+    public static IReadOnlyList<PhylogenyLink> DescendantLinks(EngineSnapshot snapshot, OrganismKey focus, int maxDepth) =>
+        new PrimaryLineage(snapshot).DescendantLinks(focus, maxDepth);
+
+    public static IReadOnlyList<PhylogenyLink> WholeLineage(EngineSnapshot snapshot, OrganismKey focus) =>
+        new PrimaryLineage(snapshot).WholeLineage(focus);
 
     public static PhylogenyGraph Build(EngineSnapshot snapshot, OrganismKey focus, int maxDepth)
     {
@@ -95,5 +103,69 @@ public static class PhylogenyModel
             depths[key] = depth;
             pending.Enqueue(key);
         }
+    }
+
+    private sealed class PrimaryLineage
+    {
+        private readonly bool _native;
+        private readonly Dictionary<OrganismKey, OrganismSnapshot> _robots;
+        private readonly ILookup<ulong, OrganismSnapshot> _robotsByAbsoluteId;
+        private readonly ILookup<ulong, OrganismKey> _childrenByAbsoluteId;
+        private readonly ILookup<OrganismKey?, OrganismKey> _childrenByPrimaryKey;
+
+        public PrimaryLineage(EngineSnapshot snapshot)
+        {
+            _native = snapshot.NativeCycle.HasValue;
+            _robots = snapshot.Organisms.ToDictionary(KeyOf);
+            _robotsByAbsoluteId = snapshot.Organisms.Where(robot => robot.UniqueId != 0).ToLookup(robot => robot.UniqueId);
+            _childrenByAbsoluteId = snapshot.Organisms.Where(robot => robot.ParentAbsoluteId is > 0)
+                .ToLookup(robot => robot.ParentAbsoluteId!.Value, KeyOf);
+            _childrenByPrimaryKey = snapshot.Organisms.Where(robot => !_native || robot.ParentAbsoluteId is null)
+                .ToLookup(robot => robot.Parents?.FirstOrDefault(), KeyOf);
+        }
+
+        public IReadOnlyList<PhylogenyLink> WholeLineage(OrganismKey focus)
+        {
+            if (!_robots.ContainsKey(focus)) return [];
+            var ancestor = focus;
+            var visited = new HashSet<OrganismKey> { focus };
+            while (PrimaryParent(_robots[ancestor]) is { } parent && _robots.ContainsKey(parent) && visited.Add(parent))
+                ancestor = parent;
+            return DescendantLinks(ancestor, 1_000);
+        }
+
+        public IReadOnlyList<PhylogenyLink> DescendantLinks(OrganismKey focus, int maxDepth)
+        {
+            if (!_robots.ContainsKey(focus)) return [];
+            maxDepth = Math.Clamp(maxDepth, 1, 1_000);
+            var links = new List<PhylogenyLink>();
+            var visited = new HashSet<OrganismKey> { focus };
+            var pending = new Queue<(OrganismKey Key, int Depth)>();
+            pending.Enqueue((focus, 0));
+            while (pending.TryDequeue(out var current))
+            {
+                if (current.Depth >= maxDepth) continue;
+                var children = _childrenByPrimaryKey[current.Key];
+                if (_native)
+                    children = children.Concat(_childrenByAbsoluteId[_robots[current.Key].UniqueId]);
+                foreach (var child in children)
+                {
+                    if (!visited.Add(child)) continue;
+                    links.Add(new(current.Key, child));
+                    pending.Enqueue((child, current.Depth + 1));
+                }
+            }
+            return links;
+        }
+
+        private OrganismKey? PrimaryParent(OrganismSnapshot robot)
+        {
+            if (!_native || robot.ParentAbsoluteId is not { } absoluteId)
+                return robot.Parents?.FirstOrDefault();
+            // VB6 parent() scans increasing slots and retains the last absolute-ID match.
+            return _robotsByAbsoluteId[absoluteId].MaxBy(candidate => candidate.Slot) is { } parent ? KeyOf(parent) : null;
+        }
+
+        private static OrganismKey KeyOf(OrganismSnapshot robot) => new(robot.Slot, robot.Generation);
     }
 }

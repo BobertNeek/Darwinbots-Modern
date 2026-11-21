@@ -88,6 +88,11 @@ public sealed class PersistentToolWindowRegistry
         return true;
     }
 
+    internal void CloseAll<T>() where T : Window
+    {
+        foreach (var window in _windows.Values.OfType<T>().ToArray()) window.Close();
+    }
+
     public void CloseAll()
     {
         foreach (var window in _windows.Values.ToArray())

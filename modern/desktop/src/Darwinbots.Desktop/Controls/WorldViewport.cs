@@ -22,6 +22,7 @@ public sealed class WorldViewport : Control
     private Vector _panAtPress;
     private OrganismKey? _selectedKey;
     private readonly HashSet<OrganismKey> _selectedKeys = [];
+    private IReadOnlyList<PhylogenyLink> _phylogenyLinks = [];
     private WorldFeatureSelection? _selectedFeature;
     private NativeTeleporterDrag? _nativeTeleporterDrag;
     private OrganismKey? _followKey;
@@ -161,6 +162,12 @@ public sealed class WorldViewport : Control
 
     private bool IsSelected(OrganismKey key) => _selectedKey == key || _selectedKeys.Contains(key);
 
+    internal void ShowPhylogeny(IReadOnlyList<PhylogenyLink> links)
+    {
+        _phylogenyLinks = links;
+        InvalidateVisual();
+    }
+
     public void SelectSlots(IEnumerable<uint> slots, uint primary)
     {
         var keys = slots.Select(slot => _snapshot.Organisms.FirstOrDefault(value => value.Slot == slot))
@@ -189,6 +196,7 @@ public sealed class WorldViewport : Control
 
     public void SetSnapshot(EngineSnapshot snapshot)
     {
+        if (snapshot.Tick != _snapshot.Tick) _phylogenyLinks = [];
         _snapshot = snapshot;
         _organismsByKey = snapshot.Organisms.ToDictionary(robot => KeyOf(robot));
         _visibleOrganisms = snapshot.Organisms.Any(robot => robot.IsHidden)
@@ -272,6 +280,27 @@ public sealed class WorldViewport : Control
         DrawResourceGauges(context, scaleX, scaleY, overlay);
         if (_rgbMemoryMonitor is { } monitor && monitorFrames is { Count: > 0 })
             DrawMonitorFrames(context, monitor, monitorFrames);
+        DrawPhylogeny(context, scaleX * _zoom, scaleY * _zoom);
+    }
+
+    private void DrawPhylogeny(DrawingContext context, double scaleX, double scaleY)
+    {
+        if (_phylogenyLinks.Count == 0) return;
+        var gray = new Pen(Brushes.Gray, 1);
+        var white = new Pen(Brushes.White, 1);
+        foreach (var link in _phylogenyLinks)
+        {
+            if (!_organismsByKey.TryGetValue(link.Parent, out var parent)
+                || !_organismsByKey.TryGetValue(link.Child, out var child)) continue;
+            var from = new Point(parent.Position[0] * scaleX + _pan.X, parent.Position[1] * scaleY + _pan.Y);
+            var to = new Point(child.Position[0] * scaleX + _pan.X, child.Position[1] * scaleY + _pan.Y);
+            var middle = new Point((from.X + to.X) / 2, (from.Y + to.Y) / 2);
+            var reverse = _snapshot.NativeCycle.HasValue
+                ? unchecked((int)parent.UniqueId) > unchecked((int)child.UniqueId)
+                : parent.UniqueId > child.UniqueId;
+            context.DrawLine(reverse ? white : gray, from, middle);
+            context.DrawLine(reverse ? gray : white, middle, to);
+        }
     }
 
     private void DrawOrganisms(DrawingContext context, double scaleX, double scaleY, List<MonitorFrame>? monitorFrames)
