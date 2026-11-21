@@ -42,6 +42,13 @@ public sealed class RobotDetailsWindow : Window
     private readonly TextBlock _subtitleSuffix = new() { IsVisible = false };
     private readonly TextBlock _facts = new();
     private readonly TextBlock _factsTab = new();
+    private readonly StackPanel _nativeFactsActions = new() { IsVisible = false };
+    private readonly TextBlock _descendantCount = new()
+    {
+        Name = "NativeRobotInfoDescendantCount",
+        Text = "------",
+        VerticalAlignment = VerticalAlignment.Center,
+    };
     private readonly Button _reproduce = new()
     {
         Name = "NativeRobotInfoReproduce",
@@ -65,6 +72,7 @@ public sealed class RobotDetailsWindow : Window
     private readonly StackPanel _activationTimeline = new();
     private readonly TextBlock _status = new();
     private readonly TabControl _tabs = new();
+    private EngineSnapshot _snapshot = EngineSnapshot.Empty;
 
     public RobotDetailsWindow(EngineSnapshot snapshot, OrganismKey focus, string dna = "")
         : this(null, focus, RobotDetailsTab.Facts, dna, snapshot.NativeCycle.HasValue)
@@ -253,13 +261,21 @@ public sealed class RobotDetailsWindow : Window
         });
 
         var body = new Grid { ColumnDefinitions = new ColumnDefinitions("330,*") };
-        Control facts = new ScrollViewer { Content = _facts };
+        var descendants = new Button { Name = "NativeRobotInfoDescendants", Content = "Descendants" };
+        descendants.Click += (_, _) => CalculateNativeDescendants();
+        _nativeFactsActions.Children.Add(new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 12,
+            Margin = new Thickness(0, 10, 0, 0),
+            Children = { descendants, _descendantCount },
+        });
         if (_reproduceNative is not null)
         {
-            DockPanel.SetDock(_reproduce, Dock.Bottom);
-            facts = new DockPanel { Children = { _reproduce, facts } };
+            _nativeFactsActions.Children.Add(_reproduce);
             _reproduce.Click += ReproduceNative_Click;
         }
+        DockPanel.SetDock(_nativeFactsActions, Dock.Bottom);
         body.Children.Add(new Border
         {
             Margin = new Thickness(18, 18, 0, 0),
@@ -267,7 +283,10 @@ public sealed class RobotDetailsWindow : Window
             Background = Brush.Parse("#E5ECD9"),
             BorderBrush = Brush.Parse("#C8C3B6"),
             BorderThickness = new Thickness(1),
-            Child = facts,
+            Child = new DockPanel
+            {
+                Children = { _nativeFactsActions, new ScrollViewer { Content = _facts } },
+            },
         });
         Grid.SetColumn(_tabs, 1);
         body.Children.Add(_tabs);
@@ -301,6 +320,16 @@ public sealed class RobotDetailsWindow : Window
         _founderFilename.IsVisible = founderFilename is not null;
         _subtitleSuffix.Text = suffix;
         _subtitleSuffix.IsVisible = suffix is not null;
+    }
+
+    private void CalculateNativeDescendants()
+    {
+        var snapshot = _session?.LatestSnapshot ?? _snapshot;
+        var focus = _readFocus is null ? _focus : _readFocus();
+        var count = snapshot.NativeCycle.HasValue && focus is { } key
+            ? PhylogenyModel.CountNativeDescendants(snapshot, key)
+            : null;
+        _descendantCount.Text = count?.ToString(CultureInfo.InvariantCulture) ?? "------";
     }
 
     private async void ReproduceNative_Click(object? sender, RoutedEventArgs e)
@@ -433,6 +462,8 @@ public sealed class RobotDetailsWindow : Window
 
     public void SetSnapshot(EngineSnapshot snapshot)
     {
+        _snapshot = snapshot;
+        _nativeFactsActions.IsVisible = snapshot.NativeCycle.HasValue;
         _diagnostic.Update(snapshot, _focus);
         var selected = FindActor(_focus);
         _mutationLog = selected?.MutationLog;
@@ -477,6 +508,9 @@ public sealed class RobotDetailsWindow : Window
             SetSubtitle(prefix, founder, suffix);
         else
             SetSubtitle($"{prefix}{species.ToUpperInvariant()}{suffix}");
+        var offspring = $"OFFSPRING      {organism.Offspring:N0}";
+        if (!snapshot.NativeCycle.HasValue)
+            offspring += $"{Environment.NewLine}DESCENDANTS    {organism.Descendants:N0}";
         _facts.Text = string.Join(Environment.NewLine,
             $"ARRAY ID       {organism.Slot:N0}",
             $"UNIQUE ID      {organism.UniqueId:N0}",
@@ -484,8 +518,7 @@ public sealed class RobotDetailsWindow : Window
             $"PARENT 1       {FormatParent(organism.Parents, 0)}",
             $"PARENT 2       {FormatParent(organism.Parents, 1)}",
             $"AGE / GENER.   {organism.Age:N0} / {organism.Generation:N0}",
-            $"OFFSPRING      {organism.Offspring:N0}",
-            $"DESCENDANTS    {organism.Descendants:N0}",
+            offspring,
             $"ENERGY         {organism.Energy:N0}",
             $"BODY           {organism.Body:N0}",
             $"MASS / RADIUS  {organism.Mass:0.0} / {organism.Radius:0.0}",

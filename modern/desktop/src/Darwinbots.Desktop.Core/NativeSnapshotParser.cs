@@ -49,6 +49,7 @@ public static class NativeSnapshotParser
             organism.Poisoned,
             organism.Parents?.Select(parent => parent is null ? (OrganismKey?)null : new OrganismKey(parent.Slot, parent.Generation)).ToArray())
         {
+            Exists = organism.Flags?.Exists ?? true,
             IsCorpse = organism.Flags?.Corpse ?? false,
             IsHidden = organism.Flags?.Hidden ?? false,
             Phenotype = ParsePhenotype(organism.Phenotype, preserveSkin),
@@ -979,7 +980,8 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("founder_name")] string? FounderName);
 
     private sealed record NativeOrganismFlags([property: JsonPropertyName("corpse")] bool Corpse,
-        [property: JsonPropertyName("hidden")] bool Hidden);
+        [property: JsonPropertyName("hidden")] bool Hidden,
+        [property: JsonPropertyName("exists")] bool? Exists);
 
     private sealed record NativeMutationProfile(
         [property: JsonPropertyName("point")] NativeMutationRate? Point,
