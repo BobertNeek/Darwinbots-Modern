@@ -323,6 +323,108 @@ public sealed class GraphContestRenderedTests
     }
 
     [Fact]
+    public async Task NativeSimulationColdOpenRestoresGraphLayoutAndCustomQuery()
+    {
+        var root = Directory.CreateTempSubdirectory("darwinbots-native-graph-layout-");
+        try
+        {
+            var savePath = Path.Combine(root.FullName, "graphs.sim");
+            var setup = new WorldSetupOptions
+            {
+                Backend = "Cpu",
+                PopulationCapacity = 16,
+                GlobalSettings = new GlobalSettings { Main = new GlobalMainSettings { MainDirectory = root.FullName } },
+            };
+            var population = new NativeGraphLayoutRow(0, true, 900, 1_350);
+            var closed = new NativeGraphLayoutRow(2, false, 2_400, 1_800);
+            var custom = new NativeGraphLayoutRow(15, true, 4_500, 300_000);
+            var query = new NativeGraphCustomQuery(1, "pop 7 mult 2 add");
+            using (var source = new NativeEngineClient(setup))
+            {
+                source.UpdateNativeGraphLayout([population, closed, custom], [query]);
+                await File.WriteAllBytesAsync(savePath, source.SaveLegacy());
+            }
+
+            await DesktopTestApplication.Session.Dispatch(async () =>
+            {
+                var player = new MainWindow([], setup with { LoadSavePath = savePath },
+                    NativeEngineClientFactory.Instance, new AuditStorageService());
+                try
+                {
+                    player.Show();
+                    var model = Assert.IsType<Darwinbots.Desktop.ViewModels.MainWindowViewModel>(player.DataContext);
+                    await WaitFor(() => model.Status == "LOADED", () => model.Status);
+                    var suite = Assert.Single(player.OwnedWindows.OfType<GraphSuiteWindow>());
+                    await FlushGraphPresentationAsync();
+                    var charts = suite.OwnedWindows.OfType<GraphSeriesWindow>()
+                        .ToDictionary(chart => TryField<GraphSeriesViewModel>(chart, "_graph")!.Metric);
+                    Assert.Equal(new[] { GraphMetric.Population, GraphMetric.CustomizableGraph1 }, charts.Keys.Order());
+                    var populationChart = charts[GraphMetric.Population];
+                    var customChart = charts[GraphMetric.CustomizableGraph1];
+                    Assert.Equal(query.Expression, Assert.Single(suite.ViewModel.CustomMetrics, slot => slot.Slot == 1).Expression);
+                    Assert.Equal(query.Expression, TryField<GraphSeriesViewModel>(customChart, "_graph")!.CustomExpression);
+                    AssertPosition(populationChart, population);
+                    AssertPosition(customChart, custom);
+
+                    var session = TryField<SimulationSession>(player, "_session")!;
+                    var restored = await session.ReadNativeGraphLayoutAsync();
+                    Assert.NotNull(restored);
+                    Assert.Equal(population, Assert.Single(restored.Graphs, row => row.GraphIndex == 0));
+                    Assert.Equal(closed, Assert.Single(restored.Graphs, row => row.GraphIndex == 2));
+                    Assert.Equal(custom, Assert.Single(restored.Graphs, row => row.GraphIndex == 15));
+                    Assert.Equal(query.Expression, restored.CustomQueries[0]);
+
+                    var newPosition = new PixelPoint(populationChart.Position.X + 20, populationChart.Position.Y + 20);
+                    populationChart.Position = newPosition;
+                    await FlushGraphPresentationAsync();
+                    var scale = populationChart.Screens.ScreenFromPoint(newPosition)!.Scaling;
+                    var moved = population with
+                    {
+                        Left = (int)Math.Round(newPosition.X * 15 / scale),
+                        Top = (int)Math.Round(newPosition.Y * 15 / scale),
+                    };
+                    var movedLayout = await session.ReadNativeGraphLayoutAsync();
+                    Assert.Equal(moved, Assert.Single(movedLayout!.Graphs, row => row.GraphIndex == 0));
+
+                    typeof(Window).GetMethod("HandleClosing", BindingFlags.Instance | BindingFlags.NonPublic)!
+                        .Invoke(populationChart, [WindowCloseReason.WindowClosing]);
+                    await WaitFor(() => populationChart.OwnedWindows.OfType<LegacyConfirmationWindow>().Any(),
+                        () => "The restored graph did not ask whether to keep updating.");
+                    var prompt = Assert.Single(populationChart.OwnedWindows.OfType<LegacyConfirmationWindow>());
+                    await FlushGraphPresentationAsync();
+                    Assert.Single(prompt.GetVisualDescendants().OfType<Button>(), button => Equals(button.Content, "NO"))
+                        .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    await WaitFor(() => !populationChart.IsVisible, () => "NO did not close the restored graph.");
+
+                    var saved = await session.ReadNativeGraphLayoutAsync();
+                    Assert.NotNull(saved);
+                    Assert.Equal(moved with { Visible = false }, Assert.Single(saved.Graphs, row => row.GraphIndex == 0));
+                    Assert.Equal(closed, Assert.Single(saved.Graphs, row => row.GraphIndex == 2));
+                    Assert.Equal(custom, Assert.Single(saved.Graphs, row => row.GraphIndex == 15));
+                    Assert.True(customChart.IsVisible);
+                }
+                finally { player.Close(); }
+            }, CancellationToken.None);
+        }
+        finally { root.Delete(recursive: true); }
+
+        static void AssertPosition(GraphSeriesWindow chart, NativeGraphLayoutRow layout)
+        {
+            Assert.True(chart.IsVisible);
+            var screen = chart.Screens.Primary;
+            Assert.NotNull(screen);
+            var workArea = screen.WorkingArea;
+            var width = (int)Math.Round(chart.Bounds.Width * screen.Scaling);
+            var height = (int)Math.Round(chart.Bounds.Height * screen.Scaling);
+            var left = Math.Clamp((int)Math.Round(layout.Left!.Value * screen.Scaling / 15),
+                workArea.X, workArea.X + Math.Max(0, workArea.Width - width));
+            var top = Math.Clamp((int)Math.Round(layout.Top!.Value * screen.Scaling / 15),
+                workArea.Y, workArea.Y + Math.Max(0, workArea.Height - height));
+            Assert.Equal(new PixelPoint(left, top), chart.Position);
+        }
+    }
+
+    [Fact]
     public async Task EvolutionDefaultGraphsOpenActualNativeSeriesWithoutReplacingManualCharts()
     {
         await DesktopTestApplication.Session.Dispatch(async () =>

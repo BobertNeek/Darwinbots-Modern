@@ -31,10 +31,11 @@ public sealed class GraphSeriesChart : Control
             context.DrawLine(gridPen, new Point(0, y), new Point(area.Width, y));
         }
 
-        var series = _series.Where(value => value.Samples.Count >= 2).ToArray();
+        var series = _series.Where(value => value.Samples.Count > 0).ToArray();
         if (series.Length == 0)
         {
-            DrawLabel(context, "OPEN A GRAPH TO COLLECT SAMPLES", area);
+            if (_series.Count == 0)
+                DrawLabel(context, "OPEN A GRAPH TO COLLECT SAMPLES", area);
             return;
         }
         var values = series.SelectMany(value => value.Samples).Where(value => double.IsFinite(value.Value)).ToArray();
@@ -46,7 +47,8 @@ public sealed class GraphSeriesChart : Control
         var lastTick = values.Max(value => value.Tick);
         foreach (var graph in series)
         {
-            var pen = new Pen(new SolidColorBrush(Color.FromUInt32(graph.Color)), 2.2);
+            var brush = new SolidColorBrush(Color.FromUInt32(graph.Color));
+            var pen = new Pen(brush, 2.2);
             Point PointAt(GraphSample sample) => new(
                 ((double)sample.Tick - firstTick) * area.Width / Math.Max(1, (double)lastTick - firstTick),
                 area.Height - ((sample.Value - minimum) / (maximum - minimum) * Math.Max(1, area.Height - 24)) - 4);
@@ -56,6 +58,8 @@ public sealed class GraphSeriesChart : Control
                 if (!double.IsFinite(sample.Value)) { previous = null; continue; }
                 var current = PointAt(sample);
                 if (previous is { } point) context.DrawLine(pen, point, current);
+                else if (graph.Samples.Count == 1)
+                    context.DrawEllipse(brush, null, new Point(Math.Max(2.5, current.X), current.Y), 2.5, 2.5);
                 previous = current;
             }
         }

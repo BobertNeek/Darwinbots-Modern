@@ -100,6 +100,7 @@ public sealed partial class MainWindow : Window
     private readonly IDesktopStorageService _storage;
     private readonly Action? _launchSafeModeBackup;
     private readonly LegacyGraphRecordingRun _graphRecording;
+    private NativeGraphLayoutState? _nativeGraphLayout;
     private bool _tickInFlight;
     private bool _navigationInFlight;
     private bool _editingLiveSettings;
@@ -2576,11 +2577,15 @@ public sealed partial class MainWindow : Window
                 await LoadSimulationWithSourceAsync(await File.ReadAllBytesAsync(savePath), savePath, _setup.ResumeRestartMode, _setup.IsAutosaveRecovery);
             }
             else
+            {
+                if (_session.LatestSnapshot.NativeCycle.HasValue)
+                    _nativeGraphLayout = await _session.ReadNativeGraphLayoutAsync();
                 foreach (var species in _setup.Species)
                 {
                     if (_windowClosed) return;
                     compatibilityWarnings.AddRange((await _session.ImportSpeciesAsync(species)).CompatibilityWarnings);
                 }
+            }
             foreach (var bot in _startupBots)
             {
                 var file = await Db2RobotFileStorage.ReadAsync(bot.Path);
@@ -3718,8 +3723,11 @@ public sealed partial class MainWindow : Window
             _worldLoadGeneration++;
             _safeModeRecoveryWorld = isSafeModeRecovery;
             _graphRecording.RestoreNativeState(await _session.ReadNativeGraphRecordingAsync());
+            var snapshot = _session.LatestSnapshot;
+            _nativeGraphLayout = snapshot.NativeCycle.HasValue ? await _session.ReadNativeGraphLayoutAsync() : null;
             _graphRecording.IsSuspended = false;
-            _toolWindows.LoadGraphWorld(_session.LatestSnapshot);
+            if (_nativeGraphLayout?.Graphs.Any(row => row.Visible == true) == true) ShowGraphSuite();
+            _toolWindows.LoadGraphWorld(snapshot, _nativeGraphLayout);
             // A rejected load publishes no snapshot and must keep user-closed
             // graphs closed. Loading publications defer this until success.
             _automaticEvolutionGraphBoundary = null;
@@ -4035,6 +4043,8 @@ public sealed partial class MainWindow : Window
             {
                 var window = new GraphSuiteWindow(_session?.LatestSnapshot ?? EngineSnapshot.Empty, _graphRecording,
                     () => _liveEnvironment.AutoSpeciation, consumeNativeSample: ReadCurrentGraphSampleAsync);
+                window.SetNativeLayout(_nativeGraphLayout);
+                window.NativeLayoutEdited += PersistGraphLayout;
                 window.SamplingChanged += ConfigureGraphSampling;
                 return window;
             });
@@ -4104,6 +4114,24 @@ public sealed partial class MainWindow : Window
             if (!_windowClosed && _session == session && _worldLoadGeneration == loadGeneration
                 && _graphRecording.Generation == recordingGeneration)
                 _viewModel.Status = $"GRAPH SETTINGS ERROR · {error.Message}";
+        }
+    }
+
+    private async void PersistGraphLayout(NativeGraphLayoutState layout, NativeGraphLayoutRow change,
+        NativeGraphCustomQuery? query)
+    {
+        if (_graphRecording.IsSuspended || _loadingSimulation || _windowClosed || _session is not { } session)
+            return;
+        var generation = _worldLoadGeneration;
+        _nativeGraphLayout = layout;
+        try
+        {
+            await session.UpdateNativeGraphLayoutAsync([change], query is null ? null : [query]);
+        }
+        catch (Exception error)
+        {
+            if (!_windowClosed && _session == session && _worldLoadGeneration == generation)
+                _viewModel.Status = $"GRAPH LAYOUT ERROR · {error.Message}";
         }
     }
 

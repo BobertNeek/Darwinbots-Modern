@@ -32,13 +32,18 @@ public sealed class LegacyGraphRecordingRun
 
     public static string NewRunStamp() => DateTime.Now.ToString("yyyy-MM-dd HH-mm-ss.fff", CultureInfo.InvariantCulture);
 
+    public static int NativeIndexOf(GraphMetric metric) => Array.IndexOf(NativeGraphOrder, metric);
+
+    public static GraphMetric? NativeMetricAt(int index) =>
+        index >= 0 && index < NativeGraphOrder.Length ? NativeGraphOrder[index] : null;
+
     public LegacyGraphAutoSave Graph(GraphMetric metric)
     {
         if (!_graphs.TryGetValue(metric, out var graph))
         {
             graph = new LegacyGraphAutoSave(() => Path.Combine(_root(), RunStamp), Caption(metric));
             _graphs.Add(metric, graph);
-            var index = Array.IndexOf(NativeGraphOrder, metric);
+            var index = NativeIndexOf(metric);
             graph.NativeSettingsChanged += () => NativeSettingsChanged?.Invoke(
                 Generation, new(index, graph.Enabled, graph.Counter));
         }
@@ -57,8 +62,8 @@ public sealed class LegacyGraphRecordingRun
         BeginRun(state is not null && IsLocalRunStamp(state.RunStamp) ? state.RunStamp : NewRunStamp());
         if (state is null) return;
         foreach (var row in state.Graphs)
-            if (row.GraphIndex >= 0 && row.GraphIndex < NativeGraphOrder.Length)
-                Graph(NativeGraphOrder[row.GraphIndex]).RestoreNativeSettings(row.Enabled, Math.Max(0, row.Counter));
+            if (NativeMetricAt(row.GraphIndex) is { } metric)
+                Graph(metric).RestoreNativeSettings(row.Enabled, Math.Max(0, row.Counter));
     }
 
     private static string ValidateRunStamp(string value) => IsLocalRunStamp(value) ? value
