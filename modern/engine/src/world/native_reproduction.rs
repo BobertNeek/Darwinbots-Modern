@@ -32,7 +32,7 @@ impl Engine {
                     sperm_source: None,
                 };
                 let mut trace = CycleRecorder::disabled(self.tick);
-                self.commit_pending_births(&[birth], &mut trace)?
+                self.commit_pending_births(&[birth], BirthCommitRoute::NativeRobotInfo, &mut trace)?
             } else {
                 None
             };
@@ -216,6 +216,94 @@ mod tests {
         state.materials.energy = 1.5;
         assert!(world.reproduce_native_robot_info(parent).unwrap().is_some());
         assert_eq!(world.tick, 0);
+    }
+
+    #[test]
+    fn robot_info_can_reproduce_a_retained_corpse_after_positive_single_energy() {
+        let mut world = robot_info_test_world();
+        world.config.corpse_decay.enabled = true;
+        world.config.dna_costs.dna_copy = 0.0;
+        world.config.dna_costs.tie_formation = 0.0;
+        let species = world.register_species(SpeciesDefinition {
+            name: "Vegetable witness.txt".into(),
+            vegetable: true,
+            ..SpeciesDefinition::default()
+        });
+        let dna = LegacyDna::parse("start stop").unwrap();
+        let parent = world
+            .spawn_species_at(dna.clone(), species, [1_000.0; 2])
+            .unwrap();
+        world
+            .spawn_species_at(dna, species, [5_000.0, 3_000.0])
+            .unwrap();
+        world.set_organism_aim(parent, 0).unwrap();
+        world.slots.get_mut(parent).unwrap().materials.energy = 1.5;
+        world.tick().unwrap();
+        let source = world.slots.get(parent).unwrap();
+        assert!(source.flags.exists && source.flags.corpse && source.flags.can_reproduce);
+        assert!(!source.flags.vegetable);
+        assert!(world.species[source.identity.species.0 as usize].vegetable);
+        assert_eq!(source.materials.energy, 0.0);
+        let (tick, cycle, age, absolute_id) = (
+            world.tick,
+            world.native_cycle,
+            source.counters.age,
+            source.identity.absolute_id,
+        );
+        let deaths = world.stats.deaths;
+        world
+            .vegetation_runtime
+            .set_native_chloroplast_population(world.config.vegetable_population_cap + 1);
+
+        let mut expected_random = world.native_random.clone().unwrap();
+        expected_random.integer(0, 10);
+        assert_eq!(world.reproduce_native_robot_info(parent).unwrap(), None);
+        assert_eq!(world.native_random.as_ref(), Some(&expected_random));
+        assert_eq!(world.stats.births, 0);
+        assert!(world.ties.is_empty());
+
+        // Console energy writes the raw Single reserve.
+        world.slots.get_mut(parent).unwrap().materials.energy = 1_000.5;
+        world.asexual_reproduction_allowed = false;
+        assert_eq!(world.reproduce_native_robot_info(parent).unwrap(), None);
+        assert_eq!(world.native_random.as_ref(), Some(&expected_random));
+        world.asexual_reproduction_allowed = true;
+        expected_random.integer(0, 10);
+        expected_random.integer(2, 92);
+
+        let child = world.reproduce_native_robot_info(parent).unwrap().unwrap();
+        assert_eq!((world.tick, world.native_cycle), (tick, cycle));
+        assert_eq!(world.native_random.as_ref(), Some(&expected_random));
+        assert_eq!(world.stats.births, 1);
+        assert_eq!(world.stats.deaths, deaths);
+        assert_eq!(world.stats.self_reproductions, 0);
+        let source = world.slots.get(parent).unwrap();
+        assert!(source.flags.corpse && source.flags.exists);
+        assert_eq!(source.counters.age, age);
+        assert_eq!(source.counters.offspring, 1);
+        assert_eq!(source.materials.body, 500.0);
+
+        let newborn = world.slots.get(child).unwrap();
+        assert!(newborn.flags.exists && !newborn.flags.corpse && !newborn.flags.dead);
+        assert!(!newborn.flags.vegetable && !newborn.flags.can_execute_dna);
+        assert!(!newborn.flags.can_move && !newborn.flags.can_see && newborn.flags.virus_immune);
+        assert!(newborn.flags.can_reproduce);
+        assert_eq!(newborn.identity.parents, [Some(parent), None]);
+        assert_eq!(newborn.identity.parent_absolute_id, absolute_id);
+        assert_eq!(newborn.identity.species_file, "Corpse");
+        assert_eq!(newborn.counters.age, 0);
+        assert_eq!(newborn.counters.birth_cycle, cycle.unwrap() as u64);
+        assert_eq!(newborn.materials.body, 500.0);
+        assert_eq!(newborn.materials.energy, 499.749_76);
+        assert_eq!(world.ties.len(), 1);
+        assert_eq!(
+            (
+                world.ties[0].first,
+                world.ties[0].second,
+                world.ties[0].last
+            ),
+            (parent, child, 100)
+        );
     }
 
     #[test]
