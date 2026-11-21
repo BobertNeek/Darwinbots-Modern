@@ -409,7 +409,7 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
 
     public async Task<bool> AppendDeadSnapshotAsync(Func<Stream, Task> writeAsync, Func<Stream, Task>? writeMutationHistoryAsync)
     {
-        var path = DeadSnapshotPath();
+        var path = DeadSnapshotPath;
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         await using var history = writeMutationHistoryAsync is null ? null : OpenRecording(Db2GenomeRecordFile.MutationHistoryPath(path));
         await using var stream = OpenRecording(path);
@@ -736,7 +736,7 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
             ? Path.GetFullPath(configured)
             : Path.Combine(ProfileDirectory(), "Autosaves");
 
-    private string DeadSnapshotPath() => Path.Combine(ProfileDirectory(), "records", "DeadRobots.snp");
+    public string DeadSnapshotPath => Path.Combine(ProfileDirectory(), "records", "DeadRobots.snp");
 
     private string LastStartPath() => Path.Combine(AutosaveDirectory(), "last-start.json");
 

@@ -154,6 +154,7 @@ public sealed partial class MainWindow : Window
     private ulong? _lastAutomaticSaveTick;
     private DesktopBackgroundPicture? _lastBackgroundPicture;
     private bool _deadRecordingEnabled;
+    private bool _changingDeadRecording;
     private bool _excludeRepopulatingDead;
     private bool _startupComplete;
     private bool _ownsRestartContinuation;
@@ -949,7 +950,8 @@ public sealed partial class MainWindow : Window
             EngineState,
             async _ => await SaveLivingSnapshotAsync());
         handlers[LegacyCommandId.RecordingDeadEnable] = Handler(
-            () => new LegacyCommandState(_session is not null, _deadRecordingEnabled, _session is null ? "Start a simulation first." : null),
+            () => new LegacyCommandState(_session is not null && !_changingDeadRecording, _deadRecordingEnabled,
+                _session is null ? "Start a simulation first." : null),
             async _ => await ToggleDeadRecordingAsync());
         handlers[LegacyCommandId.RecordingDeadExcludeRepopulating] = Handler(
             () => new LegacyCommandState(_session is not null, _excludeRepopulatingDead, _session is null ? "Start a simulation first." : null),
@@ -1768,11 +1770,35 @@ public sealed partial class MainWindow : Window
 
     private async Task<LegacyCommandResult> ToggleDeadRecordingAsync()
     {
-        await ApplyRecordingPreferencesAsync((_liveEnvironment.Recording ?? new()) with
+        if (_session is not { } session || _changingDeadRecording || _loadingSimulation || _navigationInFlight || !IsVisible)
+            return LegacyCommandResult.Cancel();
+        var generation = _worldLoadGeneration;
+        var enabled = !_deadRecordingEnabled;
+        _changingDeadRecording = true;
+        try
         {
-            DeadSnapshotEnabled = !_deadRecordingEnabled,
-        });
-        return LegacyCommandResult.Success($"DEAD RECORDING · {(_deadRecordingEnabled ? "ON" : "OFF")}");
+            RefreshLegacyMenuStates();
+            if (enabled)
+            {
+                var snapshot = _storage.DeadSnapshotPath ?? "DeadRobots.snp";
+                var history = Db2GenomeRecordFile.MutationHistoryPath(snapshot);
+                var message = $"Snapshot of the dead records robot snapshots and mutation history.\n\n{snapshot}\n{history}\n\n"
+                    + "You can delete these files to reset the snapshot. This feature consumes disk space quickly.";
+                await new LegacyConfirmationWindow("Snapshot of the dead", message, informationOnly: true).ShowDialog(this);
+            }
+
+            await _advanceGate.WaitAsync();
+            try
+            {
+                if (!IsVisible || _loadingSimulation || _navigationInFlight || _session != session
+                    || generation != _worldLoadGeneration || enabled == _deadRecordingEnabled)
+                    return LegacyCommandResult.Cancel();
+                await ApplyRecordingPreferencesAsync((_liveEnvironment.Recording ?? new()) with { DeadSnapshotEnabled = enabled });
+                return LegacyCommandResult.Success($"DEAD RECORDING · {(enabled ? "ON" : "OFF")}");
+            }
+            finally { _advanceGate.Release(); }
+        }
+        finally { _changingDeadRecording = false; }
     }
 
     private async Task<LegacyCommandResult> ToggleDeadRecordingFilterAsync()

@@ -28,6 +28,7 @@ public interface IDesktopStorageService
         string suggestedFileName,
         byte[] snapshot,
         Func<Task<byte[]?>> chooseMutationHistoryAsync) => Task.FromResult(false);
+    string? DeadSnapshotPath => null;
     Task<bool> AppendDeadSnapshotAsync(
         Func<Stream, Task> writeAsync,
         Func<Stream, Task>? writeMutationHistoryAsync) => Task.FromResult(false);
