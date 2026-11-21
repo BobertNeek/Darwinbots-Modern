@@ -1343,6 +1343,7 @@ fn db_engine_load_impl(engine: *mut Engine, save_data: *const u8, save_len: usiz
             if !bytes.starts_with(b"DB3S") {
                 loaded.retain_native_global_preferences(engine.configuration());
                 loaded.inherit_native_gaussian_spare(engine);
+                loaded.inherit_native_sun_indicator_after_sim_load(engine);
                 if let Err(error) = loaded.inherit_native_process_caches_after_sim_load(engine) {
                     return fail(DbStatus::EngineError, error);
                 }
@@ -1937,7 +1938,7 @@ mod tests {
         config.vegetation.sun_up_threshold = 500_000;
         config.vegetation.sun_threshold_mode = 0;
         let mut world = Engine::new_native(config).unwrap();
-        assert_eq!(world.snapshot().native_sun_on, Some(false));
+        assert_eq!(world.snapshot().native_sun_on, Some(true));
         world.spawn(LegacyDna::parse("start stop").unwrap()).unwrap();
         world.tick().unwrap();
         assert!(!world.configuration().vegetation.daytime);
@@ -1963,6 +1964,26 @@ mod tests {
             expected["config"]["vegetation"]["daytime"] = enabled.into();
             assert_eq!(serde_json::to_value(&world).unwrap(), expected);
         }
+    }
+
+    #[test]
+    fn native_sun_toolbar_keeps_the_existing_button_state_during_a_sim_load() {
+        let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+        assert_eq!(world.toggle_native_sun(), Some(false));
+        let mut source = Engine::new_native(EngineConfig::testing()).unwrap();
+        source
+            .spawn_at(LegacyDna::parse("start stop").unwrap(), [500.0; 2])
+            .unwrap();
+        let save = source.export_native_sim().unwrap();
+        assert_eq!(
+            db_engine_load(&mut world, save.as_ptr(), save.len()),
+            DbStatus::Ok
+        );
+        assert!(world.configuration().vegetation.daytime);
+        assert_eq!(world.snapshot().native_sun_on, Some(false));
+        world.tick().unwrap();
+        assert!(world.configuration().vegetation.daytime);
+        assert_eq!(world.snapshot().native_sun_on, Some(true));
     }
 
     fn populated_native_cpu_candidate_fixture() -> Engine {

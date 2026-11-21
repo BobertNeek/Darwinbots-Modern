@@ -363,11 +363,11 @@ public sealed class RuntimeControlSurfaceTests
             BrownianMotion = 0,
             Vegetation = Db2VegetationOptions.Default with
             {
-                Daytime = !temporaryThreshold,
+                Daytime = true,
                 DayNightEnabled = true,
-                CycleLength = 1,
-                SunUpEnabled = temporaryThreshold,
-                SunUpThreshold = 500_000,
+                CycleLength = temporaryThreshold ? 2_000ul : 1ul,
+                SunDownEnabled = temporaryThreshold,
+                SunDownThreshold = 0,
                 SunThresholdMode = 0,
             },
             Species = [new("Sun Watch", "start stop", false, 0xff123456, 1, 1_000, 0, false, 0)],
@@ -382,26 +382,24 @@ public sealed class RuntimeControlSurfaceTests
                 var model = Field<MainWindowViewModel>(window, "_viewModel");
                 await WaitFor(() => model.Status.StartsWith("WORLD READY", StringComparison.Ordinal), () => model.Status);
                 var button = window.FindControl<Button>("SunButton")!;
-                var initialLabel = temporaryThreshold ? "SUN OFF" : "SUN ON";
-                var feedingLabel = temporaryThreshold ? "SUN ON" : "SUN OFF";
-                await WaitFor(() => Equals(button.Content, initialLabel));
+                await WaitFor(() => Equals(button.Content, "SUN ON"));
 
                 session = Field<SimulationSession>(window, "_session");
                 await session.StepAsync(2);
                 var before = Assert.IsType<WorldConfiguration>(await session.ReadConfigurationAsync());
                 Assert.False(before.Environment.Vegetation.Daytime);
-                Assert.Equal(temporaryThreshold, session.LatestSnapshot.NativeSunOn);
-                await WaitFor(() => Equals(button.Content, feedingLabel));
+                Assert.False(session.LatestSnapshot.NativeSunOn);
+                await WaitFor(() => Equals(button.Content, "SUN OFF"));
 
                 button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                await WaitFor(() => Equals(button.Content, initialLabel) && model.Status == initialLabel);
-                Assert.Equal(initialLabel, AutomationProperties.GetName(button));
-                Assert.Equal(!temporaryThreshold, session.LatestSnapshot.NativeSunOn);
+                await WaitFor(() => Equals(button.Content, "SUN ON") && model.Status == "SUN ON");
+                Assert.Equal("SUN ON", AutomationProperties.GetName(button));
+                Assert.True(session.LatestSnapshot.NativeSunOn);
                 Assert.Equal(2ul, session.LatestSnapshot.Tick);
                 var after = Assert.IsType<WorldConfiguration>(await session.ReadConfigurationAsync());
                 var expected = before.Environment with
                 {
-                    Vegetation = before.Environment.Vegetation with { Daytime = !temporaryThreshold },
+                    Vegetation = before.Environment.Vegetation with { Daytime = true },
                 };
                 Assert.Equal(JsonSerializer.Serialize(expected), JsonSerializer.Serialize(after.Environment));
             }

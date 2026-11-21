@@ -429,6 +429,7 @@ impl Engine {
         engine.refresh_native_chloroplast_population();
         engine.native_origin = Some(file);
         engine.initialize_native_load();
+        engine.remember_native_sun_indicator(true);
         engine.mark_native_loaded_census();
         Self::restore(engine)
     }

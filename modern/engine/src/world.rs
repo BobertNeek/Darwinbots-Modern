@@ -6313,7 +6313,11 @@ impl Engine {
             self.config.shots = shots;
         }
         if let Some(vegetation) = vegetation {
+            let sun_on = self.native_sun_on();
             self.config.vegetation = vegetation;
+            if let Some(sun_on) = sun_on {
+                self.remember_native_sun_indicator(sun_on);
+            }
         }
         if let Some(corpse_decay) = corpse_decay {
             self.config.corpse_decay = corpse_decay;
@@ -11229,6 +11233,7 @@ impl Engine {
             self.total_simulation_energy()
         };
         let weather_seed = self.config.seed ^ self.tick.rotate_left(17);
+        let sun_on = self.native_sun_on();
         let daylight = self.vegetation_runtime.advance_daylight(
             &mut self.config.vegetation,
             total_energy,
@@ -11236,9 +11241,13 @@ impl Engine {
             self.native_random.as_mut(),
         );
         let daytime = daylight.feed_this_cycle;
-        if self.native_cycle.is_some() {
-            self.vegetation_runtime
-                .set_native_sun_indicator(self.config.vegetation.daytime, daytime);
+        if let Some(sun_on) = sun_on {
+            // Vegs.bas assigns the graphical VB6 CheckBox. A changed Value
+            // fires SunButton_Click and writes back the new state to Daytime.
+            if sun_on != daytime {
+                self.config.vegetation.daytime = daytime;
+            }
+            self.remember_native_sun_indicator(daytime);
         }
         if native && daytime {
             // FeedVeg skips this assignment entirely on non-feeding cycles.

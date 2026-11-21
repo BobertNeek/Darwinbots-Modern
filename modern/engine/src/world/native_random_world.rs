@@ -16,7 +16,9 @@ impl Engine {
         engine.snapshot.native_cycle = Some(-1);
         engine.vegetation_runtime = VegetationRuntime::fresh_native_process();
         engine.initialize_native_start();
-        engine.snapshot.native_sun_on = engine.native_sun_on();
+        // The original graphical CheckBox starts unchecked (sun on).
+        engine.remember_native_sun_indicator(true);
+        engine.snapshot.native_sun_on = Some(true);
         Ok(engine)
     }
 
@@ -38,9 +40,6 @@ impl Engine {
             self.config.vegetation.sun_on_random || self.config.vegetation.weather_enabled,
             random,
         );
-        let daytime = self.config.vegetation.daytime;
-        self.vegetation_runtime
-            .set_native_sun_indicator(daytime, daytime);
         // SimGUID is assigned after optional random sunlight, before placement.
         self.native_sim_guid = Some(random.unit().round_ties_even() as i32);
     }
@@ -91,13 +90,23 @@ impl Engine {
         })
     }
 
+    pub(super) fn remember_native_sun_indicator(&mut self, enabled: bool) {
+        self.vegetation_runtime
+            .set_native_sun_indicator(self.config.vegetation.daytime, enabled);
+    }
+
+    pub(crate) fn inherit_native_sun_indicator_after_sim_load(&mut self, previous: &Self) {
+        let enabled = previous.native_sun_on().unwrap_or(true);
+        self.remember_native_sun_indicator(enabled);
+        self.snapshot.native_sun_on = Some(enabled);
+    }
+
     pub(crate) fn toggle_native_sun(&mut self) -> Option<bool> {
         // SunButton_Click uses the new button state. FeedVeg can have set
         // the indicator from a temporary threshold without changing Daytime.
         let enabled = !self.native_sun_on()?;
         self.config.vegetation.daytime = enabled;
-        self.vegetation_runtime
-            .set_native_sun_indicator(enabled, enabled);
+        self.remember_native_sun_indicator(enabled);
         self.snapshot.native_sun_on = Some(enabled);
         Some(enabled)
     }
@@ -158,6 +167,7 @@ impl Engine {
                 // Restarter.exe creates a new process with an empty gasdev cache.
                 *random = Default::default();
                 self.vegetation_runtime = VegetationRuntime::fresh_native_process();
+                self.remember_native_sun_indicator(true);
                 self.reset_native_energy_process();
                 self.set_death_poffs_enabled(true);
             }
