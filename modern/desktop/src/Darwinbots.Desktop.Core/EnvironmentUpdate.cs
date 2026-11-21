@@ -550,6 +550,7 @@ public static class NativeCommandSerializer
         age_base = value.AgeBase,
         age_start = value.AgeStart,
         age_linear = value.AgeLinear,
+        age_linear_enabled = value.AgeLinearEnabled,
         age_logarithmic = value.AgeLogarithmic,
         dynamic_cost_multiplier = value.DynamicMultiplier,
         dynamic_all_robots = value.DynamicAllRobots,

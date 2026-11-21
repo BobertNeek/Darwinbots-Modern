@@ -150,6 +150,10 @@ public sealed record GlobalSimulationCostSettings
     public double AgeBase { get; init; }
     public double AgeStart { get; init; }
     public double AgeLinear { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? AgeLinearEnabled { get; init; }
+    [JsonIgnore]
+    public bool EffectiveAgeLinearEnabled => AgeLinearEnabled ?? (AgeLinear != 0);
     public double AgeLogarithmic { get; init; }
     public double DynamicMultiplier { get; init; }
     public bool DynamicAllRobots { get; init; } = true;
