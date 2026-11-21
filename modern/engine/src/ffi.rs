@@ -56,6 +56,8 @@ enum EngineCommand {
     Tick {
         count: u32,
         #[serde(default)]
+        console_focuses: Vec<OrganismId>,
+        #[serde(default)]
         require_native_repopulation_source: bool,
         #[serde(default)]
         cancelled_native_repopulation_lineages: Vec<u64>,
@@ -771,20 +773,27 @@ fn db_engine_command_batch_impl(
                 .map(|_| serde_json::Value::Null),
             EngineCommand::Tick {
                 count,
+                console_focuses,
                 require_native_repopulation_source,
                 cancelled_native_repopulation_lineages,
             } => {
                 if count > 1_000_000 {
                     return fail(DbStatus::InvalidCommand, "tick count exceeds batch limit");
                 }
-                let step = if require_native_repopulation_source {
-                    engine.tick_requiring_native_repopulation_source(
-                        &cancelled_native_repopulation_lineages,
-                    )
-                } else {
-                    engine.tick_many(count)
-                };
-                step.map(|_| serde_json::Value::Null)
+                engine
+                    .with_native_console_gene_capture(console_focuses, |engine| {
+                        if require_native_repopulation_source {
+                            engine.tick_requiring_native_repopulation_source(
+                                &cancelled_native_repopulation_lineages,
+                            )
+                        } else {
+                            engine.tick_many(count)
+                        }
+                    })
+                    .map(|(_, reports)| match reports {
+                        Some(reports) => serde_json::json!({ "console_activations": reports }),
+                        None => serde_json::Value::Null,
+                    })
             }
             EngineCommand::ConfigureLocalMode { config } => engine
                 .configure_local_mode(config)
@@ -2061,6 +2070,83 @@ mod tests {
             assert_eq!(db_buffer_free(&mut buffer), DbStatus::Ok);
         }
         (status, result)
+    }
+
+    #[test]
+    fn native_console_terminal_gene_report_survives_same_cycle_removal() {
+        use crate::native_binary::{NativeRecordFile, NativeSimulationTail, NativeValue};
+        use serde_json::{Value, json};
+
+        let original =
+            include_bytes!("../tests/fixtures/db24832-genuine-reproduction-cycle1-20261017.sim");
+        let mut file = NativeRecordFile::decode(original).unwrap();
+        file.robots[0].set_single("energy", 0.25).unwrap();
+        let mut tail = NativeSimulationTail::decode(&file.tail).unwrap();
+        tail.set_value("corpses", NativeValue::Word(0)).unwrap();
+        file.tail = tail.encode().unwrap();
+        let archive = file.encode().unwrap();
+        let mut world = Engine::from_native_sim(&archive).unwrap();
+        let actor = &world.snapshot().organisms[0];
+        let focus = actor.id;
+        let unique_id = actor.unique_id;
+        let dna = LegacyDna::parse("start\n1 501 store\nstop").unwrap();
+        world.replace_dna(focus, dna.clone()).unwrap();
+        let expected = json!([{
+            "focus": focus,
+            "unique_id": unique_id,
+            "tick": world.snapshot().tick + 1,
+            "activations": [false, true]
+        }]);
+        let watch = json!({"type": "tick", "count": 1, "console_focuses": [focus, focus]});
+
+        let before = SaveFile::encode(&world).unwrap();
+        let (status, response) = classic_test_batch(
+            &mut world,
+            json!([
+                watch,
+                {"type": "set_organism_energy", "slot": focus.slot(),
+                    "generation": focus.generation(), "energy": 500}
+            ]),
+        );
+        assert_eq!(status, DbStatus::EngineError);
+        assert!(response.is_empty());
+        assert_eq!(SaveFile::encode(&world).unwrap(), before);
+
+        let (status, response) = classic_test_batch(
+            &mut world,
+            json!([
+                watch,
+                {"type": "tick", "count": 1, "console_focuses": [focus]},
+                {"type": "tick", "count": 1}
+            ]),
+        );
+        assert_eq!(status, DbStatus::Ok);
+        let response: Value = serde_json::from_slice(&response).unwrap();
+        let results = response["results"].as_array().unwrap();
+        assert_eq!(results[0]["console_activations"], expected);
+        assert_eq!(results[1]["console_activations"], json!([]));
+        assert!(results[2].is_null());
+        assert!(world.snapshot().organisms.is_empty());
+
+        let mut strict = Engine::from_native_sim(&archive).unwrap();
+        strict.replace_dna(focus, dna).unwrap();
+        let mut watch_strict = watch.clone();
+        watch_strict["require_native_repopulation_source"] = json!(true);
+        let (status, response) = classic_test_batch(&mut strict, json!([watch_strict]));
+        assert_eq!(status, DbStatus::Ok);
+        let response: Value = serde_json::from_slice(&response).unwrap();
+        assert_eq!(response["results"][0]["console_activations"], expected);
+        assert!(strict.snapshot().organisms.is_empty());
+
+        file.robots[0]
+            .set_value("disable_dna", NativeValue::Word(-1))
+            .unwrap();
+        let mut disabled = Engine::from_native_sim(&file.encode().unwrap()).unwrap();
+        let (status, response) = classic_test_batch(&mut disabled, json!([watch]));
+        assert_eq!(status, DbStatus::Ok);
+        let response: Value = serde_json::from_slice(&response).unwrap();
+        assert_eq!(response["results"][0]["console_activations"], json!([]));
+        assert!(disabled.snapshot().organisms.is_empty());
     }
 
     fn arm_repopulation(world: &Engine, amount: u32, second_source: bool) -> Engine {
