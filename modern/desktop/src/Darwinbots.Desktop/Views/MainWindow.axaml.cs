@@ -112,6 +112,7 @@ public sealed partial class MainWindow : Window
     private bool _rgbMemoryMonitorEnabled;
     private RgbMemoryMonitorSettings _rgbMemorySettings = RgbMemoryMonitorSettings.Default;
     private const string RgbMonitorToolKey = "rgb-memory-monitor";
+    private RobotDetailsWindow? _nativeDescriptionInspector;
     private readonly PersistentToolWindowRegistry _toolWindows;
     private readonly Stopwatch _runtimeClock = new();
     private double _activeCostMultiplier;
@@ -1592,9 +1593,18 @@ public sealed partial class MainWindow : Window
         var focus = new OrganismKey(organism.Slot, organism.Generation);
         if (session.LatestSnapshot.NativeCycle.HasValue && tab is RobotDetailsTab.Facts or RobotDetailsTab.Dna)
         {
-            var info = _toolWindows.ShowOrActivate(NativeRobotInfoKey,
-                () => new RobotDetailsWindow(session, focus, tab, SelectedRobotKey,
-                    parent => ReproduceFromNativeRobotInfoAsync(session, parent)) { Topmost = true });
+            var info = _toolWindows.ShowOrActivate(NativeRobotInfoKey, () =>
+            {
+                var viewer = new RobotDetailsWindow(session, focus, tab, SelectedRobotKey,
+                    parent => ReproduceFromNativeRobotInfoAsync(session, parent),
+                    (owner, displayed) => EditNativeRobotDescriptionAsync(session, owner, displayed)) { Topmost = true };
+                _nativeDescriptionInspector = viewer;
+                viewer.Closed += (_, _) =>
+                {
+                    if (_nativeDescriptionInspector == viewer) _nativeDescriptionInspector = null;
+                };
+                return viewer;
+            });
             if (tab == RobotDetailsTab.Dna) info.SelectTab(tab);
             info.SetFollowedSnapshot(session.LatestSnapshot, tab == RobotDetailsTab.Dna ? focus : null);
             return info;
@@ -1607,6 +1617,61 @@ public sealed partial class MainWindow : Window
         window.SelectTab(tab);
         window.SetSnapshot(session.LatestSnapshot);
         return window;
+    }
+
+    private async Task<string?> EditNativeRobotDescriptionAsync(
+        SimulationSession session, RobotDetailsWindow owner, OrganismSnapshot displayed)
+    {
+        var focus = new OrganismKey(displayed.Slot, displayed.Generation);
+        var worldGeneration = _worldLoadGeneration;
+
+        bool OwnsSelection()
+        {
+            if (!IsVisible || _loadingSimulation || _navigationInFlight
+                || _session != session || _worldLoadGeneration != worldGeneration || !owner.IsVisible
+                || _nativeDescriptionInspector != owner || SelectedRobotKey() != focus)
+                return false;
+
+            var snapshot = session.LatestSnapshot;
+            return snapshot.NativeCycle.HasValue
+                && snapshot.Organisms.Any(robot => robot.Slot == focus.Slot && robot.Generation == focus.Generation
+                    && robot.UniqueId == displayed.UniqueId && robot.SimulationId == displayed.SimulationId);
+        }
+
+        string description;
+        await _advanceGate.WaitAsync();
+        try
+        {
+            if (!OwnsSelection()) return null;
+            description = await session.ReadRobotTagAsync(focus);
+        }
+        finally { _advanceGate.Release(); }
+        if (!OwnsSelection()) return null;
+
+        var dialog = new LegacyValueWindow("Short description", "Enter short description for robot.",
+            description, "Up to 45 characters. Cancel clears the description.", useDefaultButtons: true);
+        var topmost = owner.Topmost;
+        var wasRunning = _runTimer.IsEnabled;
+        _runTimer.Stop();
+        owner.Topmost = false;
+        try
+        {
+            await dialog.ShowDialog(owner);
+            await _advanceGate.WaitAsync();
+            try
+            {
+                if (!OwnsSelection()) return null;
+                return await session.SetRobotTagAsync(focus, dialog.Accepted ? dialog.RawValue : string.Empty);
+            }
+            finally { _advanceGate.Release(); }
+        }
+        finally
+        {
+            owner.Topmost = topmost;
+            if (wasRunning && IsVisible && !_loadingSimulation && !_navigationInFlight
+                && _session == session && _worldLoadGeneration == worldGeneration)
+                _runTimer.Start();
+        }
     }
 
     private async Task<OrganismKey?> ReproduceFromNativeRobotInfoAsync(SimulationSession session, OrganismSnapshot displayed)
@@ -2981,6 +3046,7 @@ public sealed partial class MainWindow : Window
             _loadingSimulation = true;
             await _session.LoadAsync(save);
             _worldLoadGeneration++;
+            _nativeDescriptionInspector?.InvalidateShortDescription();
             _safeModeRecoveryWorld = isSafeModeRecovery;
             Viewport.SelectKey(_viewModel.SelectedKey);
             // A rejected load publishes no snapshot and must keep user-closed

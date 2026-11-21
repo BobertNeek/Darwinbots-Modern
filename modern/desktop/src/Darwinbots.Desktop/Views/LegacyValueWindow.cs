@@ -9,9 +9,10 @@ public sealed class LegacyValueWindow : Window
 {
     private readonly TextBox _value;
     public bool Accepted { get; private set; }
-    public string Value => _value.Text?.Trim() ?? string.Empty;
+    public string RawValue => _value.Text ?? string.Empty;
+    public string Value => RawValue.Trim();
 
-    public LegacyValueWindow(string title, string label, string initialValue, string hint)
+    public LegacyValueWindow(string title, string label, string initialValue, string hint, bool useDefaultButtons = false)
     {
         Title = $"Darwinbots — {title}";
         Width = 520;
@@ -28,8 +29,8 @@ public sealed class LegacyValueWindow : Window
         _value = new TextBox { Text = initialValue, FontFamily = new FontFamily("Bahnschrift"), FontSize = 15 };
         var body = new StackPanel { Margin = new Thickness(18), Spacing = 7, Children = { new TextBlock { Text = label, FontWeight = FontWeight.SemiBold }, _value, new TextBlock { Text = hint, Foreground = Brush.Parse("#66706B"), FontSize = 11, TextWrapping = TextWrapping.Wrap } } };
         Grid.SetRow(body, 1); root.Children.Add(body);
-        var cancel = new Button { Content = "CANCEL" }; cancel.Click += (_, _) => Close();
-        var apply = new Button { Content = "APPLY", Background = Brush.Parse("#416E35"), Foreground = Brushes.White, FontWeight = FontWeight.Bold }; apply.Click += (_, _) => { Accepted = true; Close(); };
+        var cancel = new Button { Content = "CANCEL", IsCancel = useDefaultButtons }; cancel.Click += (_, _) => Close();
+        var apply = new Button { Content = "APPLY", IsDefault = useDefaultButtons, Background = Brush.Parse("#416E35"), Foreground = Brushes.White, FontWeight = FontWeight.Bold }; apply.Click += (_, _) => { Accepted = true; Close(); };
         var actions = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Spacing = 8, Children = { cancel, apply } };
         var footer = new Border { Background = Brush.Parse("#E5E0D4"), BorderBrush = Brush.Parse("#C8C3B6"), BorderThickness = new Thickness(0, 1, 0, 0), Padding = new Thickness(12, 9), Child = actions };
         Grid.SetRow(footer, 2); root.Children.Add(footer);

@@ -153,6 +153,21 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task ReplaceDnaAsync(uint slot, uint generation, string dna, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.ReplaceDna(slot, generation, dna), cancellationToken);
 
+    public async Task<string> ReadRobotTagAsync(OrganismKey focus, CancellationToken cancellationToken = default)
+    {
+        string? description = null;
+        await Enqueue(engine => description = engine.ReadRobotTag(focus), cancellationToken,
+            publishSnapshot: false).ConfigureAwait(false);
+        return description ?? throw new InvalidDataException("Engine returned no robot description.");
+    }
+
+    public async Task<string> SetRobotTagAsync(OrganismKey focus, string tag, CancellationToken cancellationToken = default)
+    {
+        string? description = null;
+        await Enqueue(engine => description = engine.SetRobotTag(focus, tag), cancellationToken).ConfigureAwait(false);
+        return description ?? throw new InvalidDataException("Engine returned no robot description.");
+    }
+
     public async Task<string> ExportDnaAsync(uint slot, uint generation, CancellationToken cancellationToken = default)
     {
         string? result = null;
@@ -398,12 +413,13 @@ public sealed class SimulationSession : IAsyncDisposable
         return Enqueue(engine => engine.Load(save), cancellationToken);
     }
 
-    private Task Enqueue(Action<IEngineClient> action, CancellationToken cancellationToken, bool measureTicks = false)
+    private Task Enqueue(Action<IEngineClient> action, CancellationToken cancellationToken,
+        bool measureTicks = false, bool publishSnapshot = true)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         cancellationToken.ThrowIfCancellationRequested();
         var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var command = new SessionCommand(action, completion, cancellationToken, measureTicks);
+        var command = new SessionCommand(action, completion, cancellationToken, measureTicks, publishSnapshot);
         _commands.Add(command, cancellationToken);
         return completion.Task;
     }
@@ -428,6 +444,11 @@ public sealed class SimulationSession : IAsyncDisposable
             try
             {
                 command.Action(_engine);
+                if (!command.PublishSnapshot)
+                {
+                    command.Completion.TrySetResult();
+                    continue;
+                }
                 var snapshot = _engine.Snapshot();
                 var elapsed = _performanceClock.Elapsed.TotalSeconds;
                 var advanced = command.MeasureTicks && _lastPublishedTick is { } previous && snapshot.Tick >= previous
@@ -470,5 +491,6 @@ public sealed class SimulationSession : IAsyncDisposable
         Action<IEngineClient> Action,
         TaskCompletionSource Completion,
         CancellationToken CancellationToken,
-        bool MeasureTicks);
+        bool MeasureTicks,
+        bool PublishSnapshot);
 }
