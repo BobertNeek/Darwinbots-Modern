@@ -682,6 +682,55 @@ mod native_loop_tests {
     }
 
     #[test]
+    fn native_poison_can_overwrite_the_published_venom_countdown() {
+        for poison_location in [837, 838] {
+            let (mut world, owner, target) = feeding_world(100);
+            let shot = world
+                .projectiles
+                .spawn_native_packet(
+                    owner,
+                    [175.0, 200.0],
+                    [40.0, 0.0],
+                    4.0,
+                    4.0,
+                    -5,
+                    Some("owner.txt".into()),
+                    false,
+                    poison_location,
+                    123,
+                    0,
+                )
+                .unwrap();
+            assert_eq!(world.projectiles.toxin_impact_power(shot), 4.5);
+            {
+                let (first, second) = world.slots.split_at_mut(target.slot() as usize);
+                let donor = first[owner.slot() as usize].organism.as_mut().unwrap();
+                let recipient = second[0].organism.as_mut().unwrap();
+                donor.materials.venom = 4.5;
+                donor.program.memory.write(835, 600);
+                donor.program.memory.write(836, 456);
+                assert_eq!(
+                    apply_tie_venom(donor, recipient, 5, &mut world.native_random),
+                    Some("tie_resource_venom")
+                );
+            }
+
+            world.tick().unwrap();
+
+            let robot = world.slots.get(target).unwrap();
+            assert!(world.projectiles.impact_flash[shot as usize]);
+            assert_eq!(robot.program.memory.read(600), 456);
+            assert_eq!(robot.materials.paralyzed, 3);
+            assert_eq!(robot.materials.poisoned, 2);
+            assert_eq!(
+                robot.program.memory.read(837),
+                if poison_location == 837 { 123 } else { 3 }
+            );
+            assert_eq!(robot.program.memory.read(838), 2);
+        }
+    }
+
+    #[test]
     fn native_flash_cleanup_also_clears_dead_slots_and_continues_exactly_after_db3s() {
         for was_alive in [false, true] {
             let (mut world, owner, _) = feeding_world(100);

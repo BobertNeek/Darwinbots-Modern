@@ -7679,6 +7679,10 @@ impl Engine {
                 }
             }
             robot.materials.paralyzed = read_countdown(robot.effects.paralysis_countdown);
+            if native {
+                // A following poison write may target this cell.
+                robot.program.memory.write(837, robot.materials.paralyzed);
+            }
             if robot.effects.poisoning_active {
                 if robot.effects.poisoning_location != 0 {
                     robot.program.memory.write(
@@ -7698,7 +7702,9 @@ impl Engine {
                 }
             }
             robot.materials.poisoned = read_countdown(robot.effects.poisoning_countdown);
-            robot.program.memory.write(837, robot.materials.paralyzed);
+            if !native {
+                robot.program.memory.write(837, robot.materials.paralyzed);
+            }
             robot.program.memory.write(838, robot.materials.poisoned);
         }
     }

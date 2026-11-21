@@ -369,12 +369,15 @@ impl RobotMaterials {
                 MEM_CHLOROPLASTS as u16,
                 resource_readback(self.chloroplasts),
             ),
-            (MEM_PARALYZED as u16, self.paralyzed),
-            (MEM_POISONED as u16, self.poisoned),
         ]);
         if !native {
-            values.push((MEM_VENOM as u16, resource_readback(self.venom)));
+            values.extend([
+                (MEM_VENOM as u16, resource_readback(self.venom)),
+                (MEM_PARALYZED as u16, self.paralyzed),
+                (MEM_POISONED as u16, self.poisoned),
+            ]);
         }
+        // Native Robots.Poisons owns the countdown cells and their write order.
         runtime.publish(
             PhaseReadbacks::Materials(MaterialReadbacks { values }),
             memory,
