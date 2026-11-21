@@ -1939,7 +1939,9 @@ mod tests {
         config.vegetation.sun_threshold_mode = 0;
         let mut world = Engine::new_native(config).unwrap();
         assert_eq!(world.snapshot().native_sun_on, Some(true));
-        world.spawn(LegacyDna::parse("start stop").unwrap()).unwrap();
+        world
+            .spawn(LegacyDna::parse("start stop").unwrap())
+            .unwrap();
         world.tick().unwrap();
         assert!(!world.configuration().vegetation.daytime);
         assert_eq!(world.snapshot().native_sun_on, Some(true));
