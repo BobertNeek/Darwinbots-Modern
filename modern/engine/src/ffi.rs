@@ -98,6 +98,16 @@ enum EngineCommand {
     },
     ReadNativeGraphRecording,
     ReadNativeGraphSample,
+    FeedNativeGraphSample {
+        #[serde(default)]
+        selective: bool,
+        #[serde(default)]
+        generational: bool,
+        #[serde(default)]
+        slow: bool,
+        #[serde(default)]
+        due_only: bool,
+    },
     ReadNativeGraphLayout,
     UpdateNativeGraphLayout {
         #[serde(default)]
@@ -583,6 +593,12 @@ pub extern "C" fn db_engine_command_batch(
     })
 }
 
+fn rebuild_archive_command_candidate(committed: &Engine) -> Result<Engine, EngineError> {
+    let mut candidate = SaveFile::decode(&SaveFile::encode(committed)?)?;
+    candidate.native_restarted_this_cycle = committed.native_restarted_this_cycle;
+    Ok(candidate)
+}
+
 fn db_engine_command_batch_impl(
     engine: *mut Engine,
     command_data: *const u8,
@@ -660,6 +676,10 @@ fn db_engine_command_batch_impl(
                     | EngineCommand::ReadNativeRestartSources
                     | EngineCommand::ReadNativeGraphRecording
                     | EngineCommand::ReadNativeGraphSample
+                    | EngineCommand::FeedNativeGraphSample {
+                        selective: false,
+                        ..
+                    }
                     | EngineCommand::ReadNativeGraphLayout
                     | EngineCommand::HasUnresolvedNativeRepopulationSources
                     | EngineCommand::ExportSpeciesTemplateDna { .. }
@@ -699,6 +719,19 @@ fn db_engine_command_batch_impl(
                 EngineCommand::ReadNativeGraphSample => {
                     Ok(serde_json::json!(engine.read_native_graph_sample()))
                 }
+                EngineCommand::FeedNativeGraphSample {
+                    selective: false,
+                    generational,
+                    slow,
+                    due_only,
+                } => Ok(serde_json::json!(engine.feed_native_graph_sample(
+                    crate::GraphSamplingSettings {
+                        selective: false,
+                        generational: *generational,
+                        slow: *slow,
+                    },
+                    *due_only,
+                ))),
                 EngineCommand::ReadNativeGraphLayout => engine
                     .read_native_graph_layout()
                     .map(|state| serde_json::json!(state)),
@@ -741,11 +774,8 @@ fn db_engine_command_batch_impl(
     let committed_engine = engine;
     let mut candidate = match committed_engine.fork_cpu_command_candidate() {
         Ok(Some(candidate)) => candidate,
-        Ok(None) => match SaveFile::encode(committed_engine) {
-            Ok(bytes) => match SaveFile::decode(&bytes) {
-                Ok(candidate) => candidate,
-                Err(error) => return fail(DbStatus::EngineError, error.to_string()),
-            },
+        Ok(None) => match rebuild_archive_command_candidate(committed_engine) {
+            Ok(candidate) => candidate,
             Err(error) => return fail(DbStatus::EngineError, error.to_string()),
         },
         Err(error) => return fail(DbStatus::EngineError, error),
@@ -840,6 +870,19 @@ fn db_engine_command_batch_impl(
             EngineCommand::ReadNativeGraphSample => {
                 Ok(serde_json::json!(engine.read_native_graph_sample()))
             }
+            EngineCommand::FeedNativeGraphSample {
+                selective,
+                generational,
+                slow,
+                due_only,
+            } => Ok(serde_json::json!(engine.feed_native_graph_sample(
+                crate::GraphSamplingSettings {
+                    selective,
+                    generational,
+                    slow
+                },
+                due_only
+            ))),
             EngineCommand::ReadNativeGraphLayout => engine
                 .read_native_graph_layout()
                 .map(|state| serde_json::json!(state)),
@@ -2249,6 +2292,24 @@ mod tests {
     }
 
     #[test]
+    fn rebuilt_command_candidate_preserves_the_native_graph_restart_boundary() {
+        let mut config = EngineConfig::testing();
+        config.recording.sampling_interval = 1;
+        let mut committed = Engine::new_native(config).unwrap();
+        committed.tick().unwrap();
+        committed.native_restarted_this_cycle = true;
+        let settings = crate::GraphSamplingSettings::default();
+        let archive = SaveFile::encode(&committed).unwrap();
+
+        let mut loaded = SaveFile::decode(&archive).unwrap();
+        assert!(loaded.feed_native_graph_sample(settings, true).is_some());
+
+        let mut candidate = rebuild_archive_command_candidate(&committed).unwrap();
+        assert!(candidate.feed_native_graph_sample(settings, true).is_none());
+        assert_eq!(SaveFile::encode(&candidate).unwrap(), archive);
+    }
+
+    #[test]
     fn native_graph_recording_stream_keeps_all_due_post_cycle_samples_without_changing_history() {
         let mut config = EngineConfig::testing();
         config.recording.sampling_interval = 5;
@@ -2262,6 +2323,20 @@ mod tests {
         assert_eq!(status, DbStatus::Ok);
         let output: serde_json::Value = serde_json::from_slice(&output).unwrap();
         assert_eq!(output["results"][0]["native_cycle"], -1);
+        assert_eq!(SaveFile::encode(&world).unwrap(), original);
+
+        let (status, before_first_due) = classic_test_batch(
+            &mut world,
+            serde_json::json!([
+                {"type": "feed_native_graph_sample", "slow": true, "due_only": true},
+                {"type": "feed_native_graph_sample"},
+            ]),
+        );
+        assert_eq!(status, DbStatus::Ok);
+        let before_first_due: serde_json::Value =
+            serde_json::from_slice(&before_first_due).unwrap();
+        assert!(before_first_due["results"][0].is_null());
+        assert_eq!(before_first_due["results"][1], output["results"][0]);
         assert_eq!(SaveFile::encode(&world).unwrap(), original);
 
         let (status, output) = classic_test_batch(

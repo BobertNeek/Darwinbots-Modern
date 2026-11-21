@@ -2388,7 +2388,7 @@ pub struct Engine {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     native_cycle: Option<i32>,
     #[serde(skip)]
-    native_restarted_this_cycle: bool,
+    pub(crate) native_restarted_this_cycle: bool,
     /// Original mode1 UpdateCounters census and its one-cycle delayed display.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     native_population_census: Option<[usize; 2]>,
@@ -5535,13 +5535,7 @@ impl Engine {
             // cycle that requests a restart. Do not depend on publication cadence.
             if let Some(samples) = graph_samples.as_deref_mut()
                 && self.tick != previous_tick
-                && !self.native_restarted_this_cycle
-                && !self.ordinary_restart.pending
-                && self.native_cycle.is_some_and(|cycle| {
-                    u64::from(cycle.unsigned_abs())
-                        .is_multiple_of(self.config.recording.sampling_interval.max(1))
-                })
-                && let Some(sample) = self.read_native_graph_sample()
+                && let Some(sample) = self.feed_native_graph_sample(self.graph_sampling, true)
             {
                 samples.push(sample);
             }

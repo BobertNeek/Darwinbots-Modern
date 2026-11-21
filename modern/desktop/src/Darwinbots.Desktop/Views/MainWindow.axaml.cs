@@ -3058,22 +3058,26 @@ public sealed partial class MainWindow : Window
                 if (_lastAutomaticSaveTick is { } savedTick && before.Tick < savedTick)
                     _lastAutomaticSaveTick = null;
                 var interval = _liveEnvironment.Recording?.AutosaveInterval ?? 0;
+                var checkpointBoundary = CycleAutosavePolicy.LimitBatch(before.Tick, uint.MaxValue, _safemodeBackup,
+                    interval, before.LocalMode, before.NativeCycle);
                 // With restart enabled, let the host retain the completed cycle
                 // before another engine tick can consume the pending restart.
                 var observesOrdinaryRestart = before.OrdinaryRestartAvailable && before.OrdinaryRestartOnExtinction;
                 var batch = observesOrdinaryRestart || requiresOriginalSource
-                    ? 1u
-                    : CycleAutosavePolicy.LimitBatch(before.Tick, count, _safemodeBackup, interval, before.LocalMode, before.NativeCycle);
+                    ? 1u : Math.Min(count, checkpointBoundary);
                 var recordingGeneration = _graphRecording.Generation;
                 List<NativeGraphRecordingSample>? graphSamples = continuous && before.NativeCycle.HasValue
                     && _toolWindows.WantsNativeGraphSamples ? [] : null;
                 Action<IReadOnlyList<NativeGraphRecordingSample>>? recordGraphs =
                     graphSamples is null ? null : graphSamples.AddRange;
+                // Original UpdateSim saves before the outer loop feeds charts.
+                var deferGraphFeed = graphSamples is not null && batch == checkpointBoundary;
+                var tickBeforeBoundary = before.Tick;
                 if (requiresOriginalSource)
                 {
                     try
                     {
-                        await StepResolvingNativeRepopulationSourcesAsync(session, recordGraphs);
+                        await StepResolvingNativeRepopulationSourcesAsync(session, deferGraphFeed ? null : recordGraphs);
                     }
                     catch (MissingNativeRepopulationSourceException)
                     {
@@ -3082,7 +3086,16 @@ public sealed partial class MainWindow : Window
                     }
                 }
                 else if (recordGraphs is not null)
-                    await session.StepRecordingGraphsAsync(batch, recordGraphs, cancellationToken: cancellationToken);
+                {
+                    var streamCount = deferGraphFeed ? batch - 1 : batch;
+                    if (streamCount > 0)
+                        await session.StepRecordingGraphsAsync(streamCount, recordGraphs, cancellationToken: cancellationToken);
+                    if (deferGraphFeed)
+                    {
+                        tickBeforeBoundary = session.LatestSnapshot.Tick;
+                        await session.StepAsync(1, cancellationToken);
+                    }
+                }
                 else await session.StepAsync(batch, cancellationToken);
                 count -= batch;
                 var after = session.LatestSnapshot;
@@ -3091,6 +3104,10 @@ public sealed partial class MainWindow : Window
                 if (_lastAutomaticSaveTick != after.Tick
                     && CycleAutosavePolicy.IsDue(after.Tick, _safemodeBackup, interval, after.LocalMode, after.NativeCycle))
                     await SaveAutomaticCheckpointAsync();
+                if (deferGraphFeed && after.Tick != tickBeforeBoundary && _toolWindows.WantsNativeGraphSamples
+                    && await session.FeedNativeGraphSampleAsync(_toolWindows.GraphSampling, dueOnly: true,
+                        cancellationToken: cancellationToken) is { } boundarySample)
+                    graphSamples!.Add(boundarySample);
                 if (graphSamples is { Count: > 0 } && _session == session
                     && _graphRecording.Generation == recordingGeneration && !_windowClosed)
                     _toolWindows.PublishNativeGraphSamples(graphSamples, recordingGeneration);
@@ -3202,7 +3219,7 @@ public sealed partial class MainWindow : Window
             () =>
             {
                 var window = new GraphSuiteWindow(_session?.LatestSnapshot ?? EngineSnapshot.Empty, _graphRecording,
-                    () => _liveEnvironment.AutoSpeciation, consumeNativeSample: ReadCurrentGraphSampleAsync,
+                    () => _liveEnvironment.AutoSpeciation, consumeNativeSample: CaptureCurrentGraphSampleAsync,
                     keepUpdatingOnClose: _keepGraphsUpdatingOnClose);
                 window.SetNativeLayout(_nativeGraphLayout);
                 window.NativeLayoutEdited += PersistGraphLayout;
@@ -3232,7 +3249,8 @@ public sealed partial class MainWindow : Window
         suite.OpenEvolutionGraphs();
     }
 
-    private async Task ReadCurrentGraphSampleAsync(Action<NativeGraphRecordingSample?> consume)
+    private async Task CaptureCurrentGraphSampleAsync(GraphSamplingSettings? feed,
+        Action<NativeGraphRecordingSample?> consume)
     {
         if (_session is not { } session)
         {
@@ -3247,7 +3265,11 @@ public sealed partial class MainWindow : Window
             if (!_windowClosed && !_loadingSimulation && _session == session
                 && _graphRecording.Generation == recordingGeneration && session.LatestSnapshot.NativeCycle.HasValue)
             {
-                try { sample = await session.ReadNativeGraphSampleAsync(); }
+                try
+                {
+                    sample = feed is null ? await session.ReadNativeGraphSampleAsync()
+                        : await session.FeedNativeGraphSampleAsync(feed);
+                }
                 catch (Exception error)
                 {
                     if (!_windowClosed && _session == session && _graphRecording.Generation == recordingGeneration)

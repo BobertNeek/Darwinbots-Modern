@@ -107,12 +107,13 @@ public sealed class GraphContestRenderedTests
                 HistorySampleSnapshot History(int tick) =>
                     new((ulong)tick, 99_999, 0, 0, 0, 0, 0) { SpeciesGraphs = [Alga(99_999)] };
                 var probe = Sample(1, 1);
-                var reads = 0;
+                var samplesRequested = new List<GraphSamplingSettings?>();
                 var opening = EngineSnapshot.Empty with { Tick = 1, NativeCycle = 1, Population = 99_999, History = [History(1)] };
-                var suite = new GraphSuiteWindow(opening, run, readNativeSample: () =>
+                var suite = new GraphSuiteWindow(opening, run, consumeNativeSample: (settings, consume) =>
                 {
-                    reads++;
-                    return Task.FromResult<NativeGraphRecordingSample?>(probe);
+                    samplesRequested.Add(settings);
+                    consume(probe);
+                    return Task.CompletedTask;
                 });
                 try
                 {
@@ -122,7 +123,7 @@ public sealed class GraphContestRenderedTests
                         .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                     var graph = Assert.Single(suite.OwnedWindows.OfType<GraphSeriesWindow>());
                     await FlushGraphPresentationAsync();
-                    Assert.Equal(1, reads);
+                    Assert.Equal(new GraphSamplingSettings(), Assert.Single(samplesRequested));
                     var save = graph.FindControl<CheckBox>("SaveGraphData")!;
                     Assert.True(save.IsVisible);
                     var point = save.TranslatePoint(new Point(save.Bounds.Width / 2, save.Bounds.Height / 2), graph)!.Value;
@@ -140,14 +141,14 @@ public sealed class GraphContestRenderedTests
                     probe = Sample(999, 99_999);
                     graph.FindControl<Button>("ResetGraphButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                     await FlushGraphPresentationAsync();
-                    Assert.Equal(2, reads);
+                    Assert.Equal(new GraphSamplingSettings?[] { new(), null }, samplesRequested);
                     Assert.True(save.IsChecked);
                     suite.RecordNativeSamples(Enumerable.Range(1_000, 998).Select(tick => Sample(tick, tick)).ToArray(), run.Generation);
                     Assert.False(File.Exists(secondPath));
                     suite.RecordNativeSamples([Sample(1_998, 1_998)], run.Generation);
                     await WaitFor(() => File.Exists(secondPath), () => "The chart reset did not start a fresh native segment.");
                     Assert.Equal(Enumerable.Range(1_000, 999).Select(value => (double)value), Read(secondPath));
-                    Assert.Equal(2, reads);
+                    Assert.Equal(new GraphSamplingSettings?[] { new(), null }, samplesRequested);
                 }
                 finally { suite.Close(); }
 

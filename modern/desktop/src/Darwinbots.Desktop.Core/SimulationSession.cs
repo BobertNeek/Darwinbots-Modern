@@ -56,6 +56,15 @@ public sealed class SimulationSession : IAsyncDisposable
         return sample;
     }
 
+    public async Task<NativeGraphRecordingSample?> FeedNativeGraphSampleAsync(GraphSamplingSettings settings,
+        bool dueOnly = false, CancellationToken cancellationToken = default)
+    {
+        NativeGraphRecordingSample? sample = null;
+        await Enqueue(engine => sample = engine.FeedNativeGraphSample(settings, dueOnly), cancellationToken, publishSnapshot: false)
+            .ConfigureAwait(false);
+        return sample;
+    }
+
     public async Task<OrganismKey?> FindBestRobotAsync(bool energyWeighting, CancellationToken cancellationToken = default)
         => await FindBestRobotAsync(energyWeighting ? 100 : 0, cancellationToken).ConfigureAwait(false);
 
