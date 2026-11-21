@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using Avalonia.Controls;
 using Avalonia.Platform.Storage;
 using Darwinbots.Desktop.Core;
@@ -9,11 +10,19 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
     public static AvaloniaDesktopStorageService Instance { get; } = new();
 
     private const string AutosaveDirectoryVariable = "DARWINBOTS_AUTOSAVE_DIRECTORY";
+    private const string GraphClosePreferenceKey = "keepGraphsUpdatingOnClose";
+    private readonly string? _profileDirectory;
 
     public bool IsFirstRun => !File.Exists(FirstRunMarkerPath());
 
     private AvaloniaDesktopStorageService()
     {
+    }
+
+    public AvaloniaDesktopStorageService(string profileDirectory)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(profileDirectory);
+        _profileDirectory = Path.GetFullPath(profileDirectory);
     }
 
     public async Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner)
@@ -303,6 +312,50 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         await File.WriteAllTextAsync(FirstRunMarkerPath(), "completed");
     }
 
+    public bool? LoadGraphClosePreference()
+    {
+        var main = ReadGlobalProfile()["main"] as JsonObject;
+        if (main?[GraphClosePreferenceKey] is JsonValue preference && preference.TryGetValue<bool>(out var keepUpdating))
+            return keepUpdating;
+        var directory = main?["mainDirectory"] is JsonValue path && path.TryGetValue<string>(out var configured)
+            && !string.IsNullOrWhiteSpace(configured) ? configured : AppContext.BaseDirectory;
+        return SetupStorageService.ReadNativeGraphClosePreference(directory);
+    }
+
+    public async Task SaveGraphClosePreferenceAsync(bool? keepUpdating)
+    {
+        var profile = ReadGlobalProfile();
+        var main = profile["main"] as JsonObject;
+        if (main is null)
+        {
+            if (profile["main"] is not null) throw new InvalidDataException("Global settings main section must be an object.");
+            profile["main"] = main = new JsonObject();
+        }
+        if (keepUpdating is { } value) main[GraphClosePreferenceKey] = value;
+        else main.Remove(GraphClosePreferenceKey);
+
+        var path = GlobalSettingsPath();
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        var temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        try
+        {
+            await File.WriteAllTextAsync(temporary, profile.ToJsonString());
+            File.Move(temporary, path, overwrite: true);
+        }
+        finally { File.Delete(temporary); }
+    }
+
+    private JsonObject ReadGlobalProfile()
+    {
+        try
+        {
+            return JsonNode.Parse(File.ReadAllText(GlobalSettingsPath())) as JsonObject
+                ?? throw new InvalidDataException("Global settings profile must be an object.");
+        }
+        catch (FileNotFoundException) { return new JsonObject(); }
+        catch (DirectoryNotFoundException) { return new JsonObject(); }
+    }
+
     private static FilePickerOpenOptions SimulationOpenOptions(string title) => new()
     {
         Title = title,
@@ -355,4 +408,7 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
     private static string LastStartPath() => Path.Combine(AutosaveDirectory(), "last-start.json");
 
     private static string FirstRunMarkerPath() => Path.Combine(AutosaveDirectory(), "first-run.complete");
+
+    private string GlobalSettingsPath() =>
+        Path.Combine(_profileDirectory ?? GraphDirectory(string.Empty), "global-settings.json");
 }

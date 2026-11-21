@@ -8,6 +8,7 @@ public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWi
     private readonly List<GraphSeriesWindow> _graphWindows = [];
     private GraphSamplingSettings _lastSampling = new();
     private readonly LegacyGraphRecordingRun? _recording;
+    private readonly bool _keepUpdatingOnClose;
     private readonly Func<bool>? _autoFork;
     private readonly Func<Action<NativeGraphRecordingSample?>, Task>? _readNativeSample;
     private static readonly IReadOnlyDictionary<GraphMetric, double> EmptyMetrics = new Dictionary<GraphMetric, double>();
@@ -21,9 +22,11 @@ public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWi
 
     public GraphSuiteWindow(EngineSnapshot snapshot, LegacyGraphRecordingRun? recording = null, Func<bool>? autoFork = null,
         Func<Task<NativeGraphRecordingSample?>>? readNativeSample = null,
-        Func<Action<NativeGraphRecordingSample?>, Task>? consumeNativeSample = null)
+        Func<Action<NativeGraphRecordingSample?>, Task>? consumeNativeSample = null,
+        bool keepUpdatingOnClose = false)
     {
         _recording = recording;
+        _keepUpdatingOnClose = keepUpdatingOnClose;
         _autoFork = autoFork;
         _readNativeSample = consumeNativeSample ?? (readNativeSample is null ? null
             : async consume => consume(await readNativeSample()));
@@ -260,7 +263,7 @@ public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWi
         {
             ViewModel.ResetGraph(graph.Metric);
             ResetRecordingCharts([new(graph.Metric, recordingChart)], feedImmediately: false);
-        }, recordingChart is null ? null : () => UpdateGraphNow(graph.Metric, recordingChart));
+        }, recordingChart is null ? null : () => UpdateGraphNow(graph.Metric, recordingChart), _keepUpdatingOnClose);
         recordingChart?.Windows.Add(window);
         _graphWindows.Add(window);
         if (recordingChart is not null)

@@ -11,6 +11,7 @@ public sealed partial class GraphSeriesWindow : Window
     private readonly GraphSeriesViewModel _graph;
     private readonly IReadOnlyList<GraphSeriesViewModel> _series;
     private readonly LegacyGraphAutoSave? _recording;
+    private readonly bool _keepUpdatingOnClose;
     private readonly Action? _resetGraph;
     private readonly Action? _updateNow;
     private LegacyConfirmationWindow? _closePrompt;
@@ -26,11 +27,13 @@ public sealed partial class GraphSeriesWindow : Window
     }
 
     public GraphSeriesWindow(GraphSeriesViewModel graph, IReadOnlyList<GraphSeriesViewModel>? series = null,
-        LegacyGraphAutoSave? recording = null, Action? resetGraph = null, Action? updateNow = null)
+        LegacyGraphAutoSave? recording = null, Action? resetGraph = null, Action? updateNow = null,
+        bool keepUpdatingOnClose = false)
     {
         _graph = graph ?? throw new ArgumentNullException(nameof(graph));
         _series = series ?? new[] { graph };
         _recording = recording;
+        _keepUpdatingOnClose = keepUpdatingOnClose;
         _resetGraph = resetGraph;
         _updateNow = updateNow;
         InitializeComponent();
@@ -131,22 +134,31 @@ public sealed partial class GraphSeriesWindow : Window
             CancelClosePrompt();
             return;
         }
+        if (_keepUpdatingOnClose)
+        {
+            HideAndKeepUpdating();
+            return;
+        }
         var dialog = new LegacyConfirmationWindow("Graph", "Would you like to keep updating this graph?");
         _closePrompt = dialog;
         var keep = await dialog.ShowDialog<bool>(this);
         if (_closed || _closePrompt != dialog) return;
         _closePrompt = null;
-        _closePromptPending = false;
         if (keep)
-        {
-            _keepUpdating = true;
-            Hide();
-        }
+            HideAndKeepUpdating();
         else
         {
+            _closePromptPending = false;
             DiscardedByUser?.Invoke();
             Close();
         }
+    }
+
+    private void HideAndKeepUpdating()
+    {
+        _closePromptPending = false;
+        _keepUpdating = true;
+        Hide();
     }
 
     private void CancelClosePrompt()

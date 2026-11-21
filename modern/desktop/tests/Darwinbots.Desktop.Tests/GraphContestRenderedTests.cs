@@ -158,8 +158,10 @@ public sealed class GraphContestRenderedTests
         finally { root.Delete(recursive: true); }
     }
 
-    [Fact]
-    public async Task NativeChartUpdatesAtTheSameTickAndKeepsRecordingWhenHidden()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task NativeChartUpdatesAtTheSameTickAndKeepsRecordingWhenHidden(bool keepUpdatingOnClose)
     {
         var root = Directory.CreateTempSubdirectory("darwinbots-native-graph-gestures-");
         try
@@ -180,7 +182,9 @@ public sealed class GraphContestRenderedTests
                     Species = [new SpeciesSnapshot("Alga.txt", true, 0xff123456u, 0, false)],
                     Organisms = [new OrganismSnapshot(0, 0, [20f, 20f], [0f, 0f], 1_000, 10, Vegetable: true)],
                 };
-                var suite = new GraphSuiteWindow(initial, run, readNativeSample: () => Task.FromResult<NativeGraphRecordingSample?>(current));
+                var suite = new GraphSuiteWindow(initial, run,
+                    readNativeSample: () => Task.FromResult<NativeGraphRecordingSample?>(current),
+                    keepUpdatingOnClose: keepUpdatingOnClose);
                 try
                 {
                     suite.Show();
@@ -209,8 +213,14 @@ public sealed class GraphContestRenderedTests
 
                     suite.RecordNativeSamples(Enumerable.Range(4, 995).Select(value => Sample(value + 7, value)).ToArray(), run.Generation);
                     Assert.False(File.Exists(segmentPath));
-                    await RespondToWindowCloseAsync("YES");
-                    await WaitFor(() => !graph.IsVisible, () => "YES did not hide the graph.");
+                    if (keepUpdatingOnClose)
+                    {
+                        RequestWindowClose();
+                        await FlushGraphPresentationAsync();
+                        Assert.Empty(Prompts());
+                    }
+                    else await RespondToWindowCloseAsync("YES");
+                    await WaitFor(() => !graph.IsVisible, () => "Keeping the graph active did not hide its window.");
                     Assert.False(closed);
                     Assert.Same(series, Assert.Single(suite.ViewModel.RunningGraphs));
 
@@ -226,16 +236,21 @@ public sealed class GraphContestRenderedTests
                     Assert.Same(series, Assert.Single(suite.ViewModel.RunningGraphs));
                     Assert.True(graph.FindControl<CheckBox>("SaveGraphData")!.IsChecked);
 
-                    await RespondToWindowCloseAsync("NO");
-                    await WaitFor(() => closed, () => "NO did not close the graph.");
+                    if (keepUpdatingOnClose) graph.Close();
+                    else await RespondToWindowCloseAsync("NO");
+                    await WaitFor(() => closed, () => "The graph window did not close.");
                     Assert.Empty(suite.ViewModel.RunningGraphs);
+
+                    void RequestWindowClose() =>
+                        typeof(Window).GetMethod("HandleClosing", BindingFlags.Instance | BindingFlags.NonPublic)!
+                            .Invoke(graph, [WindowCloseReason.WindowClosing]);
+
+                    IEnumerable<LegacyConfirmationWindow> Prompts() =>
+                        graph.OwnedWindows.Concat(suite.OwnedWindows).OfType<LegacyConfirmationWindow>();
 
                     async Task RespondToWindowCloseAsync(string response)
                     {
-                        typeof(Window).GetMethod("HandleClosing", BindingFlags.Instance | BindingFlags.NonPublic)!
-                            .Invoke(graph, [WindowCloseReason.WindowClosing]);
-                        IEnumerable<LegacyConfirmationWindow> Prompts() =>
-                            graph.OwnedWindows.Concat(suite.OwnedWindows).OfType<LegacyConfirmationWindow>();
+                        RequestWindowClose();
                         await WaitFor(() => Prompts().Any(), () => "Closing the graph did not ask whether to keep updating.");
                         await FlushGraphPresentationAsync();
                         var prompt = Assert.Single(Prompts());

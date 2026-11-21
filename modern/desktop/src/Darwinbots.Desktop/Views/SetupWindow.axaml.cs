@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Text.Json;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -28,6 +29,7 @@ public sealed partial class SetupWindow : Window
 
     public ObservableCollection<SetupSpeciesRow> Species { get; } = [];
     public event Action<WorldSetupOptions>? WorldCreated;
+    internal bool InitialKeepGraphsUpdatingOnClose { get; }
 
     public SetupWindow() : this(AvaloniaDesktopStorageService.Instance)
     {
@@ -47,6 +49,22 @@ public sealed partial class SetupWindow : Window
         DataContext = this;
         _controlsReady = true;
         LoadMode(StartingMode.StarterBotsAndVegetables);
+        if (!_speciesEditor)
+        {
+            try
+            {
+                var keepUpdating = _storage.LoadGraphClosePreference();
+                _globalSettings = _globalSettings with
+                {
+                    Main = _globalSettings.Main with { KeepGraphsUpdatingOnClose = keepUpdating },
+                };
+                InitialKeepGraphsUpdatingOnClose = keepUpdating == true;
+            }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException or JsonException or InvalidDataException)
+            {
+                SetupStatus.Text = $"GRAPH PREFERENCE LOAD FAILED · {error.Message}";
+            }
+        }
         _workflow.Reset(ReadSetupOptions());
         OnboardingPanel.IsVisible = !_speciesEditor && _storage.IsFirstRun;
         if (speciesEditor is not null)
@@ -169,7 +187,18 @@ public sealed partial class SetupWindow : Window
     }
 
     private void PublishWorld(WorldSetupOptions options) =>
-        WorldCreated?.Invoke(options with { NativeGaussianSpare = _nativeGaussianSpare, NativeSunChange = _nativeSunChange, NativeProcessCaches = _nativeProcessCaches });
+        WorldCreated?.Invoke(options with
+        {
+            GlobalSettings = WithGraphClosePreference(options.GlobalSettings),
+            NativeGaussianSpare = _nativeGaussianSpare,
+            NativeSunChange = _nativeSunChange,
+            NativeProcessCaches = _nativeProcessCaches,
+        });
+
+    private GlobalSettings WithGraphClosePreference(GlobalSettings settings) => settings with
+    {
+        Main = settings.Main with { KeepGraphsUpdatingOnClose = _globalSettings.Main.KeepGraphsUpdatingOnClose },
+    };
 
     private WorldSetupOptions ReadSetupOptions()
     {
@@ -291,6 +320,9 @@ public sealed partial class SetupWindow : Window
             dialog.FindControl<TabControl>("Tabs")!.SelectedIndex = selectedTab;
             await dialog.ShowDialog(this);
             if (!dialog.Accepted) return;
+            var keepUpdating = dialog.Settings.Main.KeepGraphsUpdatingOnClose;
+            if (keepUpdating != _globalSettings.Main.KeepGraphsUpdatingOnClose)
+                await _storage.SaveGraphClosePreferenceAsync(keepUpdating);
             _globalSettings = dialog.Settings;
             _environment = _environment with
             {
@@ -377,7 +409,7 @@ public sealed partial class SetupWindow : Window
         AutomaticProgression.IsChecked = setup.AutomaticZerobotProgression;
         OrdinaryRestartToggle.IsChecked = setup.OrdinaryRestartOnExtinction;
         _environment = setup.ToEnvironmentUpdate();
-        _globalSettings = setup.GlobalSettings;
+        _globalSettings = _speciesEditor ? setup.GlobalSettings : WithGraphClosePreference(setup.GlobalSettings);
         _globalSettings = _globalSettings with
         {
             Main = _globalSettings.Main with { SafeMode = _environment.Recording?.SafeModeBackup ?? false },
@@ -403,7 +435,7 @@ public sealed partial class SetupWindow : Window
     private void NewWorld_Click(object? sender, RoutedEventArgs e)
     {
         _environment = EnvironmentUpdate.Default;
-        _globalSettings = new GlobalSettings();
+        _globalSettings = WithGraphClosePreference(new GlobalSettings());
         Backend.SelectedIndex = 0;
         WorldWidth.Value = 16_000;
         WorldHeight.Value = 12_000;
