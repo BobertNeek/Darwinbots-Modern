@@ -5828,6 +5828,28 @@ impl Engine {
         Ok(exported.to_source_with_runtime_metadata(generation, mutations, Some(tag)))
     }
 
+    pub(crate) fn rename_robot_founder(&mut self, id: OrganismId, name: String) -> bool {
+        if self.native_cycle.is_none()
+            || self.local_mode.has_active_restart_mode()
+            || name.trim().is_empty()
+            || matches!(name.as_str(), "." | "..")
+            || name.contains(['/', '\\'])
+            || name.chars().any(char::is_control)
+        {
+            return false;
+        }
+        let Ok(robot) = self.slots.get_mut(id) else {
+            return false;
+        };
+        if robot.identity.species_file == name {
+            return false;
+        }
+        // salvarob changes only the selected robot's original filename.
+        robot.identity.species_file = name;
+        self.publish_snapshot();
+        true
+    }
+
     /// Export the retained startup genome even if no living candidate remains.
     pub fn export_species_template_dna(&self, species: SpeciesId) -> Result<String, EngineError> {
         if self.species.get(species.0 as usize).is_none() {
@@ -17800,6 +17822,27 @@ mod native_publication55_tests {
         world
             .spawn_at(LegacyDna::parse("stop").unwrap(), position)
             .unwrap()
+    }
+
+    #[test]
+    fn save_dna_rename_is_ignored_during_a_restart_mode() {
+        let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+        let id = inert(&mut world, [500.0; 2]);
+        let before = world.organism(id).unwrap();
+        world.local_mode.status = LocalModeStatus::Running;
+        world.local_mode.evolution = Some(
+            crate::EvolutionState::new(
+                crate::EvolutionConfig::default(),
+                vec![crate::EvolutionGenome {
+                    dna: LegacyDna::parse("start 10 .up store stop").unwrap(),
+                    mutation_profile: StandardMutationProfile::default(),
+                }],
+            )
+            .unwrap(),
+        );
+        assert!(world.local_mode.has_active_restart_mode());
+        assert!(!world.rename_robot_founder(id, "Oracle,movement.txt".to_owned()));
+        assert_eq!(world.organism(id).unwrap(), before);
     }
 
     #[test]

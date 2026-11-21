@@ -480,7 +480,8 @@ impl Engine {
         engine.species.clear();
         engine.species_templates.clear();
         engine.subspecies_counters.clear();
-        for i in 0..tail.integer("species_count")? {
+        let saved_species_count = tail.integer("species_count")? as usize;
+        for i in 0..saved_species_count {
             let p = format!("species[{i}].");
             let b = |name: &str| tail.integer(&(p.clone() + name)).map(|v| v != 0);
             let restrictions = RestrictionColumn {
@@ -555,17 +556,22 @@ impl Engine {
             }
             let species_index = state.identity.species.0 as usize;
             if engine.species_templates[species_index].is_none() {
-                let p = format!("species[{species_index}].");
+                let (initial_energy, initial_population) = if species_index < saved_species_count {
+                    let p = format!("species[{species_index}].");
+                    (
+                        tail.integer(&(p.clone() + "start_energy"))?,
+                        nonnegative(tail.integer(&(p + "quantity"))?, "quantity")? as usize,
+                    )
+                } else {
+                    (3000, engine.species[species_index].minimum_population)
+                };
                 engine.species_templates[species_index] = Some(SpeciesTemplate {
                     retired: false,
                     comment: String::new(),
                     source_text: None,
                     dna: state.program.dna.clone(),
-                    initial_energy: tail.integer(&(p.clone() + "start_energy"))?,
-                    initial_population: nonnegative(
-                        tail.integer(&(p.clone() + "quantity"))?,
-                        "quantity",
-                    )? as usize,
+                    initial_energy,
+                    initial_population,
                 });
             }
         }
@@ -595,14 +601,49 @@ impl Engine {
         self.publish_snapshot();
     }
 
-    pub(super) fn native_robot(&self, r: &NativeRobotRecord) -> Result<RobotState, EngineError> {
+    pub(super) fn native_record_species_definition(
+        &self,
+        r: &NativeRobotRecord,
+        name: String,
+    ) -> Result<SpeciesDefinition, EngineError> {
+        Ok(SpeciesDefinition {
+            name,
+            vegetable: boolean(r, "vegetable")?,
+            color: color(r.long("color")?),
+            skin: skin(r.bytes("skin")?),
+            custom_skin: true,
+            minimum_population: 5,
+            reseed: false,
+            mutation_profile: Some(self.default_mutation_profile.clone()),
+            restrictions: Some(RestrictionColumn {
+                disable_vision: boolean(r, "cant_see")?,
+                disable_dna: boolean(r, "disable_dna")?,
+                disable_movement: boolean(r, "disable_movement")?,
+                disable_reproduction: boolean(r, "cant_reproduce")?,
+                virus_immune: boolean(r, "virus_immune")?,
+                disable_mutations: !boolean(r, "mutations_enabled")?,
+                ..RestrictionColumn::default()
+            }),
+            ..SpeciesDefinition::default()
+        })
+    }
+
+    pub(super) fn native_robot(
+        &mut self,
+        r: &NativeRobotRecord,
+    ) -> Result<RobotState, EngineError> {
         let name = text(r.bytes("species_name")?);
-        let species = self
-            .species
-            .iter()
-            .position(|s| s.name == name)
-            .or_else(|| (name == "Corpse" || boolean(r, "corpse").unwrap_or(false)).then_some(0))
-            .ok_or_else(|| invalid(format!("robot species {name} is missing")))?;
+        let species = if let Some(index) = self.species.iter().position(|s| s.name == name) {
+            index
+        } else if name == "Corpse" || boolean(r, "corpse")? {
+            0
+        } else {
+            // Save Robot's DNA can change FName between UpdateCounters and
+            // SaveSimulation. Restore an unlisted founder as native AddSpecie does.
+            self.next_lineage_id = self.next_lineage_id.max(self.species.len() as u64 + 1);
+            let definition = self.native_record_species_definition(r, name.clone())?;
+            self.register_species_unpublished(definition).0 as usize
+        };
         let position = [r.single("position_x")?, r.single("position_y")?];
         let mut memory = VmMemory::default();
         for (address, value) in r.bytes("memory")?.chunks_exact(2).enumerate().skip(1) {

@@ -1,6 +1,6 @@
 //! Native organism groups retain robot state and commit as one operation.
 
-use super::native_io::{color, skin, text};
+use super::native_io::text;
 use super::*;
 use crate::SaveFile;
 use crate::native_binary::{NativeRecordFile, NativeValue};
@@ -126,26 +126,7 @@ impl Engine {
             {
                 // AddSpecie uses default species mutation rates; the robot
                 // retains its own complete incoming mutation profile.
-                let species = SpeciesDefinition {
-                    name,
-                    vegetable: record.word("vegetable")? != 0,
-                    color: color(record.long("color")?),
-                    skin: skin(record.bytes("skin")?),
-                    custom_skin: true,
-                    minimum_population: 5,
-                    reseed: false,
-                    mutation_profile: Some(self.default_mutation_profile.clone()),
-                    restrictions: Some(RestrictionColumn {
-                        disable_vision: record.word("cant_see")? != 0,
-                        disable_dna: record.word("disable_dna")? != 0,
-                        disable_movement: record.word("disable_movement")? != 0,
-                        disable_reproduction: record.word("cant_reproduce")? != 0,
-                        virus_immune: record.word("virus_immune")? != 0,
-                        disable_mutations: record.word("mutations_enabled")? == 0,
-                        ..RestrictionColumn::default()
-                    }),
-                    ..SpeciesDefinition::default()
-                };
+                let species = self.native_record_species_definition(record, name)?;
                 if publish {
                     self.register_species(species);
                 } else {
