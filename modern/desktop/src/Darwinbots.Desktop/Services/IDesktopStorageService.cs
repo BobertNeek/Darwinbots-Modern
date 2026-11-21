@@ -36,4 +36,6 @@ public interface IDesktopStorageService
     Task MarkFirstRunCompleteAsync() => Task.CompletedTask;
     string? FindLastStart() => null;
     Task SaveLastStartAsync(ReadOnlyMemory<byte> settings) => Task.CompletedTask;
+    bool? LoadGraphClosePreference() => null;
+    Task SaveGraphClosePreferenceAsync(bool? keepUpdating) => Task.CompletedTask;
 }

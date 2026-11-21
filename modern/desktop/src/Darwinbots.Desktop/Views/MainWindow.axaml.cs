@@ -15,6 +15,7 @@ using Darwinbots.Desktop.ViewModels;
 using Avalonia.VisualTree;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Text.Json;
 
 namespace Darwinbots.Desktop.Views;
 
@@ -74,6 +75,7 @@ public sealed partial class MainWindow : Window
     private readonly IEngineClientFactory _engineFactory;
     private readonly IDesktopStorageService _storage;
     private readonly LegacyGraphRecordingRun _graphRecording;
+    private readonly bool _keepGraphsUpdatingOnClose;
     private NativeGraphLayoutState? _nativeGraphLayout;
     private bool _tickInFlight;
     private bool _navigationInFlight;
@@ -134,7 +136,16 @@ public sealed partial class MainWindow : Window
         IReadOnlyList<string> arguments,
         WorldSetupOptions setup,
         IEngineClientFactory engineFactory,
-        IDesktopStorageService storage)
+        IDesktopStorageService storage) : this(arguments, setup, engineFactory, storage, null)
+    {
+    }
+
+    internal MainWindow(
+        IReadOnlyList<string> arguments,
+        WorldSetupOptions setup,
+        IEngineClientFactory engineFactory,
+        IDesktopStorageService storage,
+        bool? keepGraphsUpdatingOnClose)
     {
         _startupArguments = arguments.ToArray();
         _setup = setup with { NativeGaussianSpare = null, NativeSunChange = null, NativeProcessCaches = null };
@@ -142,6 +153,8 @@ public sealed partial class MainWindow : Window
         _initialNativeSunChange = setup.NativeSunChange;
         _initialNativeProcessCaches = setup.NativeProcessCaches;
         _globalSettings = setup.GlobalSettings;
+        // The original reads GraphUp at process startup, before opening Setup.
+        _keepGraphsUpdatingOnClose = keepGraphsUpdatingOnClose ?? (setup.GlobalSettings.Main.KeepGraphsUpdatingOnClose == true);
         _safemodeBackup = setup.GlobalSettings.Main.SafeMode || setup.Recording.SafeModeBackup;
         _startupBots = new StartupDnaWorkflow(
             setup.WorldWidth,
@@ -1020,7 +1033,7 @@ public sealed partial class MainWindow : Window
                 var setupWindow = new SetupWindow(_storage, spare, sunChange, caches);
                 setupWindow.WorldCreated += options =>
                 {
-                    var replacement = new MainWindow(_startupArguments, options, _engineFactory, _storage);
+                    var replacement = new MainWindow(_startupArguments, options, _engineFactory, _storage, _keepGraphsUpdatingOnClose);
                     SetApplicationMainWindow(replacement);
                     replacement.Show();
                     setupWindow.Close();
@@ -1031,7 +1044,8 @@ public sealed partial class MainWindow : Window
             else
             {
                 var replacement = new MainWindow(_startupArguments,
-                    (editedSetup ?? CreateNextWorldSetup()) with { NativeGaussianSpare = spare, NativeSunChange = sunChange, NativeProcessCaches = caches }, _engineFactory, _storage);
+                    (editedSetup ?? CreateNextWorldSetup()) with { NativeGaussianSpare = spare, NativeSunChange = sunChange, NativeProcessCaches = caches },
+                    _engineFactory, _storage, _keepGraphsUpdatingOnClose);
                 SetApplicationMainWindow(replacement);
                 replacement.Show();
             }
@@ -1543,6 +1557,15 @@ public sealed partial class MainWindow : Window
         var dialog = new GlobalSettingsWindow(settings);
         await dialog.ShowDialog(this);
         if (!dialog.Accepted) return LegacyCommandResult.Cancel();
+        var keepUpdating = dialog.Settings.Main.KeepGraphsUpdatingOnClose;
+        if (keepUpdating != _globalSettings.Main.KeepGraphsUpdatingOnClose)
+        {
+            try { await _storage.SaveGraphClosePreferenceAsync(keepUpdating); }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException or JsonException or InvalidDataException)
+            {
+                return LegacyCommandResult.Failure($"GRAPH PREFERENCE SAVE FAILED · {error.Message}", error);
+            }
+        }
         _globalSettings = dialog.Settings;
         SynchronizeSafemodePreference(_globalSettings.Main.SafeMode);
         Viewport.FixedRatio = _globalSettings.Main.FixedRatio;
@@ -3179,7 +3202,8 @@ public sealed partial class MainWindow : Window
             () =>
             {
                 var window = new GraphSuiteWindow(_session?.LatestSnapshot ?? EngineSnapshot.Empty, _graphRecording,
-                    () => _liveEnvironment.AutoSpeciation, consumeNativeSample: ReadCurrentGraphSampleAsync);
+                    () => _liveEnvironment.AutoSpeciation, consumeNativeSample: ReadCurrentGraphSampleAsync,
+                    keepUpdatingOnClose: _keepGraphsUpdatingOnClose);
                 window.SetNativeLayout(_nativeGraphLayout);
                 window.NativeLayoutEdited += PersistGraphLayout;
                 window.SamplingChanged += ConfigureGraphSampling;
