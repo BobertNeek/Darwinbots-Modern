@@ -6633,6 +6633,7 @@ impl Engine {
                     record_activations: true,
                 },
                 &mut organism.materials.energy,
+                self.native_cycle.is_some(),
             )?;
             organism.program.rng_state = vm.random_state();
             if self.native_random.is_some() {
