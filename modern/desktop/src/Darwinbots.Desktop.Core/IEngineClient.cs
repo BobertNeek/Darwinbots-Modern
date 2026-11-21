@@ -74,6 +74,8 @@ public interface IEngineClient : IDisposable
     void ConfigureLocalMode(LocalModeConfig config);
     void StartLocalMode();
     void RestartLocalMode();
+    void ResumeRestartMode() => throw new NotSupportedException("This engine client cannot resume a restart mode.");
+    void ClearRestartModeHiding() { }
     void AdjudicateLocalRound(uint? winner, string reason);
     void SetOrganismAim(uint slot, uint generation, int aim);
     void UpdateEnvironment(EnvironmentUpdate update);
@@ -83,6 +85,7 @@ public interface IEngineClient : IDisposable
             throw new NotSupportedException("Native graph sampling is unavailable.");
     }
     byte[] Save();
+    byte[] SaveWithoutRestartMode() => throw new NotSupportedException("This engine client cannot save without restart mode state.");
     byte[] SaveLegacy() => throw new NotSupportedException("This engine client does not support legacy simulation export.");
     byte[] SaveWithoutMutations();
     void Load(byte[] save);

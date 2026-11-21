@@ -100,6 +100,8 @@ enum EngineCommand {
     },
     StartLocalMode,
     RestartLocalMode,
+    ResumeRestartMode,
+    ClearRestartModeHiding,
     AdjudicateLocalRound {
         winner: Option<crate::SpeciesId>,
         reason: String,
@@ -717,6 +719,13 @@ fn db_engine_command_batch_impl(
             EngineCommand::RestartLocalMode => {
                 engine.restart_local_mode().map(|_| serde_json::Value::Null)
             }
+            EngineCommand::ResumeRestartMode => engine
+                .resume_restart_mode()
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::ClearRestartModeHiding => {
+                engine.clear_restart_mode_hiding();
+                Ok(serde_json::Value::Null)
+            }
             EngineCommand::AdjudicateLocalRound { winner, reason } => engine
                 .adjudicate_local_round(winner, reason)
                 .map(|_| serde_json::Value::Null),
@@ -1270,6 +1279,15 @@ pub extern "C" fn db_engine_save(engine: *const Engine, out_buffer: *mut DbBuffe
         Ok(bytes) => write_buffer(out_buffer, bytes),
         Err(error) => fail(DbStatus::EngineError, error),
     }
+}
+
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
+#[unsafe(no_mangle)]
+pub extern "C" fn db_engine_save_without_restart_mode(
+    engine: *const Engine,
+    out_buffer: *mut DbBuffer,
+) -> DbStatus {
+    save_legacy(engine, out_buffer, SaveFile::encode_without_restart_mode)
 }
 
 #[allow(clippy::not_unsafe_ptr_arg_deref)]

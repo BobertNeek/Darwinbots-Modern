@@ -317,6 +317,12 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task RestartLocalModeAsync(CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.RestartLocalMode(), cancellationToken);
 
+    public Task ResumeRestartModeAsync(CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.ResumeRestartMode(), cancellationToken);
+
+    public Task ClearRestartModeHidingAsync(CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.ClearRestartModeHiding(), cancellationToken);
+
     public Task AdjudicateLocalRoundAsync(uint? winner, string reason, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(reason);
@@ -346,8 +352,19 @@ public sealed class SimulationSession : IAsyncDisposable
         return save ?? throw new InvalidDataException("Engine returned no save data.");
     }
 
+    public async Task<byte[]> SaveWithoutRestartModeAsync(CancellationToken cancellationToken = default)
+    {
+        byte[]? save = null;
+        await Enqueue(engine => save = engine.SaveWithoutRestartMode(), cancellationToken).ConfigureAwait(false);
+        return save ?? throw new InvalidDataException("Engine returned no save data.");
+    }
+
+    public Task<(DesktopSettings Settings, byte[] Simulation)> CaptureLastExitAsync(
+        WorldSetupOptions startup, CancellationToken cancellationToken = default) =>
+        CaptureLastExitAsync(startup, false, cancellationToken);
+
     public async Task<(DesktopSettings Settings, byte[] Simulation)> CaptureLastExitAsync(
-        WorldSetupOptions startup, CancellationToken cancellationToken = default)
+        WorldSetupOptions startup, bool stopRestartMode, CancellationToken cancellationToken = default)
     {
         (DesktopSettings, byte[])? captured = null;
         await Enqueue(engine =>
@@ -355,7 +372,7 @@ public sealed class SimulationSession : IAsyncDisposable
             var configuration = engine.ReadConfiguration()
                 ?? throw new InvalidOperationException("Live simulation settings are unavailable.");
             var settings = DesktopSettings.FromLiveWorld(startup, configuration, engine.Snapshot());
-            captured = (settings, engine.Save());
+            captured = (settings, stopRestartMode ? engine.SaveWithoutRestartMode() : engine.Save());
         }, cancellationToken).ConfigureAwait(false);
         return captured ?? throw new InvalidDataException("Engine returned no last-exit data.");
     }

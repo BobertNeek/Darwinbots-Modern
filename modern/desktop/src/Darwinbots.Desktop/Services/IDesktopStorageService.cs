@@ -29,6 +29,10 @@ public interface IDesktopStorageService
     bool SupportsLastExitSimulation => false;
     string? FindLastExitSimulation() => null;
     Task SaveLastExitSimulationAsync(ReadOnlyMemory<byte> save) => Task.CompletedTask;
+    string? FindRestartContinuation() => null;
+    Task SaveRestartContinuationAsync(ReadOnlyMemory<byte> save) =>
+        throw new NotSupportedException("This storage does not support restart mode continuation.");
+    void ClearRestartContinuation() { }
     bool SupportsLastExitSettings => false;
     bool HasLastExitSettings => false;
     DesktopSettings? LoadLastExitSettings() => null;

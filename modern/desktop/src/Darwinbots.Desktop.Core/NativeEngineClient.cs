@@ -774,6 +774,14 @@ public sealed partial class NativeEngineClient : IEngineClient
         new { version = 1, commands = new object[] { NativeRestartSeedCommand(), new { type = "restart_local_mode" } } },
         "restart local mode");
 
+    public void ResumeRestartMode() => ExecuteBatch(
+        new { version = 1, commands = new object[] { NativeRestartSeedCommand(), new { type = "resume_restart_mode" } } },
+        "resume restart mode");
+
+    public void ClearRestartModeHiding() => ExecuteBatch(
+        new { version = 1, commands = new[] { new { type = "clear_restart_mode_hiding" } } },
+        "clear restart mode hiding");
+
     public void AdjudicateLocalRound(uint? winner, string reason)
     {
         EnsureAlive();
@@ -920,6 +928,15 @@ public sealed partial class NativeEngineClient : IEngineClient
         EnsureAlive();
         var buffer = new NativeBuffer();
         ThrowIfFailed(NativeMethods.EngineSave(_engine, ref buffer), "save simulation");
+        try { return CopyBuffer(buffer); }
+        finally { NativeMethods.BufferFree(ref buffer); }
+    }
+
+    public byte[] SaveWithoutRestartMode()
+    {
+        EnsureAlive();
+        var buffer = new NativeBuffer();
+        ThrowIfFailed(NativeMethods.EngineSaveWithoutRestartMode(_engine, ref buffer), "save simulation without restart mode");
         try { return CopyBuffer(buffer); }
         finally { NativeMethods.BufferFree(ref buffer); }
     }
@@ -1116,6 +1133,9 @@ public sealed partial class NativeEngineClient : IEngineClient
 
         [LibraryImport(LibraryName, EntryPoint = "db_engine_save")]
         internal static partial DbStatus EngineSave(IntPtr engine, ref NativeBuffer buffer);
+
+        [LibraryImport(LibraryName, EntryPoint = "db_engine_save_without_restart_mode")]
+        internal static partial DbStatus EngineSaveWithoutRestartMode(IntPtr engine, ref NativeBuffer buffer);
 
         [LibraryImport(LibraryName, EntryPoint = "db_engine_save_legacy")]
         internal static partial DbStatus EngineSaveLegacy(IntPtr engine, ref NativeBuffer buffer);
