@@ -140,6 +140,40 @@ mod tests {
     }
 
     #[test]
+    fn native_eye_distance_matches_original_near_contact() {
+        let mut world = world();
+        // Darwinbots 2.48.32 cycle 330, absolute robots 11 and 154.
+        let observer = bot(
+            &mut world,
+            [f32::from_bits(0x457a_baec), f32::from_bits(0x4524_2bda)],
+            74.352_38,
+        );
+        let target = bot(
+            &mut world,
+            [f32::from_bits(0x4581_00da), f32::from_bits(0x452a_bcfa)],
+            79.186_82,
+        );
+        world
+            .slots
+            .get_mut(observer)
+            .unwrap()
+            .set_heading(f32::from_bits(0x408f_36de));
+        world
+            .slots
+            .get_mut(target)
+            .unwrap()
+            .set_heading(f32::from_bits(0x403d_2767));
+
+        sense(&mut world);
+        for eye in [0, 1] {
+            assert_eq!(world.memory_at(observer, MEM_EYE1 + eye).unwrap(), 11_746);
+        }
+        for eye in 5..=8 {
+            assert_eq!(world.memory_at(target, MEM_EYE1 + eye).unwrap(), 11_746);
+        }
+    }
+
+    #[test]
     fn equal_integer_eye_strength_uses_bucket_order_before_slot_order() {
         let mut world = world();
         let observer = bot(&mut world, [3990.0, 3999.0], 100.0);
