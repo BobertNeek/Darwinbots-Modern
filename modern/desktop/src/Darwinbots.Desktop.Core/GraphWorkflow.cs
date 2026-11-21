@@ -231,6 +231,16 @@ public sealed class GraphSuiteViewModel : INotifyPropertyChanged
 
     public string LegacyHeader(GraphMetric metric) => CustomMetric(metric)?.Expression ?? "normal";
 
+    public GraphSamplingSettings SamplingSettingsFor(GraphMetric metric) => metric switch
+    {
+        GraphMetric.SelectiveGeneticDistance => new(Selective: true),
+        GraphMetric.GenerationalDistance => new(Generational: true),
+        GraphMetric.SlowGeneticDistance => new(Slow: true),
+        _ => CustomMetric(metric) is { } custom
+            ? GraphExpressionEvaluator.SamplingSettingsFor(custom.Expression)
+            : new(),
+    };
+
     public IEnumerable<LegacyGraphPointValue> LegacyPoint(GraphMetric metric, GraphMetricSample sample)
     {
         var custom = CustomMetric(metric);
@@ -577,17 +587,43 @@ internal static class GraphExpressionEvaluator
     {
         try
         {
-            var tokens = expression.ToLowerInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            if (tokens.Any(token => NativeNames.ContainsKey(token) || token is "add" or "sub" or "mult" or "div" or "pow"))
-                return EvaluateNativeQuery(tokens, sample);
-            var parser = new Parser(expression, sample);
-            var value = parser.ParseExpression();
-            return parser.AtEnd ? value : 0;
+            return Evaluate(expression, metric => sample.Values.GetValueOrDefault(metric));
         }
         catch (FormatException)
         {
             return 0;
         }
+    }
+
+    public static GraphSamplingSettings SamplingSettingsFor(string expression)
+    {
+        bool selective = false, generational = false, slow = false;
+        try
+        {
+            Evaluate(expression, metric =>
+            {
+                selective |= metric == GraphMetric.SelectiveGeneticDistance;
+                generational |= metric == GraphMetric.GenerationalDistance;
+                slow |= metric == GraphMetric.SlowGeneticDistance;
+                return 0;
+            });
+        }
+        catch (FormatException)
+        {
+            return new();
+        }
+        return new(selective, generational, slow);
+    }
+
+    private static double Evaluate(string expression, Func<GraphMetric, double> readMetric)
+    {
+        var tokens = expression.ToLowerInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (tokens.Any(token => NativeNames.ContainsKey(token) || token is "add" or "sub" or "mult" or "div" or "pow"))
+            return EvaluateNativeQuery(tokens, readMetric);
+        var parser = new Parser(expression, readMetric);
+        var value = parser.ParseExpression();
+        if (!parser.AtEnd) throw new FormatException();
+        return value;
     }
 
     private static readonly IReadOnlyDictionary<string, GraphMetric> NativeNames = new Dictionary<string, GraphMetric>
@@ -600,7 +636,7 @@ internal static class GraphExpressionEvaluator
         ["simpgenetic"] = GraphMetric.SelectiveGeneticDistance,
     };
 
-    private static double EvaluateNativeQuery(string[] tokens, GraphMetricSample sample)
+    private static double EvaluateNativeQuery(string[] tokens, Func<GraphMetric, double> readMetric)
     {
         var stack = new List<double>();
         double Pop()
@@ -619,7 +655,7 @@ internal static class GraphExpressionEvaluator
         foreach (var token in tokens)
         {
             if (double.TryParse(token, NumberStyles.Float, CultureInfo.InvariantCulture, out var number)) Push(number);
-            else if (NativeNames.TryGetValue(token, out var metric)) Push(sample.Values.GetValueOrDefault(metric));
+            else if (NativeNames.TryGetValue(token, out var metric)) Push(readMetric(metric));
             else if (token is "add" or "sub" or "mult" or "div" or "pow")
             {
                 var right = Pop();
@@ -646,13 +682,13 @@ internal static class GraphExpressionEvaluator
     private sealed class Parser
     {
         private readonly string _text;
-        private readonly GraphMetricSample _sample;
+        private readonly Func<GraphMetric, double> _readMetric;
         private int _position;
 
-        public Parser(string text, GraphMetricSample sample)
+        public Parser(string text, Func<GraphMetric, double> readMetric)
         {
             _text = text;
-            _sample = sample;
+            _readMetric = readMetric;
         }
 
         public bool AtEnd
@@ -712,7 +748,7 @@ internal static class GraphExpressionEvaluator
             while (_position < _text.Length && (char.IsLetterOrDigit(_text[_position]) || _text[_position] == '_')) _position++;
             if (identifierStart == _position) throw new FormatException();
             var identifier = _text[identifierStart.._position].ToLowerInvariant();
-            return Resolve(identifier, _sample);
+            return _readMetric(Resolve(identifier));
         }
 
         private bool Match(char value)
@@ -727,28 +763,24 @@ internal static class GraphExpressionEvaluator
             while (_position < _text.Length && char.IsWhiteSpace(_text[_position])) _position++;
         }
 
-        private static double Resolve(string identifier, GraphMetricSample sample)
+        private static GraphMetric Resolve(string identifier) => identifier switch
         {
-            var metric = identifier switch
-            {
-                "population" => GraphMetric.Population,
-                "average_mutations" or "mutations" => GraphMetric.AverageMutations,
-                "average_mutations_dna_len" => GraphMetric.AverageMutationsPerDnaLength,
-                "average_age" or "age" => GraphMetric.AverageAge,
-                "average_descendents" or "descendents" => GraphMetric.AverageDescendents,
-                "average_energy" or "energy" => GraphMetric.AverageEnergy,
-                "average_dna_length" => GraphMetric.AverageDnaLength,
-                "average_dna_conditions" => GraphMetric.AverageDnaConditions,
-                "total_energy" => GraphMetric.TotalEnergy,
-                "dynamic_cost_stats" => GraphMetric.DynamicCostStats,
-                "species_diversity" => GraphMetric.SpeciesDiversity,
-                "average_chloroplasts" or "chloroplasts" => GraphMetric.AverageChloroplasts,
-                "selective_genetic_distance" => GraphMetric.SelectiveGeneticDistance,
-                "generational_distance" => GraphMetric.GenerationalDistance,
-                "slow_genetic_distance" => GraphMetric.SlowGeneticDistance,
-                _ => throw new FormatException(),
-            };
-            return sample.Values.GetValueOrDefault(metric);
-        }
+            "population" => GraphMetric.Population,
+            "average_mutations" or "mutations" => GraphMetric.AverageMutations,
+            "average_mutations_dna_len" => GraphMetric.AverageMutationsPerDnaLength,
+            "average_age" or "age" => GraphMetric.AverageAge,
+            "average_descendents" or "descendents" => GraphMetric.AverageDescendents,
+            "average_energy" or "energy" => GraphMetric.AverageEnergy,
+            "average_dna_length" => GraphMetric.AverageDnaLength,
+            "average_dna_conditions" => GraphMetric.AverageDnaConditions,
+            "total_energy" => GraphMetric.TotalEnergy,
+            "dynamic_cost_stats" => GraphMetric.DynamicCostStats,
+            "species_diversity" => GraphMetric.SpeciesDiversity,
+            "average_chloroplasts" or "chloroplasts" => GraphMetric.AverageChloroplasts,
+            "selective_genetic_distance" => GraphMetric.SelectiveGeneticDistance,
+            "generational_distance" => GraphMetric.GenerationalDistance,
+            "slow_genetic_distance" => GraphMetric.SlowGeneticDistance,
+            _ => throw new FormatException(),
+        };
     }
 }

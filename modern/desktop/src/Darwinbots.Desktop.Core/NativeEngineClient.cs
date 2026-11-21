@@ -127,6 +127,22 @@ public sealed partial class NativeEngineClient : IEngineClient
         return result.Deserialize<NativeGraphRecordingSample>(NativeRecordingJson);
     }
 
+    public NativeGraphRecordingSample? FeedNativeGraphSample(GraphSamplingSettings settings, bool dueOnly = false)
+    {
+        EnsureAlive();
+        var command = new
+        {
+            type = "feed_native_graph_sample",
+            selective = settings.Selective,
+            generational = settings.Generational,
+            slow = settings.Slow,
+            due_only = dueOnly,
+        };
+        var result = ExecuteBatchForResult(new { version = 1, commands = new[] { command } },
+            "feed original graphs").GetProperty("results")[0];
+        return result.Deserialize<NativeGraphRecordingSample>(NativeRecordingJson);
+    }
+
     private void Advance(uint count, bool requireNativeRepopulationSource, IReadOnlyList<ulong> cancelledLineages,
         Action<IReadOnlyList<NativeGraphRecordingSample>>? onGraphSamplesCommitted = null)
     {

@@ -6,6 +6,35 @@ namespace Darwinbots.Desktop.Core.Tests;
 public sealed class GraphAndContestTests
 {
     [Theory]
+    [InlineData(GraphMetric.Population, false, false, false)]
+    [InlineData(GraphMetric.SelectiveGeneticDistance, true, false, false)]
+    [InlineData(GraphMetric.GenerationalDistance, false, true, false)]
+    [InlineData(GraphMetric.SlowGeneticDistance, false, false, true)]
+    public void NamedGraphsRequestOnlyTheirOwnSampling(GraphMetric metric, bool selective, bool generational, bool slow)
+    {
+        var suite = new GraphSuiteViewModel();
+        Assert.Equal(new GraphSamplingSettings(selective, generational, slow), suite.SamplingSettingsFor(metric));
+    }
+
+    [Theory]
+    [InlineData("pop 2 mult", false, false, false)]
+    [InlineData("SIMPGENETIC 2 mult", true, false, false)]
+    [InlineData("MAXGD 1 add", false, true, false)]
+    [InlineData("SIMPGENETIC maxgd add", true, true, false)]
+    [InlineData("Selective_Genetic_Distance / (Generational_Distance + slow_genetic_distance)", true, true, true)]
+    [InlineData("not_simpgenetic 1 add", false, false, false)]
+    [InlineData("selective_genetic_distance_bad + 1", false, false, false)]
+    [InlineData("selective_genetic_distance +", false, false, false)]
+    public void CustomGraphsRequestOnlyMetricsUsedByTheirExpression(string expression, bool selective, bool generational, bool slow)
+    {
+        var suite = new GraphSuiteViewModel();
+        suite.ConfigureCustomMetric(2, "Custom sample", expression);
+        Assert.Equal(new GraphSamplingSettings(selective, generational, slow),
+            suite.SamplingSettingsFor(GraphMetric.CustomizableGraph2));
+        Assert.Equal(new GraphSamplingSettings(), suite.SamplingSettingsFor(GraphMetric.CustomizableGraph1));
+    }
+
+    [Theory]
     [InlineData("pop 2 mult avgmut add", 13)]
     [InlineData("pop 0 div", 0)]
     [InlineData("pop 100 sub", 0)]
