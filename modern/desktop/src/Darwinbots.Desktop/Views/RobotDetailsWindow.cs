@@ -4,6 +4,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using System.Globalization;
 using Darwinbots.Desktop.Core;
+using Microsoft.VisualBasic;
 
 namespace Darwinbots.Desktop.Views;
 
@@ -28,7 +29,8 @@ public sealed class RobotDetailsWindow : Window
     private readonly TextBlock _subtitle = new();
     private readonly TextBlock _facts = new();
     private readonly TextBlock _factsTab = new();
-    private readonly TextBox _dna = new();
+    private readonly TextBox _dna = new() { Name = "RobotDnaText" };
+    private readonly Button? _markDnaLocation;
     private readonly TextBox _memory = new();
     private readonly TextBox? _mutationDetails;
     private IReadOnlyList<string>? _mutationLog;
@@ -99,6 +101,17 @@ public sealed class RobotDetailsWindow : Window
         _dna.FontFamily = new FontFamily("Consolas");
         _dna.FontSize = 12;
         _dna.Text = dna;
+        if (native && session is not null)
+        {
+            _markDnaLocation = new Button
+            {
+                Name = "MarkRobotDnaLocation",
+                Content = "Mark a location",
+                Margin = new Thickness(0, 8, 0, 0),
+            };
+            _markDnaLocation.Click += async (_, _) => await MarkDnaLocationAsync();
+            DockPanel.SetDock(_markDnaLocation, Dock.Bottom);
+        }
 
         _memory.IsReadOnly = true;
         _memory.AcceptsReturn = true;
@@ -128,7 +141,7 @@ public sealed class RobotDetailsWindow : Window
             Content = new Border
             {
                 Padding = new Thickness(12),
-                Child = _dna,
+                Child = _markDnaLocation is { } marker ? new DockPanel { Children = { marker, _dna } } : _dna,
             },
         });
         _tabs.Items.Add(new TabItem
@@ -243,13 +256,38 @@ public sealed class RobotDetailsWindow : Window
         _ = RefreshDnaAsync();
     }
 
-    private async Task RefreshDnaAsync()
+    private async Task MarkDnaLocationAsync()
+    {
+        if (_focus is not { } focus || _markDnaLocation is not { IsEnabled: true }) return;
+        var version = _dnaReadVersion;
+        var dialog = new LegacyValueWindow("Mark a location", "DNA position", string.Empty,
+            "Enter a one-based DNA position. A blank entry clears the marker.", useDefaultButtons: true);
+        await dialog.ShowDialog(this);
+        if (IsVisible && _focus == focus && version == _dnaReadVersion)
+            await RefreshDnaAsync(dialog.Accepted ? ParseDnaMarkerPosition(dialog.RawValue) : null);
+    }
+
+    private static uint? ParseDnaMarkerPosition(string input)
+    {
+        const uint maximum = 32_000;
+        double value;
+        try { value = Conversion.Val(input); }
+        catch (OverflowException) { return maximum; }
+        catch (InvalidCastException) { return null; }
+
+        var position = (uint)Math.Round(Math.Min(Math.Abs(value), maximum), MidpointRounding.ToEven);
+        return position == 0 ? null : position;
+    }
+
+    private async Task RefreshDnaAsync(uint? markerPosition = null)
     {
         var version = ++_dnaReadVersion;
         if (_session is null || _focus is not { } focus) return;
         try
         {
-            var dna = await _session.ExportDnaAsync(focus.Slot, focus.Generation);
+            var dna = _session.LatestSnapshot.NativeCycle.HasValue
+                ? await _session.ReadRobotDnaAsync(focus, markerPosition)
+                : await _session.ExportDnaAsync(focus.Slot, focus.Generation);
             if (version == _dnaReadVersion && IsVisible)
             {
                 _dna.Text = dna;
@@ -283,7 +321,7 @@ public sealed class RobotDetailsWindow : Window
         });
     }
 
-    internal void SetFollowedSnapshot(EngineSnapshot snapshot, OrganismKey? consoleDnaFacts = null)
+    internal void SetFollowedSnapshot(EngineSnapshot snapshot, OrganismKey? consoleDnaFacts = null, bool refreshDna = false)
     {
         _followedTick = snapshot.Tick;
         _consoleDnaFacts = consoleDnaFacts;
@@ -294,7 +332,7 @@ public sealed class RobotDetailsWindow : Window
             _focus = focus;
             Title = focus is { } key ? $"Darwinbots — Robot Details {key.Slot}:{key.Generation}" : "Darwinbots — Robot Details";
         }
-        if (focusChanged || consoleDnaFacts.HasValue)
+        if (focusChanged || consoleDnaFacts.HasValue || refreshDna)
         {
             _dna.Text = consoleDnaFacts.HasValue && !focus.HasValue
                 ? "This Robot is dead.  No DNA available."
@@ -309,6 +347,11 @@ public sealed class RobotDetailsWindow : Window
     {
         _diagnostic.Update(snapshot, _focus);
         var selected = FindActor(_focus);
+        if (_markDnaLocation is not null)
+        {
+            _markDnaLocation.IsVisible = snapshot.NativeCycle.HasValue;
+            _markDnaLocation.IsEnabled = selected is not null;
+        }
         _mutationLog = selected?.MutationLog;
         RefreshMutationDetails();
         // Console showdna initially displays its actor's facts alongside the selected actor's DNA.

@@ -303,6 +303,17 @@ public sealed partial class NativeEngineClient : IEngineClient
             ?? throw new InvalidDataException("Native engine returned empty DNA.");
     }
 
+    public string ReadRobotDna(uint slot, uint generation, uint? markerPosition = null)
+    {
+        var result = ExecuteBatchForResult(new
+        {
+            version = 1,
+            commands = new[] { new { type = "read_robot_dna", slot, generation, marker_position = markerPosition } },
+        }, "read Robot Info DNA");
+        return result.GetProperty("results")[0].GetProperty("dna").GetString()
+            ?? throw new InvalidDataException("Native engine returned no Robot Info DNA.");
+    }
+
     public string ExportSpeciesTemplateDna(uint species)
     {
         var result = ExecuteBatchForResult(new
