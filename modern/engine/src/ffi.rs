@@ -158,6 +158,11 @@ enum EngineCommand {
         #[serde(default)]
         graphs: Vec<crate::world::native_graph_recording::NativeGraphRecordingRow>,
     },
+    ConfigureGeneActivationWatch {
+        watch_id: u64,
+        enabled: bool,
+        focus: Option<OrganismIdCommand>,
+    },
     UpdateCostSettings {
         costs: Option<crate::DnaCosts>,
         preset: Option<u8>,
@@ -755,6 +760,7 @@ fn rebuild_archive_command_candidate(committed: &Engine) -> Result<Engine, Engin
     candidate.native_restarted_this_cycle = committed.native_restarted_this_cycle;
     candidate.player_bot_input = committed.player_bot_input.clone();
     candidate.inherit_native_post_dna_memory_watch(committed);
+    candidate.inherit_gene_activation_watch(committed);
     Ok(candidate)
 }
 
@@ -847,6 +853,36 @@ fn db_engine_command_batch_impl(
                         .as_ref()
                         .map(|id| OrganismId::new(id.slot, id.generation)),
                     capture_memory.unwrap_or(true),
+                );
+                write_buffer(out_buffer, bytes)
+            }
+            Err(error) => fail(DbStatus::EngineError, error),
+        };
+    }
+    if let [
+        EngineCommand::ConfigureGeneActivationWatch {
+            watch_id,
+            enabled,
+            focus,
+        },
+    ] = batch.commands.as_slice()
+    {
+        // Changing the tool's focus alone must not rebuild the GPU world.
+        let response = serde_json::json!({
+            "version": ABI_VERSION,
+            "tick": engine.snapshot().tick,
+            "population": engine.population(),
+            "backend": format!("{:?}", engine.backend()),
+            "results": [null],
+        });
+        return match serde_json::to_vec(&response) {
+            Ok(bytes) => {
+                engine.configure_gene_activation_watch(
+                    *watch_id,
+                    *enabled,
+                    focus
+                        .as_ref()
+                        .map(|id| OrganismId::new(id.slot, id.generation)),
                 );
                 write_buffer(out_buffer, bytes)
             }
@@ -1033,6 +1069,18 @@ fn db_engine_command_batch_impl(
                     request_id,
                     focus.map(|id| OrganismId::new(id.slot, id.generation)),
                     capture_memory.unwrap_or(true),
+                );
+                Ok(serde_json::Value::Null)
+            }
+            EngineCommand::ConfigureGeneActivationWatch {
+                watch_id,
+                enabled,
+                focus,
+            } => {
+                engine.configure_gene_activation_watch(
+                    watch_id,
+                    enabled,
+                    focus.map(|id| OrganismId::new(id.slot, id.generation)),
                 );
                 Ok(serde_json::Value::Null)
             }

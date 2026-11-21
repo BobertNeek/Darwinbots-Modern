@@ -321,6 +321,7 @@ impl Engine {
 
                     // Keep the existing transaction path for configured file exchange.
                     let mut candidate = SaveFile::decode(&SaveFile::encode(self)?)?;
+                    candidate.inherit_gene_activation_watch(self);
                     candidate.inherit_native_post_dna_memory_watch(self);
                     let imported = candidate.apply_file_teleporter_payload(&bytes, position, true);
                     if imported.is_ok_and(|count| count > 0)

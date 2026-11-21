@@ -95,9 +95,11 @@ use file_teleporters::FileTransferPhase;
 mod native_post_dna_memory;
 #[path = "world/native_teleporters.rs"]
 mod native_teleporters;
+mod gene_activation_meter;
 mod species_settings;
 pub(crate) use native_post_dna_memory::NativePostDnaMemorySample;
 use native_post_dna_memory::NativePostDnaMemoryView;
+pub use gene_activation_meter::GeneActivationMeterSnapshot;
 
 #[path = "world/file_transfer_transaction.rs"]
 mod file_transfer_transaction;
@@ -586,6 +588,8 @@ pub struct Snapshot {
     pub native_sun_on: Option<bool>,
     #[serde(default)]
     pub native_f1_enabled: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gene_activation_meter: Option<GeneActivationMeterSnapshot>,
     #[serde(default = "default_true")]
     pub death_poffs_enabled: bool,
     #[serde(default)]
@@ -647,6 +651,7 @@ impl Default for Snapshot {
             native_cycle: None,
             native_sun_on: None,
             native_f1_enabled: false,
+            gene_activation_meter: None,
             death_poffs_enabled: true,
             ordinary_restart_available: false,
             ordinary_restart_on_extinction: false,
@@ -684,6 +689,7 @@ impl PartialEq for Snapshot {
             && self.native_cycle == other.native_cycle
             && self.native_sun_on == other.native_sun_on
             && self.native_f1_enabled == other.native_f1_enabled
+            && self.gene_activation_meter == other.gene_activation_meter
             && self.death_poffs_enabled == other.death_poffs_enabled
             && self.ordinary_restart_available == other.ordinary_restart_available
             && self.ordinary_restart_on_extinction == other.ordinary_restart_on_extinction
@@ -2049,6 +2055,7 @@ impl From<Db3sV2Snapshot> for Snapshot {
             native_cycle: None,
             native_sun_on: None,
             native_f1_enabled: false,
+            gene_activation_meter: None,
             death_poffs_enabled: true,
             ordinary_restart_available: false,
             ordinary_restart_on_extinction: false,
@@ -2957,6 +2964,7 @@ impl Engine {
                 native_cycle: None,
                 native_sun_on: None,
                 native_f1_enabled: false,
+                gene_activation_meter: None,
                 death_poffs_enabled: true,
                 ordinary_restart_available: true,
                 ordinary_restart_on_extinction: false,
@@ -7887,6 +7895,11 @@ impl Engine {
             organism.program.current_gene = u32::from(report.current_gene);
             organism.program.condition_count = report.conditions_evaluated;
             organism.program.activation_bitmap = report.activations.clone();
+            if let Some(meter) = self.snapshot.gene_activation_meter.as_mut()
+                && meter.focus == Some(OrganismId::new(slot_index as u32, generation))
+            {
+                meter.record(&report.activations);
+            }
             organism.program.activation_history.push(ActivationFrame {
                 tick: self.tick,
                 activations: report.activations,
@@ -14498,6 +14511,7 @@ impl Engine {
             native_cycle: self.native_cycle,
             native_sun_on: self.native_sun_on(),
             native_f1_enabled: self.native_f1_enabled(),
+            gene_activation_meter: self.snapshot.gene_activation_meter.take(),
             death_poffs_enabled: self.death_poffs_enabled,
             ordinary_restart_available: self.ordinary_restart_available(),
             ordinary_restart_on_extinction: self.ordinary_restart.enabled,
