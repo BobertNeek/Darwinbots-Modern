@@ -10,7 +10,9 @@ mod native_crossover;
 
 #[path = "dna/native_load.rs"]
 mod native_load;
-pub(crate) use native_load::{native_load_image, native_load_robot_dna};
+pub(crate) use native_load::{
+    native_load_image, native_load_robot_dna, native_robot_memory_address,
+};
 
 pub(crate) const LEGACY_OCCURRENCE_CENSUS_SLOTS: usize = 11;
 

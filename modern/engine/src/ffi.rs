@@ -283,6 +283,8 @@ enum EngineCommand {
     },
     ResolveMemoryAddress {
         name: String,
+        #[serde(default)]
+        focus: Option<OrganismId>,
     },
     ExecuteRobots,
     FindBestRobot {
@@ -576,6 +578,7 @@ fn db_engine_command_batch_impl(
                     | EngineCommand::ReadNativeSunChange
                     | EngineCommand::ReadNativeProcessCaches
                     | EngineCommand::ExportSpeciesTemplateDna { .. }
+                    | EngineCommand::ResolveMemoryAddress { .. }
                     | EngineCommand::FindBestRobot { .. }
             )
         })
@@ -606,6 +609,9 @@ fn db_engine_command_batch_impl(
                 EngineCommand::ExportSpeciesTemplateDna { species } => engine
                     .export_species_template_dna(crate::SpeciesId(*species))
                     .map(|dna| serde_json::json!({ "dna": dna })),
+                EngineCommand::ResolveMemoryAddress { name, focus } => engine
+                    .resolve_memory_address(name, *focus)
+                    .map(|address| serde_json::json!({ "address": address })),
                 EngineCommand::FindBestRobot {
                     energy_weighting,
                     weight_percent,
@@ -1080,19 +1086,9 @@ fn db_engine_command_batch_impl(
             } => engine
                 .set_organism_memory(OrganismId::new(slot, generation), address, value)
                 .map(|_| serde_json::Value::Null),
-            EngineCommand::ResolveMemoryAddress { name } => {
-                let address = name
-                    .parse::<u16>()
-                    .ok()
-                    .map(i32::from)
-                    .or_else(|| crate::sysvar_address(name.trim_start_matches('.')));
-                match address.filter(|address| (1..=1000).contains(address)) {
-                    Some(address) => Ok(serde_json::json!({ "address": address })),
-                    None => Err(crate::EngineError::Invariant(format!(
-                        "unknown memory address {name}"
-                    ))),
-                }
-            }
+            EngineCommand::ResolveMemoryAddress { name, focus } => engine
+                .resolve_memory_address(&name, focus)
+                .map(|address| serde_json::json!({ "address": address })),
             EngineCommand::ExecuteRobots => {
                 engine.execute_robots().map(|_| serde_json::Value::Null)
             }
@@ -1924,6 +1920,64 @@ mod tests {
             assert_eq!(db_buffer_free(&mut buffer), DbStatus::Ok);
         }
         (status, result)
+    }
+
+    #[test]
+    fn native_console_resolves_the_focused_robots_literal_private_memory_names() {
+        let mut engine = Engine::new_native(EngineConfig::testing()).unwrap();
+        let first = engine
+            .load_dna_source(concat!(
+                "def Counter 901\n",
+                "def Counter 902\n",
+                "def up 903\n",
+                "def Counter% 904\n",
+                "def nrg 0\n",
+                "start stop"
+            ))
+            .unwrap();
+        let first = engine.spawn_at(first, [400.0, 500.0]).unwrap();
+        let second = engine
+            .load_dna_source("def Counter 911\nstart stop")
+            .unwrap();
+        let second = engine.spawn_at(second, [600.0, 500.0]).unwrap();
+        let before = SaveFile::encode(&engine).unwrap();
+        let (status, response) = classic_test_batch(
+            &mut engine,
+            serde_json::json!([
+                {"type":"resolve_memory_address", "name":".Counter", "focus":first},
+                {"type":"resolve_memory_address", "name":".Counter", "focus":second},
+                {"type":"resolve_memory_address", "name":".up", "focus":first},
+                {"type":"resolve_memory_address", "name":".UP", "focus":first},
+                {"type":"resolve_memory_address", "name":".Counter%", "focus":first},
+                {"type":"resolve_memory_address", "name":"908%", "focus":first},
+                {"type":"resolve_memory_address", "name":"909suffix", "focus":first},
+                {"type":"resolve_memory_address", "name":".up"},
+            ]),
+        );
+        assert_eq!(status, DbStatus::Ok);
+        let response: serde_json::Value = serde_json::from_slice(&response).unwrap();
+        let addresses: Vec<_> = response["results"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|result| result["address"].as_i64().unwrap())
+            .collect();
+        assert_eq!(addresses, [902, 911, 903, 1, 904, 908, 909, 1]);
+
+        for name in [".COUNTER", ".Counter!", "Counter", "..up", ".nrg", "908$"] {
+            let (status, _) = classic_test_batch(
+                &mut engine,
+                serde_json::json!([{"type":"resolve_memory_address", "name": name, "focus":first}]),
+            );
+            assert_eq!(status, DbStatus::EngineError, "{name}");
+        }
+        let stale = OrganismId::new(first.slot(), first.generation() + 1);
+        let (status, _) = classic_test_batch(
+            &mut engine,
+            serde_json::json!([{"type":"resolve_memory_address", "name":".Counter", "focus":stale}]),
+        );
+        assert_eq!(status, DbStatus::EngineError);
+        assert_eq!(before, SaveFile::encode(&engine).unwrap());
     }
 
     fn populated_native_cpu_candidate_fixture() -> Engine {

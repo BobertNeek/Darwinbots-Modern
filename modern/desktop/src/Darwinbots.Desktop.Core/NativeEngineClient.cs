@@ -543,9 +543,19 @@ public sealed partial class NativeEngineClient : IEngineClient
         ExecuteBatch(new { version = 1, commands = new[] { new { type = "set_brownian_motion", value } } }, "set Brownian motion");
     }
 
-    public ushort ResolveMemoryAddress(string name)
+    public ushort ResolveMemoryAddress(string name) => ResolveMemoryAddress(name, focus: null);
+
+    public ushort ResolveMemoryAddress(string name, OrganismKey focus) =>
+        ResolveMemoryAddress(name, (OrganismKey?)focus);
+
+    private ushort ResolveMemoryAddress(string name, OrganismKey? focus)
     {
-        var result = ExecuteBatchForResult(new { version = 1, commands = new[] { new { type = "resolve_memory_address", name } } }, "resolve memory address");
+        var robot = focus is { } key ? new { slot = key.Slot, generation = key.Generation } : null;
+        var result = ExecuteBatchForResult(new
+        {
+            version = 1,
+            commands = new[] { new { type = "resolve_memory_address", name, focus = robot } },
+        }, "resolve memory address");
         return result.GetProperty("results")[0].GetProperty("address").GetUInt16();
     }
 
