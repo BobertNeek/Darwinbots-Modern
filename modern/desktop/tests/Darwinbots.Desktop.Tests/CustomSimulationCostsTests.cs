@@ -47,13 +47,13 @@ public sealed class CustomSimulationCostsTests
                         "PoisonCost", "SlimeCost", "ShellCost", "BodyUpkeep", "ChloroplastConstructionCost",
                         "VirusCost", "AgeBase", "AgeStart", "AgeLinear", "AgeLogarithmic", "DynamicMultiplier",
                         "DynamicTargetPopulation", "DynamicUpperRangePercent", "DynamicLowerRangePercent", "DynamicSensitivity",
-                        "DynamicLowerZeroThreshold", "DynamicLowerReinstateThreshold",
-                        "DynamicUpperReinstateThreshold"
+                        "DynamicLowerZeroThreshold", "DynamicLowerReinstateThreshold"
                     };
 
                     Assert.All(numericNames, name => Assert.NotNull(cancelDialog.FindControl<NumericUpDown>(name)));
                     Assert.NotNull(cancelDialog.FindControl<CheckBox>("DynamicAllRobots"));
                     Assert.NotNull(cancelDialog.FindControl<CheckBox>("DynamicAllowNegative"));
+                    Assert.False(cancelDialog.FindControl<CheckBox>("AgeLinearEnabled")!.IsChecked);
 
                     var cancelButton = cancelDialog.FindControl<Button>("CancelButton")!;
                     var applyButton = cancelDialog.FindControl<Button>("ApplyButton")!;
@@ -261,6 +261,8 @@ public sealed class CustomSimulationCostsTests
         {
             DnaCondition = 1e30,
             DnaCopy = 2.75,
+            AgeLinear = 0.25,
+            AgeLinearEnabled = false,
             DynamicUpperRangePercent = 27.5,
             DynamicLowerRangePercent = 11.25,
         };
@@ -318,6 +320,7 @@ public sealed class CustomSimulationCostsTests
                 var changes = configuredCosts with
                 {
                     DnaCopy = 3.5,
+                    AgeLinearEnabled = true,
                     DynamicUpperRangePercent = (double)changedUpper,
                     DynamicLowerRangePercent = (double)changedLower,
                 };
@@ -330,6 +333,7 @@ public sealed class CustomSimulationCostsTests
                 void StageChanges(CustomSimulationCostsWindow dialog)
                 {
                     dialog.FindControl<NumericUpDown>("DnaCopy")!.Value = (decimal)changes.DnaCopy;
+                    dialog.FindControl<CheckBox>("AgeLinearEnabled")!.IsChecked = true;
                     dialog.FindControl<NumericUpDown>("DynamicUpperRangePercent")!.Value = changedUpper;
                     dialog.FindControl<NumericUpDown>("DynamicLowerRangePercent")!.Value = changedLower;
                     Click(dialog, "ApplyButton");
@@ -343,6 +347,8 @@ public sealed class CustomSimulationCostsTests
                 var custom = await Edit(settings);
                 Assert.Equal(2.75m, custom.FindControl<NumericUpDown>("DnaCopy")!.Value);
                 Assert.Equal(100_000m, custom.FindControl<NumericUpDown>("DnaCondition")!.Value);
+                Assert.Equal(0.25m, custom.FindControl<NumericUpDown>("AgeLinear")!.Value);
+                Assert.False(custom.FindControl<CheckBox>("AgeLinearEnabled")!.IsChecked);
                 AssertRanges(custom, 27.5m, 11.25m);
                 custom.FindControl<NumericUpDown>("DnaCopy")!.Value = 5m;
                 custom.FindControl<NumericUpDown>("DynamicLowerRangePercent")!.Value = 50m;
@@ -370,6 +376,8 @@ public sealed class CustomSimulationCostsTests
                 using var reloaded = new NativeEngineClient(setup);
                 reloaded.Load(await session.SaveLegacyAsync());
                 var savedCosts = reloaded.ReadConfiguration().Costs;
+                Assert.True(savedCosts.AgeLinearEnabled);
+                Assert.Equal(0.25, savedCosts.AgeLinear);
                 Assert.Equal(changes.DynamicUpperRangePercent, savedCosts.DynamicUpperRangePercent);
                 Assert.Equal(changes.DynamicLowerRangePercent, savedCosts.DynamicLowerRangePercent);
 
@@ -377,6 +385,7 @@ public sealed class CustomSimulationCostsTests
                 custom = await Edit(settings);
                 Assert.Equal(3.5m, custom.FindControl<NumericUpDown>("DnaCopy")!.Value);
                 AssertRanges(custom, changedUpper, changedLower);
+                Assert.True(custom.FindControl<CheckBox>("AgeLinearEnabled")!.IsChecked);
                 Click(custom, "CancelButton");
                 await WaitForLive(() => !custom.IsVisible, () => "The cost editor did not close.");
                 settings.FindControl<ComboBox>("CostPreset")!.SelectedIndex = 1;
