@@ -14,7 +14,7 @@ public sealed partial class NativeEngineClient : IEngineClient
     private readonly TimeProvider _clock;
     private bool _sampleRestartClockPerCycle;
     private bool _sampleClassicSkinClock;
-    private static readonly JsonSerializerOptions DeathRecordJson = new()
+    private static readonly JsonSerializerOptions NativeRecordingJson = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
     };
@@ -121,8 +121,26 @@ public sealed partial class NativeEngineClient : IEngineClient
         Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted) =>
         Advance(count, weightPercent, onCommitted, requireNativeRepopulationSource: true, cancelledLineages);
 
+    public void TickRecordingGraphs(uint count, Action<IReadOnlyList<NativeGraphRecordingSample>> onCommitted,
+        bool requireNativeRepopulationSource, IReadOnlyList<ulong> cancelledLineages,
+        int weightPercent = 100, Action<IReadOnlyList<DeathRecordSnapshot>>? onDeathsCommitted = null)
+    {
+        ArgumentNullException.ThrowIfNull(onCommitted);
+        Advance(count, weightPercent, onDeathsCommitted, requireNativeRepopulationSource, cancelledLineages, onCommitted);
+    }
+
+    public NativeGraphRecordingSample? ReadNativeGraphSample()
+    {
+        EnsureAlive();
+        var result = ExecuteBatchForResult(
+            new { version = 1, commands = new[] { new { type = "read_native_graph_sample" } } },
+            "sample original graphs").GetProperty("results")[0];
+        return result.Deserialize<NativeGraphRecordingSample>(NativeRecordingJson);
+    }
+
     private void Advance(uint count, int weightPercent, Action<IReadOnlyList<DeathRecordSnapshot>>? onDeathsCommitted,
-        bool requireNativeRepopulationSource = false, IReadOnlyList<ulong>? cancelledLineages = null)
+        bool requireNativeRepopulationSource = false, IReadOnlyList<ulong>? cancelledLineages = null,
+        Action<IReadOnlyList<NativeGraphRecordingSample>>? onGraphSamplesCommitted = null)
     {
         EnsureAlive();
         if (count == 0) return;
@@ -133,7 +151,7 @@ public sealed partial class NativeEngineClient : IEngineClient
             // External league/staged restarts take a new Timer sample for each
             // original cycle. Each successful cycle commits before the next begins.
             for (uint cycle = 0; cycle < count; cycle++)
-                Advance(1, weightPercent, onDeathsCommitted, requireNativeRepopulationSource, cancelledLineages);
+                Advance(1, weightPercent, onDeathsCommitted, requireNativeRepopulationSource, cancelledLineages, onGraphSamplesCommitted);
             return;
         }
         var command = new
@@ -144,16 +162,21 @@ public sealed partial class NativeEngineClient : IEngineClient
             recording_weight = weightPercent,
             require_native_repopulation_source = requireNativeRepopulationSource,
             cancelled_native_repopulation_lineages = cancelledLineages ?? [],
+            capture_graph_samples = onGraphSamplesCommitted is not null,
         };
         var batch = new { version = 1, commands = new object[] { NativeRestartSeedCommand(), command } };
-        if (onDeathsCommitted is null)
+        if (onDeathsCommitted is null && onGraphSamplesCommitted is null)
         {
             ExecuteBatch(batch, "advance simulation");
             return;
         }
-        var result = ExecuteBatchForResult(batch, "advance simulation with death records");
-        var records = result.GetProperty("results")[1].GetProperty("death_records").Deserialize<DeathRecordSnapshot[]>(DeathRecordJson);
-        if (records is { Length: > 0 }) onDeathsCommitted(records);
+        var result = ExecuteBatchForResult(batch, "advance simulation with recording").GetProperty("results")[1];
+        if (onDeathsCommitted is not null &&
+            result.GetProperty("death_records").Deserialize<DeathRecordSnapshot[]>(NativeRecordingJson) is { Length: > 0 } records)
+            onDeathsCommitted(records);
+        if (onGraphSamplesCommitted is not null &&
+            result.GetProperty("graph_samples").Deserialize<NativeGraphRecordingSample[]>(NativeRecordingJson) is { Length: > 0 } samples)
+            onGraphSamplesCommitted(samples);
     }
 
     public GenomeRecordCapture CaptureLivingSnp(int weightPercent)
@@ -188,7 +211,7 @@ public sealed partial class NativeEngineClient : IEngineClient
     }
 
     private static DeathRecordSnapshot[] ReadGenomeRecords(JsonElement result) =>
-        result.GetProperty("results")[0].Deserialize<DeathRecordSnapshot[]>(DeathRecordJson)
+        result.GetProperty("results")[0].Deserialize<DeathRecordSnapshot[]>(NativeRecordingJson)
         ?? throw new InvalidDataException("The native genome record result is missing.");
 
     public DnaImportReport ImportDna(string dna, float[]? position = null)

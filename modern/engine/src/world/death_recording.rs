@@ -29,35 +29,32 @@ pub(super) struct DeathRecording {
 }
 
 impl Engine {
+    #[cfg(test)]
     pub(crate) fn tick_many_with_death_records(
         &mut self,
         count: u32,
         weight: u16,
     ) -> Result<Vec<DeathRecord>, EngineError> {
-        if !self.config.recording.dead_snapshot_enabled {
-            self.tick_many(count)?;
-            return Ok(Vec::new());
-        }
-        self.with_death_recording(
-            weight,
-            self.config.recording.exclude_repopulating_robots,
-            |engine| engine.tick_many(count),
-        )
+        self.tick_many_recording_deaths(count, None, None, weight)
     }
 
-    pub(crate) fn tick_requiring_native_repopulation_source_with_death_records(
+    pub(crate) fn tick_many_recording_deaths(
         &mut self,
-        cancelled_lineages: &[u64],
+        count: u32,
+        cancelled_lineages: Option<&[u64]>,
+        samples: Option<&mut Vec<super::native_graphs::NativeGraphRecordingSample>>,
         weight: u16,
     ) -> Result<Vec<DeathRecord>, EngineError> {
         if !self.config.recording.dead_snapshot_enabled {
-            self.tick_requiring_native_repopulation_source(cancelled_lineages)?;
+            self.tick_many_with_native_source_requirement(count, cancelled_lineages, samples)?;
             return Ok(Vec::new());
         }
         self.with_death_recording(
             weight,
             self.config.recording.exclude_repopulating_robots,
-            |engine| engine.tick_requiring_native_repopulation_source(cancelled_lineages),
+            |engine| {
+                engine.tick_many_with_native_source_requirement(count, cancelled_lineages, samples)
+            },
         )
     }
 

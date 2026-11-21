@@ -111,7 +111,7 @@ use death_recording::DeathRecording;
 pub(crate) mod native_graph_recording;
 
 #[path = "world/native_graphs.rs"]
-mod native_graphs;
+pub(crate) mod native_graphs;
 
 #[path = "world/native_dynamic_costs.rs"]
 mod native_dynamic_costs;
@@ -2385,6 +2385,7 @@ struct EngineCycleCheckpoint {
     dynamic_cost_state: DynamicCostRuntimeState,
     native_sim_guid: Option<i32>,
     native_cycle: Option<i32>,
+    native_restarted_this_cycle: bool,
     native_population_census: Option<[usize; 2]>,
     native_senses_census: Option<NativeSensesCensus>,
     native_loaded_census_stage: Option<native_reproduction::NativeLoadedCensusStage>,
@@ -2430,6 +2431,8 @@ pub struct Engine {
     native_sim_guid: Option<i32>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     native_cycle: Option<i32>,
+    #[serde(skip)]
+    native_restarted_this_cycle: bool,
     /// Original mode1 UpdateCounters census and its one-cycle delayed display.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     native_population_census: Option<[usize; 2]>,
@@ -2788,6 +2791,7 @@ impl Engine {
             native_f1: None,
             native_sim_guid: None,
             native_cycle: None,
+            native_restarted_this_cycle: false,
             native_population_census: None,
             native_senses_census: None,
             native_loaded_census_stage: None,
@@ -3013,6 +3017,7 @@ impl Engine {
             native_f1: None,
             native_sim_guid: None,
             native_cycle: None,
+            native_restarted_this_cycle: false,
             native_population_census: None,
             native_senses_census: None,
             native_loaded_census_stage: None,
@@ -5949,8 +5954,32 @@ impl Engine {
     }
 
     pub fn tick_many(&mut self, count: u32) -> Result<(), EngineError> {
+        self.tick_many_with_native_source_requirement(count, None, None)
+    }
+
+    pub(crate) fn tick_many_with_native_source_requirement(
+        &mut self,
+        count: u32,
+        cancelled_repopulation_lineages: Option<&[u64]>,
+        mut graph_samples: Option<&mut Vec<native_graphs::NativeGraphRecordingSample>>,
+    ) -> Result<(), EngineError> {
         for index in 0..count {
-            self.tick_transactional(index + 1 == count, false, None)?;
+            let previous_tick = self.tick;
+            self.tick_transactional(index + 1 == count, false, cancelled_repopulation_lineages)?;
+            // The native run loop feeds charts after UpdateSim and skips the
+            // cycle that requests a restart. Do not depend on publication cadence.
+            if let Some(samples) = graph_samples.as_deref_mut()
+                && self.tick != previous_tick
+                && !self.native_restarted_this_cycle
+                && !self.ordinary_restart.pending
+                && self.native_cycle.is_some_and(|cycle| {
+                    u64::from(cycle.unsigned_abs())
+                        .is_multiple_of(self.config.recording.sampling_interval.max(1))
+                })
+                && let Some(sample) = self.read_native_graph_sample()
+            {
+                samples.push(sample);
+            }
         }
         Ok(())
     }
@@ -6074,6 +6103,7 @@ impl Engine {
             native_buckets: self.native_buckets.clone(),
             native_sim_guid: self.native_sim_guid,
             native_cycle: self.native_cycle,
+            native_restarted_this_cycle: self.native_restarted_this_cycle,
             native_population_census: self.native_population_census,
             native_senses_census: self.native_senses_census.clone(),
             native_loaded_census_stage: self.native_loaded_census_stage,
@@ -6093,6 +6123,7 @@ impl Engine {
         self.native_buckets = checkpoint.native_buckets;
         self.native_sim_guid = checkpoint.native_sim_guid;
         self.native_cycle = checkpoint.native_cycle;
+        self.native_restarted_this_cycle = checkpoint.native_restarted_this_cycle;
         self.native_population_census = checkpoint.native_population_census;
         self.native_senses_census = checkpoint.native_senses_census;
         self.native_loaded_census_stage = checkpoint.native_loaded_census_stage;
@@ -6180,6 +6211,7 @@ impl Engine {
         trace.phase(CyclePhase::CycleIncrement);
         self.tick = next_tick;
         self.native_cycle = next_native_cycle;
+        self.native_restarted_this_cycle = false;
         trace.phase(CyclePhase::ModeLogic);
         let (staged_restart, staged_energy_before) = self.staged_evolution_before_cycle()?;
         if staged_restart {
@@ -6450,6 +6482,7 @@ impl Engine {
             native_f1: self.native_f1,
             native_sim_guid: self.native_sim_guid,
             native_cycle: self.native_cycle,
+            native_restarted_this_cycle: self.native_restarted_this_cycle,
             native_population_census: self.native_population_census,
             native_senses_census: self.native_senses_census.clone(),
             native_loaded_census_stage: self.native_loaded_census_stage,

@@ -22,6 +22,18 @@ public interface IEngineClient : IDisposable
     void TickRecordingDeaths(uint count, int weightPercent, IReadOnlyList<ulong> cancelledLineages,
         Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted) =>
         Tick(count, requireNativeRepopulationSource: true, cancelledLineages);
+
+    void TickRecordingGraphs(uint count, Action<IReadOnlyList<NativeGraphRecordingSample>> onCommitted,
+        bool requireNativeRepopulationSource, IReadOnlyList<ulong> cancelledLineages,
+        int weightPercent = 100, Action<IReadOnlyList<DeathRecordSnapshot>>? onDeathsCommitted = null)
+    {
+        if (onDeathsCommitted is null)
+            Tick(count, requireNativeRepopulationSource, cancelledLineages);
+        else if (requireNativeRepopulationSource)
+            TickRecordingDeaths(count, weightPercent, cancelledLineages, onDeathsCommitted);
+        else
+            TickRecordingDeaths(count, weightPercent, onDeathsCommitted);
+    }
     DnaImportReport ImportDna(string dna, float[]? position = null);
     int ImportOrganism(ReadOnlyMemory<byte> payload) => throw new NotSupportedException("This engine client does not support organism interchange.");
     DnaImportReport ImportSpecies(SpeciesImport species);

@@ -73,6 +73,9 @@ enum EngineCommand {
         capture_deaths: bool,
         #[serde(default)]
         recording_weight: Option<u16>,
+        #[serde(default)]
+        capture_graph_samples: bool,
+        #[serde(default)]
         require_native_repopulation_source: bool,
         #[serde(default)]
         cancelled_native_repopulation_lineages: Vec<u64>,
@@ -117,6 +120,7 @@ enum EngineCommand {
         settings: crate::GraphSamplingSettings,
     },
     ReadNativeGraphRecording,
+    ReadNativeGraphSample,
     UpdateNativeGraphRecording {
         run_stamp: Option<String>,
         #[serde(default)]
@@ -757,6 +761,7 @@ fn db_engine_command_batch_impl(
                     | EngineCommand::ReadRobotTagReport
                     | EngineCommand::ReadNativeRestartSources
                     | EngineCommand::ReadNativeGraphRecording
+                    | EngineCommand::ReadNativeGraphSample
                     | EngineCommand::HasUnresolvedNativeRepopulationSources
                     | EngineCommand::ExportSpeciesTemplateDna { .. }
                     | EngineCommand::FindBestRobot { .. }
@@ -797,6 +802,9 @@ fn db_engine_command_batch_impl(
                 EngineCommand::ReadNativeGraphRecording => engine
                     .read_native_graph_recording()
                     .map(|state| serde_json::json!(state)),
+                EngineCommand::ReadNativeGraphSample => {
+                    Ok(serde_json::json!(engine.read_native_graph_sample()))
+                }
                 EngineCommand::HasUnresolvedNativeRepopulationSources => engine
                     .has_unresolved_native_repopulation_sources()
                     .map(serde_json::Value::Bool),
@@ -912,31 +920,43 @@ fn db_engine_command_batch_impl(
                 count,
                 capture_deaths,
                 recording_weight,
+                capture_graph_samples,
                 require_native_repopulation_source,
                 cancelled_native_repopulation_lineages,
             } => {
                 if count > 1_000_000 {
                     return fail(DbStatus::InvalidCommand, "tick count exceeds batch limit");
                 }
-                if require_native_repopulation_source && capture_deaths {
+                let cancelled_lineages = require_native_repopulation_source
+                    .then_some(cancelled_native_repopulation_lineages.as_slice());
+                let mut samples = Vec::new();
+                let capture = capture_graph_samples.then_some(&mut samples);
+                if capture_deaths {
+                    engine.tick_many_recording_deaths(
+                        count, cancelled_lineages, capture, recording_weight.unwrap_or(100),
+                    ).map(|records| {
+                        if capture_graph_samples {
+                            serde_json::json!({"death_records": records, "graph_samples": samples})
+                        } else {
+                            serde_json::json!({"death_records": records})
+                        }
+                    })
+                } else if capture_graph_samples {
                     engine
-                        .tick_requiring_native_repopulation_source_with_death_records(
-                            &cancelled_native_repopulation_lineages,
-                            recording_weight.unwrap_or(100),
+                        .tick_many_with_native_source_requirement(
+                            count,
+                            cancelled_lineages,
+                            capture,
                         )
-                        .map(|records| serde_json::json!({ "death_records": records }))
-                } else if require_native_repopulation_source {
-                    engine
-                        .tick_requiring_native_repopulation_source(
-                            &cancelled_native_repopulation_lineages,
-                        )
-                        .map(|_| serde_json::Value::Null)
-                } else if capture_deaths {
-                    engine
-                        .tick_many_with_death_records(count, recording_weight.unwrap_or(100))
-                        .map(|records| serde_json::json!({ "death_records": records }))
+                        .map(|_| serde_json::json!({"graph_samples": samples}))
                 } else {
-                    engine.tick_many(count).map(|_| serde_json::Value::Null)
+                    let step = match cancelled_lineages {
+                        Some(lineages) => {
+                            engine.tick_requiring_native_repopulation_source(lineages)
+                        }
+                        None => engine.tick_many(count),
+                    };
+                    step.map(|_| serde_json::Value::Null)
                 }
             }
             EngineCommand::ConfigureLocalMode { config } => engine
@@ -949,6 +969,9 @@ fn db_engine_command_batch_impl(
             EngineCommand::ReadNativeGraphRecording => engine
                 .read_native_graph_recording()
                 .map(|state| serde_json::json!(state)),
+            EngineCommand::ReadNativeGraphSample => {
+                Ok(serde_json::json!(engine.read_native_graph_sample()))
+            }
             EngineCommand::UpdateNativeGraphRecording { run_stamp, graphs } => engine
                 .update_native_graph_recording(run_stamp, graphs)
                 .map(|_| serde_json::Value::Null),
@@ -2649,6 +2672,67 @@ mod tests {
     }
 
     #[test]
+    fn native_graph_recording_stream_keeps_all_due_post_cycle_samples_without_changing_history() {
+        let mut config = EngineConfig::testing();
+        config.recording.sampling_interval = 5;
+        let mut world = Engine::new_native(config).unwrap();
+        world
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [500.0, 500.0])
+            .unwrap();
+        let original = SaveFile::encode(&world).unwrap();
+        let read = serde_json::json!([{"type": "read_native_graph_sample"}]);
+        let (status, output) = classic_test_batch(&mut world, read.clone());
+        assert_eq!(status, DbStatus::Ok);
+        let output: serde_json::Value = serde_json::from_slice(&output).unwrap();
+        assert_eq!(output["results"][0]["native_cycle"], -1);
+        assert_eq!(SaveFile::encode(&world).unwrap(), original);
+
+        let (status, output) = classic_test_batch(
+            &mut world,
+            serde_json::json!([{
+                "type": "tick", "count": 11, "capture_graph_samples": true,
+            }]),
+        );
+        assert_eq!(status, DbStatus::Ok);
+        let output: serde_json::Value = serde_json::from_slice(&output).unwrap();
+        let result = &output["results"][0];
+        let graph_samples = result["graph_samples"].as_array().unwrap();
+        assert_eq!(
+            graph_samples
+                .iter()
+                .map(|sample| (
+                    sample["tick"].as_u64().unwrap(),
+                    sample["native_cycle"].as_i64().unwrap()
+                ))
+                .collect::<Vec<_>>(),
+            [(1, 0), (6, 5), (11, 10)],
+        );
+
+        let (status, current) = classic_test_batch(&mut world, read);
+        assert_eq!(status, DbStatus::Ok);
+        let current: serde_json::Value = serde_json::from_slice(&current).unwrap();
+        assert_eq!(graph_samples.last().unwrap(), &current["results"][0]);
+        // Cycle 5 ages the robot from five to six, crossing the 0.1 graph rounding threshold.
+        assert_eq!(
+            graph_samples[1]["species_graphs"][0]["values"]["average_age"].as_f64(),
+            Some(f64::from(0.1_f32)),
+        );
+
+        let mut reference = SaveFile::decode(&original).unwrap();
+        let (status, legacy) = classic_test_batch(
+            &mut reference,
+            serde_json::json!([{"type": "tick", "count": 11}]),
+        );
+        assert_eq!(status, DbStatus::Ok);
+        let legacy: serde_json::Value = serde_json::from_slice(&legacy).unwrap();
+        assert!(legacy["results"][0].is_null());
+        assert_eq!(
+            SaveFile::encode(&world).unwrap(),
+            SaveFile::encode(&reference).unwrap()
+        );
+    }
+
+    #[test]
     fn strict_repopulation_waits_for_the_selected_source_and_retries_atomically() {
         const SIM: &[u8] = include_bytes!("../tests/fixtures/db24832-original-user.sim");
         const ALGA: &str = "start 19 .up store stop";
@@ -2668,7 +2752,7 @@ mod tests {
         let mut world = Engine::from_native_sim(SIM).unwrap();
         let strict = serde_json::json!([{
             "type": "tick", "count": 1, "require_native_repopulation_source": true,
-            "capture_deaths": true, "recording_weight": 50
+            "capture_deaths": true, "recording_weight": 50, "capture_graph_samples": true
         }]);
         // Loading a stale path and running an ordinary cycle both succeed.
         assert!(has_unresolved(&mut world));
@@ -2772,6 +2856,7 @@ mod tests {
         assert_eq!(status, DbStatus::Ok);
         let response: serde_json::Value = serde_json::from_slice(&response).unwrap();
         assert!(response["results"][0]["death_records"].is_array());
+        assert!(response["results"][0]["graph_samples"].is_array());
         assert_eq!(world.snapshot().native_cycle, Some(283));
         assert!(world.snapshot().stats.reseeds > reseeds);
         let expected = world.load_dna_source(ALGA).unwrap();

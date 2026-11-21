@@ -86,6 +86,28 @@ public sealed class SimulationSession : IAsyncDisposable
                 engine.TickRecordingDeaths(1, weightPercent, cancelledLineages, onCommitted);
         }, cancellationToken, measureTicks: true);
 
+    public Task StepRecordingGraphsAsync(uint count, Action<IReadOnlyList<NativeGraphRecordingSample>> onCommitted,
+        bool requireNativeRepopulationSource = false, IReadOnlyList<ulong>? cancelledLineages = null,
+        CancellationToken cancellationToken = default, int weightPercent = 100,
+        Action<IReadOnlyList<DeathRecordSnapshot>>? onDeathsCommitted = null)
+    {
+        ArgumentNullException.ThrowIfNull(onCommitted);
+        var cancellations = cancelledLineages?.ToArray() ?? [];
+        return Enqueue(engine =>
+        {
+            ApplyPlayerBotPointer(engine);
+            engine.TickRecordingGraphs(count, onCommitted, requireNativeRepopulationSource, cancellations, weightPercent, onDeathsCommitted);
+        }, cancellationToken, measureTicks: true);
+    }
+
+    public async Task<NativeGraphRecordingSample?> ReadNativeGraphSampleAsync(CancellationToken cancellationToken = default)
+    {
+        NativeGraphRecordingSample? sample = null;
+        await Enqueue(engine => sample = engine.ReadNativeGraphSample(), cancellationToken, publishSnapshot: false)
+            .ConfigureAwait(false);
+        return sample;
+    }
+
     public async Task<OrganismKey?> FindBestRobotAsync(bool energyWeighting, CancellationToken cancellationToken = default)
         => await FindBestRobotAsync(energyWeighting ? 100 : 0, cancellationToken).ConfigureAwait(false);
 
