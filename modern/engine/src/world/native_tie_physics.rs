@@ -1,5 +1,6 @@
 //! Physics.TieHooke/TieTorque are endpoint visits, not a simultaneous pair force.
 use super::*;
+use crate::physics::native_scalar;
 use crate::tie::{HARD_TIE_B, HARD_TIE_K};
 
 impl Engine {
@@ -87,7 +88,8 @@ impl Engine {
             let mut spring = [0.0; 2];
             let displacement = end.rest_length - distance;
             if distance != 0.0 && displacement.abs() > TIE_DEADBAND {
-                let unit = delta.map(|value| -value / distance);
+                // TieHooke stores 1 / Length as a Single before VectorScalar.
+                let unit = native_scalar(delta.map(|value| -value), 1.0 / distance);
                 let relative = std::array::from_fn::<_, 2, _>(|axis| {
                     robot.kinematics.velocity[axis] - target.kinematics.velocity[axis]
                 });
@@ -319,6 +321,40 @@ mod tests {
                 .independent_impulse,
             [-9.0, 0.0]
         );
+    }
+
+    #[test]
+    fn native_tie_spring_rounds_the_reciprocal_before_scaling() {
+        let mut world = Engine::new_native(EngineConfig {
+            world_width: 16_000.0,
+            world_height: 8_000.0,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let dna = LegacyDna::parse("start stop").unwrap();
+        // Reconstructed post-contact input to robot 205's spring visit in
+        // original Darwinbots 2.48.32 cycle 292.
+        let actor = world
+            .spawn_at(dna.clone(), [0x464e_64f3, 0x453b_dcad].map(f32::from_bits))
+            .unwrap();
+        let peer = world
+            .spawn_at(dna, [0x4649_6c41, 0x4564_87c9].map(f32::from_bits))
+            .unwrap();
+        world.slots.get_mut(actor).unwrap().kinematics.velocity =
+            [0x3e2a_4c1a, 0xba54_6e78].map(f32::from_bits);
+        world.slots.get_mut(peer).unwrap().kinematics.velocity =
+            [0x3e04_8414, 0x3d89_4219].map(f32::from_bits);
+        world.ties.push(TieState::new(peer, actor, 454.0, 1, 1));
+
+        world.native_tie_forces(actor);
+
+        let force = world
+            .slots
+            .get(actor)
+            .unwrap()
+            .kinematics
+            .independent_impulse;
+        assert_eq!(force.map(f32::to_bits), [0xbf8c_d55b, 0x4010_0231]);
     }
 
     #[test]
