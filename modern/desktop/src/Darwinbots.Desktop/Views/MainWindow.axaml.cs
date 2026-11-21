@@ -987,12 +987,14 @@ public sealed partial class MainWindow : Window
 
     private async Task<LegacyCommandResult> KillSelectedOrganismAsync()
     {
-        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
         var group = SelectedOrganismGroup();
         if (group.Count == 0) return LegacyCommandResult.Failure("SELECT A ROBOT FIRST");
         OrganismKey[] keys = [.. group.Select(value => new OrganismKey(value.Slot, value.Generation))];
-        await _session.RemoveManyAsync(keys, suppressDeathPoffs: true);
-        _viewModel.ClearSelection();
+        await session.RemoveManyAsync(keys, suppressDeathPoffs: true);
+        // Native Robot Info observes the lost selection when the committed snapshot is presented.
+        if (!session.LatestSnapshot.NativeCycle.HasValue)
+            _viewModel.ClearSelection();
         Viewport.SelectSlot(null);
         return LegacyCommandResult.Success($"ORGANISM KILLED · {keys.Length:N0} BOT(S)");
     }
@@ -2026,7 +2028,18 @@ public sealed partial class MainWindow : Window
                 {
                     _playerBotEnabled = snapshot.PlayerBot.Enabled;
                     _playerBotBindings = snapshot.PlayerBot.Bindings;
+                    var replacedByRestart = _viewModel.LocalMode.RestartCount != snapshot.LocalMode.RestartCount
+                        || _viewModel.LocalMode.CurrentRound != snapshot.LocalMode.CurrentRound;
+                    var previousInfoActor = _nativeRobotInfoWindow is { IsVisible: true }
+                        ? _viewModel.SelectedOrganism : null;
                     _viewModel.Update(snapshot, _runtimeClock.Elapsed, _activeCostMultiplier);
+                    if (_nativeRobotInfoWindow is { } info)
+                    {
+                        if (replacedByRestart || !snapshot.NativeCycle.HasValue)
+                            info.ClearNativeMemoryDeath();
+                        else if (!loading && previousInfoActor is { } removed && _viewModel.SelectedKey is null)
+                            info.ShowNativeMemoryDeath(new(removed.Slot, removed.Generation));
+                    }
                     SynchronizeDeathPoffPolicy(snapshot.DeathPoffsEnabled);
                     if (snapshot.LocalMode.Evolution is { Phase: "complete" }) {
                         _runTimer.Stop();
@@ -2956,6 +2969,7 @@ public sealed partial class MainWindow : Window
             if (_session is null) return;
             _loadingSimulation = true;
             await _session.LoadAsync(save);
+            _nativeRobotInfoWindow?.ClearNativeMemoryDeath();
             _safeModeRecoveryWorld = isSafeModeRecovery;
             Viewport.SelectKey(_viewModel.SelectedKey);
             // A rejected load publishes no snapshot and must keep user-closed

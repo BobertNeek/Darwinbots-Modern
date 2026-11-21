@@ -1,6 +1,7 @@
 using System.Reflection;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Threading;
 using Darwinbots.Desktop.Controls;
 using Darwinbots.Desktop.Core;
 using Darwinbots.Desktop.Core.LegacyMenus;
@@ -13,6 +14,118 @@ namespace Darwinbots.Desktop.Tests;
 
 public sealed class NativeRobotFileIntegrationTests
 {
+    [Fact]
+    public async Task NativeRobotInfoMemoryReportsRemovalAndClearsOnLoad()
+    {
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var setup = new WorldSetupOptions
+            {
+                Backend = "Cpu",
+                MutationSettings = MutationSettingsUpdate.Default with { Enabled = false },
+            };
+            var engine = new NativeEngineClient(setup);
+            engine.ImportDna("start stop", [500f, 500f]);
+            engine.ImportDna("start stop", [900f, 500f]);
+            var window = new MainWindow([], setup, new FixedFactory(engine), new AuditStorageService());
+            try
+            {
+                window.Show();
+                var model = Field<MainWindowViewModel>(window, "_viewModel");
+                await WaitFor(() => model.Population == 2);
+                var session = Field<SimulationSession>(window, "_session");
+                var actors = session.LatestSnapshot.Organisms
+                    .Select(actor => new OrganismKey(actor.Slot, actor.Generation)).ToArray();
+                var first = actors[0];
+                var second = actors[1];
+                await session.SetOrganismMemoryAsync(first.Slot, first.Generation, 1000, -713);
+                await session.SetOrganismMemoryAsync(second.Slot, second.Generation, 1000, 813);
+
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                var show = menu.FindCommandItem(LegacyCommandId.RobotShowInfo)!;
+                var refreshMenus = typeof(MainWindow).GetMethod("RefreshLegacyMenuStates",
+                    BindingFlags.Instance | BindingFlags.NonPublic)!;
+                void ShowInfo(OrganismKey focus)
+                {
+                    model.Select(focus);
+                    refreshMenus.Invoke(window, null);
+                    show.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                }
+
+                ShowInfo(first);
+                await WaitFor(() => window.OwnedWindows.OfType<RobotDetailsWindow>().Any());
+                var info = Assert.Single(window.OwnedWindows.OfType<RobotDetailsWindow>());
+                info.SelectTab(RobotDetailsTab.Memory);
+                var memory = Field<TextBox>(info, "_memory");
+                var watch = Field<CheckBox>(info, "_postDnaMemory");
+                Assert.EndsWith("\t-713\r\n", memory.Text);
+                model.Select(second);
+                await session.StepAsync();
+                await WaitFor(() => memory.Text?.EndsWith("\t 813\r\n", StringComparison.Ordinal) == true);
+                model.ClearSelection();
+                await session.StepAsync();
+                await WaitFor(() => memory.Text == string.Empty);
+                Assert.True(info.IsVisible);
+
+                ShowInfo(first);
+                await WaitFor(() => memory.Text?.EndsWith("\t-713\r\n", StringComparison.Ordinal) == true);
+                var save = await session.SaveAsync();
+                watch.IsChecked = true;
+                await session.StepAsync();
+                Assert.Equal(first, session.LatestSnapshot.NativePostDnaMemory?.Focus);
+                watch.IsChecked = false;
+                var queuedSnapshot = session.LatestSnapshot;
+                var tick = queuedSnapshot.Tick;
+                await WaitFor(() => Field<ulong>(info, "_followedTick") == tick);
+                var kill = menu.FindCommandItem(LegacyCommandId.RobotKillEntireOrganism)!;
+                Assert.True(kill.IsEnabled);
+                const string killed = "ORGANISM KILLED · 1 BOT(S)";
+                var continuationQueued = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                var context = SynchronizationContext.Current;
+                try
+                {
+                    // Let the kill command finish before normal-priority snapshot presentation.
+                    SynchronizationContext.SetSynchronizationContext(new MenuInputSynchronizationContext(continuationQueued));
+                    kill.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    if (model.Status != killed)
+                        Assert.True(continuationQueued.Task.Wait(TimeSpan.FromSeconds(5)), "Kill menu did not complete its engine action.");
+                }
+                finally { SynchronizationContext.SetSynchronizationContext(context); }
+                await WaitFor(() => model.Status == killed);
+                Assert.Equal(tick, session.LatestSnapshot.Tick);
+                Assert.DoesNotContain(session.LatestSnapshot.Organisms,
+                    actor => actor.Slot == first.Slot && actor.Generation == first.Generation);
+                Assert.Null(session.LatestSnapshot.NativePostDnaMemory);
+                await WaitFor(() => memory.Text == "This robot is dead");
+                Assert.True(info.IsVisible);
+                Assert.Equal(first, Field<OrganismKey?>(info, "_focus"));
+                info.SetSnapshot(queuedSnapshot);
+                var memoryBeforeNextStep = memory.Text;
+                await session.StepAsync();
+                await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
+                Assert.Equal("This robot is dead", memory.Text);
+                Assert.Equal("This robot is dead", memoryBeforeNextStep);
+
+                var restore = typeof(MainWindow).GetMethod("LoadSimulationAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
+                await Assert.IsAssignableFrom<Task>(restore.Invoke(window, [save, false]));
+                Assert.Contains(session.LatestSnapshot.Organisms,
+                    actor => actor.Slot == first.Slot && actor.Generation == first.Generation);
+                Assert.Null(model.SelectedKey);
+                Assert.Empty(memory.Text!);
+                ShowInfo(first);
+                await WaitFor(() => memory.Text?.EndsWith("\t-713\r\n", StringComparison.Ordinal) == true);
+                await session.ConfigureLocalModeAsync(LocalModeConfig.Default);
+                await session.RestartLocalModeAsync();
+                await WaitFor(() => model.LocalMode.RestartCount == 1 && model.SelectedKey is null
+                    && memory.Text == string.Empty);
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
     [Fact]
     public async Task NativeRobotInfoShowsWatchedPostDnaMemoryAndClearsItOnFocusLoadAndHide()
     {
@@ -294,5 +407,14 @@ public sealed class NativeRobotFileIntegrationTests
     private sealed class FixedFactory(IEngineClient engine) : IEngineClientFactory
     {
         public IEngineClient Create(WorldSetupOptions setup) => engine;
+    }
+
+    private sealed class MenuInputSynchronizationContext(TaskCompletionSource continuationQueued) : SynchronizationContext
+    {
+        public override void Post(SendOrPostCallback callback, object? state)
+        {
+            Dispatcher.UIThread.Post(() => callback(state), DispatcherPriority.Send);
+            continuationQueued.TrySetResult();
+        }
     }
 }
