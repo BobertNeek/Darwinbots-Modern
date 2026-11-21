@@ -69,6 +69,7 @@ public sealed record OrganismSnapshot(
     public ulong UniqueId { get; init; }
     public ulong? ParentAbsoluteId { get; init; }
     public uint? LineageGeneration { get; init; }
+    public string? FounderName { get; init; }
     public int VirusTimer { get; init; }
     public ulong NewMutations { get; init; }
     public ulong TotalMutations { get; init; }

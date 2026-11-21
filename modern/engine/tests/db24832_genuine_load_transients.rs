@@ -2,7 +2,7 @@
 //! The fixtures prove listed live fields for these seeded deterministic load cases;
 //! native SIM does not contain arbitrary historical uniform/Gaussian state.
 use darwinbots_engine::native_binary::{NativeRecordFile, NativeSimulationTail, NativeValue};
-use darwinbots_engine::{Engine, EngineConfig, LegacyDna, SaveFile};
+use darwinbots_engine::{Engine, EngineConfig, LegacyDna, OrganismSnapshot, SaveFile};
 
 const START: &[u8] = include_bytes!("fixtures/db24832-movement-start-48032.sim");
 const ORIGINAL_C1: &[u8] = include_bytes!("fixtures/db24832-genuine-movement-cycle1-20261016.sim");
@@ -223,6 +223,39 @@ fn genuine_original_later_ticks_match_across_the_first_aim_cache_checkpoint() {
             SaveFile::encode(&continuous).unwrap()
         );
     }
+}
+
+#[test]
+fn snapshot_publishes_the_genuine_native_founder_filename() {
+    let native = Engine::from_native_sim(ORIGINAL_C1).unwrap();
+    let [robot] = native.snapshot().organisms.as_slice() else {
+        panic!("expected one robot in the original movement fixture");
+    };
+    assert_eq!(robot.founder_name, "Oracle-movement.txt");
+    assert_eq!(
+        native.organism(robot.id).unwrap().founder_name,
+        robot.founder_name
+    );
+    let snapshot = serde_json::to_value(native.snapshot()).unwrap();
+    assert_eq!(
+        snapshot["organisms"][0]["founder_name"],
+        "Oracle-movement.txt"
+    );
+
+    let mut older_row = snapshot["organisms"][0].clone();
+    older_row.as_object_mut().unwrap().remove("founder_name");
+    let row: OrganismSnapshot = serde_json::from_value(older_row).unwrap();
+    assert!(row.founder_name.is_empty());
+
+    let mut portable = SaveFile::decode(include_bytes!("fixtures/db3s_v2_phase1.bin")).unwrap();
+    assert!(portable.snapshot().native_cycle.is_none());
+    let id = portable.snapshot().organisms[0].id;
+    portable
+        .make_new_species(id, "Portable.txt".into(), 0xff23_9ac0)
+        .unwrap();
+    assert!(portable.organism(id).unwrap().founder_name.is_empty());
+    let snapshot = serde_json::to_value(portable.snapshot()).unwrap();
+    assert!(snapshot["organisms"][0].get("founder_name").is_none());
 }
 
 #[test]

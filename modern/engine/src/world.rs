@@ -496,6 +496,9 @@ pub struct OrganismSnapshot {
     #[serde(default)]
     pub memory: Vec<MemoryCellSnapshot>,
     pub species: SpeciesId,
+    /// Native per-robot FName, independently of its registered species name.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub founder_name: String,
     pub vegetable: bool,
     pub parents: [Option<OrganismId>; 2],
     #[serde(default)]
@@ -1692,6 +1695,7 @@ impl From<Db3sV2OrganismSnapshot> for OrganismSnapshot {
             occurrence_counts: vec![0; 21],
             memory: Vec::new(),
             species: value.species.into(),
+            founder_name: String::new(),
             vegetable: value.vegetable,
             parents: value.parents.map(|parent| parent.map(Into::into)),
             parent_absolute_id: 0,
@@ -15104,6 +15108,11 @@ fn snapshot_organism(
             Vec::new()
         },
         species: organism.identity.species,
+        founder_name: if native_flow {
+            organism.identity.species_file.clone()
+        } else {
+            String::new()
+        },
         vegetable: organism.flags.vegetable,
         parents: organism.identity.parents,
         parent_absolute_id,
