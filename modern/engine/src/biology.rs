@@ -199,7 +199,9 @@ impl RobotMaterials {
         // FeedVeg caps only the upper bound; ManageDeath handles depletion.
         let prior = (self.energy, self.body);
         self.energy = (self.energy + delta * (1.0 - feeding_to_body)).min(32_000.0);
-        self.body = (self.body + delta * feeding_to_body / 10.0).min(32_000.0);
+        // FeedVeg retains the product and quotient through the body addition.
+        let body = f64::from(self.body) + f64::from(delta) * f64::from(feeding_to_body) / 10.0;
+        self.body = (body as f32).min(32_000.0);
         (self.energy - prior.0, self.body - prior.1)
     }
 
@@ -524,6 +526,22 @@ mod native_publication55_tests {
 #[cfg(test)]
 mod native_feed_caps55_tests {
     use super::*;
+
+    #[test]
+    fn native_feed_rounds_the_complete_body_gain_to_single() {
+        // Original C300 robot 112 immediately before FeedVeg.
+        let mut native = RobotMaterials {
+            body: f32::from_bits(0x452b_5327),
+            ..Default::default()
+        };
+        let mut portable = native.clone();
+        let delta = f32::from_bits(0x434c_3d6a);
+
+        native.apply_native_plant_delta(delta, 0.75);
+        portable.apply_plant_delta(delta, 0.75);
+        assert_eq!(native.body.to_bits(), 0x452c_483d);
+        assert_eq!(portable.body.to_bits(), 0x452c_483e);
+    }
 
     #[test]
     fn native_feed_leaves_negative_resources_for_death_processing_and_caps_only_above() {
