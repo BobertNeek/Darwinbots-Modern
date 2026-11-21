@@ -94,6 +94,10 @@ pub(crate) fn native_dot(first: [f32; 2], second: [f32; 2]) -> f32 {
     (f64::from(first[0]) * f64::from(second[0]) + f64::from(first[1]) * f64::from(second[1])) as f32
 }
 
+fn native_contact_projection(dot: f32) -> f32 {
+    crate::native_precision::store_scaled_sum(0.0, f64::from(dot), 0.99)
+}
+
 pub(crate) fn native_magnitude(vector: [f32; 2]) -> f32 {
     vector_magnitude(vector, false)
 }
@@ -252,12 +256,12 @@ fn resolve_contacts(
             continue;
         }
         let projection = |velocity: [f32; 2]| {
-            let dot = if native_precision {
-                native_dot(velocity, normal)
+            if native_precision {
+                native_contact_projection(native_dot(velocity, normal))
             } else {
-                velocity[0] * normal[0] + velocity[1] * normal[1]
-            };
-            (f64::from(dot) * 0.99) as f32
+                let dot = velocity[0] * normal[0] + velocity[1] * normal[1];
+                (f64::from(dot) * 0.99) as f32
+            }
         };
         let first_projection = projection(velocities[first]);
         let second_projection = projection(velocities[second]);
@@ -320,7 +324,34 @@ fn resolve_contacts(
 
 #[cfg(test)]
 mod native_contact_tests {
-    use super::{resolve_collisions, resolve_native_collisions};
+    use super::{native_contact_projection, resolve_collisions, resolve_native_collisions};
+
+    #[test]
+    fn native_contact_keeps_extended_precision_through_projection_damping() {
+        // Original 2.48.32, robots 143 and 64 during cycle 330.
+        let dot = f32::from_bits(0x41df_3022);
+        assert_eq!(native_contact_projection(dot).to_bits(), 0x41dc_f4c5);
+        assert_eq!(native_contact_projection(-dot).to_bits(), 0xc1dc_f4c5);
+
+        let mut positions = [
+            [f32::from_bits(0x4649_1aed), f32::from_bits(0x457f_3ef6)],
+            [f32::from_bits(0x4649_6c9c), f32::from_bits(0x4566_5eb6)],
+        ];
+        let mut velocities = [
+            [f32::from_bits(0x3fc8_36d4), f32::from_bits(0xc1de_d6ee)],
+            [f32::from_bits(0x3e11_f530), f32::from_bits(0x3d3a_d5fa)],
+        ];
+        resolve_native_collisions(
+            &mut positions,
+            &mut velocities,
+            &[f32::from_bits(0x4281_a9ce), f32::from_bits(0x43c8_c016)],
+            &[f32::from_bits(0x3f9d_a603), f32::from_bits(0x46ea_7b34)],
+            &[false; 2],
+            &[(0, 1)],
+            0.0,
+        );
+        assert_eq!(velocities[0].map(f32::to_bits), [0x3e16_9d38, 0xbe70_aab6]);
+    }
 
     #[test]
     fn native_contact_rounds_the_mass_reciprocal_after_division() {
