@@ -670,6 +670,10 @@ fn db_engine_command_batch_impl(
                     | EngineCommand::ReadNativeRestartSources
                     | EngineCommand::ReadNativeGraphRecording
                     | EngineCommand::ReadNativeGraphSample
+                    | EngineCommand::FeedNativeGraphSample {
+                        selective: false,
+                        ..
+                    }
                     | EngineCommand::ReadNativeGraphLayout
                     | EngineCommand::HasUnresolvedNativeRepopulationSources
                     | EngineCommand::ExportSpeciesTemplateDna { .. }
@@ -709,6 +713,19 @@ fn db_engine_command_batch_impl(
                 EngineCommand::ReadNativeGraphSample => {
                     Ok(serde_json::json!(engine.read_native_graph_sample()))
                 }
+                EngineCommand::FeedNativeGraphSample {
+                    selective: false,
+                    generational,
+                    slow,
+                    due_only,
+                } => Ok(serde_json::json!(engine.feed_native_graph_sample(
+                    crate::GraphSamplingSettings {
+                        selective: false,
+                        generational: *generational,
+                        slow: *slow,
+                    },
+                    *due_only,
+                ))),
                 EngineCommand::ReadNativeGraphLayout => engine
                     .read_native_graph_layout()
                     .map(|state| serde_json::json!(state)),
@@ -2290,7 +2307,7 @@ mod tests {
         let (status, before_first_due) = classic_test_batch(
             &mut world,
             serde_json::json!([
-                {"type": "feed_native_graph_sample", "selective": true, "due_only": true},
+                {"type": "feed_native_graph_sample", "slow": true, "due_only": true},
                 {"type": "feed_native_graph_sample"},
             ]),
         );
