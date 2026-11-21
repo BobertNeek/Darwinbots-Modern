@@ -91,6 +91,7 @@ impl Engine {
     }
 
     pub(super) fn prepare_native_restart(&mut self, boundary: NativeStartBoundary) {
+        self.native_restarted_this_cycle = true;
         self.native_loaded_census_stage = None;
         if self.native_cycle.is_some()
             && self
@@ -559,6 +560,63 @@ mod tests {
         world.advance_local_mode_after_cycle().unwrap();
         assert_eq!(world.local_mode.results.len(), 1);
         assert_eq!(world.local_mode.results[0].reason, "cycle limit");
+    }
+
+    #[test]
+    fn native_continuous_redraw_skips_a_same_counter_f1_retry() {
+        use crate::ffi::{DbBuffer, DbStatus, db_buffer_free, db_engine_command_batch};
+
+        let (mut world, _) =
+            native_contest_world(42, LocalModeKind::Contest, crate::LeagueWorkflow::Direct);
+        world.set_death_poffs_enabled(false);
+        world.config.vegetation.minimum_chloroplast_equivalents = 0;
+        for species in &mut world.species {
+            species.reseed = true;
+        }
+        world.start_local_mode().unwrap();
+        world.tick_many(9).unwrap();
+        let live = world.slots.ids_in_slot_order();
+        world.remove_many(&live).unwrap();
+        world
+            .tick_many_with_native_redraw(1, NativeRedrawCadence::EveryCycle)
+            .unwrap();
+        assert!(world.native_restarted_this_cycle);
+        assert_eq!(world.snapshot.native_cycle, Some(9));
+        assert_eq!(world.local_mode.restart_count, 0);
+        assert_eq!(world.local_mode.cycle_in_round, 0);
+
+        let id = world.slots.ids_in_slot_order()[0];
+        let kinematics = &mut world.slots.get_mut(id).unwrap().kinematics;
+        kinematics.position[1] = f32::from_bits(0x410b_aab8);
+        kinematics.velocity[1] = f32::from_bits(0xc252_44b9);
+        kinematics.actual_velocity[1] = f32::from_bits(0x4090_e220);
+
+        for (command, expected) in [
+            (
+                br#"{"version":1,"commands":[{"type":"native_redraw","after_continuous_cycle":true}]}"#
+                    .as_slice(),
+                0x410b_aab8,
+            ),
+            (
+                br#"{"version":1,"commands":[{"type":"native_redraw"}]}"#.as_slice(),
+                0x410b_aabc,
+            ),
+        ] {
+            let mut response = DbBuffer::default();
+            assert_eq!(
+                db_engine_command_batch(&mut world, command.as_ptr(), command.len(), &mut response),
+                DbStatus::Ok,
+            );
+            assert_eq!(db_buffer_free(&mut response), DbStatus::Ok);
+            assert_eq!(
+                world.slots.get(id).unwrap().kinematics.position[1].to_bits(),
+                expected,
+            );
+        }
+
+        world.tick().unwrap();
+        assert_eq!(world.snapshot.native_cycle, Some(10));
+        assert!(!world.native_restarted_this_cycle);
     }
 
     #[test]
