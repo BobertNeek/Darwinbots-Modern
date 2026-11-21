@@ -609,6 +609,9 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
 
     private static string? LocalPath(IStorageItem item) => item.Path.IsFile ? item.Path.LocalPath : null;
 
+    internal string GraphDirectory(string mainDirectory) =>
+        string.IsNullOrWhiteSpace(mainDirectory) ? ProfileDirectory() : mainDirectory;
+
     private string ProfileDirectory() => _profileDirectory
         ?? (Environment.GetEnvironmentVariable(ProfileDirectoryVariable) is { Length: > 0 } configured
             ? Path.GetFullPath(configured)

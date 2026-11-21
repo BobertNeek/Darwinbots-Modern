@@ -192,6 +192,11 @@ public sealed class GraphSuiteViewModel : INotifyPropertyChanged
     private string _status = "SELECT A GRAPH";
     private string _comparisonText = "NO COMPARISON";
     private ulong? _historyCutoffTick;
+    private readonly Dictionary<GraphMetric, ulong> _metricCutoffTicks = [];
+    private static readonly string[] DynamicCostLabels =
+        ["Cost Multiplier", "Population / Target", "Upper Range", "Lower Range", "Zero Level", "Reinstatement Level"];
+    private static readonly uint[] DynamicCostColors =
+        [0xff2d826f, 0xffd88724, 0xff4169aa, 0xffa64d79, 0xff888536, 0xff7956b5];
 
     public GraphSuiteViewModel(IReadOnlyList<GraphMetricSample>? samples = null)
     {
@@ -215,10 +220,35 @@ public sealed class GraphSuiteViewModel : INotifyPropertyChanged
         set => Set(ref _selectedChoice, value);
     }
 
+    public IReadOnlyList<GraphMetricSample> HistorySamples => _samples;
     public string Status { get => _status; private set => Set(ref _status, value); }
     public string ComparisonText { get => _comparisonText; private set => Set(ref _comparisonText, value); }
 
     public event PropertyChangedEventHandler? PropertyChanged;
+
+    public event Action? GraphsReset;
+
+    public string LegacyHeader(GraphMetric metric) => CustomMetric(metric)?.Expression ?? "normal";
+
+    public IEnumerable<LegacyGraphPointValue> LegacyPoint(GraphMetric metric, GraphMetricSample sample)
+    {
+        var custom = CustomMetric(metric);
+        if (metric == GraphMetric.DynamicCostStats && sample.DynamicCostSeries is { Count: 6 } costs)
+        {
+            for (var index = 0; index < costs.Count; index++)
+                yield return new(DynamicCostLabels[index], DynamicCostColors[index], costs[index]);
+        }
+        else if (sample.SpeciesGraphs is { Count: > 0 } speciesGraphs)
+        {
+            foreach (var species in speciesGraphs)
+                yield return new(species.Name, species.Color, GraphMetricSampleProjector.ProjectValue(sample, metric, custom, species));
+        }
+        else
+        {
+            yield return new(GraphCatalog.For(metric).Label, 0xff62a844u,
+                GraphMetricSampleProjector.ProjectValue(sample, metric, custom));
+        }
+    }
 
     public void Update(EngineSnapshot snapshot)
     {
@@ -268,10 +298,9 @@ public sealed class GraphSuiteViewModel : INotifyPropertyChanged
         var speciesGraphs = latest?.SpeciesGraphs?.Count > 0 ? latest.SpeciesGraphs : _currentSpecies;
         if (metric == GraphMetric.DynamicCostStats && latest?.DynamicCostSeries?.Count == 6)
         {
-            string[] labels = ["Cost Multiplier", "Population / Target", "Upper Range", "Lower Range", "Zero Level", "Reinstatement Level"];
-            uint[] colors = [0xff2d826f, 0xffd88724, 0xff4169aa, 0xffa64d79, 0xff888536, 0xff7956b5];
-            for (var index = 0; index < labels.Length; index++)
-                graphs.Add(new GraphSeriesViewModel($"graph-{RunningGraphs.Count + graphs.Count + 1}", metric, labels[index], [], color: colors[index], dynamicCostIndex: index));
+            for (var index = 0; index < DynamicCostLabels.Length; index++)
+                graphs.Add(new GraphSeriesViewModel($"graph-{RunningGraphs.Count + graphs.Count + 1}", metric,
+                    DynamicCostLabels[index], [], color: DynamicCostColors[index], dynamicCostIndex: index));
         }
         else if (metric != GraphMetric.DynamicCostStats && speciesGraphs.Count > 0)
         {
@@ -294,9 +323,17 @@ public sealed class GraphSuiteViewModel : INotifyPropertyChanged
     public void ResetAllGraphs()
     {
         _historyCutoffTick = _samples.LastOrDefault()?.Tick;
+        _metricCutoffTicks.Clear();
         foreach (var graph in RunningGraphs) graph.Reset();
         ComparisonText = "NO COMPARISON";
         Status = "ALL GRAPHS RESET";
+        GraphsReset?.Invoke();
+    }
+
+    public void ResetGraph(GraphMetric metric)
+    {
+        if (_samples.LastOrDefault() is { } latest) _metricCutoffTicks[metric] = latest.Tick;
+        foreach (var graph in RunningGraphs.Where(graph => graph.Metric == metric)) graph.Reset();
     }
 
     public string ListAllRunningGraphs()
@@ -368,9 +405,10 @@ public sealed class GraphSuiteViewModel : INotifyPropertyChanged
 
     private IReadOnlyList<GraphSample> ProjectGraph(GraphMetric metric, CustomMetricSlotViewModel? custom, string? speciesName = null, int? dynamicCostIndex = null)
     {
-        var samples = _historyCutoffTick is { } cutoff
-            ? _samples.Where(sample => sample.Tick > cutoff).ToArray()
-            : _samples;
+        var cutoff = _historyCutoffTick;
+        if (_metricCutoffTicks.TryGetValue(metric, out var metricCutoff))
+            cutoff = Math.Max(cutoff ?? 0, metricCutoff);
+        var samples = cutoff is { } tick ? _samples.Where(sample => sample.Tick > tick).ToArray() : _samples;
         return GraphMetricSampleProjector.Project(samples, metric, custom, speciesName, dynamicCostIndex);
     }
 
@@ -439,13 +477,17 @@ public static class GraphMetricSampleProjector
                 var species = sample.SpeciesGraphs?.FirstOrDefault(value => value.Name == speciesName);
                 sample = sample with { Values = SpeciesValues(species) };
             }
-            return new GraphSample(
-            sample.Tick,
-            custom is null
-                ? sample.Values.GetValueOrDefault(metric)
-                : GraphExpressionEvaluator.Evaluate(custom.Expression, sample));
+            return new GraphSample(sample.Tick, ProjectValue(sample, metric, custom));
         }).ToArray();
     }
+
+    internal static double ProjectValue(GraphMetricSample sample, GraphMetric metric, CustomMetricSlotViewModel? custom,
+        SpeciesGraphSampleSnapshot? species = null)
+    {
+        if (species is not null) sample = sample with { Values = SpeciesValues(species) };
+        return custom is null ? sample.Values.GetValueOrDefault(metric) : GraphExpressionEvaluator.Evaluate(custom.Expression, sample);
+    }
+
     private static IReadOnlyDictionary<GraphMetric, double> SpeciesValues(SpeciesGraphSampleSnapshot? species)
     {
         var names = new Dictionary<GraphMetric, string>
