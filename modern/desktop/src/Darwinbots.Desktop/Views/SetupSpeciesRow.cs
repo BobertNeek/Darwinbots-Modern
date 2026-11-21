@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using Darwinbots.Desktop.Core;
 
@@ -16,6 +17,7 @@ public sealed class SetupSpeciesRow : INotifyPropertyChanged
     private bool _reseed;
     private SpeciesPlacement _placement;
     private SkinPointSnapshot[] _skin;
+    private readonly bool _nativeSkin;
     private SpeciesRestrictionSettings _restrictions;
 
     public SetupSpeciesRow(
@@ -34,7 +36,8 @@ public sealed class SetupSpeciesRow : INotifyPropertyChanged
         SpeciesRestrictionSettings? restrictions = null,
         MutationProfileUpdate? mutationProfile = null,
         string? dnaPath = null,
-        uint? speciesId = null)
+        uint? speciesId = null,
+        bool nativeSkin = false)
     {
         SpeciesId = speciesId;
         _name = name;
@@ -49,6 +52,7 @@ public sealed class SetupSpeciesRow : INotifyPropertyChanged
         _comment = comment ?? string.Empty;
         _placement = placement ?? new SpeciesPlacement();
         _skin = skin?.ToArray() ?? DefaultSkin();
+        _nativeSkin = nativeSkin;
         _restrictions = restrictions ?? new SpeciesRestrictionSettings();
         MutationProfile = mutationProfile;
         DnaPath = dnaPath;
@@ -82,14 +86,19 @@ public sealed class SetupSpeciesRow : INotifyPropertyChanged
     public float PlacementX { get => _placement.X; set => SetPlacement(_placement with { X = value }); }
     public float PlacementY { get => _placement.Y; set => SetPlacement(_placement with { Y = value }); }
 
-    public float SkinRadius0 { get => _skin[0].Radius; set => SetSkin(0, _skin[0] with { Radius = value }); }
-    public float SkinRadius1 { get => _skin[1].Radius; set => SetSkin(1, _skin[1] with { Radius = value }); }
-    public float SkinRadius2 { get => _skin[2].Radius; set => SetSkin(2, _skin[2] with { Radius = value }); }
-    public float SkinRadius3 { get => _skin[3].Radius; set => SetSkin(3, _skin[3] with { Radius = value }); }
-    public int SkinAngle0 { get => _skin[0].Angle; set => SetSkin(0, _skin[0] with { Angle = value }); }
-    public int SkinAngle1 { get => _skin[1].Angle; set => SetSkin(1, _skin[1] with { Angle = value }); }
-    public int SkinAngle2 { get => _skin[2].Angle; set => SetSkin(2, _skin[2] with { Angle = value }); }
-    public int SkinAngle3 { get => _skin[3].Angle; set => SetSkin(3, _skin[3] with { Angle = value }); }
+    public decimal SkinRadiusMinimum => _nativeSkin ? 0m : 0.15m;
+    public decimal SkinRadiusMaximum => _nativeSkin ? 1m : 0.82m;
+    // Native angles are 314 - 2 * the signed VB6 Integer in the file.
+    public int SkinAngleMinimum => _nativeSkin ? 314 - 2 * short.MaxValue : 0;
+    public int SkinAngleMaximum => _nativeSkin ? 314 - 2 * short.MinValue : 1256;
+    public decimal SkinRadius0 { get => GetSkinRadius(0); set => SetSkinRadius(0, value); }
+    public decimal SkinRadius1 { get => GetSkinRadius(1); set => SetSkinRadius(1, value); }
+    public decimal SkinRadius2 { get => GetSkinRadius(2); set => SetSkinRadius(2, value); }
+    public decimal SkinRadius3 { get => GetSkinRadius(3); set => SetSkinRadius(3, value); }
+    public int SkinAngle0 { get => _skin[0].Angle; set => SetSkinAngle(0, value); }
+    public int SkinAngle1 { get => _skin[1].Angle; set => SetSkinAngle(1, value); }
+    public int SkinAngle2 { get => _skin[2].Angle; set => SetSkinAngle(2, value); }
+    public int SkinAngle3 { get => _skin[3].Angle; set => SetSkinAngle(3, value); }
     public string SkinPreview => string.Join(" · ", _skin.Select(point => $"{point.Radius:0.00}/{point.Angle}"));
 
     public bool KillMultibot { get => _restrictions.KillMultibot; set => SetRestrictions(_restrictions with { KillMultibot = value }, nameof(KillMultibot)); }
@@ -119,7 +128,7 @@ public sealed class SetupSpeciesRow : INotifyPropertyChanged
     public SetupSpeciesRow Duplicate() => new(
         $"{Name} Copy", Dna, Vegetable, Color, InitialCount, InitialEnergy,
         MutationRate, Reseed, MinimumPopulation, Comment, _placement, _skin, _restrictions,
-        MutationProfile, DnaPath);
+        MutationProfile, DnaPath, nativeSkin: _nativeSkin);
 
     private void SetPlacement(SpeciesPlacement value)
     {
@@ -130,9 +139,23 @@ public sealed class SetupSpeciesRow : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PlacementY)));
     }
 
+    private decimal GetSkinRadius(int index) =>
+        decimal.Parse(_skin[index].Radius.ToString("R", CultureInfo.InvariantCulture),
+            NumberStyles.Float, CultureInfo.InvariantCulture);
+
+    private void SetSkinRadius(int index, decimal radius)
+    {
+        // NumericUpDown uses decimal. A direct conversion from float can round
+        // away digits when the binding echoes an untouched native value.
+        if (radius == GetSkinRadius(index)) return;
+        SetSkin(index, _skin[index] with { Radius = (float)Math.Clamp(radius, SkinRadiusMinimum, SkinRadiusMaximum) });
+    }
+
+    private void SetSkinAngle(int index, int angle) =>
+        SetSkin(index, _skin[index] with { Angle = Math.Clamp(angle, SkinAngleMinimum, SkinAngleMaximum) });
+
     private void SetSkin(int index, SkinPointSnapshot value)
     {
-        value = value with { Radius = Math.Clamp(value.Radius, 0.15f, 0.82f), Angle = Math.Clamp(value.Angle, 0, 1256) };
         if (_skin[index] == value) return;
         _skin[index] = value;
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs($"SkinRadius{index}"));
