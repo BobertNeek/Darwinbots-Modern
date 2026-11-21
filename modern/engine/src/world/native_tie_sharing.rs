@@ -1,10 +1,9 @@
 use super::*;
 
-pub(super) fn energy_body_credit(body: f32, amount: f64) -> f32 {
-    const BODY_SHARE: f64 = 0.029;
-    let body = f64::from(body);
-    let credit = amount * BODY_SHARE;
-    let total = body + credit;
+pub(super) fn store_scaled_credit(store: f32, amount: f64, share: f64) -> f32 {
+    let store = f64::from(store);
+    let credit = amount * share;
+    let total = store + credit;
     let rounded = total as f32;
     if total == f64::from(rounded) {
         return rounded;
@@ -23,9 +22,9 @@ pub(super) fn energy_body_credit(body: f32, amount: f64) -> f32 {
     // storing Single. Recover the bits lost by Double at the Single midpoint.
     let credit_step = extended_ulp(credit);
     let credit_remainder =
-        (amount.mul_add(BODY_SHARE, -credit) / credit_step).round_ties_even() * credit_step;
-    let stored_credit = total - body;
-    let sum_remainder = (body - (total - stored_credit)) + (credit - stored_credit);
+        (amount.mul_add(share, -credit) / credit_step).round_ties_even() * credit_step;
+    let stored_credit = total - store;
+    let sum_remainder = (store - (total - stored_credit)) + (credit - stored_credit);
     let remainder = sum_remainder + credit_remainder;
     let half_step = extended_ulp(total) * 0.5;
     if (rounds_down && remainder > half_step) || (!rounds_down && remainder < -half_step) {
@@ -140,23 +139,26 @@ mod tests {
     use super::*;
 
     #[test]
-    fn energy_tie_body_credit_retains_native_precision_for_both_transfer_directions() {
+    fn energy_tie_credit_retains_native_precision_for_both_transfer_directions() {
         let mut world = Engine::new(EngineConfig::testing()).unwrap();
         let id = world
             .spawn_at(LegacyDna::parse("start stop").unwrap(), [100.0; 2])
             .unwrap();
         let mut receiver = world.slots.get(id).unwrap().clone();
         receiver.materials.body = 249.218_03;
+        // Robot 143 at cycle 330 after receiving energy shot 173.
+        receiver.materials.energy = f32::from_bits(0x44b7_4ceb);
         let mut donor = receiver.clone();
         donor.materials.energy = 2_000.0;
         donor.materials.poison = 0.0;
 
-        for (mut native, expected_body) in [
+        for (mut native, expected_energy_bits, expected_body) in [
             (
                 Some(crate::native_random::NativeRandom::default()),
+                0x4501_2675,
                 278.218_05,
             ),
-            (None, 278.218_02),
+            (None, 0x4501_2676, 278.218_02),
         ] {
             for give_energy in [false, true] {
                 let mut receiver = receiver.clone();
@@ -167,6 +169,11 @@ mod tests {
                     apply_tie_energy(&mut receiver, &mut donor, -1_000, &mut native)
                 };
                 assert_eq!(effect, Some("tie_resource_energy"));
+                // Robot 143 then spent 100 energy in storebody.
+                assert_eq!(
+                    (receiver.materials.energy - 100.0).to_bits(),
+                    expected_energy_bits
+                );
                 assert_eq!(receiver.materials.body, expected_body);
             }
         }
@@ -177,11 +184,11 @@ mod tests {
         let body = 1_000.0_f32;
         let amount = 125.0 / 4096.0;
         assert_eq!(
-            energy_body_credit(body, amount).to_bits(),
+            store_scaled_credit(body, amount, 0.029).to_bits(),
             body.to_bits() + 14
         );
         assert_eq!(
-            energy_body_credit(body.next_up(), amount).to_bits(),
+            store_scaled_credit(body.next_up(), amount, 0.029).to_bits(),
             body.to_bits() + 16
         );
     }
