@@ -177,6 +177,12 @@ enum EngineCommand {
         slot: u32,
         generation: u32,
     },
+    ReadRobotDna {
+        slot: u32,
+        generation: u32,
+        #[serde(default)]
+        marker_position: Option<u32>,
+    },
     ExportSpeciesTemplateDna {
         species: u32,
     },
@@ -575,6 +581,7 @@ fn db_engine_command_batch_impl(
                 EngineCommand::ReadNativeGaussianSpare
                     | EngineCommand::ReadNativeSunChange
                     | EngineCommand::ReadNativeProcessCaches
+                    | EngineCommand::ReadRobotDna { .. }
                     | EngineCommand::ExportSpeciesTemplateDna { .. }
                     | EngineCommand::FindBestRobot { .. }
             )
@@ -603,6 +610,13 @@ fn db_engine_command_batch_impl(
                 EngineCommand::ReadNativeProcessCaches => engine
                     .read_native_process_caches()
                     .map(|caches| serde_json::json!(caches)),
+                EngineCommand::ReadRobotDna {
+                    slot,
+                    generation,
+                    marker_position,
+                } => engine
+                    .read_robot_dna(OrganismId::new(*slot, *generation), *marker_position)
+                    .map(|dna| serde_json::json!({ "dna": dna })),
                 EngineCommand::ExportSpeciesTemplateDna { species } => engine
                     .export_species_template_dna(crate::SpeciesId(*species))
                     .map(|dna| serde_json::json!({ "dna": dna })),
@@ -912,6 +926,13 @@ fn db_engine_command_batch_impl(
                 .map(|_| serde_json::Value::Null),
             EngineCommand::ExportDna { slot, generation } => engine
                 .export_dna(OrganismId::new(slot, generation))
+                .map(|dna| serde_json::json!({ "dna": dna })),
+            EngineCommand::ReadRobotDna {
+                slot,
+                generation,
+                marker_position,
+            } => engine
+                .read_robot_dna(OrganismId::new(slot, generation), marker_position)
                 .map(|dna| serde_json::json!({ "dna": dna })),
             EngineCommand::ExportSpeciesTemplateDna { species } => engine
                 .export_species_template_dna(crate::SpeciesId(species))
@@ -1896,6 +1917,84 @@ mod tests {
         assert!(message.contains("test operation panicked"));
         assert!(message.contains("deliberate failure"));
     }
+    #[test]
+    fn native_robot_dna_reads_raw_text_with_a_one_based_block_marker() {
+        use serde_json::json;
+
+        let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+        let dna = LegacyDna::parse("def FirstAlias 1\ndef LastAlias 1\nstart 123 .up store stop")
+            .unwrap();
+        let snapshot_source = dna.to_snapshot_source();
+        let id = world.spawn(dna).unwrap();
+        let mut read = json!({"type": "read_robot_dna", "slot": id.slot(),
+                             "generation": id.generation()});
+        let plain = concat!(
+            "\r\n start\r\n 123 .LastAlias store\r\n stop\r\n",
+            "''''''''''''''''''''''''  Gene:  1 Ends at position  5  '''''''''''''''''''''''\r\n",
+        );
+        let marker = " '[<POSITION MARKER]\r\n";
+        let saved = SaveFile::encode(&world).unwrap();
+        let publications = world.snapshot_publication_count();
+        let exported = world.export_dna(id).unwrap();
+        assert_eq!(snapshot_source, plain.replace(".LastAlias", ".up"));
+
+        for (position, expected) in [
+            (None, plain.to_owned()),
+            (Some(0), plain.to_owned()),
+            (
+                Some(1),
+                plain.replace(" start\r\n", &format!(" start\r\n{marker}")),
+            ),
+            (Some(2), plain.replace(" 123", &format!(" 123{marker}"))),
+            (Some(5), format!("{plain}{marker}")),
+            (Some(6), plain.to_owned()), // Master end is never displayed.
+            (Some(u32::MAX), plain.to_owned()),
+        ] {
+            if let Some(position) = position {
+                read["marker_position"] = json!(position);
+            }
+            let (status, result) = classic_test_batch(&mut world, json!([read]));
+            assert_eq!(status, DbStatus::Ok);
+            let result: serde_json::Value = serde_json::from_slice(&result).unwrap();
+            assert_eq!(result["results"][0], json!({"dna": expected}));
+        }
+        read["marker_position"] = json!(null);
+        let (status, unmarked) = classic_test_batch(&mut world, json!([read]));
+        assert_eq!(status, DbStatus::Ok);
+        let result: serde_json::Value = serde_json::from_slice(&unmarked).unwrap();
+        assert_eq!(result["results"][0], json!({"dna": plain}));
+        read["generation"] = json!(id.generation() + 1);
+        let (status, result) = classic_test_batch(&mut world, json!([read]));
+        assert_eq!(status, DbStatus::EngineError);
+        assert!(result.is_empty());
+        assert_eq!(world.export_dna(id).unwrap(), exported);
+        assert_eq!(SaveFile::encode(&world).unwrap(), saved);
+        assert_eq!(world.snapshot_publication_count(), publications);
+    }
+
+    #[test]
+    fn portable_robot_dna_keeps_existing_display_export_in_a_mixed_batch() {
+        use serde_json::json;
+
+        let mut world = Engine::new(EngineConfig::testing()).unwrap();
+        let id = world
+            .spawn(LegacyDna::parse("start stop").unwrap())
+            .unwrap();
+        let expected = json!({"dna": world.export_dna(id).unwrap()});
+        let (status, result) = classic_test_batch(
+            &mut world,
+            json!([
+                {"type":"read_robot_dna","slot":id.slot(),"generation":id.generation(),
+                 "marker_position":1},
+                {"type":"export_dna","slot":id.slot(),"generation":id.generation()},
+            ]),
+        );
+        assert_eq!(status, DbStatus::Ok);
+        let result: serde_json::Value = serde_json::from_slice(&result).unwrap();
+        assert_eq!(result["results"][0], expected);
+        assert_eq!(result["results"][1], expected);
+    }
+
     fn source_fixture_engine(native: bool) -> Engine {
         if native {
             return Engine::new_native(EngineConfig::testing()).unwrap();

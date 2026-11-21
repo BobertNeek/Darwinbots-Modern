@@ -128,8 +128,8 @@ public sealed class RobotConsoleRenderedTests
     [Fact]
     public async Task NativeConsoleDnaDistinguishesTheTypedCommandFromTheDnaButton()
     {
-        const string firstDna = "start\n1101 501 store\nstop";
-        const string secondDna = "start\n2202 502 store\nstop";
+        const string firstDna = "def FirstAlias 501\ndef LastFirstAlias 501\nstart\n1101 501 store\nstop";
+        const string secondDna = "def SecondAlias 502\ndef LastSecondAlias 502\nstart\n2202 502 store\nstop";
         var setup = new WorldSetupOptions
         {
             Backend = "Cpu",
@@ -155,9 +155,13 @@ public sealed class RobotConsoleRenderedTests
                 var consoleFocus = model.SelectedKey!.Value;
                 var other = Assert.Single(session.LatestSnapshot.Organisms, actor => actor.Slot != consoleFocus.Slot);
                 var selectedFocus = new OrganismKey(other.Slot, other.Generation);
-                var selectedDna = await session.ExportDnaAsync(selectedFocus.Slot, selectedFocus.Generation);
-                var consoleDna = await session.ExportDnaAsync(consoleFocus.Slot, consoleFocus.Generation);
+                var selectedDna = await session.ReadRobotDnaAsync(selectedFocus);
+                var consoleDna = await session.ReadRobotDnaAsync(consoleFocus);
+                var selectedMarkedDna = await session.ReadRobotDnaAsync(selectedFocus, 2);
                 Assert.NotEqual(selectedDna, consoleDna);
+                Assert.Contains(" '[<POSITION MARKER]", selectedMarkedDna);
+                Assert.Contains("Alias store", consoleDna, StringComparison.OrdinalIgnoreCase);
+                Assert.DoesNotContain("'#generation", consoleDna, StringComparison.OrdinalIgnoreCase);
                 var viewport = window.FindControl<WorldViewport>("Viewport")!;
                 var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
                 menu.FindCommandItem(LegacyCommandId.RobotShowInfo)!
@@ -177,7 +181,11 @@ public sealed class RobotConsoleRenderedTests
                 var dnaButton = Assert.Single(console.GetVisualDescendants().OfType<Button>(), button => Equals(button.Content, "DNA"));
                 var tabs = Assert.Single(info.GetVisualDescendants().OfType<TabControl>());
                 var dnaTab = Assert.Single(tabs.Items.OfType<TabItem>(), item => Equals(item.Header, "DNA"));
-                var dna = Assert.IsType<TextBox>(Assert.IsType<Border>(dnaTab.Content).Child);
+                var dnaPanel = Assert.IsType<DockPanel>(Assert.IsType<Border>(dnaTab.Content).Child);
+                var dna = Assert.Single(dnaPanel.Children.OfType<TextBox>());
+                var marker = Assert.Single(dnaPanel.Children.OfType<Button>(), button => button.Name == "MarkRobotDnaLocation");
+                tabs.SelectedItem = dnaTab;
+                await WaitForAsync(() => dna.Text == consoleDna);
 
                 var size = session.LatestSnapshot.WorldSize;
                 var scaleX = viewport.Bounds.Width / size[0];
@@ -202,6 +210,23 @@ public sealed class RobotConsoleRenderedTests
                 await WaitForAsync(() => ShowsFacts(selectedFocus));
                 Assert.Equal(selectedDna, dna.Text);
 
+                await EnterMarkerAsync("-2.5tail", "APPLY", selectedMarkedDna);
+                await session.StepAsync();
+                Assert.Equal(selectedMarkedDna, dna.Text);
+                await EnterMarkerAsync("1", "CANCEL", selectedDna);
+                await EnterMarkerAsync("2", "APPLY", selectedMarkedDna);
+                await EnterMarkerAsync("99999", "APPLY", selectedDna);
+                await EnterMarkerAsync("2", "APPLY", selectedMarkedDna);
+                await EnterMarkerAsync(string.Empty, "APPLY", selectedDna);
+                await EnterMarkerAsync("2", "APPLY", selectedMarkedDna);
+                for (var click = 0; click < 2; click++)
+                {
+                    window.MouseDown(pointer.Value, MouseButton.Left, RawInputModifiers.None);
+                    window.MouseUp(pointer.Value, MouseButton.Left, RawInputModifiers.None);
+                }
+                await WaitForAsync(() => dna.Text == selectedDna);
+                await EnterMarkerAsync("2", "APPLY", selectedMarkedDna);
+
                 var beforeDnaButton = transcript.Text?.Length ?? 0;
                 dnaButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 await WaitForAsync(() => dna.Text == consoleDna && transcript.Text is { } text
@@ -223,6 +248,17 @@ public sealed class RobotConsoleRenderedTests
                 bool ShowsFacts(OrganismKey actor) => info.GetVisualDescendants().OfType<TextBlock>()
                     .Any(label => label.Text?.StartsWith($"ARRAY ID       {actor.Slot:N0}{Environment.NewLine}",
                         StringComparison.Ordinal) == true);
+
+                async Task EnterMarkerAsync(string input, string action, string expected)
+                {
+                    marker.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    await WaitForAsync(() => info.OwnedWindows.OfType<LegacyValueWindow>().Any());
+                    var dialog = Assert.Single(info.OwnedWindows.OfType<LegacyValueWindow>());
+                    Assert.Single(dialog.GetVisualDescendants().OfType<TextBox>()).Text = input;
+                    Assert.Single(dialog.GetVisualDescendants().OfType<Button>(), button => Equals(button.Content, action))
+                        .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    await WaitForAsync(() => !dialog.IsVisible && dna.Text == expected);
+                }
             }
             finally
             {

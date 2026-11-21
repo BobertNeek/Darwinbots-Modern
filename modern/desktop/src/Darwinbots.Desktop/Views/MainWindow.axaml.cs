@@ -112,6 +112,7 @@ public sealed partial class MainWindow : Window
     private RgbMemoryMonitorSettings _rgbMemorySettings = RgbMemoryMonitorSettings.Default;
     private const string RgbMonitorToolKey = "rgb-memory-monitor";
     private readonly PersistentToolWindowRegistry _toolWindows;
+    private RobotDetailsWindow? _nativeRobotInfoWindow;
     private readonly Stopwatch _runtimeClock = new();
     private double _activeCostMultiplier;
     private TrayIcon? _trayIcon;
@@ -220,6 +221,8 @@ public sealed partial class MainWindow : Window
             _viewModel.Select(key);
             Viewport.SelectKey(key);
             var result = await _legacyCommands.ExecuteAsync(LegacyCommandId.RobotShowInfo);
+            if (result.Succeeded && _session is { } session)
+                _nativeRobotInfoWindow?.SetFollowedSnapshot(session.LatestSnapshot, refreshDna: true);
             _viewModel.Status = result.Status;
             RefreshLegacyMenuStates();
         };
@@ -1591,8 +1594,13 @@ public sealed partial class MainWindow : Window
         var focus = new OrganismKey(organism.Slot, organism.Generation);
         if (session.LatestSnapshot.NativeCycle.HasValue && tab is RobotDetailsTab.Facts or RobotDetailsTab.Dna)
         {
-            var info = _toolWindows.ShowOrActivate(NativeRobotInfoKey,
-                () => new RobotDetailsWindow(session, focus, tab, SelectedRobotKey) { Topmost = true });
+            var info = _toolWindows.ShowOrActivate(NativeRobotInfoKey, () =>
+            {
+                var viewer = new RobotDetailsWindow(session, focus, tab, SelectedRobotKey) { Topmost = true };
+                viewer.Closed += (_, _) => _nativeRobotInfoWindow = null;
+                return viewer;
+            });
+            _nativeRobotInfoWindow = info;
             if (tab == RobotDetailsTab.Dna) info.SelectTab(tab);
             info.SetFollowedSnapshot(session.LatestSnapshot, tab == RobotDetailsTab.Dna ? focus : null);
             return info;
@@ -2958,6 +2966,7 @@ public sealed partial class MainWindow : Window
             if (_session is null) return;
             _loadingSimulation = true;
             await _session.LoadAsync(save);
+            _nativeRobotInfoWindow?.SetFollowedSnapshot(_session.LatestSnapshot, refreshDna: true);
             _safeModeRecoveryWorld = isSafeModeRecovery;
             Viewport.SelectKey(_viewModel.SelectedKey);
             // A rejected load publishes no snapshot and must keep user-closed
