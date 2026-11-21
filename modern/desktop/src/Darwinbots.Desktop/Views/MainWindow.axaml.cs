@@ -98,6 +98,7 @@ public sealed partial class MainWindow : Window
     private readonly LegacyCommandRouter _legacyCommands;
     private readonly OfflineDiagnosticRecovery _diagnostics = new();
     private bool _safemodeBackup;
+    private bool _safeModeRecoveryWorld;
     private ulong? _lastAutomaticSaveTick;
     private bool _hasBackgroundImage;
     private bool _deadRecordingEnabled;
@@ -245,7 +246,16 @@ public sealed partial class MainWindow : Window
                 _viewModel.Status = "ORGANISM MOVED";
                 return;
             }
-            if (_environmentPlacement == EnvironmentPlacement.None) return;
+            if (_environmentPlacement == EnvironmentPlacement.None)
+            {
+                if (_loadingSimulation || _safeModeRecoveryWorld || RecoveryPanel.IsVisible
+                    || (_playerBotEnabled && _viewModel.SelectedKey is not null)) return;
+
+                _viewModel.ClearSelection();
+                Viewport.SetRobotFocus(null);
+                RefreshLegacyMenuStates();
+                return;
+            }
             if (_placementOrigin is null)
             {
                 _placementOrigin = position;
@@ -1884,7 +1894,7 @@ public sealed partial class MainWindow : Window
                 return LegacyCommandResult.Success(_viewModel.Status);
             }
             _runTimer.Stop();
-            await LoadSimulationAsync(await File.ReadAllBytesAsync(path));
+            await LoadSimulationAsync(await File.ReadAllBytesAsync(path), isSafeModeRecovery: true);
             _viewModel.Status = $"RECOVERED · {Path.GetFileName(path)}";
             ClearRecoveryPanel();
             return LegacyCommandResult.Success(_viewModel.Status);
@@ -1997,7 +2007,7 @@ public sealed partial class MainWindow : Window
                         _viewModel.Status = "ZEROBOT EVOLUTION COMPLETE";
                     }
                     Viewport.SetSnapshot(snapshot);
-                    Viewport.SelectKey(_viewModel.SelectedKey);
+                    Viewport.SetRobotFocus(_viewModel.SelectedKey);
                     var graphInterval = (ulong)Math.Max(1, _globalSettings.Main.GraphUpdatesPerTick);
                     var updateGraphs = _lastGraphRefreshTick is not { } lastTick
                         || snapshot.Tick < lastTick || snapshot.Tick - lastTick >= graphInterval;
@@ -2025,7 +2035,7 @@ public sealed partial class MainWindow : Window
             var compatibilityWarnings = new List<string>();
             if (_setup.LoadSavePath is { } savePath)
             {
-                await LoadSimulationAsync(await File.ReadAllBytesAsync(savePath));
+                await LoadSimulationAsync(await File.ReadAllBytesAsync(savePath), _setup.IsAutosaveRecovery);
             }
             else
                 foreach (var species in _setup.Species)
@@ -2911,7 +2921,7 @@ public sealed partial class MainWindow : Window
         finally { _tickInFlight = false; }
     }
 
-    private async Task LoadSimulationAsync(byte[] save)
+    private async Task LoadSimulationAsync(byte[] save, bool isSafeModeRecovery = false)
     {
         _runTimer.Stop();
         await _advanceGate.WaitAsync();
@@ -2920,6 +2930,8 @@ public sealed partial class MainWindow : Window
             if (_session is null) return;
             _loadingSimulation = true;
             await _session.LoadAsync(save);
+            _safeModeRecoveryWorld = isSafeModeRecovery;
+            Viewport.SelectKey(_viewModel.SelectedKey);
             // A rejected load publishes no snapshot and must keep user-closed
             // graphs closed. Loading publications defer this until success.
             _automaticEvolutionGraphBoundary = null;

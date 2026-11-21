@@ -125,12 +125,17 @@ public sealed class WorldViewport : Control
 
     public void SelectKey(OrganismKey? key)
     {
-        _selectedKey = key is { } value && _snapshot.Organisms.Any(organism =>
-            organism.Slot == value.Slot && organism.Generation == value.Generation) ? key : null;
         _selectedKeys.Clear();
-        if (_selectedKey is { } selected) _selectedKeys.Add(selected);
+        SetRobotFocus(key);
+    }
+
+    internal void SetRobotFocus(OrganismKey? key)
+    {
+        _selectedKey = key is { } value && Contains(_snapshot, value) ? key : null;
         InvalidateVisual();
     }
+
+    private bool IsSelected(OrganismKey key) => _selectedKey == key || _selectedKeys.Contains(key);
 
     public void SelectSlots(IEnumerable<uint> slots, uint primary)
     {
@@ -145,11 +150,9 @@ public sealed class WorldViewport : Control
 
     public void SelectKeys(IEnumerable<OrganismKey> keys, OrganismKey primary)
     {
-        _selectedKey = primary;
         _selectedKeys.Clear();
         foreach (var key in keys) _selectedKeys.Add(key);
-        _selectedKeys.Add(primary);
-        InvalidateVisual();
+        SetRobotFocus(primary);
     }
 
     public void SelectFeature(WorldFeatureSelection? feature)
@@ -165,10 +168,7 @@ public sealed class WorldViewport : Control
         _visibleOrganisms = snapshot.Organisms.Any(robot => robot.IsHidden)
             ? snapshot.Organisms.Where(robot => !robot.IsHidden).ToArray() : snapshot.Organisms;
         if (_selectedKey is { } selected && !Contains(snapshot, selected))
-        {
             _selectedKey = null;
-            _selectedKeys.Clear();
-        }
         _selectedKeys.RemoveWhere(key => !Contains(snapshot, key));
         if (_followKey is { } followed && snapshot.Organisms.FirstOrDefault(value => KeyOf(value) == followed) is { } organism)
         {
@@ -265,7 +265,7 @@ public sealed class WorldViewport : Control
                 && !(_snapshot.RenderInstances.Count > 20_000 && _zoom < 1)
                 && stride == 1;
             DrawOrganism(context, instance, scaleX, scaleY, details);
-            selectedDrawn |= _selectedKeys.Contains(KeyOf(instance));
+            selectedDrawn |= IsSelected(KeyOf(instance));
         }
 
         if (!selectedDrawn && _selectedKey is { } selected
@@ -294,7 +294,7 @@ public sealed class WorldViewport : Control
         var color = organism is not null && _rgbMemoryMonitor is { } monitor
             ? Color.FromUInt32(RgbMemoryMonitor.ColorFor(organism, monitor).ToArgb())
             : Color.FromUInt32(instance.Color);
-        var selected = _selectedKeys.Contains(KeyOf(instance));
+        var selected = IsSelected(KeyOf(instance));
         var edgeColor = ContrastColor(color, strong: false);
         context.DrawEllipse(
             new SolidColorBrush(color),
@@ -419,7 +419,7 @@ public sealed class WorldViewport : Control
             var color = _rgbMemoryMonitor is { } monitor
                 ? Color.FromUInt32(RgbMemoryMonitor.ColorFor(organism, monitor).ToArgb())
                 : Color.FromUInt32(organism.Phenotype.Color);
-            var selected = _selectedKeys.Contains(KeyOf(organism));
+            var selected = IsSelected(KeyOf(organism));
             context.DrawEllipse(
                 new SolidColorBrush(color),
                 new Pen(selected ? Brushes.Black : new SolidColorBrush(ContrastColor(color, false)), selected ? 2.2 : 0.8),
@@ -478,6 +478,7 @@ public sealed class WorldViewport : Control
                 e.Handled = true;
                 return;
             }
+            if (point.Properties.PointerUpdateKind != PointerUpdateKind.LeftButtonPressed) return;
             var scaleX = ScaleX;
             var scaleY = ScaleY;
             WorldClicked?.Invoke([
