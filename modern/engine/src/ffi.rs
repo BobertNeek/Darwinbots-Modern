@@ -73,6 +73,9 @@ enum EngineCommand {
         capture_deaths: bool,
         #[serde(default)]
         recording_weight: Option<u16>,
+        require_native_repopulation_source: bool,
+        #[serde(default)]
+        cancelled_native_repopulation_lineages: Vec<u64>,
     },
     CaptureLivingGenomeRecords {
         weight_percent: u16,
@@ -82,8 +85,11 @@ enum EngineCommand {
     },
     FinishOrdinaryRestart,
     ReadNativeRestartSources,
+    HasUnresolvedNativeRepopulationSources,
     BindNativeRestartSources {
         sources: Vec<crate::world::NativeRestartBinding>,
+        #[serde(default)]
+        preserve_existing: bool,
     },
     SetNativeRestartSeed {
         seed: u64,
@@ -462,8 +468,25 @@ impl Default for DbBuffer {
     }
 }
 
+#[derive(serde::Serialize)]
+struct LastError {
+    message: String,
+    #[serde(flatten)]
+    details: Option<LastErrorDetails>,
+}
+
+#[derive(serde::Serialize)]
+#[serde(tag = "code", rename_all = "snake_case")]
+enum LastErrorDetails {
+    MissingNativeRepopulationSource {
+        lineage_id: u64,
+        filename: String,
+        directory: String,
+    },
+}
+
 thread_local! {
-    static LAST_ERROR: RefCell<String> = const { RefCell::new(String::new()) };
+    static LAST_ERROR: RefCell<LastError> = const { RefCell::new(LastError { message: String::new(), details: None }) };
 }
 
 #[unsafe(no_mangle)]
@@ -678,6 +701,40 @@ fn db_engine_command_batch_impl(
             format!("unsupported command batch version {}", batch.version),
         );
     }
+    // A prior tick could already have committed file transfers. A relinkable
+    // failure must roll back the whole batch, including the optional seed.
+    let interactive_repopulation = |command: &EngineCommand| {
+        matches!(
+            command,
+            EngineCommand::Tick {
+                require_native_repopulation_source,
+                cancelled_native_repopulation_lineages,
+                ..
+            } if *require_native_repopulation_source || !cancelled_native_repopulation_lineages.is_empty()
+        )
+    };
+    if batch.commands.iter().any(interactive_repopulation)
+        && !matches!(
+            batch.commands.as_slice(),
+            [EngineCommand::Tick {
+                count: 1,
+                require_native_repopulation_source: true,
+                ..
+            }] | [
+                EngineCommand::SetNativeRestartSeed { .. },
+                EngineCommand::Tick {
+                    count: 1,
+                    require_native_repopulation_source: true,
+                    ..
+                }
+            ]
+        )
+    {
+        return fail(
+            DbStatus::InvalidCommand,
+            "requiring original repopulation DNA needs a single tick with an optional restart seed",
+        );
+    }
     // Pure queries must not reconstruct the world or its GPU backend.
     if !batch.commands.is_empty()
         && batch.commands.iter().all(|command| {
@@ -688,6 +745,7 @@ fn db_engine_command_batch_impl(
                     | EngineCommand::ReadNativeProcessCaches
                     | EngineCommand::ReadRobotTagReport
                     | EngineCommand::ReadNativeRestartSources
+                    | EngineCommand::HasUnresolvedNativeRepopulationSources
                     | EngineCommand::ExportSpeciesTemplateDna { .. }
                     | EngineCommand::FindBestRobot { .. }
                     | EngineCommand::CaptureLivingGenomeRecords { .. }
@@ -724,6 +782,9 @@ fn db_engine_command_batch_impl(
                 EngineCommand::ReadNativeRestartSources => engine
                     .read_native_restart_sources()
                     .map(|sources| serde_json::json!(sources)),
+                EngineCommand::HasUnresolvedNativeRepopulationSources => engine
+                    .has_unresolved_native_repopulation_sources()
+                    .map(serde_json::Value::Bool),
                 EngineCommand::ExportSpeciesTemplateDna { species } => engine
                     .export_species_template_dna(crate::SpeciesId(*species))
                     .map(|dna| serde_json::json!({ "dna": dna })),
@@ -793,8 +854,14 @@ fn db_engine_command_batch_impl(
             EngineCommand::ReadNativeRestartSources => engine
                 .read_native_restart_sources()
                 .map(|sources| serde_json::json!(sources)),
-            EngineCommand::BindNativeRestartSources { sources } => engine
-                .bind_native_restart_sources(sources)
+            EngineCommand::HasUnresolvedNativeRepopulationSources => engine
+                .has_unresolved_native_repopulation_sources()
+                .map(serde_json::Value::Bool),
+            EngineCommand::BindNativeRestartSources {
+                sources,
+                preserve_existing,
+            } => engine
+                .bind_native_restart_sources(sources, preserve_existing)
                 .map(|bound| serde_json::json!(bound)),
             EngineCommand::SetNativeRestartSeed {
                 seed,
@@ -830,11 +897,24 @@ fn db_engine_command_batch_impl(
                 count,
                 capture_deaths,
                 recording_weight,
+                require_native_repopulation_source,
+                cancelled_native_repopulation_lineages,
             } => {
                 if count > 1_000_000 {
                     return fail(DbStatus::InvalidCommand, "tick count exceeds batch limit");
                 }
-                if capture_deaths {
+                if require_native_repopulation_source && capture_deaths {
+                    engine
+                        .tick_requiring_native_repopulation_source_with_death_records(
+                            &cancelled_native_repopulation_lineages,
+                            recording_weight.unwrap_or(100),
+                        )
+                        .map(|records| serde_json::json!({ "death_records": records }))
+                } else if require_native_repopulation_source {
+                    engine
+                        .tick_requiring_native_repopulation_source(&cancelled_native_repopulation_lineages)
+                        .map(|_| serde_json::Value::Null)
+                } else if capture_deaths {
                     engine
                         .tick_many_with_death_records(count, recording_weight.unwrap_or(100))
                         .map(|records| serde_json::json!({ "death_records": records }))
@@ -1488,7 +1568,7 @@ fn db_engine_command_batch_impl(
         };
         match result {
             Ok(value) => command_results.push(value),
-            Err(error) => return fail(DbStatus::EngineError, error),
+            Err(error) => return fail_engine(error),
         }
     }
     let result = serde_json::json!({
@@ -1748,8 +1828,19 @@ pub extern "C" fn db_last_error_json(out_buffer: *mut DbBuffer) -> DbStatus {
     if !out_buffer.data.is_null() {
         return DbStatus::EngineError;
     }
-    let message = LAST_ERROR.with(|last_error| last_error.borrow().clone());
-    match serde_json::to_vec(&serde_json::json!({ "version": ABI_VERSION, "message": message })) {
+    #[derive(serde::Serialize)]
+    struct ErrorResponse<'a> {
+        version: u32,
+        #[serde(flatten)]
+        error: &'a LastError,
+    }
+    let bytes = LAST_ERROR.with(|error| {
+        serde_json::to_vec(&ErrorResponse {
+            version: ABI_VERSION,
+            error: &error.borrow(),
+        })
+    });
+    match bytes {
         Ok(bytes) => write_buffer(out_buffer, bytes),
         Err(_) => DbStatus::EngineError,
     }
@@ -1776,8 +1867,31 @@ pub extern "C" fn db_buffer_free(buffer: *mut DbBuffer) -> DbStatus {
 }
 
 fn fail(status: DbStatus, error: impl ToString) -> DbStatus {
-    LAST_ERROR.with(|last_error| *last_error.borrow_mut() = error.to_string());
+    LAST_ERROR.with(|last_error| {
+        *last_error.borrow_mut() = LastError {
+            message: error.to_string(),
+            details: None,
+        };
+    });
     status
+}
+
+fn fail_engine(error: EngineError) -> DbStatus {
+    let message = error.to_string();
+    let details = match error {
+        EngineError::MissingNativeRepopulationSource {
+            lineage_id,
+            filename,
+            directory,
+        } => Some(LastErrorDetails::MissingNativeRepopulationSource {
+            lineage_id,
+            filename,
+            directory,
+        }),
+        _ => None,
+    };
+    LAST_ERROR.with(|last_error| *last_error.borrow_mut() = LastError { message, details });
+    DbStatus::EngineError
 }
 
 fn write_buffer(out_buffer: &mut DbBuffer, mut bytes: Vec<u8>) -> DbStatus {
@@ -2278,7 +2392,7 @@ mod tests {
     fn ffi_guard_converts_panics_to_structured_engine_errors() {
         let status = ffi_guard("test operation", || panic!("deliberate failure"));
         assert_eq!(status, DbStatus::EngineError);
-        let message = LAST_ERROR.with(|error| error.borrow().clone());
+        let message = LAST_ERROR.with(|error| error.borrow().message.clone());
         assert!(message.contains("test operation panicked"));
         assert!(message.contains("deliberate failure"));
     }
@@ -2414,6 +2528,206 @@ mod tests {
         assert_eq!(records[0]["tick"], 1);
         assert!(result["results"][1].is_null());
         assert_eq!(result["tick"], 4);
+    }
+
+    fn arm_repopulation(world: &Engine, amount: u32, second_source: bool) -> Engine {
+        // Set the first eligible attempt explicitly so this boundary test
+        // does not depend on unrelated long-running native replay changes.
+        let mut frame = SaveFile::encode(world).unwrap();
+        let mut payload: serde_json::Value = serde_json::from_slice(&frame[10..]).unwrap();
+        if second_source {
+            payload["species"][1]["vegetable"] = true.into();
+            payload["species"][1]["reseed"] = true.into();
+        }
+        payload["config"]["vegetation"]["start_chloroplasts"] = 0.into();
+        payload["config"]["vegetation"]["minimum_chloroplast_equivalents"] = 1000.into();
+        payload["config"]["vegetation"]["repopulation_amount"] = amount.into();
+        payload["config"]["vegetation"]["repopulation_cooldown"] = 1.into();
+        payload["vegetation_runtime"]["native_repopulation_counter"] = 0.into();
+        let payload = serde_json::to_vec(&payload).unwrap();
+        frame.truncate(6);
+        frame.extend_from_slice(&(payload.len() as u32).to_le_bytes());
+        frame.extend_from_slice(&payload);
+        SaveFile::decode(&frame).unwrap()
+    }
+
+    #[test]
+    fn strict_repopulation_waits_for_the_selected_source_and_retries_atomically() {
+        const SIM: &[u8] = include_bytes!("../tests/fixtures/db24832-original-user.sim");
+        const ALGA: &str = "start 19 .up store stop";
+        let has_unresolved = |world: &mut Engine| {
+            let before = SaveFile::encode(world).unwrap();
+            let (status, response) = classic_test_batch(
+                world,
+                serde_json::json!([
+                    {"type": "has_unresolved_native_repopulation_sources"}
+                ]),
+            );
+            assert_eq!(status, DbStatus::Ok);
+            assert_eq!(SaveFile::encode(world).unwrap(), before);
+            let response: serde_json::Value = serde_json::from_slice(&response).unwrap();
+            response["results"][0].as_bool().unwrap()
+        };
+        let mut world = Engine::from_native_sim(SIM).unwrap();
+        let strict = serde_json::json!([{
+            "type": "tick", "count": 1, "require_native_repopulation_source": true
+        }]);
+        // Loading a stale path and running an ordinary cycle both succeed.
+        assert!(has_unresolved(&mut world));
+        let mut restored = SaveFile::decode(&SaveFile::encode(&world).unwrap()).unwrap();
+        assert!(has_unresolved(&mut restored));
+        let (status, _) = classic_test_batch(&mut world, strict.clone());
+        assert_eq!(status, DbStatus::Ok);
+        assert_eq!(world.snapshot().native_cycle, Some(282));
+        let (status, response) = classic_test_batch(
+            &mut world,
+            serde_json::json!([
+                {"type": "read_native_restart_sources"}
+            ]),
+        );
+        assert_eq!(status, DbStatus::Ok);
+        let manifest: serde_json::Value = serde_json::from_slice(&response).unwrap();
+        let source = &manifest["results"][0]["sources"][0];
+        assert_eq!(source["lineage_id"], 1);
+        assert_eq!(source["filename"], "Alga_Minimalis_Chloroplastus.txt");
+        assert!(!source["directory"].as_str().unwrap().is_empty());
+
+        let mut world = arm_repopulation(&world, 1, false);
+        assert_eq!(
+            world
+                .bind_native_restart_sources(
+                    vec![crate::world::NativeRestartBinding {
+                        lineage_id: 2,
+                        dna: "start 17 .up store stop".into(),
+                        selected_directory: None,
+                    }],
+                    false
+                )
+                .unwrap(),
+            1
+        );
+        let folder = tempfile::tempdir().unwrap();
+        let destination = folder.path().join("new").join("outbound");
+        let resident = world
+            .snapshot()
+            .organisms
+            .iter()
+            .find(|robot| !robot.vegetable)
+            .unwrap();
+        world
+            .add_file_teleporter(
+                crate::FileTeleporter::new(10_000, resident.position, 1.0)
+                    .with_paths("", &destination),
+            )
+            .unwrap();
+
+        let before = SaveFile::encode(&world).unwrap();
+        let reseeds = world.snapshot().stats.reseeds;
+        let (status, _) = classic_test_batch(
+            &mut world,
+            serde_json::json!([{
+                "type": "tick", "count": 2, "require_native_repopulation_source": true
+            }]),
+        );
+        assert_eq!(status, DbStatus::InvalidCommand);
+        assert_eq!(SaveFile::encode(&world).unwrap(), before);
+
+        let (status, body) = classic_test_batch(&mut world, strict.clone());
+        assert_eq!(status, DbStatus::EngineError);
+        assert!(body.is_empty());
+        assert_eq!(SaveFile::encode(&world).unwrap(), before);
+        assert_eq!(std::fs::read_dir(folder.path()).unwrap().count(), 0);
+
+        let mut error = DbBuffer::default();
+        assert_eq!(db_last_error_json(&mut error), DbStatus::Ok);
+        let details: serde_json::Value =
+            serde_json::from_slice(unsafe { slice::from_raw_parts(error.data, error.len) })
+                .unwrap();
+        assert_eq!(db_buffer_free(&mut error), DbStatus::Ok);
+        assert_eq!(details["code"], "missing_native_repopulation_source");
+        for key in ["lineage_id", "filename", "directory"] {
+            assert_eq!(details[key], source[key]);
+        }
+
+        let (status, response) = classic_test_batch(
+            &mut world,
+            serde_json::json!([{
+                "type": "bind_native_restart_sources", "preserve_existing": true,
+                "sources": [{"lineage_id": 1, "dna": ALGA}]
+            }]),
+        );
+        assert_eq!(status, DbStatus::Ok);
+        let response: serde_json::Value = serde_json::from_slice(&response).unwrap();
+        assert_eq!(response["results"][0], 1);
+        let state: serde_json::Value = serde_json::to_value(&world).unwrap();
+        assert_eq!(
+            state["ordinary_restart"]["imported_sources"]
+                .as_object()
+                .unwrap()
+                .len(),
+            2
+        );
+        assert!(!has_unresolved(&mut world));
+        let mut restored = SaveFile::decode(&SaveFile::encode(&world).unwrap()).unwrap();
+        assert!(!has_unresolved(&mut restored));
+        let (status, _) = classic_test_batch(&mut world, strict);
+        assert_eq!(status, DbStatus::Ok);
+        assert_eq!(world.snapshot().native_cycle, Some(283));
+        assert!(world.snapshot().stats.reseeds > reseeds);
+        let expected = world.load_dna_source(ALGA).unwrap();
+        assert!(
+            world
+                .snapshot()
+                .organisms
+                .iter()
+                .any(|robot| robot.vegetable
+                    && world.dna(robot.id).unwrap().blocks() == expected.blocks())
+        );
+        assert_eq!(std::fs::read_dir(&destination).unwrap().count(), 1);
+    }
+
+    #[test]
+    fn cancelled_lineages_replay_atomically_when_a_second_source_is_missing() {
+        let bytes = include_bytes!("../tests/fixtures/db24832-original-user.sim");
+        let mut world = Engine::from_native_sim(bytes).unwrap();
+        world.tick().unwrap();
+        assert_eq!(world.snapshot().native_cycle, Some(282));
+        let mut world = arm_repopulation(&world, 3, true);
+        let before = SaveFile::encode(&world).unwrap();
+        let reseeds = world.snapshot().stats.reseeds;
+
+        let attempt = |world: &mut Engine, cancelled: &[u64]| {
+            classic_test_batch(
+                world,
+                serde_json::json!([{
+                    "type": "tick", "count": 1, "require_native_repopulation_source": true,
+                    "cancelled_native_repopulation_lineages": cancelled
+                }]),
+            )
+            .0
+        };
+        let missing_lineage = || {
+            let mut buffer = DbBuffer::default();
+            assert_eq!(db_last_error_json(&mut buffer), DbStatus::Ok);
+            let error: serde_json::Value =
+                serde_json::from_slice(unsafe { slice::from_raw_parts(buffer.data, buffer.len) })
+                    .unwrap();
+            assert_eq!(db_buffer_free(&mut buffer), DbStatus::Ok);
+            assert_eq!(error["code"], "missing_native_repopulation_source");
+            error["lineage_id"].as_u64().unwrap()
+        };
+        assert_eq!(attempt(&mut world, &[]), DbStatus::EngineError);
+        let first = missing_lineage();
+        assert_eq!(SaveFile::encode(&world).unwrap(), before);
+        assert_eq!(attempt(&mut world, &[first]), DbStatus::EngineError);
+        let second = missing_lineage();
+        assert_ne!(first, second);
+        assert_eq!(SaveFile::encode(&world).unwrap(), before);
+
+        assert_eq!(attempt(&mut world, &[first, second]), DbStatus::Ok);
+        assert_eq!(world.snapshot().native_cycle, Some(283));
+        assert_eq!(world.snapshot().stats.reseeds, reseeds);
+        assert!(!world.has_unresolved_native_repopulation_sources().unwrap());
     }
 
     fn populated_native_cpu_candidate_fixture() -> Engine {

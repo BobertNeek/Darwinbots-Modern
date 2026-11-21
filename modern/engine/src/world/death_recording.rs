@@ -45,6 +45,22 @@ impl Engine {
         )
     }
 
+    pub(crate) fn tick_requiring_native_repopulation_source_with_death_records(
+        &mut self,
+        cancelled_lineages: &[u64],
+        weight: u16,
+    ) -> Result<Vec<DeathRecord>, EngineError> {
+        if !self.config.recording.dead_snapshot_enabled {
+            self.tick_requiring_native_repopulation_source(cancelled_lineages)?;
+            return Ok(Vec::new());
+        }
+        self.with_death_recording(
+            weight,
+            self.config.recording.exclude_repopulating_robots,
+            |engine| engine.tick_requiring_native_repopulation_source(cancelled_lineages),
+        )
+    }
+
     pub(crate) fn remove_many_recording_deaths(
         &mut self,
         ids: &[OrganismId],

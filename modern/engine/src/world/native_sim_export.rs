@@ -3,7 +3,7 @@
 use super::native_export::{NativeSlotNumbering, ansi, mutation_arrays, native_dna};
 use super::*;
 use crate::CorpseDecayMode;
-use crate::native_binary::{NativeRecordFile, NativeSimulationTail, NativeValue};
+use crate::native_binary::{MAX_TEXT_BYTES, NativeRecordFile, NativeSimulationTail, NativeValue};
 
 fn invalid(message: impl Into<String>) -> EngineError {
     EngineError::InvalidSave(format!("native DB2 simulation export {}", message.into()))
@@ -339,6 +339,18 @@ impl Engine {
             if projected.classic_alias {
                 text(&mut tail, &(p.clone() + "path"), "&#\\league")?;
                 number(&mut tail, &(p.clone() + "color_index"), 8.0)?;
+            } else if projected.name == species.name
+                && let Some(directory) = self.selected_native_source_directory(species)
+                && let Ok(bytes) = ansi(directory)
+                && bytes.len() <= MAX_TEXT_BYTES
+            {
+                // Keep unrepresentable directories as DB3S metadata without
+                // changing the original SIM path or adjacent roster fields.
+                tail.set_value(
+                    &(p.clone() + "path.length"),
+                    NativeValue::Long(bytes.len() as i32),
+                )?;
+                tail.set_value(&(p.clone() + "path"), NativeValue::Bytes(bytes))?;
             }
             number(
                 &mut tail,

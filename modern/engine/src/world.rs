@@ -5833,25 +5833,34 @@ impl Engine {
     }
 
     pub fn tick(&mut self) -> Result<(), EngineError> {
-        self.tick_transactional(true, false).map(|_| ())
+        self.tick_transactional(true, false, None).map(|_| ())
     }
 
     pub fn tick_with_trace(&mut self) -> Result<crate::CycleTrace, EngineError> {
-        self.tick_transactional(true, true)?
+        self.tick_transactional(true, true, None)?
             .ok_or_else(|| EngineError::Invariant("cycle tracing was not enabled".to_owned()))
     }
 
     pub fn tick_many(&mut self, count: u32) -> Result<(), EngineError> {
         for index in 0..count {
-            self.tick_transactional(index + 1 == count, false)?;
+            self.tick_transactional(index + 1 == count, false, None)?;
         }
         Ok(())
+    }
+
+    pub(crate) fn tick_requiring_native_repopulation_source(
+        &mut self,
+        cancelled_lineages: &[u64],
+    ) -> Result<(), EngineError> {
+        self.tick_transactional(true, false, Some(cancelled_lineages))
+            .map(|_| ())
     }
 
     fn tick_transactional(
         &mut self,
         publish: bool,
         trace_enabled: bool,
+        cancelled_repopulation_lineages: Option<&[u64]>,
     ) -> Result<Option<crate::CycleTrace>, EngineError> {
         // A headless or batched caller may continue without the desktop's
         // explicit post-recording restart command.
@@ -5875,11 +5884,17 @@ impl Engine {
             || self.has_file_transfers())
         .then(|| self.cycle_checkpoint());
         let next_native_cycle = self.next_native_cycle()?;
-        let mut transfers = FileTransferTransaction::default();
+        let mut transfers = FileTransferTransaction::new(cancelled_repopulation_lineages.is_some());
         self.update_native_mutation_oscillation();
         self.update_dynamic_cost_state();
         match self
-            .tick_internal(publish, trace_enabled, &mut transfers, next_native_cycle)
+            .tick_internal(
+                publish,
+                trace_enabled,
+                &mut transfers,
+                next_native_cycle,
+                cancelled_repopulation_lineages,
+            )
             .and_then(|trace| {
                 transfers.commit()?;
                 Ok(trace)
@@ -6043,6 +6058,7 @@ impl Engine {
         trace_enabled: bool,
         transfers: &mut FileTransferTransaction,
         next_native_cycle: Option<i32>,
+        cancelled_repopulation_lineages: Option<&[u64]>,
     ) -> Result<Option<crate::CycleTrace>, EngineError> {
         let cycle_started = Instant::now();
         self.phase_timings = PhaseTimings::default();
@@ -6246,7 +6262,7 @@ impl Engine {
         )?;
         trace.phase(CyclePhase::Repopulation);
         let started = Instant::now();
-        self.vegetation_repopulation_phase()?;
+        self.vegetation_repopulation_phase(cancelled_repopulation_lineages)?;
         self.phase_timings.vegetation = elapsed_ms(started);
         trace.phase(CyclePhase::Sunlight);
         let started = Instant::now();
@@ -12551,7 +12567,10 @@ impl Engine {
         }
     }
 
-    fn vegetation_repopulation_phase(&mut self) -> Result<(), EngineError> {
+    fn vegetation_repopulation_phase(
+        &mut self,
+        cancelled_repopulation_lineages: Option<&[u64]>,
+    ) -> Result<(), EngineError> {
         let equivalents = self.refresh_native_chloroplast_population();
         if self.native_loaded_census_blocks_births() {
             return Ok(());
@@ -12567,7 +12586,12 @@ impl Engine {
             return Ok(());
         }
         let classic_table = self.classic_native_species_table();
-        let eligible: Vec<_> = self
+        let mut missing_sources = if cancelled_repopulation_lineages.is_some() {
+            self.missing_native_repopulation_sources()?
+        } else {
+            BTreeMap::new()
+        };
+        let mut eligible: Vec<_> = self
             .species
             .iter()
             .enumerate()
@@ -12576,7 +12600,8 @@ impl Engine {
                     && classic_table.as_ref().map_or(species.reseed, |table| {
                         table.contains(&SpeciesId(index as u32))
                     })
-                    && self.repopulation_source(index).is_some())
+                    && (self.repopulation_source(index).is_some()
+                        || missing_sources.contains_key(&index)))
                 .then_some(index)
             })
             .collect();
@@ -12605,17 +12630,16 @@ impl Engine {
                 .vegetable_population_cap
                 .saturating_sub(self.vegetable_population())
         };
-        let amount = self
-            .config
-            .vegetation
-            .repopulation_amount
-            .min(capacity)
-            .min(vegetable_capacity);
-        if amount == 0 {
+        let mut remaining_capacity = capacity.min(vegetable_capacity);
+        let amount = self.config.vegetation.repopulation_amount;
+        if amount == 0 || remaining_capacity == 0 {
             return Ok(());
         }
         let origin = self.native_script_origin_tail()?;
         for ordinal in 0..amount {
+            if remaining_capacity == 0 {
+                break;
+            }
             let random = advance_random(
                 self.config.seed ^ self.tick.rotate_left(23) ^ (ordinal as u64).rotate_left(41),
             );
@@ -12630,6 +12654,11 @@ impl Engine {
                     60,
                     (self.config.world_height - 60.0).round_ties_even() as i32,
                 );
+                // Cancelling the last eligible source still leaves the caller's
+                // two Random arguments on each remaining repopulation attempt.
+                if eligible.is_empty() {
+                    continue;
+                }
                 loop {
                     let count = classic_table.as_ref().map_or(self.species.len(), Vec::len);
                     let selected = source.integer(0, count as i32 - 1) as usize;
@@ -12644,11 +12673,26 @@ impl Engine {
                 eligible[random as usize % eligible.len()]
             };
             let species = SpeciesId(species_index as u32);
+            if let Some(missing) = missing_sources.remove(&species_index) {
+                let lineage_id = self.species[species_index].lineage_id;
+                if !cancelled_repopulation_lineages
+                    .unwrap_or_default()
+                    .contains(&lineage_id)
+                {
+                    return Err(missing.missing_error());
+                }
+                let position = self.native_placement_position(species, advance_random(random));
+                self.cancel_native_script_robot(species, position)?;
+                self.species[species_index].reseed = false;
+                eligible.retain(|index| *index != species_index);
+                continue;
+            }
             let (dna, initial_energy) = self.repopulation_source(species_index).unwrap();
             let dna = dna.clone();
             let position = self.native_placement_position(species, advance_random(random));
             let dna = self.classic_native_start_dna(species, dna)?;
             let id = self.spawn_native_script_robot(dna, species, position, origin.as_ref())?;
+            remaining_capacity -= 1;
             self.apply_classic_start_actor(id, species)?;
             let robot = self.slots.get_mut(id)?;
             robot.materials.energy = initial_energy as f32;

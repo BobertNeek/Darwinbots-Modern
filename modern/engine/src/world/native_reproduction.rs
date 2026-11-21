@@ -349,7 +349,7 @@ mod tests {
             .native_repopulation_counter()
             .unwrap();
         assert_eq!(loaded_counter, -10);
-        world.vegetation_repopulation_phase().unwrap();
+        world.vegetation_repopulation_phase(None).unwrap();
         let blocked = serde_json::to_value(&world.vegetation_runtime).unwrap();
         assert_eq!(
             blocked["repopulation_counter"],
@@ -358,7 +358,7 @@ mod tests {
         assert_eq!(blocked["native_repopulation_counter"], loaded_counter);
         assert_eq!(world.vegetation_runtime.native_chloroplast_population(), 0);
         world.native_loaded_census_stage = None;
-        world.vegetation_repopulation_phase().unwrap();
+        world.vegetation_repopulation_phase(None).unwrap();
         let next = serde_json::to_value(&world.vegetation_runtime).unwrap();
         assert_eq!(
             next["native_repopulation_counter"],
