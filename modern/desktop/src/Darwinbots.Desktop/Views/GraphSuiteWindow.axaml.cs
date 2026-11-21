@@ -10,7 +10,7 @@ public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWi
     private readonly LegacyGraphRecordingRun? _recording;
     private readonly bool _keepUpdatingOnClose;
     private readonly Func<bool>? _autoFork;
-    private readonly Func<Action<NativeGraphRecordingSample?>, Task>? _readNativeSample;
+    private readonly Func<GraphSamplingSettings?, Action<NativeGraphRecordingSample?>, Task>? _consumeNativeSample;
     private static readonly IReadOnlyDictionary<GraphMetric, double> EmptyMetrics = new Dictionary<GraphMetric, double>();
     private readonly Dictionary<GraphMetric, RecordingChart> _recordingCharts = [];
     private EngineSnapshot _snapshot = EngineSnapshot.Empty;
@@ -22,29 +22,39 @@ public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWi
 
     public GraphSuiteWindow(EngineSnapshot snapshot, LegacyGraphRecordingRun? recording = null, Func<bool>? autoFork = null,
         Func<Task<NativeGraphRecordingSample?>>? readNativeSample = null,
-        Func<Action<NativeGraphRecordingSample?>, Task>? consumeNativeSample = null,
+        Func<GraphSamplingSettings?, Action<NativeGraphRecordingSample?>, Task>? consumeNativeSample = null,
         bool keepUpdatingOnClose = false)
     {
         _recording = recording;
         _keepUpdatingOnClose = keepUpdatingOnClose;
         _autoFork = autoFork;
-        _readNativeSample = consumeNativeSample ?? (readNativeSample is null ? null
-            : async consume => consume(await readNativeSample()));
+        _consumeNativeSample = consumeNativeSample ?? (readNativeSample is null ? null
+            : async (_, consume) => consume(await readNativeSample()));
         InitializeComponent();
         GraphView.GraphWindowRequested += OpenGraphWindow;
         GraphView.ReopenGraphRequested = ReopenGraphWindow;
         SetSnapshot(snapshot);
         ViewModel.GraphsReset += ResetRecordingCharts;
         ViewModel.RunningGraphs.CollectionChanged += (_, _) => NotifySamplingChanged(SamplingSettings);
+        foreach (var slot in ViewModel.CustomMetrics)
+            slot.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(CustomMetricSlotViewModel.Expression))
+                    NotifySamplingChanged(SamplingSettings);
+            };
     }
 
     public GraphSuiteViewModel ViewModel => GraphView.ViewModel;
     public event Action<GraphSamplingSettings>? SamplingChanged;
     internal event Action<NativeGraphLayoutState, NativeGraphLayoutRow, NativeGraphCustomQuery?>? NativeLayoutEdited;
-    public GraphSamplingSettings SamplingSettings => new(
-        ViewModel.RunningGraphs.Any(graph => graph.Metric is GraphMetric.SelectiveGeneticDistance or GraphMetric.CustomizableGraph1 or GraphMetric.CustomizableGraph2 or GraphMetric.CustomizableGraph3),
-        ViewModel.RunningGraphs.Any(graph => graph.Metric is GraphMetric.GenerationalDistance or GraphMetric.CustomizableGraph1 or GraphMetric.CustomizableGraph2 or GraphMetric.CustomizableGraph3),
-        ViewModel.RunningGraphs.Any(graph => graph.Metric == GraphMetric.SlowGeneticDistance));
+    public GraphSamplingSettings SamplingSettings => SamplingFor(ViewModel.RunningGraphs.Select(graph => graph.Metric));
+
+    private GraphSamplingSettings SamplingFor(IEnumerable<GraphMetric> metrics) => metrics.Distinct()
+        .Select(ViewModel.SamplingSettingsFor)
+        .Aggregate(new GraphSamplingSettings(), (combined, settings) => new(
+            combined.Selective || settings.Selective,
+            combined.Generational || settings.Generational,
+            combined.Slow || settings.Slow));
 
     private void NotifySamplingChanged(GraphSamplingSettings settings)
     {
@@ -53,7 +63,7 @@ public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWi
         SamplingChanged?.Invoke(settings);
     }
 
-    private bool UsesNativeSamples => _readNativeSample is not null && _snapshot.NativeCycle.HasValue;
+    private bool UsesNativeSamples => _consumeNativeSample is not null && _snapshot.NativeCycle.HasValue;
 
     internal bool WantsNativeGraphSamples => UsesNativeSamples && IsVisible && _recording?.IsSuspended == false
         && _recordingCharts.Values.Any(chart => chart.Windows.Any(window => window.IsCollecting));
@@ -114,10 +124,11 @@ public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWi
             else if (feedImmediately && ViewModel.HistorySamples.LastOrDefault() is { } sample)
                 RecordPoint(metric, chart, sample);
         }
-        if (pendingReads.Count > 0 && _readNativeSample is { } read)
+        if (pendingReads.Count > 0 && _consumeNativeSample is { } capture)
         {
             var generation = _recording.Generation;
-            _ = read(sample => FinishNativeRead(pendingReads, generation, feedImmediately, sample));
+            var sampling = feedImmediately ? SamplingFor(pendingReads.Select(entry => entry.Metric)) : null;
+            _ = capture(sampling, sample => FinishNativeRead(pendingReads, generation, feedImmediately, sample));
         }
     }
 
@@ -194,8 +205,8 @@ public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWi
         if (_recording is not { } recording || recording.IsSuspended) return;
         var generation = recording.Generation;
         var version = chart.Version;
-        if (UsesNativeSamples && _readNativeSample is { } read)
-            _ = read(sample =>
+        if (UsesNativeSamples && _consumeNativeSample is { } capture)
+            _ = capture(ViewModel.SamplingSettingsFor(metric), sample =>
             {
                 if (sample is null || recording.IsSuspended || recording.Generation != generation
                     || chart.Version != version || !_recordingCharts.TryGetValue(metric, out var active) || active != chart)

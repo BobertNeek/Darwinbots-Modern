@@ -34,6 +34,9 @@ public interface IEngineClient : IDisposable
         else
             TickRecordingDeaths(count, weightPercent, onDeathsCommitted);
     }
+    NativeGraphRecordingSample? ReadNativeGraphSample() => null;
+    NativeGraphRecordingSample? FeedNativeGraphSample(GraphSamplingSettings settings, bool dueOnly = false) =>
+        ReadNativeGraphSample();
     DnaImportReport ImportDna(string dna, float[]? position = null);
     int ImportOrganism(ReadOnlyMemory<byte> payload) => throw new NotSupportedException("This engine client does not support organism interchange.");
     DnaImportReport ImportSpecies(SpeciesImport species);
