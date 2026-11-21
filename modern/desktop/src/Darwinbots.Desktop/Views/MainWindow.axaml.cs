@@ -104,6 +104,7 @@ public sealed partial class MainWindow : Window
     private bool _navigationInFlight;
     private bool _editingLiveSettings;
     private int _worldLoadGeneration;
+    private bool _showingNativeRobotMutationRates;
     private readonly SemaphoreSlim _advanceGate = new(1, 1);
     private volatile bool _loadingSimulation;
     private RobotDetailsWindow? _nativeRobotInfoWindow;
@@ -1862,15 +1863,43 @@ public sealed partial class MainWindow : Window
 
     private async Task<LegacyCommandResult> OpenRobotMutationRatesCommandAsync()
     {
-        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
         var organism = _viewModel.SelectedOrganism;
         if (organism is null) return LegacyCommandResult.Failure("SELECT A ROBOT FIRST");
-        var dialog = new MutationRatesWindow(organism.MutationProfile);
-        await dialog.ShowDialog(this);
-        if (!dialog.Accepted) return LegacyCommandResult.Cancel();
-        await _session.UpdateOrganismMutationProfileAsync(
-            organism.Slot, organism.Generation, dialog.Profile);
-        return LegacyCommandResult.Success($"ROBOT {organism.Slot}:{organism.Generation} MUTATION RATES APPLIED");
+
+        var native = session.LatestSnapshot.NativeCycle.HasValue;
+        if (!native) return await ShowAndApplyAsync(organism);
+
+        if (_showingNativeRobotMutationRates || !CanEdit()) return LegacyCommandResult.Cancel();
+        _showingNativeRobotMutationRates = true;
+        var wasRunning = _runTimer.IsEnabled;
+        _runTimer.Stop();
+        var focus = new OrganismKey(organism.Slot, organism.Generation);
+        await _advanceGate.WaitAsync();
+        try
+        {
+            if (!CanEdit() || SelectedRobotKey() != focus) return LegacyCommandResult.Cancel();
+            var current = session.LatestSnapshot.Organisms.FirstOrDefault(robot =>
+                robot.Slot == focus.Slot && robot.Generation == focus.Generation);
+            return current is null ? LegacyCommandResult.Cancel() : await ShowAndApplyAsync(current);
+        }
+        finally
+        {
+            _advanceGate.Release();
+            _showingNativeRobotMutationRates = false;
+            if (wasRunning && CanEdit()) _runTimer.Start();
+        }
+
+        bool CanEdit() => _session == session && IsVisible && !_loadingSimulation && !_navigationInFlight;
+
+        async Task<LegacyCommandResult> ShowAndApplyAsync(OrganismSnapshot target)
+        {
+            var dialog = new MutationRatesWindow(target.MutationProfile, applyOnClose: native);
+            await dialog.ShowDialog(this);
+            if (!dialog.Accepted || (native && !CanEdit())) return LegacyCommandResult.Cancel();
+            await session.UpdateOrganismMutationProfileAsync(target.Slot, target.Generation, dialog.Profile);
+            return LegacyCommandResult.Success($"ROBOT {target.Slot}:{target.Generation} MUTATION RATES APPLIED");
+        }
     }
 
     private async Task<LegacyCommandResult> OpenGlobalSettingsCommandAsync()

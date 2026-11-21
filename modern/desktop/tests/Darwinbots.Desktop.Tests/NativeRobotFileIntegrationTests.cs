@@ -1,6 +1,7 @@
 using System.Reflection;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Threading;
 using Darwinbots.Desktop.Controls;
 using Darwinbots.Desktop.Core;
 using Darwinbots.Desktop.Core.LegacyMenus;
@@ -13,6 +14,79 @@ namespace Darwinbots.Desktop.Tests;
 
 public sealed class NativeRobotFileIntegrationTests
 {
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task NativeRobotMutationRatesFreezeAndRestoreRunAndApplyToTheOpeningRobot(bool running)
+    {
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var setup = new WorldSetupOptions
+            {
+                Backend = "Cpu",
+                MutationSettings = MutationSettingsUpdate.Default with { Enabled = false },
+            };
+            using var engine = new NativeEngineClient(setup);
+            engine.ImportSpecies(new("Pair", "start stop", false, 0xff112233, 2, 1000, 0, false, 1)
+                { MutationProfile = FileProfile() });
+            await using var session = new SimulationSession(engine);
+            var window = new MainWindow([], setup, new FixedFactory(engine), new AuditStorageService());
+            try
+            {
+                DesktopTestApplication.UseSession(window, session);
+                window.Show();
+                Assert.NotNull(session.LatestSnapshot.NativeCycle);
+                var robots = session.LatestSnapshot.Organisms.ToArray();
+                Assert.Equal(2, robots.Length);
+                var selected = robots[0];
+                var other = robots[1];
+                var viewModel = Field<MainWindowViewModel>(window, "_viewModel");
+                var timer = Field<DispatcherTimer>(window, "_runTimer");
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                var command = menu.FindCommandItem(LegacyCommandId.RobotMutationRates)!;
+
+                if (running)
+                {
+                    Invoke(window, "Run_Click");
+                    await WaitFor(() => session.LatestSnapshot.Tick > 0);
+                }
+                viewModel.Select(selected.Slot);
+                await WaitFor(() => command.IsEnabled);
+                command.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => window.OwnedWindows.OfType<MutationRatesWindow>().Any(tool => tool.IsVisible));
+                var dialog = Assert.Single(window.OwnedWindows.OfType<MutationRatesWindow>());
+                Assert.False(timer.IsEnabled);
+                Assert.False(dialog.FindControl<Button>("CancelButton")!.IsVisible);
+                var tick = session.LatestSnapshot.Tick;
+                await Task.Delay(TimeSpan.FromMilliseconds(100));
+                Assert.Equal(tick, session.LatestSnapshot.Tick);
+
+                dialog.FindControl<NumericUpDown>("Mean")!.Value = 19m;
+                viewModel.Select(other.Slot);
+                if (running)
+                    dialog.Close();
+                else
+                    dialog.FindControl<Button>("ApplyButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+                await WaitFor(() => session.LatestSnapshot.Organisms.Any(robot =>
+                    robot.Slot == selected.Slot && robot.Generation == selected.Generation
+                    && robot.MutationProfile.Point.Mean == 19) && timer.IsEnabled == running);
+                var unchanged = Assert.Single(session.LatestSnapshot.Organisms,
+                    robot => robot.Slot == other.Slot && robot.Generation == other.Generation);
+                Assert.Equal(other.MutationProfile, unchanged.MutationProfile);
+                if (running)
+                    await WaitFor(() => session.LatestSnapshot.Tick > tick);
+                else
+                    Assert.Equal(tick, session.LatestSnapshot.Tick);
+            }
+            finally
+            {
+                SetField(window, "_session", null);
+                if (window.IsVisible) window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
     [Fact]
     public async Task NativeGenomeExportsScoreLivingFamiliesAndRecordEachManualRemovalInOrder()
     {
