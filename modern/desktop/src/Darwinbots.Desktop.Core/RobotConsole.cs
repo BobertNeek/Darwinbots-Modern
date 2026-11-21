@@ -51,7 +51,20 @@ public sealed class RobotConsoleController
                 return "help | printmem [address or .sysvar] | set address-or-.sysvar value | energy value | cycle [count] | step | execrob | printeye | printtouch | printtaste | debug | showdna | play | pause";
             case "cycle":
             case "step":
-                var count = command.Name == "step" ? 1u : ParseCount(command.Arguments, 1);
+                uint count;
+                if (command.Name == "cycle" && _session.LatestSnapshot.NativeCycle.HasValue)
+                {
+                    // The original typed command reads its exact first two literal-space fields.
+                    var words = input.Split(' ', 3);
+                    if (words[0] != "cycle") return string.Empty;
+                    var nativeCount = Convert.ToInt16(Microsoft.VisualBasic.Conversion.Val(words.Length > 1 ? words[1] : ""));
+                    if (nativeCount <= 0) return string.Empty;
+                    count = (uint)nativeCount;
+                }
+                else
+                {
+                    count = command.Name == "step" ? 1u : ParseCount(command.Arguments, 1);
+                }
                 if (_advance is { } advance)
                 {
                     var result = await advance(count, cancellationToken).ConfigureAwait(false);
