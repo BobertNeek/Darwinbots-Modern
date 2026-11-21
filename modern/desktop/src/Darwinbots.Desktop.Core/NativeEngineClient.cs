@@ -14,6 +14,10 @@ public sealed partial class NativeEngineClient : IEngineClient
     private readonly TimeProvider _clock;
     private bool _sampleRestartClockPerCycle;
     private bool _sampleClassicSkinClock;
+    private static readonly JsonSerializerOptions NativeRecordingJson = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+    };
 
     public NativeEngineClient(WorldSetupOptions options, TimeProvider? timeProvider = null)
     {
@@ -104,7 +108,27 @@ public sealed partial class NativeEngineClient : IEngineClient
 
     public void Tick(uint count = 1) => Tick(count, requireNativeRepopulationSource: false, []);
 
-    public void Tick(uint count, bool requireNativeRepopulationSource, IReadOnlyList<ulong> cancelledLineages)
+    public void Tick(uint count, bool requireNativeRepopulationSource, IReadOnlyList<ulong> cancelledLineages) =>
+        Advance(count, requireNativeRepopulationSource, cancelledLineages);
+
+    public void TickRecordingGraphs(uint count, Action<IReadOnlyList<NativeGraphRecordingSample>> onCommitted,
+        bool requireNativeRepopulationSource, IReadOnlyList<ulong> cancelledLineages)
+    {
+        ArgumentNullException.ThrowIfNull(onCommitted);
+        Advance(count, requireNativeRepopulationSource, cancelledLineages, onCommitted);
+    }
+
+    public NativeGraphRecordingSample? ReadNativeGraphSample()
+    {
+        EnsureAlive();
+        var result = ExecuteBatchForResult(
+            new { version = 1, commands = new[] { new { type = "read_native_graph_sample" } } },
+            "sample original graphs").GetProperty("results")[0];
+        return result.Deserialize<NativeGraphRecordingSample>(NativeRecordingJson);
+    }
+
+    private void Advance(uint count, bool requireNativeRepopulationSource, IReadOnlyList<ulong> cancelledLineages,
+        Action<IReadOnlyList<NativeGraphRecordingSample>>? onGraphSamplesCommitted = null)
     {
         EnsureAlive();
         if (count == 0) return;
@@ -114,19 +138,27 @@ public sealed partial class NativeEngineClient : IEngineClient
         {
             // External league/staged restarts take a new Timer sample for each
             // original cycle. Each successful cycle commits before the next begins.
-            for (uint cycle = 0; cycle < count; cycle++) Tick(1);
+            for (uint cycle = 0; cycle < count; cycle++)
+                Advance(1, requireNativeRepopulationSource: false, [], onGraphSamplesCommitted);
             return;
         }
-        object command = requireNativeRepopulationSource
-            ? new
-            {
-                type = "tick",
-                count,
-                require_native_repopulation_source = true,
-                cancelled_native_repopulation_lineages = cancelledLineages,
-            }
-            : new { type = "tick", count };
-        ExecuteBatch(new { version = 1, commands = new[] { NativeRestartSeedCommand(), command } }, "advance simulation");
+        var command = new
+        {
+            type = "tick",
+            count,
+            require_native_repopulation_source = requireNativeRepopulationSource,
+            cancelled_native_repopulation_lineages = requireNativeRepopulationSource ? cancelledLineages : [],
+            capture_graph_samples = onGraphSamplesCommitted is not null,
+        };
+        var batch = new { version = 1, commands = new[] { NativeRestartSeedCommand(), command } };
+        if (onGraphSamplesCommitted is null)
+        {
+            ExecuteBatch(batch, "advance simulation");
+            return;
+        }
+        var result = ExecuteBatchForResult(batch, "advance simulation with graph recording").GetProperty("results")[1];
+        if (result.GetProperty("graph_samples").Deserialize<NativeGraphRecordingSample[]>(NativeRecordingJson) is { Length: > 0 } samples)
+            onGraphSamplesCommitted(samples);
     }
 
     public DnaImportReport ImportDna(string dna, float[]? position = null)
@@ -862,6 +894,38 @@ public sealed partial class NativeEngineClient : IEngineClient
             slow = settings.Slow,
         } } },
     }, "configure graph sampling");
+
+    public NativeGraphRecordingState ReadNativeGraphRecording()
+    {
+        EnsureAlive();
+        var result = ExecuteBatchForResult(
+            new { version = 1, commands = new[] { new { type = "read_native_graph_recording" } } },
+            "read original graph recording").GetProperty("results")[0];
+        var graphs = result.GetProperty("graphs").EnumerateArray().Select(row => new NativeGraphRecordingRow(
+            row.GetProperty("graph_index").GetInt32(),
+            row.GetProperty("enabled").GetBoolean(),
+            row.GetProperty("counter").GetInt32())).ToArray();
+        return new(result.GetProperty("run_stamp").GetString() ?? string.Empty, graphs);
+    }
+
+    public void UpdateNativeGraphRecording(string? runStamp, IReadOnlyList<NativeGraphRecordingRow> graphs)
+    {
+        EnsureAlive();
+        ArgumentNullException.ThrowIfNull(graphs);
+        ExecuteBatch(new
+        {
+            version = 1,
+            commands = new[] { new
+            {
+                type = "update_native_graph_recording",
+                run_stamp = runStamp,
+                graphs = graphs.Select(row => new
+                {
+                    graph_index = row.GraphIndex, enabled = row.Enabled, counter = row.Counter,
+                }).ToArray(),
+            } },
+        }, "update original graph recording");
+    }
 
     public void UpdateEnvironment(EnvironmentUpdate update)
     {

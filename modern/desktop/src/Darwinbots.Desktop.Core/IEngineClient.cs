@@ -11,6 +11,10 @@ public interface IEngineClient : IDisposable
             throw new NotSupportedException("Original repopulation sources are unavailable in this engine client.");
         Tick(count);
     }
+    void TickRecordingGraphs(uint count, Action<IReadOnlyList<NativeGraphRecordingSample>> onCommitted,
+        bool requireNativeRepopulationSource, IReadOnlyList<ulong> cancelledLineages) =>
+        Tick(count, requireNativeRepopulationSource, cancelledLineages);
+    NativeGraphRecordingSample? ReadNativeGraphSample() => null;
     DnaImportReport ImportDna(string dna, float[]? position = null);
     int ImportOrganism(ReadOnlyMemory<byte> payload) => throw new NotSupportedException("This engine client does not support organism interchange.");
     DnaImportReport ImportSpecies(SpeciesImport species);
@@ -97,6 +101,8 @@ public interface IEngineClient : IDisposable
         if (settings.Selective || settings.Generational || settings.Slow)
             throw new NotSupportedException("Native graph sampling is unavailable.");
     }
+    NativeGraphRecordingState? ReadNativeGraphRecording() => null;
+    void UpdateNativeGraphRecording(string? runStamp, IReadOnlyList<NativeGraphRecordingRow> graphs) { }
     byte[] Save();
     byte[] SaveLegacy() => throw new NotSupportedException("This engine client does not support legacy simulation export.");
     byte[] SaveWithoutMutations();

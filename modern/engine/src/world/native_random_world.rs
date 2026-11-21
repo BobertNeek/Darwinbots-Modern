@@ -91,6 +91,7 @@ impl Engine {
     }
 
     pub(super) fn prepare_native_restart(&mut self, boundary: NativeStartBoundary) {
+        self.native_restarted_this_cycle = true;
         self.native_loaded_census_stage = None;
         if self.native_cycle.is_some()
             && self
@@ -559,6 +560,34 @@ mod tests {
         world.advance_local_mode_after_cycle().unwrap();
         assert_eq!(world.local_mode.results.len(), 1);
         assert_eq!(world.local_mode.results[0].reason, "cycle limit");
+    }
+
+    #[test]
+    fn native_graph_recording_stream_skips_a_same_counter_f1_retry() {
+        let (mut world, _) =
+            native_contest_world(42, LocalModeKind::Contest, crate::LeagueWorkflow::Direct);
+        world.config.vegetation.minimum_chloroplast_equivalents = 0;
+        for species in &mut world.species {
+            species.reseed = true;
+        }
+        world.start_local_mode().unwrap();
+        world.tick_many(9).unwrap();
+        world.remove_many(&world.slots.ids_in_slot_order()).unwrap();
+        world.config.recording.sampling_interval = 1;
+
+        let mut samples = Vec::new();
+        world
+            .tick_many_with_native_source_requirement(1, None, Some(&mut samples))
+            .unwrap();
+        assert_eq!(world.native_cycle, Some(9));
+        assert_eq!(world.local_mode.restart_count, 0);
+        assert!(samples.is_empty());
+
+        world
+            .tick_many_with_native_source_requirement(1, None, Some(&mut samples))
+            .unwrap();
+        assert_eq!(world.native_cycle, Some(10));
+        assert_eq!(samples.len(), 1);
     }
 
     #[test]

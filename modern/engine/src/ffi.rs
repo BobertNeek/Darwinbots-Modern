@@ -56,6 +56,8 @@ enum EngineCommand {
     Tick {
         count: u32,
         #[serde(default)]
+        capture_graph_samples: bool,
+        #[serde(default)]
         require_native_repopulation_source: bool,
         #[serde(default)]
         cancelled_native_repopulation_lineages: Vec<u64>,
@@ -93,6 +95,13 @@ enum EngineCommand {
     },
     ConfigureGraphSampling {
         settings: crate::GraphSamplingSettings,
+    },
+    ReadNativeGraphRecording,
+    ReadNativeGraphSample,
+    UpdateNativeGraphRecording {
+        run_stamp: Option<String>,
+        #[serde(default)]
+        graphs: Vec<crate::world::native_graph_recording::NativeGraphRecordingRow>,
     },
     UpdateCostSettings {
         costs: crate::DnaCosts,
@@ -642,6 +651,8 @@ fn db_engine_command_batch_impl(
                     | EngineCommand::ReadNativeSunChange
                     | EngineCommand::ReadNativeProcessCaches
                     | EngineCommand::ReadNativeRestartSources
+                    | EngineCommand::ReadNativeGraphRecording
+                    | EngineCommand::ReadNativeGraphSample
                     | EngineCommand::HasUnresolvedNativeRepopulationSources
                     | EngineCommand::ExportSpeciesTemplateDna { .. }
                     | EngineCommand::FindBestRobot { .. }
@@ -674,6 +685,12 @@ fn db_engine_command_batch_impl(
                 EngineCommand::ReadNativeRestartSources => engine
                     .read_native_restart_sources()
                     .map(|sources| serde_json::json!(sources)),
+                EngineCommand::ReadNativeGraphRecording => engine
+                    .read_native_graph_recording()
+                    .map(|state| serde_json::json!(state)),
+                EngineCommand::ReadNativeGraphSample => {
+                    Ok(serde_json::json!(engine.read_native_graph_sample()))
+                }
                 EngineCommand::HasUnresolvedNativeRepopulationSources => engine
                     .has_unresolved_native_repopulation_sources()
                     .map(serde_json::Value::Bool),
@@ -771,20 +788,33 @@ fn db_engine_command_batch_impl(
                 .map(|_| serde_json::Value::Null),
             EngineCommand::Tick {
                 count,
+                capture_graph_samples,
                 require_native_repopulation_source,
                 cancelled_native_repopulation_lineages,
             } => {
                 if count > 1_000_000 {
                     return fail(DbStatus::InvalidCommand, "tick count exceeds batch limit");
                 }
-                let step = if require_native_repopulation_source {
-                    engine.tick_requiring_native_repopulation_source(
-                        &cancelled_native_repopulation_lineages,
-                    )
+                let cancelled_lineages = require_native_repopulation_source
+                    .then_some(cancelled_native_repopulation_lineages.as_slice());
+                if capture_graph_samples {
+                    let mut samples = Vec::new();
+                    engine
+                        .tick_many_with_native_source_requirement(
+                            count,
+                            cancelled_lineages,
+                            Some(&mut samples),
+                        )
+                        .map(|_| serde_json::json!({"graph_samples": samples}))
                 } else {
-                    engine.tick_many(count)
-                };
-                step.map(|_| serde_json::Value::Null)
+                    let step = match cancelled_lineages {
+                        Some(lineages) => {
+                            engine.tick_requiring_native_repopulation_source(lineages)
+                        }
+                        None => engine.tick_many(count),
+                    };
+                    step.map(|_| serde_json::Value::Null)
+                }
             }
             EngineCommand::ConfigureLocalMode { config } => engine
                 .configure_local_mode(config)
@@ -793,6 +823,15 @@ fn db_engine_command_batch_impl(
                 engine.configure_graph_sampling(settings);
                 Ok(serde_json::Value::Null)
             }
+            EngineCommand::ReadNativeGraphRecording => engine
+                .read_native_graph_recording()
+                .map(|state| serde_json::json!(state)),
+            EngineCommand::ReadNativeGraphSample => {
+                Ok(serde_json::json!(engine.read_native_graph_sample()))
+            }
+            EngineCommand::UpdateNativeGraphRecording { run_stamp, graphs } => engine
+                .update_native_graph_recording(run_stamp, graphs)
+                .map(|_| serde_json::Value::Null),
             EngineCommand::UpdateCostSettings { costs } => engine
                 .update_cost_settings(costs)
                 .map(|_| serde_json::Value::Null),
@@ -2082,6 +2121,120 @@ mod tests {
         frame.extend_from_slice(&(payload.len() as u32).to_le_bytes());
         frame.extend_from_slice(&payload);
         SaveFile::decode(&frame).unwrap()
+    }
+
+    #[test]
+    fn native_graph_recording_commands_persist_counters_and_reject_bad_indices_atomically() {
+        use crate::native_binary::{NativeRecordFile, NativeSimulationTail};
+
+        let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+        let read = serde_json::json!([{"type": "read_native_graph_recording"}]);
+        let original = SaveFile::encode(&world).unwrap();
+        let (status, _) = classic_test_batch(&mut world, read.clone());
+        assert_eq!(status, DbStatus::Ok);
+        assert_eq!(SaveFile::encode(&world).unwrap(), original);
+
+        let row = serde_json::json!({"graph_index": 0, "enabled": true, "counter": 2});
+        let update = serde_json::json!({
+            "type": "update_native_graph_recording",
+            "run_stamp": "2026-11-21 06-01-02",
+            "graphs": [row],
+        });
+        let (status, _) = classic_test_batch(
+            &mut world,
+            serde_json::json!([update, {
+                "type": "update_native_graph_recording",
+                "graphs": [{"graph_index": 18, "enabled": true, "counter": 1}],
+            }]),
+        );
+        assert_eq!(status, DbStatus::EngineError);
+        assert_eq!(SaveFile::encode(&world).unwrap(), original);
+
+        let (status, _) = classic_test_batch(&mut world, serde_json::json!([update]));
+        assert_eq!(status, DbStatus::Ok);
+        let checkpoint = SaveFile::encode(&world).unwrap();
+        let native = NativeRecordFile::decode(&world.export_native_sim().unwrap()).unwrap();
+        let tail = NativeSimulationTail::decode(&native.tail).unwrap();
+        assert_eq!(tail.bytes("sim_start").unwrap(), b"2026-11-21 06-01-02");
+        assert_eq!(tail.integer("graph[0].counter").unwrap(), 2);
+        assert_eq!(tail.integer("graph[0].save").unwrap(), -1);
+
+        for mut restored in [
+            SaveFile::decode(&checkpoint).unwrap(),
+            SaveFile::decode(&native.encode().unwrap()).unwrap(),
+        ] {
+            let (status, response) = classic_test_batch(&mut restored, read.clone());
+            assert_eq!(status, DbStatus::Ok);
+            let result: serde_json::Value = serde_json::from_slice(&response).unwrap();
+            assert_eq!(
+                result["results"][0],
+                serde_json::json!({
+                    "run_stamp": "2026-11-21 06-01-02",
+                    "graphs": [row],
+                })
+            );
+        }
+    }
+
+    #[test]
+    fn native_graph_recording_stream_keeps_all_due_post_cycle_samples_without_changing_history() {
+        let mut config = EngineConfig::testing();
+        config.recording.sampling_interval = 5;
+        let mut world = Engine::new_native(config).unwrap();
+        world
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [500.0, 500.0])
+            .unwrap();
+        let original = SaveFile::encode(&world).unwrap();
+        let read = serde_json::json!([{"type": "read_native_graph_sample"}]);
+        let (status, output) = classic_test_batch(&mut world, read.clone());
+        assert_eq!(status, DbStatus::Ok);
+        let output: serde_json::Value = serde_json::from_slice(&output).unwrap();
+        assert_eq!(output["results"][0]["native_cycle"], -1);
+        assert_eq!(SaveFile::encode(&world).unwrap(), original);
+
+        let (status, output) = classic_test_batch(
+            &mut world,
+            serde_json::json!([{
+                "type": "tick", "count": 11, "capture_graph_samples": true,
+            }]),
+        );
+        assert_eq!(status, DbStatus::Ok);
+        let output: serde_json::Value = serde_json::from_slice(&output).unwrap();
+        let result = &output["results"][0];
+        let graph_samples = result["graph_samples"].as_array().unwrap();
+        assert_eq!(
+            graph_samples
+                .iter()
+                .map(|sample| (
+                    sample["tick"].as_u64().unwrap(),
+                    sample["native_cycle"].as_i64().unwrap()
+                ))
+                .collect::<Vec<_>>(),
+            [(1, 0), (6, 5), (11, 10)],
+        );
+
+        let (status, current) = classic_test_batch(&mut world, read);
+        assert_eq!(status, DbStatus::Ok);
+        let current: serde_json::Value = serde_json::from_slice(&current).unwrap();
+        assert_eq!(graph_samples.last().unwrap(), &current["results"][0]);
+        // Cycle 5 ages the robot from five to six, crossing the 0.1 graph rounding threshold.
+        assert_eq!(
+            graph_samples[1]["species_graphs"][0]["values"]["average_age"].as_f64(),
+            Some(f64::from(0.1_f32)),
+        );
+
+        let mut reference = SaveFile::decode(&original).unwrap();
+        let (status, legacy) = classic_test_batch(
+            &mut reference,
+            serde_json::json!([{"type": "tick", "count": 11}]),
+        );
+        assert_eq!(status, DbStatus::Ok);
+        let legacy: serde_json::Value = serde_json::from_slice(&legacy).unwrap();
+        assert!(legacy["results"][0].is_null());
+        assert_eq!(
+            SaveFile::encode(&world).unwrap(),
+            SaveFile::encode(&reference).unwrap()
+        );
     }
 
     #[test]

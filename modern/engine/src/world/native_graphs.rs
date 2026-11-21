@@ -2,6 +2,14 @@
 use super::*;
 use crate::{GeneticGraphState, GraphSamplingSettings, SpeciesGraphSample};
 
+#[derive(Debug, PartialEq, Serialize)]
+pub(crate) struct NativeGraphRecordingSample {
+    tick: u64,
+    native_cycle: i32,
+    species_graphs: Vec<SpeciesGraphSample>,
+    dynamic_cost_series: [f64; 6],
+}
+
 impl Engine {
     pub fn configure_graph_sampling(&mut self, settings: GraphSamplingSettings) {
         self.graph_sampling = settings;
@@ -33,6 +41,32 @@ impl Engine {
     }
 
     pub(super) fn sample_native_graphs(&mut self) -> Vec<SpeciesGraphSample> {
+        let mut cache_updates = Vec::new();
+        let samples = self.project_native_graphs(Some(&mut cache_updates));
+        for (index, cache) in cache_updates {
+            self.slots[index]
+                .organism
+                .as_mut()
+                .unwrap()
+                .program
+                .genetic_graph = Some(cache);
+        }
+        samples
+    }
+
+    pub(crate) fn read_native_graph_sample(&self) -> Option<NativeGraphRecordingSample> {
+        Some(NativeGraphRecordingSample {
+            tick: self.tick,
+            native_cycle: self.native_cycle?,
+            species_graphs: self.project_native_graphs(None),
+            dynamic_cost_series: self.native_dynamic_cost_series(),
+        })
+    }
+
+    fn project_native_graphs(
+        &self,
+        mut cache_updates: Option<&mut Vec<(usize, GeneticGraphState)>>,
+    ) -> Vec<SpeciesGraphSample> {
         let mut groups: BTreeMap<String, Vec<usize>> = BTreeMap::new();
         for (index, slot) in self.slots.iter().enumerate() {
             if let Some(robot) = slot.organism.as_ref().filter(|robot| robot.flags.exists) {
@@ -57,17 +91,17 @@ impl Engine {
             let mut selective = 0.0_f32;
             let mut slow = 0.0_f32;
             for (position, &index) in live.iter().enumerate() {
-                let robot = self.slots[index].organism.as_mut().unwrap();
-                let state = robot
+                let robot = self.slots[index].organism.as_ref().unwrap();
+                let mut state = robot
                     .program
                     .genetic_graph
-                    .get_or_insert_with(|| GeneticGraphState::for_dna(&robot.program.dna));
+                    .unwrap_or_else(|| GeneticGraphState::for_dna(&robot.program.dna));
                 if !self.graph_sampling.selective || state.mutations_remaining > 0.0 {
                     selective = selective.max(state.previous_distance);
                 } else {
                     state.mutations_remaining =
                         (robot.program.dna.blocks().len() as f64 / 75.0) as f32;
-                    let dna = robot.program.dna.clone();
+                    let dna = &robot.program.dna;
                     let mut maximum = 0.0_f32;
                     for &other in &live[position + 1..] {
                         let candidate = self.slots[other].organism.as_ref().unwrap();
@@ -80,16 +114,15 @@ impl Engine {
                                 maximum.max(dna.genetic_distance(&candidate.program.dna) * 1000.0);
                         }
                     }
-                    self.slots[index]
-                        .organism
-                        .as_mut()
-                        .unwrap()
-                        .program
-                        .genetic_graph
-                        .as_mut()
-                        .unwrap()
-                        .previous_distance = maximum;
+                    state.previous_distance = maximum;
                     selective = selective.max(maximum);
+                }
+                if let Some(updates) = cache_updates.as_mut()
+                    && robot.program.genetic_graph != Some(state)
+                {
+                    // Selective comparisons only look ahead to actors this pass
+                    // has yet to sample. Commit the history cache after projection.
+                    updates.push((index, state));
                 }
                 if self.graph_sampling.slow {
                     let dna = &self.slots[index].organism.as_ref().unwrap().program.dna;
@@ -259,6 +292,25 @@ mod tests {
             })
             .collect();
         (engine, ids)
+    }
+
+    #[test]
+    fn native_graph_recording_sample_projects_exhausted_caches_without_consuming_them() {
+        let (mut engine, ids) = scene();
+        engine.native_cycle = Some(7);
+        engine.configure_graph_sampling(GraphSamplingSettings {
+            selective: true,
+            ..Default::default()
+        });
+        for id in ids {
+            engine.slots.get_mut(id).unwrap().program.genetic_graph =
+                Some(GeneticGraphState::default());
+        }
+        let before = crate::SaveFile::encode(&engine).unwrap();
+        let observed = engine.read_native_graph_sample().unwrap();
+        assert_eq!(crate::SaveFile::encode(&engine).unwrap(), before);
+        assert_eq!(observed.species_graphs, engine.sample_native_graphs());
+        assert_ne!(crate::SaveFile::encode(&engine).unwrap(), before);
     }
     #[test]
     fn species_forks_change_the_native_filename_used_for_graph_grouping() {
