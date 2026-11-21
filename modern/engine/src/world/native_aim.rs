@@ -102,8 +102,16 @@ mod tests {
         let heading = f32::from_bits(0x4056_bbfc);
         let base = 671.0_f32 / 200.0;
         let momentum = heading - base;
+        // Preserve the runtime libm result for the Portable comparison.
+        let portable_heading = std::hint::black_box(heading);
         for (native, expected) in [
-            (false, [heading.cos().to_bits(), heading.sin().to_bits()]),
+            (
+                false,
+                [
+                    portable_heading.cos().to_bits(),
+                    portable_heading.sin().to_bits(),
+                ],
+            ),
             (true, [0xbf7a_2e35, 0xbe59_1915]),
         ] {
             let mut current = robot(base, momentum);
