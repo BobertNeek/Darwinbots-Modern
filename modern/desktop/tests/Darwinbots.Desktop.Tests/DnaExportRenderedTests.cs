@@ -161,7 +161,8 @@ public sealed class DnaExportRenderedTests
         public Task<bool> SaveSimulationAsync(TopLevel owner, ReadOnlyMemory<byte> save) =>
             Task.FromResult(false);
 
-        public Task<bool> SaveDnaAsync(TopLevel owner, string suggestedFileName, string dna, MutationProfileUpdate? mutationProfile)
+        public Task<bool> SaveDnaAsync(TopLevel owner, string suggestedFileName, string dna, MutationProfileUpdate? mutationProfile,
+            string? mainDirectory = null)
         {
             DnaSaveRequests++;
             LastOwnerType = owner.GetType();
@@ -176,7 +177,8 @@ public sealed class DnaExportRenderedTests
         public Task<bool> SaveOrganismAsync(
             TopLevel owner,
             string suggestedFileName,
-            Func<Stream, Task> writeAsync) => Task.FromResult(false);
+            Func<Stream, Task> writeAsync,
+            string? mainDirectory = null) => Task.FromResult(false);
 
         public string? FindLatestAutosave() => null;
 

@@ -1099,7 +1099,7 @@ public sealed partial class MainWindow : Window
     private async Task<LegacyCommandResult> ImportOrganismCommandAsync()
     {
         if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        if (await _storage.OpenOrganismAsync(this) is not { } organismPayload)
+        if (await _storage.OpenOrganismAsync(this, _globalSettings.Main.MainDirectory) is not { } organismPayload)
             return LegacyCommandResult.Cancel();
         try
         {
@@ -1698,7 +1698,7 @@ public sealed partial class MainWindow : Window
             .OrderBy(key => key == selected ? 0 : 1).ToArray();
         var bytes = await _session.ExportOrganismGroupAsync(members);
         var saved = await _storage.SaveOrganismAsync(this, $"organism-{members[0].Slot}.dbo",
-            async stream => await stream.WriteAsync(bytes));
+            async stream => await stream.WriteAsync(bytes), _globalSettings.Main.MainDirectory);
         return saved
             ? LegacyCommandResult.Success($"ORGANISM SAVED · {group.Count:N0} BOT(S)")
             : LegacyCommandResult.Cancel();
@@ -1713,7 +1713,8 @@ public sealed partial class MainWindow : Window
             ? _session.LatestSnapshot.Species[(int)organism.Species].Name
             : $"Robot-{organism.Slot}-{organism.Generation}";
         var suggestedName = _automaticTagByName ? $"{species}.txt" : $"Robot-{organism.Slot}-{organism.Generation}.txt";
-        return await _storage.SaveDnaAsync(this, suggestedName, file.Dna, file.MutationProfile)
+        return await _storage.SaveDnaAsync(this, suggestedName, file.Dna, file.MutationProfile,
+            _globalSettings.Main.MainDirectory)
             ? LegacyCommandResult.Success("ROBOT DNA SAVED")
             : LegacyCommandResult.Cancel();
     }

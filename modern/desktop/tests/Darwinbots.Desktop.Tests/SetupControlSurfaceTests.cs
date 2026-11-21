@@ -575,12 +575,14 @@ internal sealed class SettingsWorkflowStorage : IDesktopStorageService
     public Task<byte[]?> OpenSimulationAsync(TopLevel owner) => Task.FromResult<byte[]?>(null);
     public Task<bool> SaveSimulationAsync(TopLevel owner, ReadOnlyMemory<byte> save) => Task.FromResult(true);
     public MutationProfileUpdate? SavedDnaMutationProfile { get; private set; }
-    public Task<bool> SaveDnaAsync(TopLevel owner, string suggestedFileName, string dna, MutationProfileUpdate? mutationProfile)
+    public Task<bool> SaveDnaAsync(TopLevel owner, string suggestedFileName, string dna, MutationProfileUpdate? mutationProfile,
+            string? mainDirectory = null)
     {
         SavedDnaMutationProfile = mutationProfile;
         return Task.FromResult(true);
     }
-    public Task<bool> SaveOrganismAsync(TopLevel owner, string suggestedFileName, Func<Stream, Task> writeAsync) => Task.FromResult(true);
+    public Task<bool> SaveOrganismAsync(TopLevel owner, string suggestedFileName, Func<Stream, Task> writeAsync,
+            string? mainDirectory = null) => Task.FromResult(true);
     public string? FindLatestAutosave() => LatestAutosave;
     public Task SaveAutosaveAsync(ReadOnlyMemory<byte> save) => Task.CompletedTask;
     public Task<DesktopSettings?> OpenSettingsAsync(TopLevel owner) => Task.FromResult(SettingsToOpen);

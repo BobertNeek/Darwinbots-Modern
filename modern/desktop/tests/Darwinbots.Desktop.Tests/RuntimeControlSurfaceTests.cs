@@ -2004,7 +2004,8 @@ public sealed class RuntimeControlSurfaceTests
         }
 
         public MutationProfileUpdate? SavedDnaMutationProfile { get; private set; }
-        public Task<bool> SaveDnaAsync(TopLevel owner, string suggestedFileName, string dna, MutationProfileUpdate? mutationProfile)
+        public Task<bool> SaveDnaAsync(TopLevel owner, string suggestedFileName, string dna, MutationProfileUpdate? mutationProfile,
+            string? mainDirectory = null)
         {
             SavedDnaMutationProfile = mutationProfile;
             return Task.FromResult(false);
@@ -2013,7 +2014,8 @@ public sealed class RuntimeControlSurfaceTests
         public Task<bool> SaveOrganismAsync(
             TopLevel owner,
             string suggestedFileName,
-            Func<Stream, Task> writeAsync) => Task.FromResult(false);
+            Func<Stream, Task> writeAsync,
+            string? mainDirectory = null) => Task.FromResult(false);
 
         public string? FindLatestAutosave() => null;
 
