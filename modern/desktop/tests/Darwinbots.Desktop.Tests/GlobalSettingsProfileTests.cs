@@ -113,9 +113,11 @@ public sealed class GlobalSettingsProfileTests
                     next.Show();
                     var model = Assert.IsType<MainWindowViewModel>(next.DataContext);
                     await WaitFor(() => model.Status.StartsWith("WORLD READY", StringComparison.Ordinal));
-                    Assert.False(Named<WorldViewport>(next, "Viewport").IsVisible);
+                    Assert.True(Named<WorldViewport>(next, "Viewport").IsVisible);
                     Assert.Equal("GRAPHICS OFF", Named<Button>(next, "ToolbarSlot14").Content);
-                    Click(next, "TurboButton");
+                    Assert.Equal("TURBO", Named<Button>(next, "TurboButton").Content);
+                    Click(next, "ToolbarSlot14");
+                    Assert.Equal("GRAPHICS ON", Named<Button>(next, "ToolbarSlot14").Content);
                     Assert.True(Named<WorldViewport>(next, "Viewport").IsVisible);
                 }
                 finally { await CloseRuntimeAsync(next); }

@@ -115,6 +115,8 @@ public sealed partial class MainWindow : Window
     private OrganismKey? _moveOrganism;
     private WorldInsertionController? _insertion;
     private bool _turbo;
+    private bool _legacyVideoOff;
+    private bool _awaitingVideoFrame;
     private bool _limitMode;
     private bool _fastMode;
     private bool _flickerMode;
@@ -413,7 +415,7 @@ public sealed partial class MainWindow : Window
         _runTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(_maximumSpeed ? 1 : 16) };
         _runTimer.Tick += RunTimer_Tick;
         if (setup.LoadSavePath is null && _globalSettings.Main.VideoOff)
-            SetTurboMode(true);
+            SetLegacyVideoOff(true);
         Opened += Window_Opened;
         Closing += Window_Closing;
         Closed += Window_Closed;
@@ -629,7 +631,7 @@ public sealed partial class MainWindow : Window
     private void ToolbarFast_Click(object? sender, RoutedEventArgs e)
     {
         _fastMode = !_fastMode;
-        RuntimeSpeed.SelectedIndex = _fastMode ? 3 : 0;
+        _awaitingVideoFrame = true;
         ToolbarSlot10.Content = _fastMode ? "FAST ON" : "FAST OFF";
         AutomationProperties.SetName(ToolbarSlot10, _fastMode ? "FAST MODE ON" : "FAST MODE OFF");
         _viewModel.Status = _fastMode ? "FAST MODE ON" : "FAST MODE OFF";
@@ -680,7 +682,19 @@ public sealed partial class MainWindow : Window
         AutomationProperties.SetName(ToolbarSlot13, enabled ? "DEATH EFFECTS ON" : "DEATH EFFECTS OFF");
     }
 
-    private void ToolbarNoGraphics_Click(object? sender, RoutedEventArgs e) => Turbo_Click(sender, e);
+    private void ToolbarNoGraphics_Click(object? sender, RoutedEventArgs e)
+    {
+        SetLegacyVideoOff(!_legacyVideoOff);
+        _viewModel.Status = _legacyVideoOff ? "WORLD GRAPHICS OFF" : "WORLD GRAPHICS ON";
+    }
+
+    private void SetLegacyVideoOff(bool off)
+    {
+        _legacyVideoOff = off;
+        _awaitingVideoFrame = true;
+        ToolbarSlot14.Content = off ? "GRAPHICS OFF" : "GRAPHICS ON";
+        AutomationProperties.SetName(ToolbarSlot14, off ? "WORLD GRAPHICS OFF" : "WORLD GRAPHICS ON");
+    }
 
     private async void ToolbarFindBest_Click(object? sender, RoutedEventArgs e)
     {
@@ -2670,6 +2684,7 @@ public sealed partial class MainWindow : Window
     private async void Window_Opened(object? sender, EventArgs e)
     {
         if (_session is not null || _windowClosed) return;
+        var presentingStartup = true;
         try
         {
             await _storage.SaveLastStartAsync(
@@ -2736,12 +2751,17 @@ public sealed partial class MainWindow : Window
                             _viewModel.Status = $"RESTART CONTINUATION CLEANUP FAILED · {error.Message}";
                         }
                     }
-                    Viewport.SetSnapshot(snapshot);
                     if (_nativeTeleporterEditor is { } editor
                         && (!snapshot.NativeCycle.HasValue
                             || !snapshot.Teleporters.Any(teleporter => teleporter.Id == editor.TeleporterId && !teleporter.Internet)))
                         CloseNativeTeleporterEditor();
-                    Viewport.SelectKeys(_playerBotHighlights, _viewModel.SelectedKey);
+                    if (snapshot.ViewportFrame == true || loading || presentingStartup
+                        || (snapshot.ViewportFrame is null && !_legacyVideoOff && !_fastMode && !_awaitingVideoFrame))
+                    {
+                        Viewport.SetSnapshot(snapshot);
+                        Viewport.SelectKeys(_playerBotHighlights, _viewModel.SelectedKey);
+                        if (snapshot.ViewportFrame == true) _awaitingVideoFrame = false;
+                    }
                     var graphInterval = (ulong)Math.Max(1, _globalSettings.Main.GraphUpdatesPerTick);
                     var updateGraphs = _lastGraphRefreshTick is not { } lastTick
                         || snapshot.Tick < lastTick || snapshot.Tick - lastTick >= graphInterval;
@@ -2835,6 +2855,7 @@ public sealed partial class MainWindow : Window
             }
             await HandleEngineErrorAsync(error, attemptRecovery: true);
         }
+        finally { presentingStartup = false; }
     }
 
     private async Task ConfigureZerobotModeAsync()
@@ -3151,8 +3172,6 @@ public sealed partial class MainWindow : Window
         UpdateRunTimerInterval();
         Viewport.IsVisible = !_turbo;
         TurboButton.Content = _turbo ? "SHOW WORLD" : "TURBO";
-        ToolbarSlot14.Content = _turbo ? "GRAPHICS OFF" : "GRAPHICS ON";
-        AutomationProperties.SetName(ToolbarSlot14, _turbo ? "WORLD GRAPHICS OFF" : "WORLD GRAPHICS ON");
     }
 
     private async void SwitchBackend_Click(object? sender, RoutedEventArgs e)
@@ -3910,6 +3929,8 @@ public sealed partial class MainWindow : Window
             var mainDirectory = _globalSettings.Main.MainDirectory;
             await _session.LoadWithNativeRestartSourcesAsync(save,
                 source => SetupStorageService.ResolveNativeRestartSource(source, sourcePath, mainDirectory));
+            SetLegacyVideoOff(false);
+            _awaitingVideoFrame = false;
             if (resumeRestartMode) await _session.ResumeRestartModeAsync();
             _ownsRestartContinuation = resumeRestartMode;
             CloseNativeTeleporterEditor();
@@ -3989,40 +4010,49 @@ public sealed partial class MainWindow : Window
             var observesOrdinaryRestart = before.OrdinaryRestartAvailable && before.OrdinaryRestartOnExtinction;
             var batch = observesOrdinaryRestart || requiresOriginalSource
                 ? 1u : Math.Min(count, checkpointBoundary);
+            NativeRedrawCadence? cadence = continuous
+                ? (_legacyVideoOff || _turbo ? NativeRedrawCadence.Off
+                    : _fastMode ? NativeRedrawCadence.EveryTenthCycle : NativeRedrawCadence.EveryCycle)
+                : null;
+            if (cadence == NativeRedrawCadence.EveryTenthCycle)
+                batch = Math.Min(batch, DesktopControlRules.TicksUntilFastFrame(before));
+
             var recordingGeneration = _graphRecording.Generation;
             List<NativeGraphRecordingSample>? graphSamples = continuous && before.NativeCycle.HasValue
                 && _toolWindows.WantsNativeGraphSamples ? [] : null;
             Action<IReadOnlyList<NativeGraphRecordingSample>>? recordGraphs =
                 graphSamples is null ? null : graphSamples.AddRange;
-            // The original UpdateSim checkpoints before the outer loop feeds charts.
-            var deferGraphFeed = recordGraphs is not null && batch == checkpointBoundary;
+            var checkpointDue = batch == checkpointBoundary;
+            // UpdateSim saves the boundary before the active loop redraws or feeds charts.
+            var deferGraphFeed = recordGraphs is not null && checkpointDue;
+            var deferRedraw = checkpointDue && before.NativeCycle.HasValue
+                && cadence is NativeRedrawCadence.EveryCycle or NativeRedrawCadence.EveryTenthCycle;
+            var deferBoundary = deferGraphFeed || deferRedraw;
             var tickBeforeBoundary = before.Tick;
             List<DeathRecordSnapshot>? deaths = _deadRecordingEnabled ? [] : null;
             Action<IReadOnlyList<DeathRecordSnapshot>>? recordDeaths = deaths is null ? null : deaths.AddRange;
             var weight = _globalSettings.Main.EffectiveFindBestWeight;
             try
             {
-                if (requiresOriginalSource)
-                    await StepResolvingNativeRepopulationSourcesAsync(session, cancellationToken,
-                        weight, recordDeaths, deferGraphFeed ? null : recordGraphs);
+                if (deferBoundary && batch > 1)
+                    await StepBatchAsync(batch - 1, cadence, recordGraphs);
+
+                tickBeforeBoundary = session.LatestSnapshot.Tick;
+                var finalCount = deferBoundary ? 1u : batch;
+                if (deferRedraw && cadence is { } scheduled)
+                {
+                    await session.AdvanceWithNativeRedrawAsync(async () =>
+                    {
+                        await StepBatchAsync(finalCount, NativeRedrawCadence.Off, null);
+                        await SaveScheduledCheckpointAsync(session, interval);
+                        var tickAfterBoundary = session.LatestSnapshot.Tick;
+                        return (tickAfterBoundary, tickAfterBoundary >= tickBeforeBoundary
+                            ? tickAfterBoundary - tickBeforeBoundary : 0);
+                    }, after => DesktopControlRules.IsViewportFrameDue(scheduled, after), afterContinuousCycle: true);
+                }
                 else
                 {
-                    if (recordGraphs is not null)
-                    {
-                        var streamCount = deferGraphFeed ? batch - 1 : batch;
-                        if (streamCount > 0)
-                            await session.StepRecordingGraphsAsync(streamCount, recordGraphs,
-                                cancellationToken: cancellationToken, weightPercent: weight, onDeathsCommitted: recordDeaths);
-                    }
-                    if (recordGraphs is null || deferGraphFeed)
-                    {
-                        tickBeforeBoundary = session.LatestSnapshot.Tick;
-                        var remaining = deferGraphFeed ? 1u : batch;
-                        if (recordDeaths is not null)
-                            await session.StepRecordingDeathsAsync(remaining, weight, recordDeaths, cancellationToken);
-                        else
-                            await session.StepAsync(remaining, cancellationToken);
-                    }
+                    await StepBatchAsync(finalCount, cadence, deferGraphFeed ? null : recordGraphs);
                 }
             }
             catch (MissingNativeRepopulationSourceException)
@@ -4037,7 +4067,7 @@ public sealed partial class MainWindow : Window
             }
             count -= batch;
             var after = session.LatestSnapshot;
-            if (_lastAutomaticSaveTick != after.Tick
+            if (!deferRedraw && _lastAutomaticSaveTick != after.Tick
                 && CycleAutosavePolicy.IsDue(after.Tick, _safemodeBackup, interval, after.LocalMode, after.NativeCycle))
                 await SaveAutomaticCheckpointAsync();
             if (deferGraphFeed && after.Tick != tickBeforeBoundary && _toolWindows.WantsNativeGraphSamples
@@ -4051,6 +4081,22 @@ public sealed partial class MainWindow : Window
                 await session.FinishOrdinaryRestartAsync();
             if (count > 0 && requiresOriginalSource)
                 requiresOriginalSource = await session.HasUnresolvedNativeRepopulationSourcesAsync();
+
+            Task StepBatchAsync(uint ticks, NativeRedrawCadence? redraw,
+                Action<IReadOnlyList<NativeGraphRecordingSample>>? graphSink)
+            {
+                if (requiresOriginalSource)
+                    return StepResolvingNativeRepopulationSourcesAsync(session, cancellationToken,
+                        weight, recordDeaths, graphSink, redraw);
+                if (graphSink is not null)
+                    return session.StepRecordingGraphsAsync(ticks, graphSink, cancellationToken: cancellationToken,
+                        weightPercent: weight, onDeathsCommitted: recordDeaths, nativeRedraw: redraw);
+                if (recordDeaths is not null)
+                    return session.StepRecordingDeathsAsync(ticks, weight, recordDeaths, cancellationToken, redraw);
+                return redraw is { } cadenceValue
+                    ? session.StepAsync(ticks, cadenceValue, cancellationToken)
+                    : session.StepAsync(ticks, cancellationToken);
+            }
         }
         var tick = session.LatestSnapshot.Tick;
         return (tick, tick >= startingTick ? tick - startingTick : 0);
@@ -4059,7 +4105,7 @@ public sealed partial class MainWindow : Window
     private async Task StepResolvingNativeRepopulationSourcesAsync(SimulationSession session, CancellationToken cancellationToken,
         int weightPercent = 100,
         Action<IReadOnlyList<DeathRecordSnapshot>>? onCommitted = null,
-        Action<IReadOnlyList<NativeGraphRecordingSample>>? recordGraphs = null)
+        Action<IReadOnlyList<NativeGraphRecordingSample>>? recordGraphs = null, NativeRedrawCadence? nativeRedraw = null)
     {
         List<ulong> cancelledLineages = [];
         while (true)
@@ -4068,9 +4114,9 @@ public sealed partial class MainWindow : Window
             {
                 if (recordGraphs is not null)
                     await session.StepRecordingGraphsAsync(1, recordGraphs, requireNativeRepopulationSource: true,
-                        cancelledLineages, cancellationToken, weightPercent, onCommitted);
+                        cancelledLineages, cancellationToken, weightPercent, onCommitted, nativeRedraw);
                 else
-                    await session.StepRequiringNativeRepopulationSourceAsync(cancelledLineages, weightPercent, onCommitted, cancellationToken);
+                    await session.StepRequiringNativeRepopulationSourceAsync(cancelledLineages, weightPercent, onCommitted, cancellationToken, nativeRedraw);
                 return;
             }
             catch (MissingNativeRepopulationSourceException error)
@@ -4124,6 +4170,14 @@ public sealed partial class MainWindow : Window
             _viewModel.Status = $"PAUSED · DNA COULD NOT BE READ · {error.Message}";
         }
         return RepopulationSourceResolution.Unavailable;
+    }
+
+    private async Task SaveScheduledCheckpointAsync(SimulationSession session, ulong interval)
+    {
+        var after = session.LatestSnapshot;
+        if (_lastAutomaticSaveTick != after.Tick
+            && CycleAutosavePolicy.IsDue(after.Tick, _safemodeBackup, interval, after.LocalMode, after.NativeCycle))
+            await SaveAutomaticCheckpointAsync();
     }
 
     private async Task SaveAutomaticCheckpointAsync()

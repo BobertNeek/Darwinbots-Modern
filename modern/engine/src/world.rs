@@ -6519,9 +6519,10 @@ impl Engine {
             self.advance_population_seeding()?;
         }
         self.refresh_occurrence_census_readbacks();
-        if self
-            .native_cycle
-            .is_some_and(|cycle| native_redraw.applies(cycle))
+        if !self.native_restarted_this_cycle
+            && self
+                .native_cycle
+                .is_some_and(|cycle| native_redraw.applies(cycle))
             && self.native_random.is_some()
         {
             self.write_native_redraw_positions();

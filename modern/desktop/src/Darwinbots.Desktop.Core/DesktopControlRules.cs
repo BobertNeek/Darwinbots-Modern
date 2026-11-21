@@ -14,6 +14,22 @@ public static class DesktopControlRules
 
     public static bool IsMaximumSpeed(int selection) => selection >= 3;
 
+    public static bool IsViewportFrameDue(NativeRedrawCadence cadence, EngineSnapshot snapshot) => cadence switch
+    {
+        NativeRedrawCadence.EveryCycle => true,
+        NativeRedrawCadence.EveryTenthCycle => CycleRemainder(snapshot) == 0,
+        _ => false,
+    };
+
+    public static uint TicksUntilFastFrame(EngineSnapshot snapshot)
+    {
+        var remainder = CycleRemainder(snapshot);
+        return (uint)(remainder < 0 ? -remainder : 10 - remainder);
+    }
+
+    private static int CycleRemainder(EngineSnapshot snapshot) =>
+        snapshot.NativeCycle is { } cycle ? cycle % 10 : (int)(snapshot.Tick % 10);
+
     public static bool IsDragGesture(double deltaX, double deltaY) =>
         deltaX * deltaX + deltaY * deltaY >= DragThresholdSquared;
 

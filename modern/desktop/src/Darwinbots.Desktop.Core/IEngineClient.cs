@@ -5,40 +5,51 @@ public interface IEngineClient : IDisposable
     string Backend { get; }
     EngineCapabilities Capabilities();
     void Tick(uint count = 1);
+    void Tick(uint count, NativeRedrawCadence nativeRedraw) => Tick(count);
     void RedrawNative() { }
+    void RedrawNative(bool afterContinuousCycle) => RedrawNative();
     void TickRecordingDeaths(uint count, Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted) => Tick(count);
-    void TickRecordingDeaths(uint count, int weightPercent, Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted) =>
-        TickRecordingDeaths(count, onCommitted);
+    void TickRecordingDeaths(uint count, int weightPercent, Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted,
+        NativeRedrawCadence? nativeRedraw = null)
+    {
+        if (nativeRedraw is { } scheduled) TickRecordingDeaths(count, onCommitted, scheduled);
+        else TickRecordingDeaths(count, onCommitted);
+    }
     GenomeRecordCapture? CaptureLivingSnp(int weightPercent) => null;
     // A null result means recording removal is unavailable and nothing was removed.
     IReadOnlyList<DeathRecordSnapshot>? RemoveRecordingDeaths(
         IReadOnlyList<OrganismKey> organisms, bool suppressDeathPoffs, bool excludeVegetables, int weightPercent) => null;
-    void Tick(uint count, bool requireNativeRepopulationSource, IReadOnlyList<ulong> cancelledLineages)
+    void Tick(uint count, bool requireNativeRepopulationSource, IReadOnlyList<ulong> cancelledLineages,
+        NativeRedrawCadence? nativeRedraw = null)
     {
         if (requireNativeRepopulationSource)
             throw new NotSupportedException("Original repopulation sources are unavailable in this engine client.");
-        Tick(count);
+        if (nativeRedraw is { } scheduled) Tick(count, scheduled);
+        else Tick(count);
     }
 
     void TickRecordingDeaths(uint count, int weightPercent, IReadOnlyList<ulong> cancelledLineages,
-        Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted) =>
-        Tick(count, requireNativeRepopulationSource: true, cancelledLineages);
+        Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted, NativeRedrawCadence? nativeRedraw = null) =>
+        Tick(count, requireNativeRepopulationSource: true, cancelledLineages, nativeRedraw);
 
     void TickRecordingGraphs(uint count, Action<IReadOnlyList<NativeGraphRecordingSample>> onCommitted,
         bool requireNativeRepopulationSource, IReadOnlyList<ulong> cancelledLineages,
-        int weightPercent = 100, Action<IReadOnlyList<DeathRecordSnapshot>>? onDeathsCommitted = null)
+        int weightPercent = 100, Action<IReadOnlyList<DeathRecordSnapshot>>? onDeathsCommitted = null,
+        NativeRedrawCadence? nativeRedraw = null)
     {
         if (onDeathsCommitted is null)
-            Tick(count, requireNativeRepopulationSource, cancelledLineages);
+            Tick(count, requireNativeRepopulationSource, cancelledLineages, nativeRedraw);
         else if (requireNativeRepopulationSource)
-            TickRecordingDeaths(count, weightPercent, cancelledLineages, onDeathsCommitted);
+            TickRecordingDeaths(count, weightPercent, cancelledLineages, onDeathsCommitted, nativeRedraw);
         else
-            TickRecordingDeaths(count, weightPercent, onDeathsCommitted);
+            TickRecordingDeaths(count, weightPercent, onDeathsCommitted, nativeRedraw);
     }
     NativeGraphRecordingSample? ReadNativeGraphSample() => null;
     NativeGraphRecordingSample? ReadNativeGraphResetSample() => ReadNativeGraphSample();
     NativeGraphRecordingSample? FeedNativeGraphSample(GraphSamplingSettings settings, bool dueOnly = false) =>
         ReadNativeGraphSample();
+    void TickRecordingDeaths(uint count, Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted,
+        NativeRedrawCadence nativeRedraw) => TickRecordingDeaths(count, onCommitted);
     DnaImportReport ImportDna(string dna, float[]? position = null);
     int ImportOrganism(ReadOnlyMemory<byte> payload) => throw new NotSupportedException("This engine client does not support organism interchange.");
     DnaImportReport ImportSpecies(SpeciesImport species);

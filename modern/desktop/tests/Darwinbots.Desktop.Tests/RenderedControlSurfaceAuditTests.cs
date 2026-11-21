@@ -2309,6 +2309,7 @@ internal sealed class AuditEngineClient : IEngineClient
     public ConcurrentQueue<(IReadOnlyList<NativeRestartBinding> Sources, bool PreserveExisting)> NativeRestartBindings { get; } = [];
     public ConcurrentQueue<(uint Count, int? FromCycle, bool Required, ulong[] CancelledLineages)> NativeRepopulationTickAttempts { get; } = [];
     public HashSet<ulong> CommittedCancelledRepopulationLineages { get; } = [];
+    public ConcurrentQueue<(uint Count, int? FromCycle, NativeRedrawCadence Cadence, bool RecordsDeaths)> NativeTicks { get; } = [];
     public ConcurrentQueue<EnvironmentUpdate> EnvironmentUpdates { get; } = [];
     public ConcurrentQueue<MutationSettingsUpdate> MutationUpdates { get; } = [];
     public Dictionary<uint, string> SpeciesTemplateDna { get; } = [];
@@ -2360,12 +2361,14 @@ internal sealed class AuditEngineClient : IEngineClient
         Calls.Enqueue($"Tick:{count}");
     }
 
-    public void Tick(uint count, bool requireNativeRepopulationSource, IReadOnlyList<ulong> cancelledLineages)
+    public void Tick(uint count, bool requireNativeRepopulationSource, IReadOnlyList<ulong> cancelledLineages,
+        NativeRedrawCadence? nativeRedraw = null)
     {
         NativeRepopulationTickAttempts.Enqueue((count, NativeCycle, requireNativeRepopulationSource, cancelledLineages.ToArray()));
         if (requireNativeRepopulationSource && FindUnresolvedNativeRepopulationSource(cancelledLineages) is { } source)
             throw new MissingNativeRepopulationSourceException($"Missing native repopulation source {source.Filename}.", source);
-        Tick(count);
+        if (nativeRedraw is { } scheduled) Tick(count, scheduled);
+        else Tick(count);
         CommittedCancelledRepopulationLineages.UnionWith(cancelledLineages);
     }
 
@@ -2385,10 +2388,27 @@ internal sealed class AuditEngineClient : IEngineClient
             && !CommittedCancelledRepopulationLineages.Contains(source.LineageId)
             && !cancelledLineages.Contains(source.LineageId));
 
+    public void Tick(uint count, NativeRedrawCadence nativeRedraw)
+    {
+        NativeTicks.Enqueue((count, NativeCycle, nativeRedraw, false));
+        Tick(count);
+    }
+    public void TickRecordingDeaths(uint count,
+        Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted, NativeRedrawCadence nativeRedraw)
+    {
+        NativeTicks.Enqueue((count, NativeCycle, nativeRedraw, true));
+        Tick(count);
+    }
     public void RedrawNative()
     {
         Calls.Enqueue("RedrawNative");
         OnNativeRedraw?.Invoke();
+    }
+    public ConcurrentQueue<bool> NativeRedrawModes { get; } = [];
+    public void RedrawNative(bool afterContinuousCycle)
+    {
+        NativeRedrawModes.Enqueue(afterContinuousCycle);
+        RedrawNative();
     }
     public DnaImportReport ImportDna(string dna, float[]? position = null) { Calls.Enqueue("ImportDna"); return DnaImportReport.Compatible; }
     public DnaImportReport ImportSpecies(SpeciesImport species) { Calls.Enqueue($"ImportSpecies:{species.Name}"); return DnaImportReport.Compatible; }

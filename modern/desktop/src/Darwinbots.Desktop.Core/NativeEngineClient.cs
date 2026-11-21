@@ -108,28 +108,39 @@ public sealed partial class NativeEngineClient : IEngineClient
 
     public void Tick(uint count = 1) => Advance(count, 100, null);
 
-    public void Tick(uint count, bool requireNativeRepopulationSource, IReadOnlyList<ulong> cancelledLineages) =>
-        Advance(count, 100, null, requireNativeRepopulationSource, cancelledLineages);
+    public void Tick(uint count, bool requireNativeRepopulationSource, IReadOnlyList<ulong> cancelledLineages,
+        NativeRedrawCadence? nativeRedraw = null) =>
+        Advance(count, 100, null, requireNativeRepopulationSource, cancelledLineages, nativeRedraw: nativeRedraw ?? NativeRedrawCadence.Off);
 
-    public void RedrawNative() =>
-        ExecuteBatch(new { version = 1, commands = new[] { new { type = "native_redraw" } } }, "redraw native simulation");
+    public void Tick(uint count, NativeRedrawCadence nativeRedraw) => Advance(count, 100, null, nativeRedraw: nativeRedraw);
+
+    public void RedrawNative() => RedrawNative(afterContinuousCycle: false);
+
+    public void RedrawNative(bool afterContinuousCycle) =>
+        ExecuteBatch(new { version = 1, commands = new[] { new { type = "native_redraw", after_continuous_cycle = afterContinuousCycle } } },
+            "redraw native simulation");
 
     public void TickRecordingDeaths(uint count, Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted) =>
         TickRecordingDeaths(count, 100, onCommitted);
 
-    public void TickRecordingDeaths(uint count, int weightPercent, Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted) =>
-        Advance(count, weightPercent, onCommitted);
+    public void TickRecordingDeaths(uint count, Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted,
+        NativeRedrawCadence nativeRedraw) => Advance(count, 100, onCommitted, nativeRedraw: nativeRedraw);
+
+    public void TickRecordingDeaths(uint count, int weightPercent, Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted,
+        NativeRedrawCadence? nativeRedraw = null) =>
+        Advance(count, weightPercent, onCommitted, nativeRedraw: nativeRedraw ?? NativeRedrawCadence.Off);
 
     public void TickRecordingDeaths(uint count, int weightPercent, IReadOnlyList<ulong> cancelledLineages,
-        Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted) =>
-        Advance(count, weightPercent, onCommitted, requireNativeRepopulationSource: true, cancelledLineages);
+        Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted, NativeRedrawCadence? nativeRedraw = null) =>
+        Advance(count, weightPercent, onCommitted, requireNativeRepopulationSource: true, cancelledLineages, nativeRedraw: nativeRedraw ?? NativeRedrawCadence.Off);
 
     public void TickRecordingGraphs(uint count, Action<IReadOnlyList<NativeGraphRecordingSample>> onCommitted,
         bool requireNativeRepopulationSource, IReadOnlyList<ulong> cancelledLineages,
-        int weightPercent = 100, Action<IReadOnlyList<DeathRecordSnapshot>>? onDeathsCommitted = null)
+        int weightPercent = 100, Action<IReadOnlyList<DeathRecordSnapshot>>? onDeathsCommitted = null,
+        NativeRedrawCadence? nativeRedraw = null)
     {
         ArgumentNullException.ThrowIfNull(onCommitted);
-        Advance(count, weightPercent, onDeathsCommitted, requireNativeRepopulationSource, cancelledLineages, onCommitted);
+        Advance(count, weightPercent, onDeathsCommitted, requireNativeRepopulationSource, cancelledLineages, onCommitted, nativeRedraw ?? NativeRedrawCadence.Off);
     }
 
     public NativeGraphRecordingSample? ReadNativeGraphSample() => ReadNativeGraphSample("read_native_graph_sample");
@@ -163,7 +174,8 @@ public sealed partial class NativeEngineClient : IEngineClient
 
     private void Advance(uint count, int weightPercent, Action<IReadOnlyList<DeathRecordSnapshot>>? onDeathsCommitted,
         bool requireNativeRepopulationSource = false, IReadOnlyList<ulong>? cancelledLineages = null,
-        Action<IReadOnlyList<NativeGraphRecordingSample>>? onGraphSamplesCommitted = null)
+        Action<IReadOnlyList<NativeGraphRecordingSample>>? onGraphSamplesCommitted = null,
+        NativeRedrawCadence nativeRedraw = NativeRedrawCadence.Off)
     {
         EnsureAlive();
         if (count == 0) return;
@@ -174,14 +186,22 @@ public sealed partial class NativeEngineClient : IEngineClient
             // External league/staged restarts take a new Timer sample for each
             // original cycle. Each successful cycle commits before the next begins.
             for (uint cycle = 0; cycle < count; cycle++)
-                Advance(1, weightPercent, onDeathsCommitted, requireNativeRepopulationSource, cancelledLineages, onGraphSamplesCommitted);
+                Advance(1, weightPercent, onDeathsCommitted, requireNativeRepopulationSource, cancelledLineages, onGraphSamplesCommitted, nativeRedraw);
             return;
         }
+        var cadence = nativeRedraw switch
+        {
+            NativeRedrawCadence.Off => "off",
+            NativeRedrawCadence.EveryCycle => "every_cycle",
+            NativeRedrawCadence.EveryTenthCycle => "every_tenth_cycle",
+            _ => throw new ArgumentOutOfRangeException(nameof(nativeRedraw)),
+        };
         var command = new
         {
             type = "tick",
             count,
             capture_deaths = onDeathsCommitted is not null,
+            native_redraw = cadence,
             recording_weight = weightPercent,
             require_native_repopulation_source = requireNativeRepopulationSource,
             cancelled_native_repopulation_lineages = cancelledLineages ?? [],

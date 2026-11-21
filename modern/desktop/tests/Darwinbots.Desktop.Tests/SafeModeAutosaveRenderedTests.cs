@@ -503,6 +503,7 @@ public sealed class SafeModeAutosaveRenderedTests
                     Assert.Equal(new int?[] { 2000, 2001 }, publishedCycles);
                     Assert.Equal(new[] { "Tick:1", "Save", "RedrawNative", "Tick:1", "RedrawNative" },
                         engine.Calls.Where(call => call.StartsWith("Tick:", StringComparison.Ordinal) || call is "Save" or "RedrawNative"));
+                    Assert.Equal(new[] { false, false }, engine.NativeRedrawModes.ToArray());
                     Assert.Single(storage.AutosaveWrites);
                 }
                 finally
@@ -513,6 +514,114 @@ public sealed class SafeModeAutosaveRenderedTests
             }, CancellationToken.None);
         }
         finally { File.Delete(path); }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ContinuousNativeRedrawFollowsTheSafeModeCheckpoint(bool recordDeaths)
+    {
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var factory = new AuditEngineClientFactory(encodeTickInSave: true);
+            var storage = new AuditStorageService();
+            var options = Setup(true) with
+            {
+                Recording = new Db2RecordingOptions(DeadSnapshotEnabled: recordDeaths, SafeModeBackup: true),
+            };
+            var window = new MainWindow([], options, factory, storage);
+            try
+            {
+                Show(window);
+                await Ready(window);
+                var engine = Assert.Single(factory.Clients);
+                var session = Field<SimulationSession>(window, "_session");
+                engine.NativeCycle = 1998;
+                await session.RefreshSnapshotAsync();
+                await WaitFor(() => ViewModel(window).NativeCycle == 1998);
+                engine.Calls.Clear();
+                var savesAtRedraw = 0;
+                engine.OnNativeRedraw = () => savesAtRedraw = storage.AutosaveWrites.Count;
+
+                await InvokeTask(window, "AdvanceSimulationAsync", 3u);
+
+                Assert.Equal(new (uint, int?, NativeRedrawCadence, bool)[]
+                {
+                    (1, 1998, NativeRedrawCadence.EveryCycle, recordDeaths),
+                    (1, 1999, NativeRedrawCadence.Off, recordDeaths),
+                    (1, 2000, NativeRedrawCadence.EveryCycle, recordDeaths),
+                }, engine.NativeTicks.ToArray());
+                Assert.Equal(new[] { "Tick:1", "Tick:1", "Save", "RedrawNative", "Tick:1" },
+                    engine.Calls.Where(call => call.StartsWith("Tick:", StringComparison.Ordinal) || call is "Save" or "RedrawNative"));
+                Assert.Equal(1, savesAtRedraw);
+                Assert.True(Assert.Single(engine.NativeRedrawModes));
+                Assert.Equal(2ul, BitConverter.ToUInt64(Assert.Single(storage.AutosaveWrites)));
+                Assert.Equal(2001, session.LatestSnapshot.NativeCycle);
+            }
+            finally { window.Close(); }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task NativeGraphicsAndFastCadenceLeavePausedStateAndSpeedSelectionAlone()
+    {
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var factory = new AuditEngineClientFactory();
+            var window = new MainWindow([], Setup(false), factory, new AuditStorageService());
+            try
+            {
+                Show(window);
+                await Ready(window);
+                var engine = Assert.Single(factory.Clients);
+                var session = Field<SimulationSession>(window, "_session");
+                var viewport = Named<WorldViewport>(window, "Viewport");
+                var timer = Field<DispatcherTimer>(window, "_runTimer");
+                var graphics = Named<Button>(window, "ToolbarSlot14");
+                var fast = Named<Button>(window, "ToolbarSlot10");
+                var speed = Named<ComboBox>(window, "RuntimeSpeed");
+                int? PaintedCycle() => Field<EngineSnapshot>(viewport, "_snapshot").NativeCycle;
+
+                engine.NativeCycle = 2001;
+                await session.RefreshSnapshotAsync();
+                await WaitFor(() => PaintedCycle() == 2001);
+                Assert.False(timer.IsEnabled);
+                graphics.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Assert.False(timer.IsEnabled);
+                Assert.True(viewport.IsVisible);
+                Assert.Equal("GRAPHICS OFF", graphics.Content);
+                Assert.Equal("TURBO", Named<Button>(window, "TurboButton").Content);
+
+                await InvokeTask(window, "AdvanceSimulationAsync", 2u);
+                await WaitFor(() => ViewModel(window).NativeCycle == 2003);
+                Assert.Equal(2001, PaintedCycle());
+                Assert.Equal(NativeRedrawCadence.Off, Assert.Single(engine.NativeTicks).Cadence);
+
+                Named<Button>(window, "StepButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => PaintedCycle() == 2004);
+                Assert.Single(engine.Calls, call => call == "RedrawNative");
+                Assert.False(timer.IsEnabled);
+
+                graphics.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Assert.Equal("GRAPHICS ON", graphics.Content);
+                speed.SelectedIndex = 1;
+                var runInterval = timer.Interval;
+                fast.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Assert.Equal("FAST ON", fast.Content);
+                Assert.Equal(1, speed.SelectedIndex);
+                Assert.Equal(runInterval, timer.Interval);
+                Assert.False(timer.IsEnabled);
+
+                engine.NativeTicks.Clear();
+                await InvokeTask(window, "AdvanceSimulationAsync", 8u);
+                await WaitFor(() => ViewModel(window).NativeCycle == 2012);
+                Assert.Equal(2010, PaintedCycle());
+                Assert.Equal(new[] { 6u, 2u }, engine.NativeTicks.Select(tick => tick.Count));
+                Assert.Equal(NativeRedrawCadence.EveryTenthCycle, engine.NativeTicks.First().Cadence);
+                Assert.Single(engine.Calls, call => call == "RedrawNative");
+            }
+            finally { window.Close(); }
+        }, CancellationToken.None);
     }
 
     [Fact]

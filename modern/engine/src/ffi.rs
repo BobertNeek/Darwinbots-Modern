@@ -99,7 +99,10 @@ enum EngineCommand {
         #[serde(default)]
         preserve_existing: bool,
     },
-    NativeRedraw,
+    NativeRedraw {
+        #[serde(default)]
+        after_continuous_cycle: bool,
+    },
     SetNativeRestartSeed {
         seed: u64,
         #[serde(default)]
@@ -1109,8 +1112,12 @@ fn db_engine_command_batch_impl(
                         .map(|_| serde_json::Value::Null)
                 }
             }
-            EngineCommand::NativeRedraw => {
-                engine.native_redraw();
+            EngineCommand::NativeRedraw {
+                after_continuous_cycle,
+            } => {
+                if !after_continuous_cycle || !engine.native_restarted_this_cycle {
+                    engine.native_redraw();
+                }
                 Ok(serde_json::Value::Null)
             }
             EngineCommand::ConfigureLocalMode { config } => engine

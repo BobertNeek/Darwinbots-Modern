@@ -380,6 +380,8 @@ public sealed record EngineSnapshot(
     public int? NativeCycle { get; init; }
     public bool? NativeSunOn { get; init; }
     public bool NativeF1Enabled { get; init; }
+    // Set by the desktop session for scheduled or explicit viewport frames.
+    public bool? ViewportFrame { get; init; }
     public IReadOnlyList<RenderInstanceSnapshot> RenderInstances { get; init; } = [];
     public IReadOnlyList<SpeciesSnapshot> Species { get; init; } = [];
     public MutationSettingsSnapshot MutationSettings { get; init; } = MutationSettingsSnapshot.Default;

@@ -591,13 +591,10 @@ public sealed class RuntimeControlSurfaceTests
                 window.FindControl<Button>("ToolbarSlot11")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 window.FindControl<Button>("ToolbarSlot12")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 window.FindControl<Button>("ToolbarSlot14")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                // Graphics-off intentionally starts turbo execution. Pause it
-                // before yielding so this display-state assertion cannot race
-                // a scheduled simulation batch on slower dispatchers.
                 var timer = Field<DispatcherTimer>(window, "_runTimer");
-                Assert.True(timer.IsEnabled);
-                window.FindControl<Button>("PauseButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 Assert.False(timer.IsEnabled);
+                Assert.Equal("GRAPHICS OFF", window.FindControl<Button>("ToolbarSlot14")!.Content);
+                Assert.Equal("TURBO", window.FindControl<Button>("TurboButton")!.Content);
                 InvokeMenu(Core.LegacyMenus.LegacyCommandId.ViewRemoveBackground);
 
                 Assert.False(viewport.HasBackgroundImage);
@@ -612,7 +609,7 @@ public sealed class RuntimeControlSurfaceTests
                 Assert.True(viewport.FlickerMode);
                 Assert.False(viewport.RenderSkins);
                 Assert.True(viewport.ShowDeathPoffs);
-                Assert.False(viewport.IsVisible);
+                Assert.True(viewport.IsVisible);
 
                 await Task.Delay(40);
                 var afterSave = await simulation.SaveAsync();
