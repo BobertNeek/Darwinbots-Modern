@@ -117,6 +117,7 @@ public sealed class TeleporterRenderedTests
                     {
                         Click(player, edit);
                         await WaitFor(() => player.OwnedWindows.OfType<TeleporterEditorWindow>().Any());
+                        Dispatcher.UIThread.RunJobs();
                         return Assert.Single(player.OwnedWindows.OfType<TeleporterEditorWindow>());
                     }
 
@@ -200,6 +201,128 @@ public sealed class TeleporterRenderedTests
                 player.Close();
             }
         }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task NativeTeleporterPropertiesRunModelesslyAndRevalidateFocusedPortals()
+    {
+        var setup = new WorldSetupOptions { Backend = "Cpu", WorldWidth = 4_000, WorldHeight = 2_000, PopulationCapacity = 16 };
+        var storage = new AuditStorageService();
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var player = new MainWindow([], setup, NativeEngineClientFactory.Instance, storage)
+            {
+                WindowState = WindowState.Normal, Width = 1_100, Height = 820,
+            };
+            player.Show();
+            try
+            {
+                await WaitFor(() => Session(player)?.LatestSnapshot.NativeCycle is not null);
+                var session = Session(player)!;
+                var model = Assert.IsType<MainWindowViewModel>(player.DataContext);
+                var viewport = player.FindControl<WorldViewport>("Viewport")!;
+                viewport.FixedRatio = false;
+                var options = new NativeTeleporterOptions(
+                    NativeTeleporterKind.Intrasim, 300, "", true, new(true, true, true), 10, 3);
+                await session.AddNativeTeleporterAsync(options);
+                var firstId = Assert.Single(session.LatestSnapshot.Teleporters).Id;
+                await session.AddNativeTeleporterAsync(options with { Capacity = 9 });
+                var secondId = session.LatestSnapshot.Teleporters.Single(portal => portal.Id != firstId).Id;
+                await session.DragNativeTeleporterAsync(firstId, [1_200, 920]);
+                await session.DragNativeTeleporterAsync(secondId, [2_800, 920]);
+
+                var editor = await OpenProperties(firstId);
+                Assert.True(editor.Topmost);
+                var before = session.LatestSnapshot.Tick;
+                Click(player, player.FindControl<Button>("RunButton")!);
+                await WaitFor(() => session.LatestSnapshot.Tick > before);
+                Assert.True(editor.IsVisible);
+                Click(player, player.FindControl<Button>("PauseButton")!);
+                await WaitFor(() => model.Status == "PAUSED");
+
+                Capacity(editor).Value = 4;
+                ClickAt(player, viewport, PointFor(secondId));
+                editor.Activate();
+                await WaitFor(() => Capacity(editor).Value == 9);
+                Assert.Same(editor, Assert.Single(player.OwnedWindows.OfType<TeleporterEditorWindow>()));
+                Capacity(editor).Value = 11;
+                Click(editor, editor.FindControl<Button>("ApplyButton")!);
+                await WaitFor(() => Current(secondId).Capacity == 11);
+                Assert.Equal(3, Current(firstId).Capacity);
+
+                editor = await OpenProperties(secondId);
+                Capacity(editor).Value = 12;
+                Click(editor, editor.FindControl<Button>("CancelButton")!);
+                await WaitFor(() => !editor.IsVisible);
+                Assert.Equal(3, Current(firstId).Capacity);
+                Assert.Equal(11, Current(secondId).Capacity);
+
+                editor = await OpenProperties(firstId);
+                await session.DragNativeTeleporterAsync(firstId, [1_380, 980]);
+                var liveCenter = Current(firstId).Center;
+                editor.FindControl<CheckBox>("TeleportCorpses")!.IsChecked = false;
+                Click(editor, editor.FindControl<Button>("ApplyButton")!);
+                await WaitFor(() => !Current(firstId).TeleportCorpses);
+                Assert.Equal(liveCenter, Current(firstId).Center);
+                Assert.True(Current(secondId).TeleportCorpses);
+
+                editor = await OpenProperties(firstId);
+                Capacity(editor).Value = 6;
+                var menu = player.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                menu.FindCommandItem(LegacyCommandId.ObjectsDeleteTeleporter)!
+                    .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => !editor.IsVisible && session.LatestSnapshot.Teleporters.All(portal => portal.Id != firstId));
+                Assert.Null(editor.Result);
+                await session.AddNativeTeleporterAsync(options with { Capacity = 13 });
+                await session.DragNativeTeleporterAsync(firstId, [1_230, 920]);
+
+                storage.OpenedSimulation = await session.SaveAsync();
+                editor = await OpenProperties(firstId);
+                Capacity(editor).Value = 15;
+                menu.FindCommandItem(LegacyCommandId.FileLoadSimulation)!
+                    .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => model.Status == "LOADED" && !editor.IsVisible);
+                Assert.Null(editor.Result);
+                Assert.Equal(13, Current(firstId).Capacity);
+                Assert.Equal(11, Current(secondId).Capacity);
+
+                await session.AddObstacleAsync(new ObstacleSnapshot(99, [1_920, 1_360], [2_080, 1_520]));
+                editor = await OpenProperties(secondId);
+                Capacity(editor).Value = 16;
+                ClickAt(player, viewport, new Point(viewport.Bounds.Width * 0.5, viewport.Bounds.Height * 0.72));
+                editor.Activate();
+                await WaitFor(() => !editor.IsVisible);
+                Assert.Null(editor.Result);
+                Assert.Equal(11, Current(secondId).Capacity);
+
+                TeleporterSnapshot Current(uint id) => session.LatestSnapshot.Teleporters.Single(portal => portal.Id == id);
+
+                Point PointFor(uint id)
+                {
+                    var world = session.LatestSnapshot.WorldSize;
+                    var center = Current(id).Center;
+                    return new Point(center[0] / world[0] * viewport.Bounds.Width, center[1] / world[1] * viewport.Bounds.Height);
+                }
+
+                async Task<TeleporterEditorWindow> OpenProperties(uint id)
+                {
+                    StabilizeForInput(player, viewport);
+                    // Move to a different hit before beginning each genuine double-click sequence.
+                    ClickAt(player, viewport, new Point(viewport.Bounds.Width * 0.5, viewport.Bounds.Height * 0.72));
+                    DoubleClickAt(player, viewport, PointFor(id));
+                    await WaitFor(() => player.OwnedWindows.OfType<TeleporterEditorWindow>()
+                        .Any(window => window.IsVisible && Capacity(window).Value == Current(id).Capacity));
+                    return Assert.Single(player.OwnedWindows.OfType<TeleporterEditorWindow>());
+                }
+            }
+            finally
+            {
+                foreach (var owned in player.OwnedWindows.ToArray()) owned.Close();
+                player.Close();
+            }
+        }, CancellationToken.None);
+
+        static NumericUpDown Capacity(Window editor) => editor.FindControl<NumericUpDown>("Capacity")!;
     }
 
     [Fact]
@@ -598,6 +721,7 @@ public sealed class TeleporterRenderedTests
             window.MouseUp(translated.Value, MouseButton.Left, RawInputModifiers.None);
         }
         AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+        Dispatcher.UIThread.RunJobs();
     }
 
     private static void CaptureReceipt(Window window, string fileName)
