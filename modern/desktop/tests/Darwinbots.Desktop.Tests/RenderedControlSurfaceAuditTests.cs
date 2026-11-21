@@ -2154,7 +2154,7 @@ internal sealed class AuditStorageService : IDesktopStorageService
     }
 
     public Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner) => Task.FromResult(DnaFiles);
-    public Task<DesktopSettings?> OpenSettingsAsync(TopLevel owner) => Task.FromResult(SettingsToOpen);
+    public Task<DesktopSettings?> OpenSettingsAsync(TopLevel owner, string? mainDirectory = null) => Task.FromResult(SettingsToOpen);
     public Task<byte[]?> OpenRgbMonitorPresetAsync(TopLevel owner) => Task.FromResult(RgbMonitorPresetToOpen);
 
     public Task<bool> SaveRgbMonitorPresetAsync(TopLevel owner, ReadOnlyMemory<byte> preset)
@@ -2167,7 +2167,7 @@ internal sealed class AuditStorageService : IDesktopStorageService
     public Task<string?> PickSimulationPathAsync(TopLevel owner) => Task.FromResult(PickedSimulationPath);
     public Task<byte[]?> OpenSimulationAsync(TopLevel owner) => Task.FromResult(OpenedSimulation);
 
-    public Task<bool> SaveSettingsAsync(TopLevel owner, DesktopSettings settings)
+    public Task<bool> SaveSettingsAsync(TopLevel owner, DesktopSettings settings, string? mainDirectory = null)
     {
         SavedSettings = settings;
         return Task.FromResult(true);

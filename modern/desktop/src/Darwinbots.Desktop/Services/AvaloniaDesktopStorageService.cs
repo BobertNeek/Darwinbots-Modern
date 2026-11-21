@@ -93,11 +93,14 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         return true;
     }
 
-    public async Task<DesktopSettings?> OpenSettingsAsync(TopLevel owner)
+    public async Task<DesktopSettings?> OpenSettingsAsync(TopLevel owner, string? mainDirectory = null)
     {
-        var files = await owner.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        var storage = owner.StorageProvider;
+        using var folder = await NativeSettingsFolderAsync(storage, mainDirectory);
+        var files = await storage.OpenFilePickerAsync(new FilePickerOpenOptions
         {
             Title = "Load Darwinbots settings",
+            SuggestedStartLocation = folder,
             AllowMultiple = false,
             FileTypeFilter = [SettingsFileType()],
         });
@@ -198,12 +201,15 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         return format;
     }
 
-    public async Task<bool> SaveSettingsAsync(TopLevel owner, DesktopSettings settings)
+    public async Task<bool> SaveSettingsAsync(TopLevel owner, DesktopSettings settings, string? mainDirectory = null)
     {
         ArgumentNullException.ThrowIfNull(settings);
-        var file = await owner.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        var storage = owner.StorageProvider;
+        using var folder = await NativeSettingsFolderAsync(storage, mainDirectory);
+        var file = await storage.SaveFilePickerAsync(new FilePickerSaveOptions
         {
             Title = "Save Darwinbots settings",
+            SuggestedStartLocation = folder,
             SuggestedFileName = "darwinbots-settings.set",
             DefaultExtension = "set",
             FileTypeChoices = [SettingsFileType()],
@@ -497,6 +503,18 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         {
             File.Delete(temporary);
         }
+    }
+
+    private static async Task<IStorageFolder?> NativeSettingsFolderAsync(IStorageProvider storage, string? mainDirectory)
+    {
+        var root = string.IsNullOrWhiteSpace(mainDirectory) ? AppContext.BaseDirectory : mainDirectory;
+        foreach (var name in new[] { "settings", "Settings" })
+        {
+            var path = Path.Combine(root, name);
+            if (Directory.Exists(path))
+                return await storage.TryGetFolderFromPathAsync(new Uri(Path.GetFullPath(path)));
+        }
+        return null;
     }
 
     private static FilePickerOpenOptions SimulationOpenOptions(string title, params FilePickerFileType[] filters) => new()

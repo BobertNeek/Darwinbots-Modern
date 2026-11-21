@@ -882,9 +882,9 @@ internal sealed class SettingsWorkflowStorage : IDesktopStorageService
             string? mainDirectory = null) => Task.FromResult(true);
     public string? FindLatestAutosave() => LatestAutosave;
     public Task SaveAutosaveAsync(ReadOnlyMemory<byte> save) => Task.CompletedTask;
-    public Task<DesktopSettings?> OpenSettingsAsync(TopLevel owner) => Task.FromResult(SettingsToOpen);
+    public Task<DesktopSettings?> OpenSettingsAsync(TopLevel owner, string? mainDirectory = null) => Task.FromResult(SettingsToOpen);
 
-    public Task<bool> SaveSettingsAsync(TopLevel owner, DesktopSettings settings)
+    public Task<bool> SaveSettingsAsync(TopLevel owner, DesktopSettings settings, string? mainDirectory = null)
     {
         SavedSettings = settings;
         return Task.FromResult(true);
