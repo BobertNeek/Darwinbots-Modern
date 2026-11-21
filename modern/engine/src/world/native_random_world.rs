@@ -508,6 +508,86 @@ mod tests {
     }
 
     #[test]
+    fn native_tie_poison_defense_uses_founder_filename_for_energy_and_body() {
+        for (native, same_registry, expect_defense) in [
+            (true, true, true),
+            (true, false, false),
+            (false, true, false),
+            (false, false, true),
+        ] {
+            for location in [-1, -6] {
+                let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+                let source_species = world.register_species(SpeciesDefinition {
+                    name: "Source.txt".into(),
+                    ..Default::default()
+                });
+                let target_species = if same_registry {
+                    source_species
+                } else {
+                    world.register_species(SpeciesDefinition {
+                        name: "Opponent.txt".into(),
+                        ..Default::default()
+                    })
+                };
+                let dna = LegacyDna::parse("stop").unwrap();
+                let source = world
+                    .spawn_species_at(dna.clone(), source_species, [400.0, 500.0])
+                    .unwrap();
+                let target = world
+                    .spawn_species_at(dna, target_species, [500.0; 2])
+                    .unwrap();
+                // Save Robot DNA renames one robot without changing its registry ID.
+                let target_name = if same_registry {
+                    "Renamed.txt"
+                } else {
+                    "Source.txt"
+                };
+                world.slots.get_mut(target).unwrap().identity.species_file = target_name.into();
+                assert!(world.native_make_tie(source, target, 100, 0, 7));
+                if !native {
+                    world.native_random = None;
+                }
+                let attacker = world.slots.get_mut(source).unwrap();
+                attacker.counters.age = 2;
+                attacker.program.memory.write(455, 7);
+                attacker.program.memory.write(452, location);
+                attacker.program.memory.write(453, -100);
+                let defender = world.slots.get_mut(target).unwrap();
+                defender.materials.poison = 100.0;
+                defender.program.memory.write(827, 100);
+                defender.program.memory.write(834, 600);
+                defender.program.memory.write(839, 137);
+                let before = if location == -1 {
+                    defender.materials.energy
+                } else {
+                    defender.materials.body
+                };
+
+                world.tie_exchange_phase(&mut CycleRecorder::disabled(1));
+
+                let attacker = world.slots.get(source).unwrap();
+                let defender = world.slots.get(target).unwrap();
+                let after = if location == -1 {
+                    defender.materials.energy
+                } else {
+                    defender.materials.body
+                };
+                assert_eq!(attacker.effects.poisoning_active, expect_defense);
+                if expect_defense {
+                    assert_eq!(attacker.effects.poisoning_countdown, 25.0);
+                    assert_eq!(attacker.effects.poisoning_location, 600);
+                    assert_eq!(attacker.effects.poisoning_value, 137);
+                    assert_eq!(defender.materials.poison, 75.0);
+                    assert_eq!(after, before);
+                } else {
+                    assert_eq!(defender.materials.poison, 100.0);
+                    assert_eq!(after, before - 100.0);
+                }
+            }
+        }
+    }
+
+    #[test]
     fn native_cycle_fresh_zero_and_legacy_tick_are_distinct_without_shifting_dna_age() {
         for native in [false, true] {
             let mut world = if native {
