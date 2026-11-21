@@ -2076,17 +2076,29 @@ public sealed partial class MainWindow : Window
 
     private async Task<LegacyCommandResult> FindBestRobotAsync()
     {
-        if (_session is null) return LegacyCommandResult.Failure("NO LIVING ROBOTS");
-        var result = await _session.SelectBestRobotAsync(_globalSettings.Main.EffectiveFindBestWeight);
+        if (_session is not { } session) return LegacyCommandResult.Failure("NO LIVING ROBOTS");
+        var result = await session.SelectBestRobotAsync(_globalSettings.Main.EffectiveFindBestWeight);
+        if (!ReferenceEquals(session, _session)) return LegacyCommandResult.Cancel();
         if (result.Restarted) {
             _viewModel.ClearSelection();
             Viewport.SelectKey(null);
             await SynchronizePlayerBotTargetsAsync();
             return LegacyCommandResult.Success("ZEROBOT ADVANCED TO TESTING");
         }
-        if (result.Robot is not { } key) return LegacyCommandResult.Failure("NO LIVING ROBOTS");
+        var native = session.LatestSnapshot.NativeCycle is not null;
+        if (result.Robot is not { } key)
+        {
+            // The native command assigns the search result directly to robot focus.
+            if (native)
+            {
+                _viewModel.ClearSelection();
+                Viewport.SetRobotFocus(null);
+            }
+            return LegacyCommandResult.Failure("NO LIVING ROBOTS");
+        }
         _viewModel.Select(key);
-        Viewport.SelectKey(key);
+        if (native) Viewport.SetRobotFocus(key);
+        else Viewport.SelectKey(key);
         await SynchronizePlayerBotTargetsAsync();
         return LegacyCommandResult.Success($"BEST FAMILY · {key.Slot}:{key.Generation}");
     }
