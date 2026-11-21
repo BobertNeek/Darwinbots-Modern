@@ -241,7 +241,11 @@ impl Engine {
             }
             let delete = robot.program.memory.read(340);
             if delete > 0 {
-                if let Some(dna) = robot.program.dna.delete_gene(delete) {
+                if let Some(dna) = robot
+                    .program
+                    .dna
+                    .delete_gene(delete, self.native_cycle.is_some())
+                {
                     robot.program.dna = dna;
                     robot.refresh_occurrence_census();
                     disqualified.push((owner, DisqualificationAction::GeneDeletion));
