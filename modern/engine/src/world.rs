@@ -3089,8 +3089,12 @@ impl Engine {
             ));
         }
         if let Some(costs) = costs {
+            // Native CostsForm accepts a signed manual CostX. Only the dynamic
+            // controller clamps an adjusted multiplier when negative costs are disabled.
             if !costs.global_multiplier.is_finite()
-                || (costs.global_multiplier < 0.0 && !costs.dynamic_allow_negative)
+                || (self.native_random.is_none()
+                    && costs.global_multiplier < 0.0
+                    && !costs.dynamic_allow_negative)
                 || !costs.dynamic_cost_multiplier.is_finite()
                 || !costs.dynamic_sensitivity.is_finite()
             {
