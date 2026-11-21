@@ -18,6 +18,218 @@ namespace Darwinbots.Desktop.Tests;
 public sealed class GraphContestRenderedTests
 {
     [Fact]
+    public async Task PopulationGraphSavesOnlyAtTheOriginalDiskSegmentBoundaries()
+    {
+        var root = Directory.CreateTempSubdirectory("darwinbots-graph-auto-save-");
+        try
+        {
+            await DesktopTestApplication.Session.Dispatch(async () =>
+            {
+                const string stamp = "fixed-run-stamp";
+                var directory = Path.Combine(root.FullName, stamp);
+                var firstPath = Path.Combine(directory, "Populations1.gsave");
+                var secondPath = Path.Combine(directory, "Populations2.gsave");
+                SpeciesGraphSampleSnapshot Point(int value) =>
+                    new("Alga.txt", 0xff123456u, new Dictionary<string, double> { ["population"] = value });
+                var history = Enumerable.Range(1, 2_000).Select(value =>
+                    new HistorySampleSnapshot((ulong)value, value, 0, 0, 0, 0, 0) { SpeciesGraphs = [Point(value)] }).ToArray();
+                EngineSnapshot Through(int count) =>
+                    EngineSnapshot.Empty with { Tick = (ulong)count, NativeCycle = count, Population = count, History = history[..count] };
+
+                var suite = new GraphSuiteWindow(Through(1), new LegacyGraphRecordingRun(root.FullName, stamp));
+                try
+                {
+                    suite.Show();
+                    var view = suite.FindControl<GraphSuiteView>("GraphView")!;
+                    suite.ViewModel.SelectedChoice = GraphCatalog.For(GraphMetric.Population);
+                    view.FindControl<Button>("OpenGraphButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    var graph = Assert.Single(suite.OwnedWindows.OfType<GraphSeriesWindow>());
+                    await FlushGraphPresentationAsync();
+                    var save = graph.FindControl<CheckBox>("SaveGraphData")!;
+                    Assert.True(save.IsVisible);
+                    Assert.False(save.IsChecked);
+                    Assert.Equal("Save on d.p. 999", save.Content);
+                    var point = save.TranslatePoint(new Point(save.Bounds.Width / 2, save.Bounds.Height / 2), graph)!.Value;
+                    graph.MouseDown(point, MouseButton.Left, RawInputModifiers.None);
+                    graph.MouseUp(point, MouseButton.Left, RawInputModifiers.None);
+                    Assert.True(save.IsChecked);
+
+                    suite.SetSnapshot(Through(998));
+                    await FlushGraphPresentationAsync();
+                    Assert.False(File.Exists(firstPath));
+                    suite.SetSnapshot(Through(999));
+                    await WaitFor(() => File.Exists(firstPath), () => "Population graph did not save data point 999.");
+                    var first = File.ReadAllText(firstPath);
+                    var firstSegment = Assert.Single(LegacyGraphJoin.Parse([first]));
+                    Assert.Equal("normal", firstSegment.Title);
+                    var alga = Assert.Single(firstSegment.Robots);
+                    Assert.Equal("Alga", alga.Name);
+                    Assert.Equal(0x00563412u, alga.Color);
+                    Assert.Equal(Enumerable.Range(1, 999).Select(value => (double)value), alga.Values);
+
+                    var repeat = Through(999);
+                    var repeatedHistory = repeat.History.ToArray();
+                    repeatedHistory[^1] = repeatedHistory[^1] with { Population = 99_999, SpeciesGraphs = [Point(99_999)] };
+                    suite.SetSnapshot(repeat with { Population = 99_999, History = repeatedHistory });
+                    await FlushGraphPresentationAsync();
+                    Assert.Equal(first, File.ReadAllText(firstPath));
+                    Assert.False(File.Exists(secondPath));
+
+                    suite.SetSnapshot(Through(2_000));
+                    await WaitFor(() => File.Exists(secondPath), () => "Population graph did not save its second segment.");
+                    var second = Assert.Single(LegacyGraphJoin.Parse([File.ReadAllText(secondPath)]));
+                    Assert.Equal(Enumerable.Range(1_002, 999).Select(value => (double)value), Assert.Single(second.Robots).Values);
+                    Assert.Equal(first, File.ReadAllText(firstPath));
+                    Assert.Equal(new[] { firstPath, secondPath }, Directory.GetFiles(directory, "*.gsave").Order(StringComparer.Ordinal));
+                }
+                finally { suite.Close(); }
+            }, CancellationToken.None);
+        }
+        finally { root.Delete(recursive: true); }
+    }
+
+    [Fact]
+    public async Task NativeGraphRecordingUsesCommittedSamplesAndDoesNotSeedAfterChartReset()
+    {
+        var root = Directory.CreateTempSubdirectory("darwinbots-native-graph-sampling-");
+        try
+        {
+            await DesktopTestApplication.Session.Dispatch(async () =>
+            {
+                const string stamp = "native-run";
+                var directory = Path.Combine(root.FullName, stamp);
+                var firstPath = Path.Combine(directory, "Populations1.gsave");
+                var secondPath = Path.Combine(directory, "Populations2.gsave");
+                var run = new LegacyGraphRecordingRun(root.FullName, stamp);
+                SpeciesGraphSampleSnapshot Alga(int population) =>
+                    new("Alga.txt", 0xff123456u, new Dictionary<string, double> { ["population"] = population });
+                NativeGraphRecordingSample Sample(int tick, int population) => new((ulong)tick, tick, [Alga(population)], []);
+                HistorySampleSnapshot History(int tick) =>
+                    new((ulong)tick, 99_999, 0, 0, 0, 0, 0) { SpeciesGraphs = [Alga(99_999)] };
+                var probe = Sample(1, 1);
+                var reads = 0;
+                var opening = EngineSnapshot.Empty with { Tick = 1, NativeCycle = 1, Population = 99_999, History = [History(1)] };
+                var suite = new GraphSuiteWindow(opening, run, readNativeSample: () =>
+                {
+                    reads++;
+                    return Task.FromResult<NativeGraphRecordingSample?>(probe);
+                });
+                try
+                {
+                    suite.Show();
+                    suite.ViewModel.SelectedChoice = GraphCatalog.For(GraphMetric.Population);
+                    suite.FindControl<GraphSuiteView>("GraphView")!.FindControl<Button>("OpenGraphButton")!
+                        .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    var graph = Assert.Single(suite.OwnedWindows.OfType<GraphSeriesWindow>());
+                    await FlushGraphPresentationAsync();
+                    Assert.Equal(1, reads);
+                    var save = graph.FindControl<CheckBox>("SaveGraphData")!;
+                    Assert.True(save.IsVisible);
+                    var point = save.TranslatePoint(new Point(save.Bounds.Width / 2, save.Bounds.Height / 2), graph)!.Value;
+                    graph.MouseDown(point, MouseButton.Left, RawInputModifiers.None);
+                    graph.MouseUp(point, MouseButton.Left, RawInputModifiers.None);
+                    Assert.True(save.IsChecked);
+
+                    suite.SetSnapshot(opening with { Tick = 999, NativeCycle = 999, History = [History(1), History(999)] });
+                    suite.RecordNativeSamples(Enumerable.Range(2, 997).Select(tick => Sample(tick, tick)).ToArray(), run.Generation);
+                    Assert.False(File.Exists(firstPath));
+                    suite.RecordNativeSamples([Sample(999, 999)], run.Generation);
+                    await WaitFor(() => File.Exists(firstPath), () => "The first 999 native graph samples did not produce a segment.");
+                    Assert.Equal(Enumerable.Range(1, 999).Select(value => (double)value), Read(firstPath));
+
+                    probe = Sample(999, 99_999);
+                    graph.FindControl<Button>("ResetGraphButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    await FlushGraphPresentationAsync();
+                    Assert.Equal(2, reads);
+                    Assert.True(save.IsChecked);
+                    suite.RecordNativeSamples(Enumerable.Range(1_000, 998).Select(tick => Sample(tick, tick)).ToArray(), run.Generation);
+                    Assert.False(File.Exists(secondPath));
+                    suite.RecordNativeSamples([Sample(1_998, 1_998)], run.Generation);
+                    await WaitFor(() => File.Exists(secondPath), () => "The chart reset did not start a fresh native segment.");
+                    Assert.Equal(Enumerable.Range(1_000, 999).Select(value => (double)value), Read(secondPath));
+                    Assert.Equal(2, reads);
+                }
+                finally { suite.Close(); }
+
+                static IReadOnlyList<double> Read(string path) =>
+                    Assert.Single(Assert.Single(LegacyGraphJoin.Parse([File.ReadAllText(path)])).Robots).Values;
+            }, CancellationToken.None);
+        }
+        finally { root.Delete(recursive: true); }
+    }
+
+    [Fact]
+    public async Task LoadingASimulationRestoresTheOpenGraphsSaveCheckbox()
+    {
+        var root = Directory.CreateTempSubdirectory("darwinbots-graph-settings-");
+        try
+        {
+            await DesktopTestApplication.Session.Dispatch(async () =>
+            {
+                var storage = new AuditStorageService();
+                var setup = new WorldSetupOptions
+                {
+                    Backend = "Cpu",
+                    PopulationCapacity = 16,
+                    GlobalSettings = new GlobalSettings { Main = new GlobalMainSettings { MainDirectory = root.FullName } },
+                    Species = [new SpeciesImport("Alga.txt", "start\nstop", true, 0xff123456, 1, 1_000, 0, false, 1)],
+                };
+                var window = new MainWindow([], setup, NativeEngineClientFactory.Instance, storage);
+                try
+                {
+                    window.Show();
+                    await WaitFor(() => TryField<SimulationSession>(window, "_session")?.LatestSnapshot.Population == 1,
+                        () => "The native world did not finish startup.");
+                    var session = TryField<SimulationSession>(window, "_session")!;
+                    window.FindControl<Button>("GraphsButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    var suite = Assert.Single(window.OwnedWindows.OfType<GraphSuiteWindow>());
+                    suite.ViewModel.SelectedChoice = GraphCatalog.For(GraphMetric.Population);
+                    suite.FindControl<GraphSuiteView>("GraphView")!.FindControl<Button>("OpenGraphButton")!
+                        .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    var graph = Assert.Single(suite.OwnedWindows.OfType<GraphSeriesWindow>());
+                    await FlushGraphPresentationAsync();
+                    var checkbox = graph.FindControl<CheckBox>("SaveGraphData")!;
+                    Assert.False(checkbox.IsChecked);
+                    var point = checkbox.TranslatePoint(new Point(checkbox.Bounds.Width / 2, checkbox.Bounds.Height / 2), graph)!.Value;
+                    void Toggle()
+                    {
+                        graph.MouseDown(point, MouseButton.Left, RawInputModifiers.None);
+                        graph.MouseUp(point, MouseButton.Left, RawInputModifiers.None);
+                    }
+
+                    Toggle();
+                    Assert.True(checkbox.IsChecked);
+                    var enabled = Assert.IsType<NativeGraphRecordingState>(await session.ReadNativeGraphRecordingAsync());
+                    Assert.False(string.IsNullOrWhiteSpace(enabled.RunStamp));
+                    var populationRow = Assert.Single(enabled.Graphs, row => row.GraphIndex == 0);
+                    Assert.Equal(new NativeGraphRecordingRow(0, true, 0), populationRow);
+                    var checkpoint = await session.SaveAsync();
+                    Assert.True(checkpoint.AsSpan().StartsWith("DB3S"u8));
+
+                    Toggle();
+                    Assert.False(checkbox.IsChecked);
+                    var disabled = Assert.IsType<NativeGraphRecordingState>(await session.ReadNativeGraphRecordingAsync());
+                    Assert.False(Assert.Single(disabled.Graphs, row => row.GraphIndex == 0).Enabled);
+
+                    storage.OpenedSimulation = checkpoint;
+                    var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                    menu.FindCommandItem(LegacyCommandId.FileLoadSimulation)!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    var model = Assert.IsType<Darwinbots.Desktop.ViewModels.MainWindowViewModel>(window.DataContext);
+                    await WaitFor(() => model.Status == "LOADED", () => model.Status);
+                    Assert.Same(graph, Assert.Single(suite.OwnedWindows.OfType<GraphSeriesWindow>()));
+                    Assert.True(checkbox.IsChecked);
+                    var loaded = Assert.IsType<NativeGraphRecordingState>(await session.ReadNativeGraphRecordingAsync());
+                    Assert.Equal(enabled.RunStamp, loaded.RunStamp);
+                    Assert.Equal(populationRow, Assert.Single(loaded.Graphs, row => row.GraphIndex == 0));
+                    Assert.Empty(root.EnumerateFiles("*.gsave", SearchOption.AllDirectories));
+                }
+                finally { window.Close(); }
+            }, CancellationToken.None);
+        }
+        finally { root.Delete(recursive: true); }
+    }
+
+    [Fact]
     public async Task EvolutionDefaultGraphsOpenActualNativeSeriesWithoutReplacingManualCharts()
     {
         await DesktopTestApplication.Session.Dispatch(async () =>

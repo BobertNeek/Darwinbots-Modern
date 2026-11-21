@@ -466,6 +466,34 @@ public sealed class GraphAndContestTests
     }
 
     [Fact]
+    public void OriginalGraphSegmentWritesColorRefAndDelimitedSingleValues()
+    {
+        var alpha = Enumerable.Range(0, LegacyGraphJoin.SamplesPerSegment).Select(value => (double)value).ToArray();
+        var beta = alpha.Select(value => -value).ToArray();
+        alpha[0] = 1.234567891d;
+        beta[0] = -2.5d;
+        const string query = " pop 2 mult ";
+        var text = LegacyGraphJoin.SerializeNativeSegment(query,
+        [
+            new LegacyGraphRobot("Alpha.txt", 0xff123456u, alpha),
+            new LegacyGraphRobot("ABCDEFGHIJKLMNOPQRSTUVWXYZABCD.txt", 0xffff0000u, beta),
+        ]);
+
+        var lines = text.Split("\r\n", StringSplitOptions.None);
+        Assert.Equal(LegacyGraphJoin.SamplesPerSegment + 3, lines.Length);
+        Assert.Equal(query, lines[0]);
+        Assert.Equal("5649426:Alpha,255:ABCDEFGHIJKLMNOPQRSTUVWXY...,", lines[1]);
+        Assert.Equal("1.234568\t-2.5\t", lines[2]);
+        Assert.Equal("998\t-998\t", lines[^2]);
+        Assert.Equal(string.Empty, lines[^1]);
+        Assert.Throws<ArgumentException>(() =>
+            LegacyGraphJoin.SerializeNativeSegment("normal", [new LegacyGraphRobot("Short", 0xff123456u, [1d])]));
+
+        var empty = LegacyGraphJoin.SerializeNativeSegment("normal", []);
+        Assert.Equal("normal\r\n" + string.Concat(Enumerable.Repeat("\r\n", LegacyGraphJoin.SamplesPerSegment + 1)), empty);
+    }
+
+    [Fact]
     public void ContestResultsViewModelRecordsManualAndInstantWinsThroughLocalContract()
     {
         var adjudications = new List<ContestAdjudication>();
