@@ -1067,6 +1067,7 @@ impl From<Db3sV2EngineConfig> for EngineConfig {
             vegetation: value.vegetation.into(),
             recording: RecordingSettings::default(),
             dna_costs: value.dna_costs.into(),
+            native_cost_preset: None,
             advanced_mutation: AdvancedMutationSettings::default(),
             auto_speciation: value.auto_speciation,
             speciation_genetic_distance_percent: value.speciation_genetic_distance_percent,
@@ -3074,21 +3075,39 @@ impl Engine {
     }
 
     pub fn update_cost_settings(&mut self, costs: DnaCosts) -> Result<(), EngineError> {
-        if !costs.global_multiplier.is_finite()
-            || (costs.global_multiplier < 0.0 && !costs.dynamic_allow_negative)
-            || !costs.dynamic_cost_multiplier.is_finite()
-            || !costs.dynamic_sensitivity.is_finite()
-        {
+        self.update_cost_settings_with_preset(Some(costs), None)
+    }
+
+    pub(crate) fn update_cost_settings_with_preset(
+        &mut self,
+        costs: Option<DnaCosts>,
+        preset: Option<u8>,
+    ) -> Result<(), EngineError> {
+        if preset.is_some_and(|value| value > 2) || (costs.is_none() && preset.is_none()) {
             return Err(EngineError::Invariant(
-                "simulation cost settings must be finite and nonnegative where required".to_owned(),
+                "Choose a legacy cost preset from 0 to 2 or provide cost coefficients.".into(),
             ));
         }
-        if self.dynamic_cost_state.zeroed {
-            self.dynamic_cost_state.saved_multiplier = costs.global_multiplier;
-        } else {
-            self.dynamic_cost_state.active_multiplier = Some(costs.global_multiplier);
+        if let Some(costs) = costs {
+            if !costs.global_multiplier.is_finite()
+                || (costs.global_multiplier < 0.0 && !costs.dynamic_allow_negative)
+                || !costs.dynamic_cost_multiplier.is_finite()
+                || !costs.dynamic_sensitivity.is_finite()
+            {
+                return Err(EngineError::Invariant(
+                    "simulation cost settings must be finite and nonnegative where required".into(),
+                ));
+            }
+            if self.dynamic_cost_state.zeroed {
+                self.dynamic_cost_state.saved_multiplier = costs.global_multiplier;
+            } else {
+                self.dynamic_cost_state.active_multiplier = Some(costs.global_multiplier);
+            }
+            self.config.dna_costs = costs;
         }
-        self.config.dna_costs = costs;
+        if let Some(preset) = preset {
+            self.config.native_cost_preset = Some(preset);
+        }
         self.publish_snapshot();
         Ok(())
     }
@@ -13005,17 +13024,20 @@ impl Engine {
                 "native population census exceeds robot capacity".into(),
             ));
         }
-        // Older DB3S files retained the original tail before F1 was projected.
-        if engine.native_f1.is_none()
+        // Older DB3S files retained native metadata before it was projected.
+        if (engine.native_f1.is_none() || engine.config.native_cost_preset.is_none())
             && let Some(origin) = engine
                 .native_origin
                 .as_ref()
                 .filter(|file| !file.tail.is_empty())
         {
-            engine.native_f1 = Some(
-                crate::native_binary::NativeSimulationTail::decode(&origin.tail)?.integer("f1")?
-                    != 0,
-            );
+            let tail = crate::native_binary::NativeSimulationTail::decode(&origin.tail)?;
+            if engine.native_f1.is_none() {
+                engine.native_f1 = Some(tail.integer("f1")? != 0);
+            }
+            if engine.config.native_cost_preset.is_none() {
+                engine.config.native_cost_preset = Some(native_io::read_cost_preset(&tail)?);
+            }
         }
         engine.migrate_complete_archived_corpses()?;
         for (index, slot) in engine.slots.iter().enumerate() {
@@ -13964,6 +13986,94 @@ const fn default_snapshot_schema_version() -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn native_cost_preset_roundtrips_independently_of_the_saved_coefficients() {
+        use crate::native_binary::{NativeRecordFile, NativeSimulationTail, NativeValue};
+
+        fn tail(bytes: &[u8]) -> NativeSimulationTail {
+            let file = NativeRecordFile::decode(bytes).unwrap();
+            NativeSimulationTail::decode(&file.tail).unwrap()
+        }
+
+        let archive = include_bytes!("../tests/fixtures/db24832-original-user.sim");
+        let mut file = NativeRecordFile::decode(archive).unwrap();
+        let mut source = NativeSimulationTail::decode(&file.tail).unwrap();
+        source
+            .set_value("cost_radio", NativeValue::Word(0))
+            .unwrap();
+        let mut array = vec![0; 71 * 4];
+        let opaque = 69 * 4..70 * 4;
+        array[opaque.clone()].copy_from_slice(&0.125_f32.to_le_bytes());
+        source
+            .set_value("costs", NativeValue::Bytes(array))
+            .unwrap();
+        file.tail = source.encode().unwrap();
+
+        let mut world = Engine::from_native_sim(&file.encode().unwrap()).unwrap();
+        assert_eq!(world.configuration().native_cost_preset, Some(0));
+        let costs = world.cost_settings().clone();
+        world.dynamic_cost_state.active_multiplier = Some(0.625);
+        let before = tail(&world.export_native_sim().unwrap());
+        assert_eq!(before.integer("cost_radio").unwrap(), 0);
+        assert_eq!(
+            before.bytes("costs").unwrap()[opaque.clone()],
+            0.125_f32.to_le_bytes()
+        );
+
+        world
+            .update_cost_settings_with_preset(None, Some(2))
+            .unwrap();
+        assert_eq!(world.cost_settings(), &costs);
+        assert_eq!(world.dynamic_cost_state.active_multiplier, Some(0.625));
+        assert_eq!(
+            world.configuration_view().unwrap()["config"]["native_cost_preset"],
+            2
+        );
+        let after = tail(&world.export_native_sim().unwrap());
+        assert_eq!(after.integer("cost_radio").unwrap(), 2);
+        assert_eq!(
+            after.bytes("costs").unwrap(),
+            before.bytes("costs").unwrap()
+        );
+        let restored = crate::SaveFile::decode(&crate::SaveFile::encode(&world).unwrap()).unwrap();
+        assert_eq!(restored.configuration().native_cost_preset, Some(2));
+        assert_eq!(restored.cost_settings(), &costs);
+        assert_eq!(restored.dynamic_cost_state.active_multiplier, Some(0.625));
+
+        // An older Modern save retained the source selector but did not project it.
+        world.config.native_cost_preset = None;
+        let restored = crate::SaveFile::decode(&crate::SaveFile::encode(&world).unwrap()).unwrap();
+        assert_eq!(restored.configuration().native_cost_preset, Some(0));
+        assert_eq!(restored.cost_settings(), &costs);
+    }
+
+    #[test]
+    fn native_cost_preset_keeps_the_prior_modern_archive_default_and_legacy_invalid_default() {
+        use crate::native_binary::{NativeRecordFile, NativeSimulationTail, NativeValue};
+
+        let archive = include_bytes!("../tests/fixtures/db3s_v2_phase1.bin");
+        let world = crate::SaveFile::decode(archive).unwrap();
+        assert_eq!(world.configuration().native_cost_preset, None);
+        assert!(
+            world.configuration_view().unwrap()["config"]
+                .get("native_cost_preset")
+                .is_none()
+        );
+
+        let original = include_bytes!("../tests/fixtures/db24832-original-user.sim");
+        let archived = Engine::from_native_sim(original).unwrap();
+        assert_eq!(archived.configuration().native_cost_preset, Some(2));
+        assert_eq!(archived.cost_settings().movement, 0.0);
+        assert_eq!(archived.cost_settings().global_multiplier, 1.0);
+        assert_eq!(archived.cost_settings().dynamic_sensitivity, 50.0);
+        let mut file = NativeRecordFile::decode(original).unwrap();
+        let mut tail = NativeSimulationTail::decode(&file.tail).unwrap();
+        tail.set_value("cost_radio", NativeValue::Word(8)).unwrap();
+        file.tail = tail.encode().unwrap();
+        let world = Engine::from_native_sim(&file.encode().unwrap()).unwrap();
+        assert_eq!(world.configuration().native_cost_preset, Some(2));
+    }
 
     #[test]
     fn render_readout_publication_preserves_native_edge_positions() {

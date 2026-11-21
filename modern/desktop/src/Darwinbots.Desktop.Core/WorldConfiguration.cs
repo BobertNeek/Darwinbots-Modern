@@ -16,6 +16,7 @@ public sealed record WorldConfiguration(
     public bool GreedyReproduction { get; init; }
     public int DisqualificationRule { get; init; }
     public int RecognitionFudging { get; init; }
+    public Db2CostPreset? NativeCostPreset { get; init; }
 }
 
 internal static class NativeConfigurationParser
@@ -109,6 +110,8 @@ internal static class NativeConfigurationParser
             GreedyReproduction = Read<bool>("greedy_reproduction"),
             DisqualificationRule = config.TryGetProperty("disqualification", out var rule) ? rule.GetInt32() : 0,
             RecognitionFudging = config.TryGetProperty("recognition_fudging", out var fudging) ? fudging.GetInt32() : 0,
+            NativeCostPreset = config.TryGetProperty("native_cost_preset", out var presetValue) && presetValue.ValueKind == JsonValueKind.Number
+                && presetValue.TryGetInt32(out var preset) && Enum.IsDefined((Db2CostPreset)preset) ? (Db2CostPreset)preset : null,
         };
     }
 }

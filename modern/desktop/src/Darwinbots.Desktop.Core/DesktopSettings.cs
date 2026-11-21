@@ -17,6 +17,7 @@ public sealed record DesktopSettings
     public int OrganismCapacity { get; init; } = 25_000;
     public float WorldWidth { get; init; } = 16_000f;
     public float WorldHeight { get; init; } = 12_000f;
+    public Db2CostPreset? NativeCostPreset { get; init; }
     public StartingMode StartingMode { get; init; } = StartingMode.StarterBotsAndVegetables;
     public ZerobotSustenance ZerobotSustenance { get; init; } = ZerobotSustenance.DisabledMetabolism;
     public bool AutomaticZerobotProgression { get; init; } = true;
@@ -58,6 +59,7 @@ public sealed record DesktopSettings
         OrganismCapacity = setup.PopulationCapacity,
         WorldWidth = setup.WorldWidth,
         WorldHeight = setup.WorldHeight,
+        NativeCostPreset = setup.NativeCostPreset,
         StartingMode = setup.StartingMode,
         ZerobotSustenance = setup.ZerobotSustenance,
         AutomaticZerobotProgression = setup.AutomaticZerobotProgression,
@@ -102,6 +104,7 @@ public sealed record DesktopSettings
             VegetablePopulationCap = VegetablePopulationCap,
             WorldWidth = WorldWidth,
             WorldHeight = WorldHeight,
+            NativeCostPreset = NativeCostPreset,
             MetabolismCost = MetabolismCost,
             VegetableEnergyPerTick = VegetableEnergyPerTick,
             SunlightEnergy = SunlightEnergy,
@@ -147,6 +150,8 @@ public sealed record DesktopSettings
             _ => throw new NotSupportedException($"Settings schema version {version} is not supported."),
         };
         settings.Validate();
+        if (!root.TryGetProperty("nativeCostPreset", out _))
+            settings = settings with { NativeCostPreset = LegacySettingsAdapter.ReadRetainedCostPreset(settings.LegacySettingsFields) };
         return settings;
     }
 
@@ -168,6 +173,8 @@ public sealed record DesktopSettings
             throw new InvalidDataException("Tick and snapshot intervals must be positive.");
         if (OrganismCapacity <= 0 || WorldWidth <= 0 || WorldHeight <= 0)
             throw new InvalidDataException("Capacity and world dimensions must be positive.");
+        if (NativeCostPreset is { } preset && !Enum.IsDefined(preset))
+            throw new InvalidDataException("Original cost preset must be No Costs, F1, or Custom.");
     }
 
     private static string ReadString(JsonElement root, string name, string fallback) =>

@@ -53,6 +53,16 @@ public interface IEngineClient : IDisposable
         UpdateMutationSettings(mutation);
         if (costs is not null) UpdateCostSettings(costs);
     }
+    void UpdateLiveSettings(EnvironmentUpdate environment, MutationSettingsUpdate mutation,
+        GlobalSimulationCostSettings? costs, Db2CostPreset? preset)
+    {
+        if (preset is null) UpdateLiveSettings(environment, mutation, costs);
+        else
+        {
+            UpdateLiveSettings(environment, mutation, null);
+            UpdateCostSettings(costs, preset);
+        }
+    }
     void UpdateGlobalMutationSettings(MutationSettingsUpdate update, GlobalAdvancedMutationSettings? advanced, GlobalMainSettings main)
     {
         UpdateMutationSettings(update);
@@ -78,6 +88,10 @@ public interface IEngineClient : IDisposable
     void UpdateMainRules(GlobalMainSettings settings) { }
     void UpdateAdvancedMutationSettings(GlobalAdvancedMutationSettings settings, GlobalMainSettings main) { }
     void UpdateCostSettings(GlobalSimulationCostSettings settings) { }
+    void UpdateCostSettings(GlobalSimulationCostSettings? settings, Db2CostPreset? preset)
+    {
+        if (settings is not null) UpdateCostSettings(settings);
+    }
     void UpdateDisqualificationRules(int level) { }
     void UpdateRecognitionFudging(int mode) { }
     void SetOrganismEnergy(uint slot, uint generation, int energy);

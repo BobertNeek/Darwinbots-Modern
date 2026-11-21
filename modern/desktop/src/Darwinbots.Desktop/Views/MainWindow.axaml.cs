@@ -1485,22 +1485,24 @@ public sealed partial class MainWindow : Window
         _editingLiveSettings = true;
         try
         {
-            var costs = (await session.ReadConfigurationAsync())?.Costs ?? _globalSettings.Costs;
-            var dialog = new AdvancedSettingsWindow(_liveEnvironment, session.LatestSnapshot, selectedTab, costs);
+            var configuration = await session.ReadConfigurationAsync();
+            var dialog = new AdvancedSettingsWindow(_liveEnvironment, session.LatestSnapshot, selectedTab,
+                configuration?.Costs ?? _globalSettings.Costs, currentCostPreset: configuration?.NativeCostPreset);
             await dialog.ShowDialog(this);
             if (!dialog.Accepted) return LegacyCommandResult.Cancel();
             var costUpdate = dialog.CostUpdate;
+            var presetUpdate = dialog.CostPresetUpdate;
             if (dialog.LiveSettingsEdited)
             {
                 var update = dialog.Update;
-                await session.UpdateLiveSettingsAsync(update, dialog.MutationUpdate, costUpdate);
+                await session.UpdateLiveSettingsAsync(update, dialog.MutationUpdate, costUpdate, presetUpdate);
                 _liveEnvironment = update;
                 SynchronizeRecordingPreferences();
                 RefreshEnvironmentControls();
             }
-            else if (costUpdate is not null)
+            else if (costUpdate is not null || presetUpdate is not null)
             {
-                await session.UpdateCostSettingsAsync(costUpdate);
+                await session.UpdateCostSettingsAsync(costUpdate, presetUpdate);
             }
             if (costUpdate is not null)
                 _activeCostMultiplier = (await session.ReadConfigurationAsync())?.GlobalCostMultiplier ?? costUpdate.GlobalMultiplier;

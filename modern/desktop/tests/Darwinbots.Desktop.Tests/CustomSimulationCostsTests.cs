@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media.Imaging;
 using Avalonia.VisualTree;
@@ -322,6 +323,7 @@ public sealed class CustomSimulationCostsTests
                 settings.FindControl<NumericUpDown>("MaxVelocity")!.Value = 225m;
                 var result = await Apply(settings);
                 Assert.Equal(GlobalSimulationCostSettings.F1Default, result.Costs);
+                Assert.Equal(Db2CostPreset.F1, result.NativeCostPreset);
                 Assert.Equal((double)0.004f, result.Costs.DnaCondition);
                 Assert.Equal(225f, result.Environment.Physics.MaxVelocity);
                 Assert.Equal(tick, session.LatestSnapshot.Tick);
@@ -338,6 +340,86 @@ public sealed class CustomSimulationCostsTests
                 Assert.Equal(2, fromPhysicsButton.FindControl<TabControl>("SettingsTabs")!.SelectedIndex);
                 Assert.Equal(0, fromPhysicsButton.FindControl<ComboBox>("CostPreset")!.SelectedIndex);
                 Click(fromPhysicsButton, "CancelButton");
+            }
+            finally
+            {
+                foreach (var owned in window.OwnedWindows.ToArray()) owned.Close();
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task F5StagesAndRestoresCustomPresetWhenItsCostsAreIdenticalToNoCosts()
+    {
+        var setup = new WorldSetupOptions
+        {
+            Backend = "Cpu",
+            PopulationCapacity = 64,
+            NativeCostPreset = Db2CostPreset.NoCosts,
+            GlobalSettings = new GlobalSettings { Costs = GlobalSimulationCostSettings.NoCosts },
+            Species = [new("Test", "start\nstop", false, 0xff3f8e34u, 1, 1_000, 0, false, 0f)],
+        };
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], setup, NativeEngineClientFactory.Instance, new AuditStorageService());
+            window.Show();
+            try
+            {
+                var viewModel = Assert.IsType<MainWindowViewModel>(window.DataContext);
+                await WaitForLive(() => viewModel.Status.StartsWith("WORLD READY", StringComparison.Ordinal), () => viewModel.Status);
+                var session = Field<SimulationSession>(window, "_session");
+                var original = await session.SaveAsync();
+
+                async Task<AdvancedSettingsWindow> Open(Db2CostPreset expected)
+                {
+                    window.KeyPress(Key.F5, RawInputModifiers.None, PhysicalKey.F5, null);
+                    window.KeyRelease(Key.F5, RawInputModifiers.None, PhysicalKey.F5, null);
+                    await WaitForLive(() => window.OwnedWindows.OfType<AdvancedSettingsWindow>().Any(), () => viewModel.Status);
+                    var dialog = Assert.Single(window.OwnedWindows.OfType<AdvancedSettingsWindow>());
+                    Assert.Equal(2, dialog.FindControl<TabControl>("SettingsTabs")!.SelectedIndex);
+                    Assert.Equal((int)expected, dialog.FindControl<ComboBox>("CostPreset")!.SelectedIndex);
+                    Assert.Equal(expected == Db2CostPreset.Custom, dialog.FindControl<Button>("LiveCustomSimulationCostsButton")!.IsEnabled);
+                    return dialog;
+                }
+
+                async Task Complete(AdvancedSettingsWindow dialog, bool apply)
+                {
+                    viewModel.Status = "WAITING FOR LIVE SETTINGS";
+                    Click(dialog, apply ? "ApplyButton" : "CancelButton");
+                    await WaitForLive(() => viewModel.Status == (apply ? "LIVE SETTINGS APPLIED" : "CANCELED"), () => viewModel.Status);
+                }
+
+                var settings = await Open(Db2CostPreset.NoCosts);
+                settings.FindControl<ComboBox>("CostPreset")!.SelectedIndex = (int)Db2CostPreset.Custom;
+                Assert.Null(settings.CostUpdate);
+                Assert.Equal(Db2CostPreset.Custom, settings.CostPresetUpdate);
+                Assert.True(settings.FindControl<Border>("DirtyBadge")!.IsVisible);
+                Assert.Equal(original, await session.SaveAsync());
+                await Complete(settings, apply: false);
+                Assert.Equal(original, await session.SaveAsync());
+
+                settings = await Open(Db2CostPreset.NoCosts);
+                settings.FindControl<ComboBox>("CostPreset")!.SelectedIndex = (int)Db2CostPreset.Custom;
+                await Complete(settings, apply: true);
+                var custom = Assert.IsType<WorldConfiguration>(await session.ReadConfigurationAsync());
+                Assert.Equal(Db2CostPreset.Custom, custom.NativeCostPreset);
+                Assert.Equal(GlobalSimulationCostSettings.NoCosts, custom.Costs);
+                var saved = await session.SaveAsync();
+
+                settings = await Open(Db2CostPreset.Custom);
+                settings.FindControl<ComboBox>("CostPreset")!.SelectedIndex = (int)Db2CostPreset.NoCosts;
+                Assert.Null(settings.CostUpdate);
+                await Complete(settings, apply: true);
+                Assert.Equal(Db2CostPreset.NoCosts, (await session.ReadConfigurationAsync())!.NativeCostPreset);
+                var restore = typeof(MainWindow).GetMethod("LoadSimulationAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
+                await Assert.IsAssignableFrom<Task>(restore.Invoke(window, [saved]));
+
+                settings = await Open(Db2CostPreset.Custom);
+                settings.FindControl<ComboBox>("CostPreset")!.SelectedIndex = (int)Db2CostPreset.F1;
+                Assert.Equal(GlobalSimulationCostSettings.F1Default, settings.CostUpdate);
+                await Complete(settings, apply: false);
+                Assert.Equal(Db2CostPreset.Custom, (await session.ReadConfigurationAsync())!.NativeCostPreset);
             }
             finally
             {
