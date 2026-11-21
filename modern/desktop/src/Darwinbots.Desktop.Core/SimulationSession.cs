@@ -33,6 +33,11 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task StepAsync(uint count = 1, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.Tick(count), cancellationToken, measureTicks: true);
 
+    public Task StepRequiringNativeRepopulationSourceAsync(IReadOnlyList<ulong> cancelledLineages,
+        CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.Tick(1, requireNativeRepopulationSource: true, cancelledLineages),
+            cancellationToken, measureTicks: true);
+
     public async Task<OrganismKey?> FindBestRobotAsync(bool energyWeighting, CancellationToken cancellationToken = default)
         => await FindBestRobotAsync(energyWeighting ? 100 : 0, cancellationToken).ConfigureAwait(false);
 
@@ -392,6 +397,22 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task LoadAsync(byte[] save, CancellationToken cancellationToken = default) =>
         LoadWithNativeRestartSourcesAsync(save, null, cancellationToken);
 
+    public async Task<bool> HasUnresolvedNativeRepopulationSourcesAsync(CancellationToken cancellationToken = default)
+    {
+        var unresolved = false;
+        await Enqueue(engine => unresolved = engine.HasUnresolvedNativeRepopulationSources(),
+            cancellationToken, publishSnapshot: false).ConfigureAwait(false);
+        return unresolved;
+    }
+
+    public async Task<bool> BindNativeRepopulationSourceAsync(NativeRestartBinding source, CancellationToken cancellationToken = default)
+    {
+        var bound = 0;
+        await Enqueue(engine => bound = engine.BindNativeRestartSources([source], preserveExisting: true),
+            cancellationToken, publishSnapshot: false).ConfigureAwait(false);
+        return bound == 1;
+    }
+
     public Task LoadWithNativeRestartSourcesAsync(byte[] save, Func<NativeRestartSource, string?>? resolveSource,
         CancellationToken cancellationToken = default)
     {
@@ -415,12 +436,13 @@ public sealed class SimulationSession : IAsyncDisposable
         }, cancellationToken);
     }
 
-    private Task Enqueue(Action<IEngineClient> action, CancellationToken cancellationToken, bool measureTicks = false)
+    private Task Enqueue(Action<IEngineClient> action, CancellationToken cancellationToken,
+        bool measureTicks = false, bool publishSnapshot = true)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         cancellationToken.ThrowIfCancellationRequested();
         var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var command = new SessionCommand(action, completion, cancellationToken, measureTicks);
+        var command = new SessionCommand(action, completion, cancellationToken, measureTicks, publishSnapshot);
         _commands.Add(command, cancellationToken);
         return completion.Task;
     }
@@ -445,6 +467,12 @@ public sealed class SimulationSession : IAsyncDisposable
             try
             {
                 command.Action(_engine);
+                if (!command.PublishSnapshot)
+                {
+                    command.Completion.TrySetResult();
+                    continue;
+                }
+
                 var snapshot = _engine.Snapshot();
                 var elapsed = _performanceClock.Elapsed.TotalSeconds;
                 var advanced = command.MeasureTicks && _lastPublishedTick is { } previous && snapshot.Tick >= previous
@@ -487,5 +515,6 @@ public sealed class SimulationSession : IAsyncDisposable
         Action<IEngineClient> Action,
         TaskCompletionSource Completion,
         CancellationToken CancellationToken,
-        bool MeasureTicks);
+        bool MeasureTicks,
+        bool PublishSnapshot);
 }
