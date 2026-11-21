@@ -88,6 +88,7 @@ impl Engine {
         if file.robots.len() > self.available_robot_capacity() {
             return Err(EngineError::CapacityReached);
         }
+        let native = self.native_cycle.is_some();
         let mut old_slots = HashMap::new();
         let mut parents: HashMap<_, _> = self
             .slots
@@ -134,6 +135,9 @@ impl Engine {
                 });
             }
             let mut robot = self.native_robot(record)?;
+            // posto clears the runtime tie count. LoadRobot restores the saved
+            // memory cells, and the first Update_Ties counts the live endpoints.
+            robot.native_tie_count_pending = native;
             // Incoming metadata is owned by the live robot. Removal releases
             // it; repeated teleporter imports cannot grow a global archive.
             robot.native_record_override = Some(Box::new(record.clone()));
@@ -160,7 +164,9 @@ impl Engine {
                 .copied();
         }
         self.native_ties(&file, &old_slots)?;
-        self.refresh_tie_projections();
+        // LoadOrganism remaps links for display and traversal without writing
+        // tie readbacks into either imported or existing robots' memory.
+        self.refresh_tie_projections_impl(false, &HashMap::new(), !native);
         self.publish_snapshot();
         Ok(file.robots.len())
     }
@@ -251,6 +257,139 @@ mod tests {
                 .unwrap(),
         )
         .unwrap()
+    }
+
+    const SAVED_TIE_READBACKS: [i32; 3] = [431, -593, 7];
+    const TIE_READBACKS: [i32; 3] = [MEM_TIE_ANGLE, MEM_TIE_LENGTH, MEM_NUMBER_OF_TIES];
+
+    fn tie_readbacks(world: &Engine, id: OrganismId) -> [i32; 3] {
+        TIE_READBACKS.map(|address| world.memory_at(id, address).unwrap())
+    }
+
+    fn set_tie_readbacks(world: &mut Engine, id: OrganismId, values: [i32; 3]) {
+        let memory = &mut world.slots.get_mut(id).unwrap().program.memory;
+        for (address, value) in TIE_READBACKS.into_iter().zip(values) {
+            memory.write(address, value);
+        }
+    }
+
+    fn tied_dbo_with_saved_readbacks() -> Vec<u8> {
+        let mut donor = Engine::new_native(EngineConfig::testing()).unwrap();
+        let dna = LegacyDna::parse("start stop").unwrap();
+        let first = donor.spawn_at(dna.clone(), [300.0, 500.0]).unwrap();
+        let second = donor.spawn_at(dna, [650.0, 500.0]).unwrap();
+        assert!(donor.native_make_tie(first, second, 500, 65, 11));
+        for end in donor.ties[0].native_ends.as_mut().unwrap() {
+            end.rest_length = 200.0;
+        }
+        for id in [first, second] {
+            set_tie_readbacks(&mut donor, id, SAVED_TIE_READBACKS);
+        }
+        donor.export_native_organisms(&[first, second]).unwrap()
+    }
+
+    #[test]
+    fn native_menu_insert_exposes_the_tie_but_waits_for_the_first_recount() {
+        let mut world = Engine::new_native(EngineConfig {
+            world_width: 16_000.0,
+            world_height: 12_000.0,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let dna = LegacyDna::parse("start stop").unwrap();
+        let incumbent = world.spawn_at(dna.clone(), [750.0, 500.0]).unwrap();
+        world.spawn_at(dna, [400.0, 500.0]).unwrap();
+        set_tie_readbacks(&mut world, incumbent, [123, -456, 9]);
+
+        assert_eq!(
+            world
+                .insert_native_organisms(&tied_dbo_with_saved_readbacks())
+                .unwrap(),
+            2
+        );
+        let [tie] = world.snapshot().ties.as_slice() else {
+            panic!("the reciprocal tie should already be visible");
+        };
+        let pair = [tie.first, tie.second];
+        assert_eq!(pair.map(|id| id.slot()), [2, 3]);
+        assert_eq!(tie_readbacks(&world, incumbent), [123, -456, 9]);
+        assert!(!world.slots.get(incumbent).unwrap().native_tie_count_pending);
+        for id in pair {
+            assert_eq!(tie_readbacks(&world, id), SAVED_TIE_READBACKS);
+            assert!(world.slots.get(id).unwrap().native_tie_count_pending);
+        }
+
+        let mut resumed = SaveFile::decode(&SaveFile::encode(&world).unwrap()).unwrap();
+        for world in [&mut world, &mut resumed] {
+            world.tick().unwrap();
+            assert_eq!(
+                world.ties[0].native_end_states().map(|end| end.last),
+                [65; 2]
+            );
+            for id in pair {
+                let [angle, length, count] = tie_readbacks(world, id);
+                assert_ne!(angle, SAVED_TIE_READBACKS[0]);
+                assert_ne!(length, SAVED_TIE_READBACKS[1]);
+                assert_eq!(count, 1);
+                assert!(!world.slots.get(id).unwrap().native_tie_count_pending);
+            }
+            world.tick().unwrap();
+            assert_eq!(
+                world.ties[0].native_end_states().map(|end| end.last),
+                [64; 2]
+            );
+        }
+    }
+
+    #[test]
+    fn legacy_inbound_poll_preserves_readbacks_at_the_import_boundary() {
+        let folder = tempfile::tempdir().unwrap();
+        let path = folder.path().join("incoming.dbo");
+        std::fs::write(&path, tied_dbo_with_saved_readbacks()).unwrap();
+        let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+        let mut inbound = Teleporter::new(1, [350.0, 500.0], 100.0, [0.0; 2]);
+        inbound.local = false;
+        inbound.path = folder.path().to_owned();
+        world.add_teleporter(inbound).unwrap();
+
+        // Stop at the end of the shared file poll, before running a robot pass.
+        world.apply_file_teleporters().unwrap();
+        assert!(!path.exists());
+        assert_eq!(world.teleporters[0].received, 1);
+        assert_eq!(world.snapshot().ties.len(), 1);
+        let ids = world.slots.ids_in_slot_order();
+        for &id in &ids {
+            assert_eq!(tie_readbacks(&world, id), SAVED_TIE_READBACKS);
+            assert!(world.slots.get(id).unwrap().native_tie_count_pending);
+        }
+
+        world.tick().unwrap();
+        for &id in &ids {
+            assert_eq!(world.slots.get(id).unwrap().kinematics.velocity, [0.0; 2]);
+        }
+        world.tick().unwrap();
+        assert!(world.slots.get(ids[0]).unwrap().kinematics.velocity[0] > 0.0);
+        assert!(world.slots.get(ids[1]).unwrap().kinematics.velocity[0] < 0.0);
+    }
+
+    #[test]
+    fn portable_dbo_import_still_publishes_the_tie_readbacks_immediately() {
+        let mut world = Engine::new(EngineConfig::testing()).unwrap();
+        world.native_random = None;
+        assert_eq!(
+            world
+                .import_native_organisms(&tied_dbo_with_saved_readbacks(), None)
+                .unwrap(),
+            2
+        );
+        assert_eq!(world.snapshot().ties.len(), 1);
+        for id in world.slots.ids_in_slot_order() {
+            let [angle, length, count] = tie_readbacks(&world, id);
+            assert_ne!(angle, SAVED_TIE_READBACKS[0]);
+            assert_ne!(length, SAVED_TIE_READBACKS[1]);
+            assert_eq!(count, 1);
+            assert!(!world.slots.get(id).unwrap().native_tie_count_pending);
+        }
     }
 
     #[test]
