@@ -586,6 +586,21 @@ impl LegacyDna {
 
     /// Render the raw robot DNA as Darwinbots 2 writes it inside a snapshot record.
     pub(crate) fn to_snapshot_source(&self) -> String {
+        self.to_detokenized_source(false, None)
+    }
+
+    pub(crate) fn to_robot_display_source(&self, marker_position: Option<u32>) -> String {
+        self.to_detokenized_source(
+            true,
+            marker_position.map(|position| position.min(MAX_DNA_BLOCKS as u32) as usize),
+        )
+    }
+
+    fn to_detokenized_source(
+        &self,
+        display_custom_vars: bool,
+        marker_position: Option<usize>,
+    ) -> String {
         let mut source = String::new();
         let mut gene = 0;
         let mut coding = false;
@@ -651,7 +666,18 @@ impl LegacyDna {
                     if block.class == TokenClass::Dereference {
                         source.push('*');
                     }
-                    if let Some(name) = crate::sysvars::legacy_display_sysvar_name(block.value) {
+                    let custom_name = if display_custom_vars && block.value != 0 {
+                        self.ordered_user_variables
+                            .iter()
+                            .rev()
+                            .find(|(_, address)| *address == block.value)
+                            .map(|(name, _)| name.as_str())
+                    } else {
+                        None
+                    };
+                    if let Some(name) = custom_name
+                        .or_else(|| crate::sysvars::legacy_display_sysvar_name(block.value))
+                    {
                         source.push('.');
                         source.push_str(name);
                     } else {
@@ -669,6 +695,9 @@ impl LegacyDna {
             if stops_gene {
                 append_snapshot_gene_marker(&mut source, gene, "Ends", position);
                 source.push_str("\r\n");
+            }
+            if marker_position == Some(position) {
+                source.push_str(" '[<POSITION MARKER]\r\n");
             }
         }
         if coding {
