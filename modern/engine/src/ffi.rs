@@ -304,6 +304,9 @@ enum EngineCommand {
     UpdateRestrictionOptions {
         options: crate::RestrictionOptions,
     },
+    ApplyNativeRestrictionOverwrites {
+        options: crate::RestrictionOptions,
+    },
     SetOrganismAim {
         slot: u32,
         generation: u32,
@@ -1140,6 +1143,9 @@ fn db_engine_command_batch_impl(
             EngineCommand::UpdateRestrictionOptions { options } => engine
                 .update_restriction_options(options)
                 .map(|_| serde_json::Value::Null),
+            EngineCommand::ApplyNativeRestrictionOverwrites { options } => engine
+                .apply_native_restriction_overwrites(options)
+                .map(|_| serde_json::Value::Null),
             EngineCommand::SetOrganismAim {
                 slot,
                 generation,
@@ -1924,6 +1930,32 @@ mod tests {
             assert_eq!(db_buffer_free(&mut buffer), DbStatus::Ok);
         }
         (status, result)
+    }
+
+    #[test]
+    fn native_restriction_overwrite_command_keeps_native_spawn_policy() {
+        for native in [false, true] {
+            let mut world = source_fixture_engine(native);
+            let id = world.spawn(LegacyDna::parse("start stop").unwrap()).unwrap();
+            let (status, _) = classic_test_batch(
+                &mut world,
+                serde_json::json!([{
+                    "type": "apply_native_restriction_overwrites",
+                    "options": { "non_repopulating": { "fixed_in_place": true } }
+                }]),
+            );
+            assert_eq!(status, DbStatus::Ok);
+            assert_eq!(world.memory_at(id, 216).unwrap(), 1);
+            assert_eq!(world.snapshot().tick, 0);
+            assert_eq!(
+                world
+                    .snapshot()
+                    .restriction_options
+                    .non_repopulating
+                    .fixed_in_place,
+                !native
+            );
+        }
     }
 
     fn populated_native_cpu_candidate_fixture() -> Engine {

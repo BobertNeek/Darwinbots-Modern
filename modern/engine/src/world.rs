@@ -4554,6 +4554,46 @@ impl Engine {
         Ok(())
     }
 
+    pub(crate) fn apply_native_restriction_overwrites(
+        &mut self,
+        options: RestrictionOptions,
+    ) -> Result<(), EngineError> {
+        if self.native_cycle.is_none() {
+            return self.update_restriction_options(options);
+        }
+
+        // frmRestriOps state 3 edits existing robots. The mutation switches
+        // follow x_restartmode, independently of the world's SimOpts.F1 flag.
+        let edit_mutations = !self.local_mode.has_active_restart_mode();
+        for slot in &mut self.slots {
+            let Some(robot) = slot.organism.as_mut().filter(|robot| robot.flags.exists) else {
+                continue;
+            };
+            let column = if robot.flags.vegetable {
+                &options.repopulating
+            } else {
+                robot.flags.no_chloroplasts = options.non_repopulating.disable_chloroplasts;
+                robot.flags.can_use_chloroplasts = !robot.flags.no_chloroplasts;
+                &options.non_repopulating
+            };
+            apply_common_restriction_flags(robot, column);
+            if robot.flags.vegetable || robot.counters.disqualification < 2 {
+                robot.counters.disqualification = u8::from(column.kill_disqualified);
+            }
+            robot.flags.virus_immune = column.virus_immune;
+            if edit_mutations {
+                robot.flags.can_mutate = !column.disable_mutations;
+            }
+            robot.kinematics.native_fixed_state = Some(robot.flags.fixed);
+            if robot.flags.fixed {
+                robot.program.memory.write(MEM_FIXED, 1);
+                robot.kinematics.velocity = [0.0; 2];
+            }
+        }
+        self.publish_snapshot();
+        Ok(())
+    }
+
     pub fn spawn_species_at(
         &mut self,
         dna: LegacyDna,
@@ -13153,17 +13193,21 @@ fn native_cached_voluntary_movement(
     (impulse, magnitude(acceleration))
 }
 
-fn apply_restriction_column(robot: &mut RobotState, column: &RestrictionColumn) {
-    robot.kinematics.native_fixed_state = None;
+fn apply_common_restriction_flags(robot: &mut RobotState, column: &RestrictionColumn) {
     robot.flags.fixed = column.fixed_in_place;
     robot.counters.multibot_time = if column.kill_multibot { 210 } else { 0 };
-    robot.counters.disqualification = u8::from(column.kill_disqualified);
     robot.flags.can_see = !column.disable_vision;
     robot.flags.can_execute_dna = !column.disable_dna;
     robot.flags.can_reproduce = !column.disable_reproduction;
     robot.flags.can_receive_viruses = !column.virus_immune;
-    robot.flags.can_mutate = !column.disable_mutations;
     robot.flags.can_move = !column.disable_movement;
+}
+
+fn apply_restriction_column(robot: &mut RobotState, column: &RestrictionColumn) {
+    apply_common_restriction_flags(robot, column);
+    robot.kinematics.native_fixed_state = None;
+    robot.counters.disqualification = u8::from(column.kill_disqualified);
+    robot.flags.can_mutate = !column.disable_mutations;
     robot.flags.can_use_chloroplasts = !column.disable_chloroplasts;
     robot
         .program
@@ -13964,6 +14008,141 @@ const fn default_snapshot_schema_version() -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn native_restriction_overwrites_edit_existing_robots_by_vegetable_flag() {
+        let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+        world.native_f1 = Some(true);
+        let animal_species = world.register_species(SpeciesDefinition {
+            name: "Reseeded animal".into(),
+            reseed: true,
+            restrictions: Some(RestrictionColumn {
+                fixed_in_place: true,
+                ..Default::default()
+            }),
+            ..Default::default()
+        });
+        let vegetable_species = world.register_species(SpeciesDefinition {
+            name: "Non-reseeded vegetable".into(),
+            vegetable: true,
+            ..Default::default()
+        });
+        let dna = LegacyDna::parse("start stop").unwrap();
+        let animal = world
+            .spawn_species_at(dna.clone(), animal_species, [500.0; 2])
+            .unwrap();
+        let vegetable = world
+            .spawn_species_at(dna.clone(), vegetable_species, [600.0; 2])
+            .unwrap();
+        let corpse = world.spawn_at(dna.clone(), [700.0; 2]).unwrap();
+        let robot = world.slots.get_mut(corpse).unwrap();
+        robot.flags.corpse = true;
+        robot.counters.disqualification = 1;
+
+        let robot = world.slots.get_mut(animal).unwrap();
+        robot.counters.disqualification = 3;
+        robot.kinematics.velocity = [3.0, 4.0];
+        let robot = world.slots.get_mut(vegetable).unwrap();
+        robot.counters.disqualification = 3;
+        robot.flags.no_chloroplasts = true;
+        robot.flags.can_use_chloroplasts = false;
+        robot.kinematics.velocity = [5.0, 6.0];
+        robot.kinematics.actual_velocity = [7.0, 8.0];
+        robot.kinematics.pending_velocity = [9.0, 10.0];
+        robot.kinematics.independent_impulse = [11.0, 12.0];
+        robot.kinematics.resistive_impulse = [13.0, 14.0];
+        let mut expected_kinematics = robot.kinematics.clone();
+        expected_kinematics.native_fixed_state = Some(true);
+        expected_kinematics.velocity = [0.0; 2];
+
+        let options = RestrictionOptions {
+            non_repopulating: RestrictionColumn {
+                disable_chloroplasts: true,
+                disable_dna: true,
+                disable_mutations: true,
+                virus_immune: true,
+                ..Default::default()
+            },
+            repopulating: RestrictionColumn {
+                fixed_in_place: true,
+                kill_disqualified: true,
+                kill_multibot: true,
+                ..Default::default()
+            },
+        };
+        world.apply_native_restriction_overwrites(options).unwrap();
+        assert_eq!(world.snapshot().tick, 0);
+        assert_eq!(
+            world.snapshot().restriction_options,
+            RestrictionOptions::default()
+        );
+
+        let robot = world.slots.get(animal).unwrap();
+        assert_eq!(robot.counters.disqualification, 3);
+        assert!(!robot_is_fixed(robot, true));
+        assert_eq!(robot.program.memory.read(MEM_FIXED), 1);
+        assert_eq!(robot.kinematics.velocity, [3.0, 4.0]);
+        assert!(robot.flags.no_chloroplasts);
+        assert!(!robot.flags.can_use_chloroplasts);
+        assert!(!robot.flags.can_execute_dna);
+        assert!(!robot.flags.can_mutate);
+        assert!(robot.flags.virus_immune);
+        assert!(!robot.flags.can_receive_viruses);
+
+        let robot = world.slots.get(vegetable).unwrap();
+        assert_eq!(robot.counters.disqualification, 1);
+        assert_eq!(robot.counters.multibot_time, 210);
+        assert_eq!(robot.program.memory.read(MEM_FIXED), 1);
+        assert_eq!(robot.kinematics, expected_kinematics);
+        assert!(robot.flags.no_chloroplasts);
+        assert!(!robot.flags.can_use_chloroplasts);
+        assert!(robot.flags.can_execute_dna);
+        assert!(robot.flags.can_mutate);
+        let robot = world.slots.get(corpse).unwrap();
+        assert_eq!(robot.counters.disqualification, 0);
+        assert!(robot.flags.no_chloroplasts);
+
+        let later = world
+            .spawn_species_at(dna, animal_species, [800.0; 2])
+            .unwrap();
+        let robot = world.slots.get(later).unwrap();
+        assert!(robot.flags.fixed);
+        assert!(robot.flags.can_execute_dna);
+        assert!(!robot.flags.no_chloroplasts);
+    }
+
+    #[test]
+    fn native_restriction_overwrites_preserve_mutation_switches_in_restart_modes() {
+        let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+        let id = world
+            .spawn_at(LegacyDna::parse("start stop").unwrap(), [500.0; 2])
+            .unwrap();
+        world.local_mode.status = LocalModeStatus::Running;
+        world.local_mode.evolution = Some(
+            crate::EvolutionState::new(
+                crate::EvolutionConfig::default(),
+                vec![crate::EvolutionGenome {
+                    dna: LegacyDna::parse("start 10 .up store stop").unwrap(),
+                    mutation_profile: StandardMutationProfile::default(),
+                }],
+            )
+            .unwrap(),
+        );
+        assert!(world.local_mode.has_active_restart_mode());
+        world
+            .apply_native_restriction_overwrites(RestrictionOptions {
+                non_repopulating: RestrictionColumn {
+                    disable_dna: true,
+                    disable_mutations: true,
+                    ..Default::default()
+                },
+                ..Default::default()
+            })
+            .unwrap();
+        let robot = world.slots.get(id).unwrap();
+        assert!(robot.flags.can_mutate);
+        assert!(!robot.flags.can_execute_dna);
+    }
 
     #[test]
     fn render_readout_publication_preserves_native_edge_positions() {
