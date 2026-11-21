@@ -2249,7 +2249,7 @@ public sealed class RuntimeControlSurfaceTests
         public Task<string?> PickSimulationPathAsync(TopLevel owner) =>
             Task.FromResult<string?>(null);
 
-        public Task<byte[]?> OpenSimulationAsync(TopLevel owner)
+        public Task<byte[]?> OpenSimulationAsync(TopLevel owner, string? mainDirectory = null)
         {
             OpenRequests++;
             return Task.FromResult(OpenedSimulation);
@@ -2266,7 +2266,7 @@ public sealed class RuntimeControlSurfaceTests
         }
 
         public async Task<SimulationSaveFormat?> SaveSimulationWithMutationOptionsAsync(
-            TopLevel owner, Func<SimulationSaveFormat, Task<byte[]>> createSave)
+            TopLevel owner, Func<SimulationSaveFormat, Task<byte[]>> createSave, string? mainDirectory = null)
         {
             SaveRequests++;
             if (!AcceptSave) return null;

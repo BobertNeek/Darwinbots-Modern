@@ -1277,7 +1277,7 @@ public sealed partial class MainWindow : Window
             var format = await _storage.SaveSimulationWithMutationOptionsAsync(this, format =>
                 format == SimulationSaveFormat.Legacy
                     ? session.SaveLegacyWithoutMutationDetailsAsync()
-                    : session.SaveWithoutMutationsAsync());
+                : session.SaveWithoutMutationsAsync(), _globalSettings.Main.MainDirectory);
             return format switch
             {
                 SimulationSaveFormat.Legacy => LegacyCommandResult.Success("DARWINBOTS 2 SIMULATION SAVED WITHOUT MUTATION DETAILS"),
@@ -1290,7 +1290,8 @@ public sealed partial class MainWindow : Window
         WithPausedSimulationFileDialogAsync(async session =>
         {
             var format = await _storage.SaveSimulationWithFormatAsync(this, format =>
-                format == SimulationSaveFormat.Legacy ? session.SaveLegacyAsync() : session.SaveAsync());
+                format == SimulationSaveFormat.Legacy ? session.SaveLegacyAsync() : session.SaveAsync(),
+                _globalSettings.Main.MainDirectory);
             return format switch
             {
                 SimulationSaveFormat.Legacy => LegacyCommandResult.Success("DARWINBOTS 2 SIMULATION SAVED"),
@@ -1311,7 +1312,7 @@ public sealed partial class MainWindow : Window
     private Task<LegacyCommandResult> LoadSimulationCommandAsync() =>
         WithPausedSimulationFileDialogAsync(async session =>
         {
-            if (await _storage.OpenSimulationWithSourceAsync(this) is not { } save
+            if (await _storage.OpenSimulationWithSourceAsync(this, _globalSettings.Main.MainDirectory) is not { } save
                 || !OwnsSimulationFileCommand(session))
                 return LegacyCommandResult.Cancel();
             await LoadSimulationWithSourceAsync(save.Data, save.LocalPath);

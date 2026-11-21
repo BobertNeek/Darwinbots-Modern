@@ -141,13 +141,15 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         return files.FirstOrDefault() is { } file ? LocalPath(file) : null;
     }
 
-    public async Task<byte[]?> OpenSimulationAsync(TopLevel owner) =>
-        (await OpenSimulationWithSourceAsync(owner))?.Data;
+    public async Task<byte[]?> OpenSimulationAsync(TopLevel owner, string? mainDirectory = null) =>
+        (await OpenSimulationWithSourceAsync(owner, mainDirectory))?.Data;
 
-    public async Task<DesktopSimulationFile?> OpenSimulationWithSourceAsync(TopLevel owner)
+    public async Task<DesktopSimulationFile?> OpenSimulationWithSourceAsync(TopLevel owner, string? mainDirectory = null)
     {
-        var files = await owner.StorageProvider.OpenFilePickerAsync(SimulationOpenOptions(
-            "Load Darwinbots simulation", LegacySimulationFileType(), SimulationFileType()));
+        using var folder = await NativeSimulationFolderAsync(owner.StorageProvider, mainDirectory);
+        var options = SimulationOpenOptions("Load Darwinbots simulation", LegacySimulationFileType(), SimulationFileType());
+        options.SuggestedStartLocation = folder;
+        var files = await owner.StorageProvider.OpenFilePickerAsync(options);
         if (files.FirstOrDefault() is not { } file) return null;
         await using var stream = await file.OpenReadAsync();
         using var memory = new MemoryStream();
@@ -187,27 +189,30 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
     }
 
     public Task<SimulationSaveFormat?> SaveSimulationWithFormatAsync(
-        TopLevel owner, Func<SimulationSaveFormat, Task<byte[]>> createSave) =>
+        TopLevel owner, Func<SimulationSaveFormat, Task<byte[]>> createSave, string? mainDirectory = null) =>
         PickAndSaveSimulationAsync(owner, createSave, "Save Darwinbots simulation",
-            [LegacySimulationFileType(), SimulationFileType()]);
+            [LegacySimulationFileType(), SimulationFileType()], mainDirectory);
 
     public Task<SimulationSaveFormat?> SaveSimulationWithMutationOptionsAsync(
-        TopLevel owner, Func<SimulationSaveFormat, Task<byte[]>> createSave) =>
+        TopLevel owner, Func<SimulationSaveFormat, Task<byte[]>> createSave, string? mainDirectory = null) =>
         PickAndSaveSimulationAsync(owner, createSave, "Save Darwinbots simulation without mutations",
             [
                 new("Darwinbots 2 simulation without mutation details") { Patterns = ["*.sim"] },
                 new("Darwinbots Modern save with mutations disabled") { Patterns = ["*.db3s"] },
-            ]);
+            ], mainDirectory);
 
     private static async Task<SimulationSaveFormat?> PickAndSaveSimulationAsync(
         TopLevel owner,
         Func<SimulationSaveFormat, Task<byte[]>> createSave,
         string title,
-        IReadOnlyList<FilePickerFileType> fileTypes)
+        IReadOnlyList<FilePickerFileType> fileTypes,
+        string? mainDirectory)
     {
+        using var folder = await NativeSimulationFolderAsync(owner.StorageProvider, mainDirectory);
         var file = await owner.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
             Title = title,
+            SuggestedStartLocation = folder,
             SuggestedFileName = "simulation.sim",
             SuggestedFileType = fileTypes[0],
             DefaultExtension = "sim",
@@ -225,6 +230,18 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         stream.SetLength(0);
         await stream.WriteAsync(save);
         return format;
+    }
+
+    private static async Task<IStorageFolder?> NativeSimulationFolderAsync(IStorageProvider storage, string? mainDirectory)
+    {
+        var root = string.IsNullOrWhiteSpace(mainDirectory) ? AppContext.BaseDirectory : mainDirectory;
+        foreach (var name in new[] { "saves", "Saves" })
+        {
+            var path = Path.Combine(root, name);
+            if (Directory.Exists(path))
+                return await storage.TryGetFolderFromPathAsync(new Uri(Path.GetFullPath(path)));
+        }
+        return null;
     }
 
     public async Task<bool> SaveSettingsAsync(TopLevel owner, DesktopSettings settings, string? mainDirectory = null)

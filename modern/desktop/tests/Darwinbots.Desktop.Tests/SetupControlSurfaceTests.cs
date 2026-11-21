@@ -940,7 +940,7 @@ internal sealed class SettingsWorkflowStorage : IDesktopStorageService
 
     public Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner, string? mainDirectory = null, bool allowMultiple = true) => Task.FromResult<IReadOnlyList<DesktopTextFile>>([]);
     public Task<string?> PickSimulationPathAsync(TopLevel owner) => Task.FromResult(SimulationPathToOpen);
-    public Task<byte[]?> OpenSimulationAsync(TopLevel owner) => Task.FromResult<byte[]?>(null);
+    public Task<byte[]?> OpenSimulationAsync(TopLevel owner, string? mainDirectory = null) => Task.FromResult<byte[]?>(null);
     public Task<bool> SaveSimulationAsync(TopLevel owner, ReadOnlyMemory<byte> save) => Task.FromResult(true);
     public MutationProfileUpdate? SavedDnaMutationProfile { get; private set; }
     public Task<bool> SaveDnaAsync(TopLevel owner, string suggestedFileName, string dna, MutationProfileUpdate? mutationProfile,

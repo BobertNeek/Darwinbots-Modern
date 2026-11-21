@@ -2174,7 +2174,7 @@ internal sealed class AuditStorageService : IDesktopStorageService
         return ResolveNativeRepopulationSource?.Invoke(owner, source) ?? Task.FromResult<DesktopTextFile?>(null);
     }
     public Task<string?> PickSimulationPathAsync(TopLevel owner) => Task.FromResult(PickedSimulationPath);
-    public Task<byte[]?> OpenSimulationAsync(TopLevel owner) => Task.FromResult(OpenedSimulation);
+    public Task<byte[]?> OpenSimulationAsync(TopLevel owner, string? mainDirectory = null) => Task.FromResult(OpenedSimulation);
 
     public Task<bool> SaveSettingsAsync(TopLevel owner, DesktopSettings settings, string? mainDirectory = null)
     {

@@ -152,7 +152,7 @@ public sealed class DnaExportRenderedTests
         public Task<string?> PickSimulationPathAsync(TopLevel owner) =>
             Task.FromResult<string?>(null);
 
-        public Task<byte[]?> OpenSimulationAsync(TopLevel owner) =>
+        public Task<byte[]?> OpenSimulationAsync(TopLevel owner, string? mainDirectory = null) =>
             Task.FromResult<byte[]?>(null);
 
         public Task<bool> SaveSettingsAsync(TopLevel owner, DesktopSettings settings, string? mainDirectory = null) =>

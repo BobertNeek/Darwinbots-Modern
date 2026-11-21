@@ -32,21 +32,21 @@ public interface IDesktopStorageService
     Task<bool> SaveRgbMonitorPresetAsync(TopLevel owner, ReadOnlyMemory<byte> preset) => Task.FromResult(false);
     Task<DesktopSettings?> OpenSettingsAsync(TopLevel owner, string? mainDirectory = null);
     Task<string?> PickSimulationPathAsync(TopLevel owner);
-    Task<byte[]?> OpenSimulationAsync(TopLevel owner);
-    async Task<DesktopSimulationFile?> OpenSimulationWithSourceAsync(TopLevel owner) =>
-        await OpenSimulationAsync(owner) is { } data ? new(data) : null;
+    Task<byte[]?> OpenSimulationAsync(TopLevel owner, string? mainDirectory = null);
+    async Task<DesktopSimulationFile?> OpenSimulationWithSourceAsync(TopLevel owner, string? mainDirectory = null) =>
+        await OpenSimulationAsync(owner, mainDirectory) is { } data ? new(data) : null;
     Task<bool> SaveSettingsAsync(TopLevel owner, DesktopSettings settings, string? mainDirectory = null);
     Task<bool> SaveSimulationAsync(TopLevel owner, ReadOnlyMemory<byte> save);
     Task<bool> SaveLegacySimulationAsync(TopLevel owner, ReadOnlyMemory<byte> save) => Task.FromResult(false);
     async Task<SimulationSaveFormat?> SaveSimulationWithFormatAsync(
-        TopLevel owner, Func<SimulationSaveFormat, Task<byte[]>> createSave)
+        TopLevel owner, Func<SimulationSaveFormat, Task<byte[]>> createSave, string? mainDirectory = null)
     {
         var format = SimulationSaveFormat.Modern;
         return await SaveSimulationAsync(owner, await createSave(format)) ? format : null;
     }
     Task<SimulationSaveFormat?> SaveSimulationWithMutationOptionsAsync(
-        TopLevel owner, Func<SimulationSaveFormat, Task<byte[]>> createSave) =>
-        SaveSimulationWithFormatAsync(owner, createSave);
+        TopLevel owner, Func<SimulationSaveFormat, Task<byte[]>> createSave, string? mainDirectory = null) =>
+        SaveSimulationWithFormatAsync(owner, createSave, mainDirectory);
     Task<bool> SaveDnaAsync(TopLevel owner, string suggestedFileName, string dna, MutationProfileUpdate? mutationProfile,
         string? mainDirectory = null);
     Task<string?> PickPopulationSeedDirectoryAsync(TopLevel owner) => Task.FromResult<string?>(null);
