@@ -1589,12 +1589,21 @@ public sealed partial class MainWindow : Window
 
     private Task<LegacyCommandResult> ShowSelectedPhylogenyAsync()
     {
-        if (_session is null || SelectedRobotKey() is not { } focus)
+        if (_session is not { } session || _loadingSimulation || SelectedRobotKey() is not { } focus)
             return Task.FromResult(LegacyCommandResult.Failure("NO ROBOT SELECTED"));
         var window = _toolWindows.ShowOrActivate(
             $"phylogeny:{focus.Slot}:{focus.Generation}",
-            () => new PhylogenyWindow(_session.LatestSnapshot, focus));
-        window.SetSnapshot(_session.LatestSnapshot);
+            () => new PhylogenyWindow(session.LatestSnapshot, focus, depth =>
+            {
+                if (_session != session || _loadingSimulation) return;
+                var descendants = PhylogenyModel.DescendantLinks(session.LatestSnapshot, focus, depth);
+                Viewport.HighlightRobots(descendants.Select(link => link.Child));
+            }, () =>
+            {
+                if (_session != session || _loadingSimulation) return;
+                Viewport.ShowPhylogeny(PhylogenyModel.WholeLineage(session.LatestSnapshot, focus));
+            }));
+        window.SetSnapshot(session.LatestSnapshot);
         return Task.FromResult(LegacyCommandResult.Success("PHILOGENY OPEN"));
     }
 
@@ -1997,7 +2006,7 @@ public sealed partial class MainWindow : Window
                         _viewModel.Status = "ZEROBOT EVOLUTION COMPLETE";
                     }
                     Viewport.SetSnapshot(snapshot);
-                    Viewport.SelectKey(_viewModel.SelectedKey);
+                    Viewport.SynchronizeSelection(_viewModel.SelectedKey);
                     var graphInterval = (ulong)Math.Max(1, _globalSettings.Main.GraphUpdatesPerTick);
                     var updateGraphs = _lastGraphRefreshTick is not { } lastTick
                         || snapshot.Tick < lastTick || snapshot.Tick - lastTick >= graphInterval;
@@ -2920,6 +2929,9 @@ public sealed partial class MainWindow : Window
             if (_session is null) return;
             _loadingSimulation = true;
             await _session.LoadAsync(save);
+            Viewport.SelectKey(null);
+            Viewport.ShowPhylogeny([]);
+            _toolWindows.CloseAll<PhylogenyWindow>();
             // A rejected load publishes no snapshot and must keep user-closed
             // graphs closed. Loading publications defer this until success.
             _automaticEvolutionGraphBoundary = null;

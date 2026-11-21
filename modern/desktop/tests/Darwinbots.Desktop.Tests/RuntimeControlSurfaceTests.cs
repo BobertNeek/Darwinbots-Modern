@@ -1618,6 +1618,75 @@ public sealed class RuntimeControlSurfaceTests
     }
 
     [Fact]
+    public async Task PhilogenyMenuCountsAndMarksDescendantsAndDrawsTheWholeLineage()
+    {
+        var ancestor = new OrganismKey(1, 0);
+        var focus = new OrganismKey(2, 2);
+        var child = new OrganismKey(3, 0);
+        var unrelated = new OrganismKey(4, 1);
+        var snapshot = new EngineSnapshot(42, 4, "CPU", [
+            Robot(ancestor, 51, 0, 2400, 3600), Robot(focus, 63, 51, 5000, 3600),
+            Robot(child, 74, 63, 8000, 3600), Robot(unrelated, 94, 0, 9600, 4500),
+        ]) { NativeCycle = 41 };
+        await using var session = new SimulationSession(new RecordingEngineClient(snapshot));
+        await session.StepAsync(0);
+
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], new WorldSetupOptions(), new AuditEngineClientFactory(), new AuditStorageService());
+            try
+            {
+                DesktopTestApplication.UseSession(window, session);
+                var viewModel = Field<MainWindowViewModel>(window, "_viewModel");
+                viewModel.Update(snapshot);
+                window.Show();
+                viewModel.Select(focus);
+                var viewport = window.FindControl<WorldViewport>("Viewport")!;
+                viewport.SetSnapshot(snapshot);
+                viewport.SelectKeys([unrelated], focus);
+                Invoke(window, "RefreshLegacyMenuStates");
+                window.FindControl<LegacyMenuBar>("HistoricMenuBar")!
+                    .FindCommandItem(Core.LegacyMenus.LegacyCommandId.RobotShowPhilogeny)!
+                    .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => window.OwnedWindows.OfType<PhylogenyWindow>().Any());
+                var tool = Assert.Single(window.OwnedWindows.OfType<PhylogenyWindow>());
+                var buttons = tool.GetVisualDescendants().OfType<Button>().ToArray();
+                var pausedTick = session.LatestSnapshot.Tick;
+                Click("CalculateDescendants");
+                Assert.Equal("DESCENDANTS 1 · DEPTH 1", tool.GetVisualDescendants().OfType<TextBlock>()
+                    .Single(text => text.Name == "DescendantCount").Text);
+
+                Click("HighlightDescendants");
+                var marks = Field<HashSet<OrganismKey>>(viewport, "_selectedKeys");
+                Assert.True(marks.SetEquals([focus, child, unrelated]));
+                Click("ShowWholeLineage");
+                Assert.Equal(new PhylogenyLink[] { new(ancestor, focus), new(focus, child) },
+                    Field<IReadOnlyList<PhylogenyLink>>(viewport, "_phylogenyLinks"));
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                using var rendered = window.CaptureRenderedFrame();
+                Assert.NotNull(rendered);
+                Assert.Equal(pausedTick, session.LatestSnapshot.Tick);
+
+                viewport.SetSnapshot(snapshot with { Tick = 43, NativeCycle = 42 });
+                Assert.Empty(Field<IReadOnlyList<PhylogenyLink>>(viewport, "_phylogenyLinks"));
+                Assert.True(marks.SetEquals([focus, child, unrelated]));
+
+                void Click(string name) => Assert.Single(buttons, button => button.Name == name)
+                    .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            }
+            finally
+            {
+                foreach (var owned in window.OwnedWindows.ToArray()) owned.Close();
+                SetField(window, "_session", null);
+                window.Close();
+            }
+        }, CancellationToken.None);
+
+        static OrganismSnapshot Robot(OrganismKey key, ulong id, ulong parentId, float x, float y) =>
+            new(key.Slot, key.Generation, [x, y], [0, 0], 100, 1) { UniqueId = id, ParentAbsoluteId = parentId };
+    }
+
+    [Fact]
     public async Task SnapshotRobotAndViewportRoutesUseLiveNativeState()
     {
         var snapshot = RecordingEngineClient.CreateSnapshot() with
