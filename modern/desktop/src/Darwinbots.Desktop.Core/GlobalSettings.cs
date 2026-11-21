@@ -159,6 +159,10 @@ public sealed record GlobalSimulationCostSettings
     public int DynamicPopulationRange { get; init; }
     public double? DynamicUpperRangePercent { get; init; }
     public double? DynamicLowerRangePercent { get; init; }
+    [JsonIgnore]
+    public double EffectiveDynamicUpperRangePercent => DynamicUpperRangePercent ?? DynamicPopulationRange;
+    [JsonIgnore]
+    public double EffectiveDynamicLowerRangePercent => DynamicLowerRangePercent ?? DynamicUpperZeroThreshold;
     public double DynamicSensitivity { get; init; } = 1.0;
     public bool DynamicAllowNegative { get; init; }
     public double DynamicLowerZeroThreshold { get; init; }

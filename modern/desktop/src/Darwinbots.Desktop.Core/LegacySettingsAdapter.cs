@@ -144,7 +144,7 @@ internal static class LegacySettingsAdapter
             (23,cost.ShotFormation), (24,cost.DnaUpkeep), (25,cost.DnaCopy), (26,cost.Venom), (27,cost.Poison),
             (28,cost.Slime), (29,cost.Shell), (30,cost.BodyUpkeep), (31,cost.AgeBase), (32,cost.AgeStart), (33,cost.AgeLinear),
             (51,cost.AgeLogarithmic), (52,cost.DynamicLowerZeroThreshold), (53,cost.DynamicTargetPopulation), (54,cost.GlobalMultiplier), (55,cost.DynamicSensitivity),
-            (57,cost.DynamicUpperRangePercent ?? cost.DynamicPopulationRange), (58,cost.DynamicLowerRangePercent ?? cost.DynamicUpperZeroThreshold),
+            (57,cost.EffectiveDynamicUpperRangePercent), (58,cost.EffectiveDynamicLowerRangePercent),
             (59,cost.DynamicLowerReinstateThreshold), (60,cost.DynamicUpperReinstateThreshold) };
         foreach (var (index, value) in indexedCosts) Number(costs + index, value);
         // SaveSett writes Single costs. CostsForm uses VB True (-1) for dynamic costs
