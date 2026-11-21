@@ -620,6 +620,68 @@ mod native_loop_tests {
     }
 
     #[test]
+    fn native_sperm_impact_respects_the_incompatible_mating_cooldown() {
+        use crate::native_binary::{NativeRecordFile, NativeValue};
+
+        let original =
+            include_bytes!("../../tests/fixtures/db24832-genuine-reproduction-cycle1-20261017.sim");
+        for (initial_timer, accepts_sperm) in [(-11, false), (-10, true)] {
+            let mut file = NativeRecordFile::decode(original).unwrap();
+            file.robots[0]
+                .set_value("fertilized", NativeValue::Word(initial_timer))
+                .unwrap();
+            let mut world = Engine::from_native_sim(&file.encode().unwrap()).unwrap();
+            let target = world.slots.ids_in_slot_order()[0];
+            let robot = world.slots.get_mut(target).unwrap();
+            assert_eq!(robot.effects.fertilization_timer, i32::from(initial_timer));
+            assert!(robot.effects.stored_sperm.is_none());
+            robot.kinematics.position = [200.0, 200.0];
+            robot.kinematics.velocity = [0.0; 2];
+            robot.kinematics.actual_velocity = [0.0; 2];
+            robot.materials.radius = 10.0;
+            robot.counters.age = 10;
+
+            let dna = LegacyDna::parse("start\n-8 .shoot store\nstop\nend").unwrap();
+            let owner = world.spawn_at(dna.clone(), [165.0, 200.0]).unwrap();
+            world.slots.get_mut(owner).unwrap().materials.radius = 10.0;
+            world.projectiles.reset_native_slots(100);
+            world
+                .pending_projectile_requests
+                .push(PendingProjectileRequest {
+                    owner_slot: owner.slot() as usize,
+                    kind: -8,
+                    value: 0.0,
+                    range_multiplier: 1.0,
+                    angle: 0.0,
+                });
+            world.projectile_spawn_phase().unwrap();
+
+            phase(&mut world);
+
+            let robot = world.slots.get(target).unwrap();
+            assert_eq!(world.stats.projectile_impacts, 1);
+            assert_eq!(robot.program.memory.read(MEM_SHOT_FLAVOR), -8);
+            assert!(world.projectiles.impact_flash[0]);
+            let sperm = &robot.effects.stored_sperm;
+            if accepts_sperm {
+                assert_eq!(robot.effects.fertilization_timer, 10);
+                assert_eq!(robot.program.memory.read(303), 10);
+                assert_eq!(
+                    sperm.as_ref().map(|stored| stored.source),
+                    Some(Some(owner))
+                );
+                assert_eq!(sperm.as_ref().map(|stored| &stored.dna), Some(&dna));
+            } else {
+                assert_eq!(robot.effects.fertilization_timer, i32::from(initial_timer));
+                assert_eq!(robot.program.memory.read(303), 0);
+                assert!(sperm.is_none());
+            }
+            phase(&mut world);
+            assert!(!world.projectiles.alive[0]);
+        }
+    }
+
+    #[test]
     fn native_flash_cleanup_also_clears_dead_slots_and_continues_exactly_after_db3s() {
         for was_alive in [false, true] {
             let (mut world, owner, _) = feeding_world(100);

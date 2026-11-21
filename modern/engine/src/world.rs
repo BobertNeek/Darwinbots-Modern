@@ -11406,6 +11406,10 @@ impl Engine {
                     ProjectileEffect::Sperm => {
                         let Some(dna) = payload else { return Ok(false) };
                         let target_robot = self.slots[target].organism.as_mut().unwrap();
+                        // Shots.takesperm respects the cooldown from incompatible mating.
+                        if native_boundary && target_robot.effects.fertilization_timer < -10 {
+                            return Ok(false);
+                        }
                         target_robot.effects.stored_sperm = Some(StoredGeneticMaterial {
                             dna,
                             source: Some(owner),
