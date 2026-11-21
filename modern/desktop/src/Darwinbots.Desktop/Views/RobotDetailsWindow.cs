@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
 using System.Globalization;
+using System.Text;
 using Darwinbots.Desktop.Core;
 
 namespace Darwinbots.Desktop.Views;
@@ -380,11 +381,12 @@ public sealed class RobotDetailsWindow : Window
             $"DNA VIEW       {dnaSummary}",
             $"MEMORY VIEW    {memorySummary}");
         _factsTab.Text = _facts.Text;
-        if (_postDnaMemory.IsVisible && _postDnaMemory.IsChecked == true
-            && snapshot.NativePostDnaMemory is { } sample && sample.RequestId == _postDnaMemoryRequestId
-            && sample.Tick == snapshot.Tick && sample.Focus == _focus)
+        if (snapshot.NativeCycle.HasValue)
         {
-            _memory.Text = FormatMemory(sample.Memory);
+            var memory = _postDnaMemory.IsVisible && _postDnaMemory.IsChecked == true
+                && snapshot.NativePostDnaMemory is { } sample && sample.RequestId == _postDnaMemoryRequestId
+                && sample.Tick == snapshot.Tick && sample.Focus == _focus ? sample.Memory : organism.Memory;
+            _memory.Text = FormatNativeMemory(memory);
         }
         else
         {
@@ -416,6 +418,34 @@ public sealed class RobotDetailsWindow : Window
     private static string FormatMemory(IReadOnlyList<MemoryCellSnapshot> memory) =>
         memory.Count == 0 ? "No non-zero public memory cells were published."
             : string.Join(Environment.NewLine, memory.Select(cell => $"{cell.Address,4}  {cell.Value,10}"));
+
+    private static string FormatNativeMemory(IReadOnlyList<MemoryCellSnapshot> memory)
+    {
+        const int cellCount = 1_000;
+        const int rowWidth = 10;
+        Span<int> values = stackalloc int[cellCount];
+        values.Clear();
+        foreach (var cell in memory)
+        {
+            if (cell.Address is >= 1 and <= cellCount)
+                values[cell.Address - 1] = cell.Value;
+        }
+
+        var text = new StringBuilder(cellCount * 4);
+        for (var row = 0; row < cellCount; row += rowWidth)
+        {
+            text.Append(CultureInfo.InvariantCulture, $" {row + 1}:");
+            for (var index = row; index < row + rowWidth; index++)
+            {
+                text.Append('\t');
+                var value = values[index];
+                if (value >= 0) text.Append(' '); // VB Str$ reserves a place for the sign.
+                text.Append(CultureInfo.InvariantCulture, $"{value}");
+            }
+            text.Append("\r\n");
+        }
+        return text.ToString();
+    }
 
     private static string FormatParent(OrganismKey?[]? parents, int index) =>
         parents is { Length: > 0 } && parents.ElementAtOrDefault(index) is { } parent
