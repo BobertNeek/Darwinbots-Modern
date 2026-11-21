@@ -6887,6 +6887,7 @@ impl Engine {
         let costs = self.active_dna_costs();
         let population = self.cost_population();
         let rotation_multiplier = costs.dynamic_multiplier(population);
+        let native = self.native_random.is_some();
         for slot_index in self.phase_slot_range() {
             let slot = &mut self.slots[slot_index];
             let Some(robot) = slot.organism.as_mut() else {
@@ -6900,10 +6901,10 @@ impl Engine {
             else {
                 unreachable!("aim phase must return aim commands")
             };
-            native_aim::apply(robot, commands, costs.rotation, rotation_multiplier);
+            native_aim::apply(robot, commands, costs.rotation, rotation_multiplier, native);
             robot
                 .materials
-                .publish_for_profile(&mut robot.program.memory, self.native_random.is_some());
+                .publish_for_profile(&mut robot.program.memory, native);
         }
     }
 
@@ -11985,11 +11986,7 @@ impl Engine {
                 child_organism.kinematics.aim_vector = [child_angle.cos(), child_angle.sin()];
                 child_organism.materials = child_materials;
                 if let Some(heading) = native_child_heading {
-                    child_organism.set_heading(heading);
-                    child_organism.kinematics.aim_vector = [
-                        f64::from(heading).cos() as f32,
-                        f64::from(heading).sin() as f32,
-                    ];
+                    child_organism.set_heading_for_profile(heading, true);
                 }
                 child_organism.counters.generation = parent_state
                     .counters
