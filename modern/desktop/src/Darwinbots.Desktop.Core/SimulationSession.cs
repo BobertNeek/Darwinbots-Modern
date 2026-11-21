@@ -9,6 +9,7 @@ public sealed class SimulationSession : IAsyncDisposable
     private readonly BlockingCollection<SessionCommand> _commands = new();
     private readonly Thread _worker;
     private bool _disposed;
+    private volatile bool _deferSnapshotPublication;
     private readonly Stopwatch _performanceClock = Stopwatch.StartNew();
     private ulong? _lastPublishedTick;
 
@@ -32,6 +33,21 @@ public sealed class SimulationSession : IAsyncDisposable
 
     public Task StepAsync(uint count = 1, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.Tick(count), cancellationToken, measureTicks: true);
+
+    // The caller holds its advance gate across the tick, checkpoint and redraw.
+    // Checkpoint logic can read LatestSnapshot before the rendered state is published.
+    public async Task AdvanceWithNativeRedrawAsync(Func<Task> advance)
+    {
+        ArgumentNullException.ThrowIfNull(advance);
+        _deferSnapshotPublication = true;
+        try
+        {
+            await advance().ConfigureAwait(false);
+            await Enqueue(engine => engine.RedrawNative(), CancellationToken.None, completesNativeStep: true)
+                .ConfigureAwait(false);
+        }
+        finally { _deferSnapshotPublication = false; }
+    }
 
     public Task StepRecordingDeathsAsync(
         uint count, Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted, CancellationToken cancellationToken = default) =>
@@ -440,12 +456,13 @@ public sealed class SimulationSession : IAsyncDisposable
         return Enqueue(engine => engine.Load(save), cancellationToken);
     }
 
-    private Task Enqueue(Action<IEngineClient> action, CancellationToken cancellationToken, bool measureTicks = false)
+    private Task Enqueue(Action<IEngineClient> action, CancellationToken cancellationToken,
+        bool measureTicks = false, bool completesNativeStep = false)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         cancellationToken.ThrowIfCancellationRequested();
         var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var command = new SessionCommand(action, completion, cancellationToken, measureTicks);
+        var command = new SessionCommand(action, completion, cancellationToken, measureTicks, completesNativeStep);
         _commands.Add(command, cancellationToken);
         return completion.Task;
     }
@@ -477,13 +494,16 @@ public sealed class SimulationSession : IAsyncDisposable
                     : 0;
                 if (elapsed > 0)
                     snapshot = snapshot with {
-                        TicksPerSecond = advanced / elapsed,
+                        TicksPerSecond = _deferSnapshotPublication && !command.MeasureTicks
+                            ? LatestSnapshot.TicksPerSecond
+                            : advanced / elapsed,
                         SnapshotsPerSecond = 1.0 / elapsed,
                     };
                 _lastPublishedTick = snapshot.Tick;
                 _performanceClock.Restart();
                 LatestSnapshot = snapshot;
-                SnapshotPublished?.Invoke(snapshot);
+                if (command.CompletesNativeStep) _deferSnapshotPublication = false;
+                if (!_deferSnapshotPublication) SnapshotPublished?.Invoke(snapshot);
                 command.Completion.TrySetResult();
             }
             catch (Exception error)
@@ -512,5 +532,6 @@ public sealed class SimulationSession : IAsyncDisposable
         Action<IEngineClient> Action,
         TaskCompletionSource Completion,
         CancellationToken CancellationToken,
-        bool MeasureTicks);
+        bool MeasureTicks,
+        bool CompletesNativeStep);
 }

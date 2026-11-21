@@ -108,6 +108,9 @@ public sealed partial class NativeEngineClient : IEngineClient
 
     public void Tick(uint count = 1) => Advance(count, null);
 
+    public void RedrawNative() =>
+        ExecuteBatch(new { version = 1, commands = new[] { new { type = "native_redraw" } } }, "redraw native simulation");
+
     public void TickRecordingDeaths(uint count, Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted) =>
         Advance(count, onCommitted);
 

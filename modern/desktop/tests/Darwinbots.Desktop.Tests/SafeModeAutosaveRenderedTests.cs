@@ -1,6 +1,8 @@
+using System.Collections.Concurrent;
 using System.Reflection;
 using Avalonia.Controls;
 using Avalonia.Headless;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Darwinbots.Desktop.Controls;
 using Darwinbots.Desktop.Core;
@@ -54,6 +56,64 @@ public sealed class SafeModeAutosaveRenderedTests
             }, CancellationToken.None);
         }
         finally { if (File.Exists(path)) File.Delete(path); }
+    }
+
+    [Fact]
+    public async Task StepAndF7RedrawOneNativeCycleAfterTheSafeModeCheckpoint()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"db24832-step-cycle-backup-{Guid.NewGuid():N}.db3s");
+        try
+        {
+            await DesktopTestApplication.Session.Dispatch(async () =>
+            {
+                var factory = new AuditEngineClientFactory(encodeTickInSave: true);
+                var storage = new AuditStorageService { LatestAutosave = path, PersistAutosaves = true };
+                var window = new MainWindow([], Setup(true), factory, storage);
+                var finishRedraw = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                try
+                {
+                    Show(window);
+                    await Ready(window);
+                    var session = Field<SimulationSession>(window, "_session");
+                    var engine = Assert.Single(factory.Clients);
+                    engine.NativeCycle = 1999;
+                    await session.RefreshSnapshotAsync();
+                    await WaitFor(() => ViewModel(window).NativeCycle == 1999);
+                    engine.Calls.Clear();
+
+                    var publishedCycles = new ConcurrentQueue<int?>();
+                    session.SnapshotPublished += snapshot => publishedCycles.Enqueue(snapshot.NativeCycle);
+                    var checkpointExistsAtRedraw = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                    engine.OnNativeRedraw = () =>
+                    {
+                        checkpointExistsAtRedraw.TrySetResult(File.Exists(path));
+                        finishRedraw.Task.WaitAsync(TimeSpan.FromSeconds(8)).GetAwaiter().GetResult();
+                    };
+                    Named<Button>(window, "StepButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    Assert.True(await checkpointExistsAtRedraw.Task.WaitAsync(TimeSpan.FromSeconds(8)));
+                    Assert.Equal(1ul, BitConverter.ToUInt64(await File.ReadAllBytesAsync(path)));
+                    Assert.Equal(1999, ViewModel(window).NativeCycle);
+                    Assert.Empty(publishedCycles);
+
+                    finishRedraw.SetResult();
+                    await WaitFor(() => ViewModel(window).NativeCycle == 2000);
+                    window.KeyPress(Key.F7, RawInputModifiers.None, PhysicalKey.F7, null);
+                    window.KeyRelease(Key.F7, RawInputModifiers.None, PhysicalKey.F7, null);
+                    await WaitFor(() => ViewModel(window).NativeCycle == 2001);
+
+                    Assert.Equal(new int?[] { 2000, 2001 }, publishedCycles);
+                    Assert.Equal(new[] { "Tick:1", "Save", "RedrawNative", "Tick:1", "RedrawNative" },
+                        engine.Calls.Where(call => call.StartsWith("Tick:", StringComparison.Ordinal) || call is "Save" or "RedrawNative"));
+                    Assert.Single(storage.AutosaveWrites);
+                }
+                finally
+                {
+                    finishRedraw.TrySetResult();
+                    window.Close();
+                }
+            }, CancellationToken.None);
+        }
+        finally { File.Delete(path); }
     }
 
     [Fact]
