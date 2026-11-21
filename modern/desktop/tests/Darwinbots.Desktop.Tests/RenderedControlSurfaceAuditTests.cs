@@ -2322,6 +2322,7 @@ internal sealed class AuditEngineClient : IEngineClient
     public Func<uint, int?, int?>? AdvanceNativeCycle { get; set; }
     public Action? OnNativeRedraw { get; set; }
     public bool RejectLoads { get; set; }
+    public Action? BeforeResolveMemoryAddress { get; set; }
     public Func<int, RobotSelectionResult>? SelectBestOverride { get; set; }
     public LocalModeSnapshot? LocalModeForRead { get; set; }
     public float? NativeGaussianSpare { get; set; }
@@ -2462,6 +2463,12 @@ internal sealed class AuditEngineClient : IEngineClient
     public void ConfigurePlayerBot(PlayerBotConfig config) => Calls.Enqueue("ConfigurePlayerBot");
     public void SetPlayerBotKey(uint slot, uint generation, int keyCode, bool pressed) => Calls.Enqueue($"PlayerBotKey:{slot}:{generation}:{keyCode}:{pressed}");
     public void SetOrganismMemory(uint slot, uint generation, ushort address, int value) => Calls.Enqueue($"Memory:{slot}:{generation}:{address}:{value}");
+    public ushort ResolveMemoryAddress(string name)
+    {
+        BeforeResolveMemoryAddress?.Invoke();
+        return ushort.TryParse(name, out var address) && address is >= 1 and <= 1000
+            ? address : throw new FormatException($"Unknown memory address '{name}'.");
+    }
     public void UpdateRecognitionFudging(int mode) => Calls.Enqueue($"RecognitionFudging:{mode}");
     public void SetOrganismEnergy(uint slot, uint generation, int energy) => Calls.Enqueue($"Energy:{slot}:{generation}:{energy}");
     public OrganismKey? FindBestRobot(bool energyWeighting) { Calls.Enqueue("FindBestRobot"); return new(3, 2); }

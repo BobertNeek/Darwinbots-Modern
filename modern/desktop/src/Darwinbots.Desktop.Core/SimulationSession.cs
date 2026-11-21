@@ -711,11 +711,12 @@ public sealed class SimulationSession : IAsyncDisposable
         Enqueue(engine => engine.SetOrganismMemory(slot, generation, address, value), cancellationToken);
 
     internal async Task<ushort> SetNamedOrganismMemoryAsync(
-        OrganismKey focus, string name, int value, CancellationToken cancellationToken)
+        OrganismKey focus, string name, int value, CancellationToken cancellationToken, Action? validate = null)
     {
         ushort address = 0;
         await Enqueue(engine =>
         {
+            validate?.Invoke();
             address = engine.ResolveMemoryAddress(name, focus);
             engine.SetOrganismMemory(focus.Slot, focus.Generation, address, value);
         }, cancellationToken).ConfigureAwait(false);
@@ -723,11 +724,12 @@ public sealed class SimulationSession : IAsyncDisposable
     }
 
     internal async Task<(ushort Address, int Value)> ReadNamedOrganismMemoryAsync(
-        OrganismKey focus, string name, CancellationToken cancellationToken)
+        OrganismKey focus, string name, CancellationToken cancellationToken, Action? validate = null)
     {
         (ushort Address, int Value) result = default;
         await Enqueue(engine =>
         {
+            validate?.Invoke();
             var address = engine.ResolveMemoryAddress(name, focus);
             var organism = engine.Snapshot().Organisms.FirstOrDefault(candidate =>
                 candidate.Slot == focus.Slot && candidate.Generation == focus.Generation)
@@ -745,10 +747,24 @@ public sealed class SimulationSession : IAsyncDisposable
         return address;
     }
 
-    public Task ExecuteRobotsAsync(CancellationToken cancellationToken = default) => Enqueue(engine => engine.ExecuteRobots(), cancellationToken);
+    public Task ExecuteRobotsAsync(CancellationToken cancellationToken = default) => ExecuteRobotsAsync(cancellationToken, null);
+
+    internal Task ExecuteRobotsAsync(CancellationToken cancellationToken, Action? validate) =>
+        Enqueue(engine =>
+        {
+            validate?.Invoke();
+            engine.ExecuteRobots();
+        }, cancellationToken);
 
     public Task SetOrganismEnergyAsync(uint slot, uint generation, int energy, CancellationToken cancellationToken = default) =>
-        Enqueue(engine => engine.SetOrganismEnergy(slot, generation, energy), cancellationToken);
+        SetOrganismEnergyAsync(slot, generation, energy, cancellationToken, null);
+
+    internal Task SetOrganismEnergyAsync(uint slot, uint generation, int energy, CancellationToken cancellationToken, Action? validate) =>
+        Enqueue(engine =>
+        {
+            validate?.Invoke();
+            engine.SetOrganismEnergy(slot, generation, energy);
+        }, cancellationToken);
 
     public Task UpdateRestrictionOptionsAsync(RestrictionOptions options, CancellationToken cancellationToken = default)
     {

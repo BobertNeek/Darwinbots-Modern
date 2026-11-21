@@ -24,7 +24,8 @@ public sealed class RobotConsoleWindow : Window
         Func<Task>? pause = null,
         Func<uint, CancellationToken, Task<(ulong Tick, ulong Advanced)>>? advance = null,
         Action<bool>? showDna = null,
-        ulong uniqueId = 0)
+        ulong uniqueId = 0,
+        Action? validateCommand = null)
     {
         Title = $"Darwinbots — Robot Console {focus.Slot}:{focus.Generation}";
         Width = 760;
@@ -33,7 +34,7 @@ public sealed class RobotConsoleWindow : Window
         MinHeight = 420;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         Background = Brush.Parse("#F4F0E6");
-        _controller = new RobotConsoleController(session, focus, play, pause, advance, showDna);
+        _controller = new RobotConsoleController(session, focus, play, pause, advance, showDna, validateCommand);
         _focus = focus;
         _uniqueId = uniqueId;
 

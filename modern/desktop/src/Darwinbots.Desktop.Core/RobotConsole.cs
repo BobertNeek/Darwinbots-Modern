@@ -20,6 +20,7 @@ public sealed class RobotConsoleController
     private readonly Func<Task>? _pause;
     private readonly Func<uint, CancellationToken, Task<(ulong Tick, ulong Advanced)>>? _advance;
     private readonly Action<bool>? _showDna;
+    private readonly Action? _validateCommand;
 
     public RobotConsoleController(
         SimulationSession session,
@@ -27,8 +28,8 @@ public sealed class RobotConsoleController
         Func<Task>? play = null,
         Func<Task>? pause = null,
         Func<uint, CancellationToken, Task<(ulong Tick, ulong Advanced)>>? advance = null,
-
-        Action<bool>? showDna = null)
+        Action<bool>? showDna = null,
+        Action? validateCommand = null)
     {
         _session = session;
         _focus = focus;
@@ -36,11 +37,13 @@ public sealed class RobotConsoleController
         _pause = pause;
         _advance = advance;
         _showDna = showDna;
+        _validateCommand = validateCommand;
     }
 
     public async Task<string> ExecuteAsync(string input, CancellationToken cancellationToken = default,
         bool selectConsoleRobotForDna = false)
     {
+        _validateCommand?.Invoke();
         var command = RobotConsoleCommand.Parse(input);
         switch (command.Name)
         {
@@ -67,23 +70,23 @@ public sealed class RobotConsoleController
             case "set":
                 RequireArguments(command, 2);
                 var value = ParseInt(command.Arguments[1], "value");
-                var address = await _session.SetNamedOrganismMemoryAsync(_focus, command.Arguments[0], value, cancellationToken)
+                var address = await _session.SetNamedOrganismMemoryAsync(_focus, command.Arguments[0], value, cancellationToken, _validateCommand)
                     .ConfigureAwait(false);
                 return $"mem[{address}] = {value}";
             case "energy":
                 RequireArguments(command, 1);
                 var energy = ParseInt(command.Arguments[0], "energy");
-                await _session.SetOrganismEnergyAsync(_focus.Slot, _focus.Generation, energy, cancellationToken)
+                await _session.SetOrganismEnergyAsync(_focus.Slot, _focus.Generation, energy, cancellationToken, _validateCommand)
                     .ConfigureAwait(false);
                 return $"energy = {energy}";
             case "printmem":
             case "?":
                 if (command.Arguments.Count == 0) return PrintMemory();
-                var memory = await _session.ReadNamedOrganismMemoryAsync(_focus, command.Arguments[0], cancellationToken)
+                var memory = await _session.ReadNamedOrganismMemoryAsync(_focus, command.Arguments[0], cancellationToken, _validateCommand)
                     .ConfigureAwait(false);
                 return $"mem[{memory.Address}] = {memory.Value}";
             case "execrob":
-                await _session.ExecuteRobotsAsync(cancellationToken).ConfigureAwait(false);
+                await _session.ExecuteRobotsAsync(cancellationToken, _validateCommand).ConfigureAwait(false);
                 return $"DNA executed at cycle {_session.LatestSnapshot.Tick}";
             case "printeye":
             case "eyes":
