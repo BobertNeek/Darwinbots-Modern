@@ -5,6 +5,22 @@ namespace Darwinbots.Desktop.Core.Tests;
 
 public sealed class NativeSnapshotParserTests
 {
+    [Theory]
+    [InlineData("", null)]
+    [InlineData(",\"founder_name\":null", null)]
+    [InlineData(",\"founder_name\":\"Oracle, Mixed Case.TXT\"", "Oracle, Mixed Case.TXT")]
+    public void FounderFilenameRemainsOptionalAndPreservesExactSpelling(string member, string? expected)
+    {
+        const string start = """
+            {"tick":1,"native_cycle":1,"organisms":[
+              {"id":{"slot":3,"generation":2},"position":[5,8],"velocity":[0,0]
+            """;
+        var result = NativeSnapshotParser.Parse(start + member + "}]}", "CPU");
+        var robot = Assert.Single(result.Organisms);
+        Assert.Equal(new OrganismKey(3, 2), new OrganismKey(robot.Slot, robot.Generation));
+        Assert.Equal(expected, robot.FounderName);
+    }
+
     [Fact]
     public void NativeEnergyStatusDistinguishesMissingNullZeroAndSignedValues()
     {

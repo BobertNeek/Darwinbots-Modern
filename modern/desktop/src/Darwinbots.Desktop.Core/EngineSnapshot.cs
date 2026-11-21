@@ -65,6 +65,7 @@ public sealed record OrganismSnapshot(
     public ulong Descendants { get; init; }
     public ulong SimulationId { get; init; }
     public ulong UniqueId { get; init; }
+    public string? FounderName { get; init; }
     public int VirusTimer { get; init; }
     public ulong NewMutations { get; init; }
     public ulong TotalMutations { get; init; }
