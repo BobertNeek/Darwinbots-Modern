@@ -72,6 +72,31 @@ public sealed class GraphAndContestTests
     }
 
     [Fact]
+    public void NativeGraphReusesItsLastSeriesSlotAtTheOriginalCapacity()
+    {
+        var suite = new GraphSuiteViewModel { SelectedChoice = GraphCatalog.For(GraphMetric.Population) };
+        suite.SetNativeFeed(true);
+        suite.OpenSelectedGraph();
+
+        var values = new Dictionary<GraphMetric, double>();
+        var firstSpecies = Enumerable.Range(1, 65).Select(Species).ToArray();
+        suite.AppendImmediatePoint(GraphMetric.Population, new(1, values, firstSpecies));
+        Assert.Equal(65, suite.RunningGraphs.Count);
+        var last = suite.RunningGraphs[^1];
+        Assert.Equal("Species 65.txt", last.SpeciesName);
+
+        suite.AppendImmediatePoint(GraphMetric.Population, new(2, values, [Species(66)]));
+        Assert.Equal(65, suite.RunningGraphs.Count);
+        Assert.Same(last, suite.RunningGraphs[^1]);
+        Assert.Equal("Species 66.txt", last.SpeciesName);
+        Assert.Equal(66, last.CurrentValue);
+        Assert.DoesNotContain(suite.RunningGraphs, series => series.SpeciesName == "Species 65.txt");
+
+        static SpeciesGraphSampleSnapshot Species(int index) => new($"Species {index}.txt", 0xff123456u,
+            new Dictionary<string, double> { ["population"] = index });
+    }
+
+    [Fact]
     public void NativeSpeciesGraphsKeepSeparateSeriesAndRefreshEachSpeciesValue()
     {
         var history = new HistorySampleSnapshot(100, 5, 12345, 0, 0, 0, 0)

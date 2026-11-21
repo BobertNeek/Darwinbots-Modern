@@ -14,6 +14,71 @@ namespace Darwinbots.Desktop.Tests;
 
 public sealed class NativeGraphPlotRenderedTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SpeciesFirstAppearingInAFeedIsAddedToTheOpenNativePlots(bool startsEmpty)
+    {
+        var root = Directory.CreateTempSubdirectory("darwinbots-native-graph-species-");
+        try
+        {
+            await DesktopTestApplication.Session.Dispatch(async () =>
+            {
+                const uint algaColor = 0xffca4635u;
+                const uint hunterColor = 0xff324fbdu;
+                static SpeciesGraphSampleSnapshot Population(string name, uint color, int value) =>
+                    new(name, color, new Dictionary<string, double> { ["population"] = value });
+
+                var alga = Population("Alga.txt", algaColor, 3);
+                var snapshot = EngineSnapshot.Empty with { Tick = 1, NativeCycle = 0 };
+                if (!startsEmpty)
+                    snapshot = snapshot with
+                    {
+                        Population = 1,
+                        Species = [new SpeciesSnapshot("Alga.txt", true, algaColor, 0, false)],
+                        Organisms = [new OrganismSnapshot(0, 0, [20f, 20f], [0f, 0f], 1_000, 10, Vegetable: true)],
+                    };
+                var run = new LegacyGraphRecordingRun(root.FullName, "native-run");
+                var suite = new GraphSuiteWindow(snapshot, run, readNativeSample: () =>
+                    Task.FromResult<NativeGraphRecordingSample?>(new(1, 0, startsEmpty ? [] : [alga], [])));
+                try
+                {
+                    suite.Show();
+                    suite.ViewModel.SelectedChoice = GraphCatalog.For(GraphMetric.Population);
+                    var view = suite.FindControl<GraphSuiteView>("GraphView")!;
+                    view.FindControl<Button>("OpenGraphButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    var graph = Assert.Single(suite.OwnedWindows.OfType<GraphSeriesWindow>());
+
+                    NativeGraphRecordingSample Feed(ulong tick, int population)
+                    {
+                        var hunter = Population("Hunter.txt", hunterColor, population);
+                        return new(tick, (int)tick - 1, startsEmpty ? [hunter] : [alga, hunter], []);
+                    }
+                    suite.RecordNativeSamples([Feed(2, 0)], run.Generation);
+                    Assert.DoesNotContain(suite.ViewModel.RunningGraphs, series => series.SpeciesName == "Hunter.txt");
+
+                    suite.RecordNativeSamples([Feed(3, 7), Feed(4, 8)], run.Generation);
+                    var hunter = Assert.Single(suite.ViewModel.RunningGraphs.Where(series => series.SpeciesName == "Hunter.txt"));
+                    Assert.Equal(hunterColor, hunter.Color);
+                    Assert.Equal(new[] { new GraphSample(1, 0), new GraphSample(2, 0), new GraphSample(3, 7), new GraphSample(4, 8) },
+                        hunter.Samples);
+                    Assert.Equal(startsEmpty ? 1 : 2, suite.ViewModel.RunningGraphs.Count);
+                    Assert.Contains("Population · Hunter.txt,,4,8\r\n", suite.ViewModel.ExportCsv());
+
+                    await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
+                    AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                    AssertPlotSpansWidth(graph, graph.FindControl<GraphSeriesChart>("SeriesChart")!);
+                    AssertPlotSpansWidth(suite, view.FindControl<GraphSeriesChart>("SeriesChart")!);
+
+                    graph.Close();
+                    Assert.Empty(suite.ViewModel.RunningGraphs);
+                }
+                finally { suite.Close(); }
+            }, CancellationToken.None);
+        }
+        finally { root.Delete(recursive: true); }
+    }
+
     [Fact]
     public async Task RepeatedPausedUpdatesDrawAHorizontalSeriesInBothPlots()
     {

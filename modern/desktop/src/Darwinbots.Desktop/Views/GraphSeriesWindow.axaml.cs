@@ -9,7 +9,7 @@ namespace Darwinbots.Desktop.Views;
 public sealed partial class GraphSeriesWindow : Window
 {
     private readonly GraphSeriesViewModel _graph;
-    private readonly IReadOnlyList<GraphSeriesViewModel> _series;
+    private IReadOnlyList<GraphSeriesViewModel> _series;
     private readonly LegacyGraphAutoSave? _recording;
     private readonly bool _keepUpdatingOnClose;
     private readonly Action? _resetGraph;
@@ -57,9 +57,19 @@ public sealed partial class GraphSeriesWindow : Window
     }
 
     internal GraphSeriesViewModel Graph => _graph;
+    internal IReadOnlyList<GraphSeriesViewModel> Series => _series;
     internal bool IsCollecting => IsVisible || _keepUpdating;
     internal bool NeedsCleanupOnLoad => _keepUpdating || _closePromptPending;
     internal event Action? DiscardedByUser;
+
+    internal void SetSeries(IReadOnlyList<GraphSeriesViewModel> series)
+    {
+        if (_series.SequenceEqual(series)) return;
+        foreach (var item in _series) item.PropertyChanged -= Graph_PropertyChanged;
+        _series = series;
+        foreach (var item in _series) item.PropertyChanged += Graph_PropertyChanged;
+        Refresh();
+    }
 
     internal void PlaceFromNativeLayout(Window owner, NativeGraphLayoutRow layout)
     {
