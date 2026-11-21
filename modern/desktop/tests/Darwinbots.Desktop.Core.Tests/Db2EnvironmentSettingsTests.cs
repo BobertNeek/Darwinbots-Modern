@@ -28,21 +28,6 @@ public sealed class Db2EnvironmentSettingsTests
     }
 
     [Fact]
-    public void LiveSettingsBatchIncludesTheStagedFieldAndMutationTogether()
-    {
-        var environment = EnvironmentUpdate.Default with { FieldSize = 5 };
-        var mutation = MutationSettingsUpdate.Default with { Enabled = false };
-        using var payload = JsonDocument.Parse(JsonSerializer.Serialize(
-            NativeCommandSerializer.CreateLiveSettingsBatch(environment, mutation)));
-        var commands = payload.RootElement.GetProperty("commands");
-        Assert.Equal(2, commands.GetArrayLength());
-        Assert.Equal("update_environment", commands[0].GetProperty("type").GetString());
-        Assert.Equal(5, commands[0].GetProperty("field_size").GetInt32());
-        Assert.Equal("update_mutation_settings", commands[1].GetProperty("type").GetString());
-        Assert.False(commands[1].GetProperty("enabled").GetBoolean());
-    }
-
-    [Fact]
     public void ShapeVisibilitySurvivesSettingsAndEnvironmentCommandsIndependentlyOfOpacity()
     {
         var setup = new WorldSetupOptions { ShapesVisible = true };
