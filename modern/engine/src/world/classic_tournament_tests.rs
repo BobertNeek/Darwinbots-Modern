@@ -528,7 +528,7 @@ fn classic_active_native_vegetation_reseeds_without_inactive_registry_rng_draws(
         world.config.vegetation.minimum_chloroplast_equivalents = 1;
         world.config.vegetation.repopulation_amount = 1;
         world.config.vegetation.repopulation_cooldown = 1;
-        world.vegetation_repopulation_phase().unwrap();
+        world.vegetation_repopulation_phase(None).unwrap();
         assert_eq!(world.stats.reseeds, 1);
         assert!(!world.species[plant.0 as usize].reseed);
         let robot = world
