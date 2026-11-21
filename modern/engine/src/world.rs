@@ -16494,6 +16494,11 @@ mod tests {
         );
 
         let original = include_bytes!("../tests/fixtures/db24832-original-user.sim");
+        let archived = Engine::from_native_sim(original).unwrap();
+        assert_eq!(archived.configuration().native_cost_preset, Some(2));
+        assert_eq!(archived.cost_settings().movement, 0.0);
+        assert_eq!(archived.cost_settings().global_multiplier, 1.0);
+        assert_eq!(archived.cost_settings().dynamic_sensitivity, 50.0);
         let mut file = NativeRecordFile::decode(original).unwrap();
         let mut tail = NativeSimulationTail::decode(&file.tail).unwrap();
         tail.set_value("cost_radio", NativeValue::Word(8)).unwrap();
