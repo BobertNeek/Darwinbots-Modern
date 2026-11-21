@@ -239,6 +239,70 @@ public sealed class RuntimeControlSurfaceTests
         }, CancellationToken.None);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task NativeRestrictionOverwritesPauseAndOfferOnlyOriginalControls(bool restartMode)
+    {
+        var existing = new RestrictionOptions(new(DisableDna: true), new(DisableChloroplasts: true));
+        var mode = restartMode ? LocalModeSnapshot.Idle with
+        {
+            Kind = LocalModeKind.SimpleSurvival,
+            Status = LocalModeStatus.Running,
+            Evolution = new(1, "evolving", false, 1, 0, 0, 0, 1),
+        } : LocalModeSnapshot.Idle;
+        var engine = new RecordingEngineClient(RecordingEngineClient.CreateSnapshot() with
+        {
+            NativeCycle = 10,
+            LocalMode = mode,
+            RestrictionOptions = existing,
+        });
+        await using var simulation = new SimulationSession(engine);
+        await simulation.StepAsync(0);
+
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], new WorldSetupOptions(), new AuditEngineClientFactory(), new AuditStorageService());
+            DesktopTestApplication.UseSession(window, simulation);
+            window.Show();
+            Field<MainWindowViewModel>(window, "_viewModel").Update(simulation.LatestSnapshot);
+            Invoke(window, "RefreshLegacyMenuStates");
+            var timer = Field<DispatcherTimer>(window, "_runTimer");
+            timer.Interval = TimeSpan.FromMinutes(1);
+            timer.Start();
+            try
+            {
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                var command = menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.EditRestrictionOverwrites)!;
+                command.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => window.OwnedWindows.OfType<RestrictionOptionsWindow>().Any());
+                var dialog = Assert.Single(window.OwnedWindows.OfType<RestrictionOptionsWindow>());
+                Assert.False(timer.IsEnabled);
+                Assert.Equal(RestrictionOptions.Default, dialog.Options);
+                var visible = dialog.GetVisualDescendants().OfType<CheckBox>().Where(check => check.IsVisible).ToArray();
+                Assert.Equal(restartMode ? 17 : 19, visible.Length);
+                Assert.Single(visible, check => Equals(check.Content, "disable chloroplasts"));
+                Assert.Equal(restartMode ? 0 : 2, visible.Count(check => Equals(check.Content, "disable mutations")));
+
+                visible.First(check => Equals(check.Content, "fixed in place")).IsChecked = true;
+                var apply = dialog.GetVisualDescendants().OfType<Button>().Single(button => Equals(button.Content, "APPLY"));
+                apply.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => timer.IsEnabled && engine.NativeRestrictionOverwrites is not null);
+                Assert.Equal(new RestrictionOptions(new(FixedInPlace: true), new()), engine.NativeRestrictionOverwrites);
+                Assert.Null(engine.RestrictionOptionsUpdate);
+                Assert.Equal(existing, simulation.LatestSnapshot.RestrictionOptions);
+                Assert.Equal(10, simulation.LatestSnapshot.NativeCycle);
+            }
+            finally
+            {
+                timer.Stop();
+                foreach (var ownedWindow in window.OwnedWindows.ToArray()) ownedWindow.Close();
+                SetField(window, "_session", null);
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
     [Fact]
     public async Task BaselineHideIntervalUsesOriginalDefaultsAndPreservesUneditedOlderProfiles()
     {
@@ -2595,6 +2659,8 @@ internal sealed class RecordingEngineClient : IEngineClient
     public void SetOrganismMemory(uint slot, uint generation, ushort address, int value) => Calls.Enqueue($"Memory:{slot}:{generation}:{address}:{value}");
     public void SetOrganismEnergy(uint slot, uint generation, int energy) => Calls.Enqueue($"Energy:{slot}:{generation}:{energy}");
     public RestrictionOptions? RestrictionOptionsUpdate { get; private set; }
+    public RestrictionOptions? NativeRestrictionOverwrites { get; private set; }
+    public void ApplyNativeRestrictionOverwrites(RestrictionOptions options) => NativeRestrictionOverwrites = options;
     public void UpdateRestrictionOptions(RestrictionOptions options)
     {
         RestrictionOptionsUpdate = options;

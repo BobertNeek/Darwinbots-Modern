@@ -1552,12 +1552,29 @@ public sealed partial class MainWindow : Window
 
     private async Task<LegacyCommandResult> ShowRestrictionOverridesAsync()
     {
-        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        var dialog = new RestrictionOptionsWindow(_session.LatestSnapshot.RestrictionOptions);
-        await dialog.ShowDialog(this);
-        if (!dialog.Accepted) return LegacyCommandResult.Cancel();
-        await _session.UpdateRestrictionOptionsAsync(dialog.Options);
-        return LegacyCommandResult.Success("RESTRICTION OPTIONS APPLIED TO LIVE ROBOTS");
+        if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        var native = session.LatestSnapshot.NativeCycle.HasValue;
+        var resume = native && _runTimer.IsEnabled;
+        if (resume) _runTimer.Stop();
+        await _advanceGate.WaitAsync();
+        try
+        {
+            if (_session != session || !IsVisible) return LegacyCommandResult.Cancel();
+            var snapshot = session.LatestSnapshot;
+            var options = native ? RestrictionOptions.Default : snapshot.RestrictionOptions;
+            var dialog = new RestrictionOptionsWindow(options, native,
+                allowMutationChange: !native || !snapshot.LocalMode.HasActiveRestartMode);
+            await dialog.ShowDialog(this);
+            if (!dialog.Accepted || _session != session || !IsVisible) return LegacyCommandResult.Cancel();
+            if (native) await session.ApplyNativeRestrictionOverwritesAsync(dialog.Options);
+            else await session.UpdateRestrictionOptionsAsync(dialog.Options);
+            return LegacyCommandResult.Success("RESTRICTION OPTIONS APPLIED TO LIVE ROBOTS");
+        }
+        finally
+        {
+            _advanceGate.Release();
+            if (resume && ReferenceEquals(_session, session) && IsVisible) _runTimer.Start();
+        }
     }
 
     private async Task<LegacyCommandResult> OpenRgbMonitorSettingsAsync()

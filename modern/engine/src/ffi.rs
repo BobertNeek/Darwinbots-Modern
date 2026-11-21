@@ -4098,13 +4098,16 @@ mod tests {
                     .unwrap();
                 assert_eq!(renamed.founder_name, name);
             }
+        }
     }
 
     #[test]
     fn native_restriction_overwrite_command_keeps_native_spawn_policy() {
         for native in [false, true] {
             let mut world = source_fixture_engine(native);
-            let id = world.spawn(LegacyDna::parse("start stop").unwrap()).unwrap();
+            let id = world
+                .spawn(LegacyDna::parse("start stop").unwrap())
+                .unwrap();
             let (status, _) = classic_test_batch(
                 &mut world,
                 serde_json::json!([{
