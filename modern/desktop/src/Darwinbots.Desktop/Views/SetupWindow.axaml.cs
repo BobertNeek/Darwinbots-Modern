@@ -12,6 +12,7 @@ public sealed partial class SetupWindow : Window
 {
     private bool _controlsReady;
     private readonly bool _speciesEditor;
+    private readonly bool _nativeSpeciesImport;
     public WorldSetupOptions? EditedOptions { get; private set; }
     public bool StartNewRequested { get; private set; }
     private readonly IDesktopStorageService _storage;
@@ -35,9 +36,11 @@ public sealed partial class SetupWindow : Window
     {
     }
 
-    public SetupWindow(IDesktopStorageService storage, float? nativeGaussianSpare = null, byte? nativeSunChange = null, NativeProcessCachesSnapshot? nativeProcessCaches = null, WorldSetupOptions? speciesEditor = null)
+    public SetupWindow(IDesktopStorageService storage, float? nativeGaussianSpare = null, byte? nativeSunChange = null,
+        NativeProcessCachesSnapshot? nativeProcessCaches = null, WorldSetupOptions? speciesEditor = null, bool nativeSpeciesImport = true)
     {
         _speciesEditor = speciesEditor is not null;
+        _nativeSpeciesImport = nativeSpeciesImport;
         _storage = storage ?? throw new ArgumentNullException(nameof(storage));
         _nativeGaussianSpare = nativeGaussianSpare;
         _nativeSunChange = nativeSunChange;
@@ -115,8 +118,10 @@ public sealed partial class SetupWindow : Window
     {
         try
         {
-            foreach (var file in await _storage.OpenDnaFilesAsync(this))
-                Species.Add(new(Path.GetFileNameWithoutExtension(file.Name), file.Content, false, 0xffd07a2d, 50, 1_000, 1.0, false,
+            var mainDirectory = (_speciesEditor ? _globalSettings : _profileSettings).Main.MainDirectory;
+            var (count, energy) = _nativeSpeciesImport ? (5, 3_000) : (50, 1_000);
+            foreach (var file in await _storage.OpenDnaFilesAsync(this, _nativeSpeciesImport ? mainDirectory : null))
+                Species.Add(new(Path.GetFileNameWithoutExtension(file.Name), file.Content, false, 0xffd07a2d, count, energy, 1.0, false,
                     mutationProfile: file.MutationProfile, dnaPath: file.LocalPath));
         }
         catch (Exception error) { SetupStatus.Text = $"IMPORT FAILED · {error.Message}"; }
