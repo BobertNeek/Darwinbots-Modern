@@ -25,6 +25,7 @@ public enum RobotDetailsTab
 
 public sealed class RobotDetailsWindow : Window
 {
+    private const string NativeDeadMemory = "This robot is dead";
     private static long _nextPostDnaMemoryRequestId;
     private readonly SimulationSession? _session;
     private readonly Func<OrganismKey?>? _readFocus;
@@ -44,6 +45,7 @@ public sealed class RobotDetailsWindow : Window
     private OrganismKey? _postDnaMemoryFocus;
     private bool _capturePostDnaMemory;
     private ulong _readPostDnaMemoryAfterTick;
+    private bool _nativeMemoryActorDied;
     private bool _closed;
     private readonly RobotDiagnosticModel _diagnostic = new();
     private readonly TextBlock _subtitle = new();
@@ -268,7 +270,9 @@ public sealed class RobotDetailsWindow : Window
         _tabs.SelectionChanged += (_, _) => SynchronizePostDnaMemoryWatch();
         PropertyChanged += (_, change) =>
         {
-            if (change.Property == IsVisibleProperty) SynchronizePostDnaMemoryWatch();
+            if (change.Property != IsVisibleProperty) return;
+            if (!IsVisible) ClearNativeMemoryDeath();
+            SynchronizePostDnaMemoryWatch();
         };
         _tabs.SelectionChanged += (_, _) => RefreshMutationDetails();
 
@@ -635,6 +639,23 @@ public sealed class RobotDetailsWindow : Window
         SetSnapshot(snapshot);
     }
 
+    internal void ShowNativeMemoryDeath(OrganismKey focus)
+    {
+        if (!IsVisible || _focus != focus || _tabs.SelectedIndex != (int)RobotDetailsTab.Memory)
+            return;
+
+        _nativeMemoryActorDied = true;
+        _memory.Text = NativeDeadMemory;
+    }
+
+    internal void ClearNativeMemoryDeath()
+    {
+        if (!_nativeMemoryActorDied) return;
+
+        _nativeMemoryActorDied = false;
+        _memory.Text = string.Empty;
+    }
+
     public void SetSnapshot(EngineSnapshot snapshot)
     {
         _snapshot = snapshot;
@@ -660,7 +681,8 @@ public sealed class RobotDetailsWindow : Window
             SetSubtitle(_focus is { } removed ? $"ROBOT {removed.Slot}:{removed.Generation} · REMOVED" : "NO ROBOT SELECTED");
             _facts.Text = _focus is null ? "Select a robot in the simulation." : "The focused robot no longer exists in the live snapshot.";
             _factsTab.Text = _facts.Text;
-            _memory.Text = string.Empty;
+            _memory.Text = _nativeMemoryActorDied && snapshot.NativeCycle.HasValue
+                ? NativeDeadMemory : string.Empty;
             _activationTimeline.Children.Clear();
             _activationSummary.Text = _diagnostic.ActivationSummary;
             return;
@@ -676,6 +698,7 @@ public sealed class RobotDetailsWindow : Window
         organism = early?.Facts ?? organism;
 
         var factFocus = new OrganismKey(organism.Slot, organism.Generation);
+        _nativeMemoryActorDied = false;
         var species = snapshot.Species.ElementAtOrDefault((int)organism.Species)?.Name ?? "UNASSIGNED";
         var dnaSummary = string.IsNullOrWhiteSpace(_dna.Text)
             ? "UNAVAILABLE"

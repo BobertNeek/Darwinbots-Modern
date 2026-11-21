@@ -2684,14 +2684,26 @@ public sealed partial class MainWindow : Window
                 Dispatcher.UIThread.Post(async () =>
                 {
                     if (_windowClosed) return;
-                    if (!loading && snapshot.OrdinaryRestartCount > _presentedOrdinaryRestartCount)
+                    var ordinaryRestarted = snapshot.OrdinaryRestartCount > _presentedOrdinaryRestartCount;
+                    if (!loading && ordinaryRestarted)
                         _runtimeClock.Restart();
                     _presentedOrdinaryRestartCount = snapshot.OrdinaryRestartCount;
                     SynchronizeOrdinaryRestartControl(snapshot);
                     _playerBotEnabled = snapshot.PlayerBot.Enabled;
                     _playerBotBindings = snapshot.PlayerBot.Bindings;
                     var previousSelection = _viewModel.SelectedKey;
+                    var replacedByRestart = ordinaryRestarted || _viewModel.LocalMode.RestartCount != snapshot.LocalMode.RestartCount
+                        || _viewModel.LocalMode.CurrentRound != snapshot.LocalMode.CurrentRound;
+                    var previousInfoActor = _nativeRobotInfoWindow is { IsVisible: true }
+                        ? _viewModel.SelectedOrganism : null;
                     _viewModel.Update(snapshot, _runtimeClock.Elapsed, _activeCostMultiplier);
+                    if (_nativeRobotInfoWindow is { } info)
+                    {
+                        if (replacedByRestart || !snapshot.NativeCycle.HasValue)
+                            info.ClearNativeMemoryDeath();
+                        else if (!loading && previousInfoActor is { } removed && _viewModel.SelectedKey is null)
+                            info.ShowNativeMemoryDeath(new(removed.Slot, removed.Generation));
+                    }
                     SynchronizeDeathPoffPolicy(snapshot.DeathPoffsEnabled);
                     if (snapshot.NativeSunOn is { } sunOn) UpdateSunIndicator(sunOn);
                     if (snapshot.LocalMode.Evolution is { Phase: "complete" }) {
@@ -3889,6 +3901,7 @@ public sealed partial class MainWindow : Window
             _shapesWindow?.SetDimensions(_shapeDimensions);
             _worldLoadGeneration++;
             _nativeRobotInfoWindow?.InvalidateShortDescription();
+            _nativeRobotInfoWindow?.ClearNativeMemoryDeath();
             _safeModeRecoveryWorld = isSafeModeRecovery;
             // A rejected load publishes no snapshot and must keep user-closed
             // graphs closed. Loading publications defer this until success.
