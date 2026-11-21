@@ -170,7 +170,7 @@ public sealed partial class MainWindow : Window
         _zerobotProgression = null;
         InitializeComponent();
         Viewport.FixedRatio = _globalSettings.Main.FixedRatio;
-        Viewport.OldColors = _globalSettings.Main.OldColors;
+        Viewport.OldColors = _globalSettings.Main.EffectiveOldColors;
         if (_globalSettings.Evolution.Enabled) {
             var kind = _globalSettings.Evolution.Mode switch {
                 EvolutionMode.Zerobot => LocalModeKind.Zerobot,
@@ -1567,10 +1567,18 @@ public sealed partial class MainWindow : Window
                 return LegacyCommandResult.Failure($"GRAPH PREFERENCE SAVE FAILED · {error.Message}", error);
             }
         }
+        if (dialog.Settings.Main.OldColors != _globalSettings.Main.OldColors)
+        {
+            try { await _storage.SaveOldColorsPreferenceAsync(dialog.Settings.Main.OldColors); }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException or JsonException or InvalidDataException)
+            {
+                return LegacyCommandResult.Failure($"OLD COLORS PREFERENCE SAVE FAILED · {error.Message}", error);
+            }
+        }
         _globalSettings = dialog.Settings;
         SynchronizeSafemodePreference(_globalSettings.Main.SafeMode);
         Viewport.FixedRatio = _globalSettings.Main.FixedRatio;
-        Viewport.OldColors = _globalSettings.Main.OldColors;
+        Viewport.OldColors = _globalSettings.Main.EffectiveOldColors;
         if (_globalSettings.Evolution.Enabled) {
             var kind = _globalSettings.Evolution.Mode switch {
                 EvolutionMode.Zerobot => LocalModeKind.Zerobot,

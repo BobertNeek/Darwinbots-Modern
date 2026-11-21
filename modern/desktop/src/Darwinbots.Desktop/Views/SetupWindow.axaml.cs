@@ -56,7 +56,11 @@ public sealed partial class SetupWindow : Window
                 var keepUpdating = _storage.LoadGraphClosePreference();
                 _globalSettings = _globalSettings with
                 {
-                    Main = _globalSettings.Main with { KeepGraphsUpdatingOnClose = keepUpdating },
+                    Main = _globalSettings.Main with
+                    {
+                        KeepGraphsUpdatingOnClose = keepUpdating,
+                        OldColors = _storage.LoadOldColorsPreference(),
+                    },
                 };
                 InitialKeepGraphsUpdatingOnClose = keepUpdating == true;
             }
@@ -323,6 +327,8 @@ public sealed partial class SetupWindow : Window
             var keepUpdating = dialog.Settings.Main.KeepGraphsUpdatingOnClose;
             if (keepUpdating != _globalSettings.Main.KeepGraphsUpdatingOnClose)
                 await _storage.SaveGraphClosePreferenceAsync(keepUpdating);
+            if (dialog.Settings.Main.OldColors != _globalSettings.Main.OldColors)
+                await _storage.SaveOldColorsPreferenceAsync(dialog.Settings.Main.OldColors);
             _globalSettings = dialog.Settings;
             _environment = _environment with
             {

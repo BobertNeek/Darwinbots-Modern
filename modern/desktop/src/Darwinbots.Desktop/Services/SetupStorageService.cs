@@ -89,14 +89,14 @@ public static class SetupStorageService
         path is not null && IsLocalPath(PortablePath(path)) && Path.IsPathFullyQualified(path)
             ? Path.GetDirectoryName(path) : null;
 
-    internal static bool? ReadNativeGraphClosePreference(string mainDirectory)
+    internal static bool? ReadNativeGlobalBoolean(string mainDirectory, int recordIndex)
     {
         var directory = PortablePath(mainDirectory);
         if (!IsLocalPath(directory) || !Path.IsPathFullyQualified(directory)) return null;
         try
         {
-            // frmGset writes one record per line. GraphUp follows the restrictions.
-            return File.ReadLines(Path.Combine(directory, "Global.gset")).Skip(50).FirstOrDefault()
+            // frmGset writes one record per line.
+            return File.ReadLines(Path.Combine(directory, "Global.gset")).ElementAtOrDefault(recordIndex)
                 ?.Trim().ToUpperInvariant() switch
             {
                 "#TRUE#" => true,
