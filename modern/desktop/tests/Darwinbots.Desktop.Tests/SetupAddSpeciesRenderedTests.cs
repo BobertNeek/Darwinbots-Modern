@@ -161,17 +161,26 @@ public sealed class SetupAddSpeciesRenderedTests
                     command.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
                     await WaitForAsync(() => world.OwnedWindows.OfType<SetupWindow>().Any(), "Edit Species did not open.");
                     var editor = Assert.Single(world.OwnedWindows.OfType<SetupWindow>());
+                    var frameBeforeAdd = session.LatestSnapshot;
+                    var canceledPicker = new DnaPicker(editor, path, cancel: true);
+                    Click(editor, "AddDnaButton");
+                    await WaitForAsync(() => canceledPicker.Opened, "Add Species did not open the picker.");
+                    Assert.DoesNotContain(editor.Species, row => row.Name == "Test.txt");
+                    Assert.Equal(initialState, await session.ReadNativeSetupUniformStateAsync());
+                    Assert.Equal(0, clock.Reads);
+
                     _ = new DnaPicker(editor, path);
                     var row = await AddSpeciesAsync(editor, 5, 3_000, "Test.txt");
                     Assert.Equal(expected.Argb, row.Color);
                     Assert.Equal(expected.Skin, row.ToImport(0).Skin);
+                    Assert.Same(frameBeforeAdd, session.LatestSnapshot);
                     Click(editor, "SpeciesCancelButton");
                     await WaitForAsync(() => !editor.IsVisible, "Edit Species did not close after Cancel.");
                     Assert.Equal(expected.UniformState, await session.ReadNativeSetupUniformStateAsync());
                     Assert.Equal(0.125f, await session.ReadNativeGaussianSpareAsync());
                     var after = await session.ReadConfigurationAsync();
                     Assert.Equal(before!.Species.Select(s => s.Name), after!.Species.Select(s => s.Name));
-                    Assert.Equal(before.Seed, after.Seed);
+                    Assert.Equal(frameBeforeAdd.NativeCycle, session.LatestSnapshot.NativeCycle);
                     Assert.Empty(session.LatestSnapshot.Organisms);
                     Assert.Equal(2, clock.Reads);
                 }
@@ -426,7 +435,9 @@ public sealed class SetupAddSpeciesRenderedTests
         private string? _lookup;
         private FilePickerOpenOptions? _open;
 
-        public DnaPicker(Window window, string path)
+        public bool Opened => _open is not null;
+
+        public DnaPicker(Window window, string path, string? filename = null, bool cancel = false)
         {
             _folder = PickerProxy.CreateFor<IStorageFolder>((method, _) =>
                 method.Name == nameof(IDisposable.Dispose) ? null : throw new NotSupportedException(method.Name));
@@ -454,7 +465,7 @@ public sealed class SetupAddSpeciesRenderedTests
             Task<IReadOnlyList<IStorageFile>> ChooseFile(FilePickerOpenOptions options)
             {
                 _open = options;
-                return Task.FromResult<IReadOnlyList<IStorageFile>>([file]);
+                return Task.FromResult<IReadOnlyList<IStorageFile>>(cancel ? [] : [file]);
             }
         }
 
