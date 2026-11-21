@@ -13,6 +13,7 @@ public sealed partial class SetupWindow : Window
     private bool _controlsReady;
     private readonly bool _speciesEditor;
     private readonly bool _nativeSpeciesImport;
+    private readonly Func<string, string, bool, Task<NativeSpeciesAppearance?>>? _stageNativeAppearance;
     public WorldSetupOptions? EditedOptions { get; private set; }
     public bool StartNewRequested { get; private set; }
     private readonly IDesktopStorageService _storage;
@@ -37,10 +38,12 @@ public sealed partial class SetupWindow : Window
     }
 
     public SetupWindow(IDesktopStorageService storage, float? nativeGaussianSpare = null, byte? nativeSunChange = null,
-        NativeProcessCachesSnapshot? nativeProcessCaches = null, WorldSetupOptions? speciesEditor = null, bool nativeSpeciesImport = true)
+        NativeProcessCachesSnapshot? nativeProcessCaches = null, WorldSetupOptions? speciesEditor = null, bool nativeSpeciesImport = true,
+        Func<string, string, bool, Task<NativeSpeciesAppearance?>>? stageNativeAppearance = null)
     {
         _speciesEditor = speciesEditor is not null;
         _nativeSpeciesImport = nativeSpeciesImport;
+        _stageNativeAppearance = stageNativeAppearance;
         _storage = storage ?? throw new ArgumentNullException(nameof(storage));
         _nativeGaussianSpare = nativeGaussianSpare;
         _nativeSunChange = nativeSunChange;
@@ -98,14 +101,18 @@ public sealed partial class SetupWindow : Window
         {
             if (mode == StartingMode.StarterBotsAndVegetables)
             {
-                Species.Add(new("Alga Minimalis", ReadBundled("Alga_Minimalis_Chloroplastus.txt"), true, 0xff4c963b, 300, 1_000, 0.5, true));
-                Species.Add(new("Animal Minimalis", ReadBundled("Animal_Minimalis.txt"), false, 0xff239ac0, 100, 1_000, 1.0, true));
+                Species.Add(new("Alga Minimalis", ReadBundled("Alga_Minimalis_Chloroplastus.txt"), true, 0xff4c963b, 300, 1_000, 0.5, true,
+                    nativeSkin: _nativeSpeciesImport));
+                Species.Add(new("Animal Minimalis", ReadBundled("Animal_Minimalis.txt"), false, 0xff239ac0, 100, 1_000, 1.0, true,
+                    nativeSkin: _nativeSpeciesImport));
             }
             else
             {
-                Species.Add(new("Zerobot", ZerobotDna, false, 0xff59636b, 100, 1_000, 10.0, false));
+                Species.Add(new("Zerobot", ZerobotDna, false, 0xff59636b, 100, 1_000, 10.0, false,
+                    nativeSkin: _nativeSpeciesImport));
                 if (mode == StartingMode.ZerobotsAndVegetables)
-                    Species.Add(new("Energy Feeder", FeederDna, true, 0xff4c963b, 60, 2_000, 0.5, true));
+                    Species.Add(new("Energy Feeder", FeederDna, true, 0xff4c963b, 60, 2_000, 0.5, true,
+                        nativeSkin: _nativeSpeciesImport));
             }
             SetupStatus.Text = string.Empty;
         }
@@ -114,28 +121,41 @@ public sealed partial class SetupWindow : Window
 
     private static string ReadBundled(string name) => File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Bots", name));
 
+    internal static Func<string, string, bool, Task<NativeSpeciesAppearance?>> CreateNativeAppearanceProvider(
+        uint? uniformState = null, TimeProvider? clock = null) => (filename, dna, oldColors) =>
+    {
+        var appearance = NativeEngineClient.StageNativeSetupAppearance(filename, dna, oldColors, uniformState, clock);
+        if (appearance is not null) uniformState = appearance.UniformState;
+        return Task.FromResult(appearance);
+    };
+
     private async void AddDna_Click(object? sender, RoutedEventArgs e)
     {
         try
         {
-            var mainDirectory = (_speciesEditor ? _globalSettings : _profileSettings).Main.MainDirectory;
+            var main = (_speciesEditor ? _globalSettings : _profileSettings).Main;
+            var mainDirectory = main.MainDirectory;
             var (count, energy) = _nativeSpeciesImport ? (5, 3_000) : (50, 1_000);
             var files = await _storage.OpenDnaFilesAsync(this, _nativeSpeciesImport ? mainDirectory : null,
                 allowMultiple: !_nativeSpeciesImport);
             foreach (var file in files)
             {
                 var name = _nativeSpeciesImport ? file.Name : Path.GetFileNameWithoutExtension(file.Name);
-                var color = (_nativeSpeciesImport, file.Name) switch
+                var appearance = _nativeSpeciesImport && _stageNativeAppearance is not null
+                    ? await _stageNativeAppearance(file.Name, file.Content, main.OldColors)
+                    : null;
+                var color = appearance?.Argb ?? ((_nativeSpeciesImport, file.Name) switch
                 {
                     (true, "Base.txt") => 0xff0000ff,
                     (true, "Mutate.txt" or "Test.txt") => 0xffff0000,
                     (true, "robotA.txt") => 0xffff8000,
                     (true, "robotB.txt") => 0xff0080ff,
                     _ => 0xffd07a2d,
-                };
+                });
                 Species.Add(new(name, file.Content, false, color, count, energy, 1.0, false,
                     comment: _nativeSpeciesImport ? LegacyDnaText.ReadLeadingComment(file.Content) : null,
-                    mutationProfile: file.MutationProfile, dnaPath: file.LocalPath));
+                    skin: appearance?.Skin, mutationProfile: file.MutationProfile, dnaPath: file.LocalPath,
+                    nativeSkin: _nativeSpeciesImport));
             }
         }
         catch (Exception error) { SetupStatus.Text = $"IMPORT FAILED · {error.Message}"; }
@@ -434,7 +454,7 @@ public sealed partial class SetupWindow : Window
                 Species.Add(new(species.Name, species.Dna, species.Vegetable, species.Color,
                     species.InitialCount, species.InitialEnergy, species.MutationRate, species.Reseed,
                     species.MinimumPopulation, species.Comment, species.Placement, species.Skin, species.Restrictions,
-                    species.MutationProfile, species.DnaPath, species.SpeciesId));
+                    species.MutationProfile, species.DnaPath, species.SpeciesId, nativeSkin: _nativeSpeciesImport));
         }
         _controlsReady = true;
     }

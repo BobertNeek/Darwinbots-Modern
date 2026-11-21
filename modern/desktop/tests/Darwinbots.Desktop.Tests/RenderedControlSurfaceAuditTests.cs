@@ -689,7 +689,8 @@ public sealed class RenderedControlSurfaceAuditTests
             Click(window, reseed);
             Assert.Equal(!reseedBefore, firstRow.Reseed);
 
-            var rowNumbers = rowControls.OfType<NumericUpDown>().Where(control => ReferenceEquals(control.DataContext, firstRow)).ToArray();
+            var rowNumbers = rowControls.OfType<NumericUpDown>()
+                .Where(control => control.IsEffectivelyVisible && ReferenceEquals(control.DataContext, firstRow)).ToArray();
             Assert.Equal(2, rowNumbers.Length);
             AssertKeyboardIncrement(window, rowNumbers[0]);
             AssertKeyboardIncrement(window, rowNumbers[1]);
@@ -707,7 +708,8 @@ public sealed class RenderedControlSurfaceAuditTests
                     && control.Text?.Contains('%', StringComparison.Ordinal) == true);
             Assert.Contains('%', mutationLabel.Text!);
 
-            var remove = rowControls.OfType<Button>().Last(control => control.Tag is SetupSpeciesRow);
+            var remove = rowControls.OfType<Button>()
+                .Last(control => control.IsEffectivelyVisible && control.Tag is SetupSpeciesRow);
             Click(window, remove);
             Assert.Single(window.Species);
             Click(window, Named<Button>(window, "AddDnaButton"));
