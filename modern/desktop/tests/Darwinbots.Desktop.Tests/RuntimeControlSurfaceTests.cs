@@ -759,6 +759,93 @@ public sealed class RuntimeControlSurfaceTests
     }
 
     [Fact]
+    public async Task NativeAdvancedApplyPreservesTheCurrentDaylightPhaseAndPausedClock()
+    {
+        var setup = new WorldSetupOptions
+        {
+            Backend = "Cpu",
+            PopulationCapacity = 16,
+            VegetablePopulationCap = 0,
+            WorldWidth = 8_000,
+            WorldHeight = 6_000,
+            BrownianMotion = 0,
+            Vegetation = Db2VegetationOptions.Default with { Daytime = true, DayNightEnabled = true, CycleLength = 1 },
+            Species = [new("Night Watch", "start stop", false, 0xff123456, 1, 1_000, 0, false, 0)],
+        };
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], setup, NativeEngineClientFactory.Instance, new AuditStorageService());
+            SimulationSession? activeSession = null;
+            try
+            {
+                window.Show();
+                var model = Field<MainWindowViewModel>(window, "_viewModel");
+                await WaitFor(() => model.Status.StartsWith("WORLD READY", StringComparison.Ordinal), () => model.Status);
+                var session = activeSession = Field<SimulationSession>(window, "_session");
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                var general = menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.EditGeneralSettings)!;
+
+                await AssertClock(enabled: true, daytime: true, counter: 0);
+                var acrossDusk = await OpenSettingsAsync();
+                Assert.False(acrossDusk.FindControl<CheckBox>("Daytime")!.IsVisible);
+                acrossDusk.FindControl<NumericUpDown>("MaxPlantEnergy")!.Value = 123;
+                await session.StepAsync(3);
+                await AssertClock(enabled: true, daytime: false, counter: 1);
+                await ApplyAsync(acrossDusk);
+                await AssertClock(enabled: true, daytime: false, counter: 1);
+                var applied = Assert.IsType<WorldConfiguration>(await session.ReadConfigurationAsync());
+                Assert.Equal(123, applied.Environment.Vegetation.MaxEnergyPerTick);
+
+                var disable = await OpenSettingsAsync();
+                disable.FindControl<CheckBox>("DayNightEnabled")!.IsChecked = false;
+                await AssertClock(enabled: true, daytime: false, counter: 1);
+                await ApplyAsync(disable);
+                await AssertClock(enabled: false, daytime: true, counter: 1);
+                await session.StepAsync(2);
+                await AssertClock(enabled: false, daytime: true, counter: 1);
+
+                var reenable = await OpenSettingsAsync();
+                reenable.FindControl<CheckBox>("DayNightEnabled")!.IsChecked = true;
+                await ApplyAsync(reenable);
+                await AssertClock(enabled: true, daytime: true, counter: 1);
+                await session.StepAsync();
+                await AssertClock(enabled: true, daytime: false, counter: 0);
+
+                async Task<AdvancedSettingsWindow> OpenSettingsAsync()
+                {
+                    general.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    await WaitFor(() => window.OwnedWindows.OfType<AdvancedSettingsWindow>().Any(), () => model.Status);
+                    return Assert.Single(window.OwnedWindows.OfType<AdvancedSettingsWindow>());
+                }
+
+                async Task ApplyAsync(AdvancedSettingsWindow dialog)
+                {
+                    model.Status = "APPLYING TEST SETTINGS";
+                    dialog.FindControl<Button>("ApplyButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    await WaitFor(() => model.Status == "LIVE SETTINGS APPLIED", () => model.Status);
+                }
+
+                async Task AssertClock(bool enabled, bool daytime, ulong counter)
+                {
+                    var configuration = Assert.IsType<WorldConfiguration>(await session.ReadConfigurationAsync());
+                    Assert.Equal(enabled, configuration.Environment.Vegetation.DayNightEnabled);
+                    Assert.Equal(daytime, configuration.Environment.Vegetation.Daytime);
+                    using var save = JsonDocument.Parse((await session.SaveAsync()).AsMemory(10));
+                    var runtime = save.RootElement.GetProperty("vegetation_runtime");
+                    Assert.Equal(counter, runtime.GetProperty("day_night_counter").GetUInt64());
+                }
+            }
+            finally
+            {
+                foreach (var dialog in window.OwnedWindows.OfType<AdvancedSettingsWindow>().ToArray()) dialog.Close();
+                SetField(window, "_session", null);
+                window.Close();
+                if (activeSession is not null) await activeSession.DisposeAsync();
+            }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
     public async Task LoadedNativeWorldHydratesControlsAndChangingTopologyPreservesItsRules()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

@@ -1471,16 +1471,34 @@ public sealed partial class MainWindow : Window
 
     private async Task<LegacyCommandResult> OpenAdvancedSettingsCommandAsync(int selectedTab = 0)
     {
-        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        var dialog = new AdvancedSettingsWindow(_liveEnvironment, _session.LatestSnapshot, selectedTab);
+        if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        var dialog = new AdvancedSettingsWindow(_liveEnvironment, session.LatestSnapshot, selectedTab);
         await dialog.ShowDialog(this);
         if (!dialog.Accepted) return LegacyCommandResult.Cancel();
-        await _session.UpdateEnvironmentAsync(dialog.Update);
-        await _session.UpdateMutationSettingsAsync(dialog.MutationUpdate);
-        _liveEnvironment = dialog.Update;
-        SynchronizeRecordingPreferences();
-        RefreshEnvironmentControls();
-        return LegacyCommandResult.Success("LIVE SETTINGS APPLIED");
+        await _advanceGate.WaitAsync();
+        try
+        {
+            if (_loadingSimulation || _navigationInFlight || _session != session)
+                return LegacyCommandResult.Cancel();
+            var update = dialog.Update;
+            if (session.LatestSnapshot.NativeCycle is not null)
+            {
+                // OptionsForm.OKButton_Click uses the current simulation phase, not the draft's.
+                var live = await session.ReadConfigurationAsync();
+                var daytime = live?.Environment.Vegetation.Daytime ?? _liveEnvironment.Vegetation.Daytime;
+                update = update with
+                {
+                    Vegetation = update.Vegetation with { Daytime = !update.Vegetation.DayNightEnabled || daytime },
+                };
+            }
+            await session.UpdateEnvironmentAsync(update);
+            await session.UpdateMutationSettingsAsync(dialog.MutationUpdate);
+            _liveEnvironment = update;
+            SynchronizeRecordingPreferences();
+            RefreshEnvironmentControls();
+            return LegacyCommandResult.Success("LIVE SETTINGS APPLIED");
+        }
+        finally { _advanceGate.Release(); }
     }
 
     private async Task<LegacyCommandResult> OpenGlobalMutationRatesCommandAsync()
@@ -2759,16 +2777,8 @@ public sealed partial class MainWindow : Window
     private async void LiveAdvanced_Click(object? sender, RoutedEventArgs e)
     {
         if (_session is null) return;
-        var dialog = new AdvancedSettingsWindow(_liveEnvironment, _session.LatestSnapshot, selectedTab: 2);
-        await dialog.ShowDialog(this);
-        if (!dialog.Accepted) return;
-        var update = dialog.Update;
-        await _session.UpdateEnvironmentAsync(update);
-        await _session.UpdateMutationSettingsAsync(dialog.MutationUpdate);
-        _liveEnvironment = update;
-        SynchronizeRecordingPreferences();
-        RefreshEnvironmentControls();
-        _viewModel.Status = "LIVE SETTINGS APPLIED";
+        var result = await OpenAdvancedSettingsCommandAsync(2);
+        if (!result.Canceled) _viewModel.Status = result.Status;
     }
 
     private async void ToroidalWorld_Changed(object? sender, RoutedEventArgs e)

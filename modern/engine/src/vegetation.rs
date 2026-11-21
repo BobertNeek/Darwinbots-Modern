@@ -147,6 +147,7 @@ impl VegetationRuntime {
         native_random: Option<&mut crate::native_random::NativeRandom>,
     ) -> DaylightState {
         let weather = settings.weather_enabled || settings.sun_on_random;
+        let native = native_random.is_some();
         if let Some(random) = native_random {
             if weather {
                 self.advance_native_weather(random);
@@ -207,7 +208,8 @@ impl VegetationRuntime {
                 self.day_night_counter = 0;
             }
             feed_this_cycle = settings.daytime;
-        } else if !settings.day_night_enabled {
+        } else if !native && !settings.day_night_enabled {
+            // In Vegs.feedvegs, disabling the cycle leaves its counter latched.
             self.day_night_counter = 0;
         }
 

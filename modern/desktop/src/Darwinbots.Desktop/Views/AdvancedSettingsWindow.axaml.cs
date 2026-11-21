@@ -53,6 +53,7 @@ public sealed partial class AdvancedSettingsWindow : Window
     public AdvancedSettingsWindow(EnvironmentUpdate update, EngineSnapshot? snapshot = null, int selectedTab = 0)
     {
         InitializeComponent();
+        Daytime.IsVisible = snapshot?.NativeCycle is null;
         SettingsTabs.SelectedIndex = Math.Clamp(selectedTab, 0, 3);
         ToroidalWorld.IsCheckedChanged += (_, _) =>
         {
