@@ -202,8 +202,11 @@ public sealed class RobotConsoleRenderedTests
                 await WaitForAsync(() => ShowsFacts(selectedFocus));
                 Assert.Equal(selectedDna, dna.Text);
 
+                var beforeDnaButton = transcript.Text?.Length ?? 0;
                 dnaButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                await WaitForAsync(() => dna.Text == consoleDna);
+                await WaitForAsync(() => dna.Text == consoleDna && transcript.Text is { } text
+                    && text.Length > beforeDnaButton
+                    && text.AsSpan(beforeDnaButton).Contains("ROBOT DNA OPEN", StringComparison.Ordinal));
                 Assert.Equal(consoleFocus, model.SelectedKey);
                 Assert.Same(dnaTab, tabs.SelectedItem);
                 Assert.True(ShowsFacts(consoleFocus));
