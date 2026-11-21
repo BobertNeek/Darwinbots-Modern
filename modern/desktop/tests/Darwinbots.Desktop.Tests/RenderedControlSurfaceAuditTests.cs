@@ -370,6 +370,49 @@ public sealed class RenderedControlSurfaceAuditTests
     }
 
     [Fact]
+    public async Task NativeTeleporterHighlightMenuStartsCheckedAndKeepsItsChoiceOnReset()
+    {
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var factory = new AuditEngineClientFactory();
+            var windows = new List<Window>();
+            using var opened = Window.WindowOpenedEvent.AddClassHandler<Window>((window, _) => windows.Add(window));
+            var original = new MainWindow([], new WorldSetupOptions(), factory, new AuditStorageService());
+            try
+            {
+                ShowForInteraction(original, 1280, 900);
+                await PublishNativeWorld(original);
+                var command = HighlightCommand(original);
+                Assert.True(command.IsChecked);
+                ActivateMenu(command);
+                await WaitFor(() => !command.IsChecked);
+                Assert.False(Named<WorldViewport>(original, "Viewport").HighlightTeleporters);
+
+                Named<Button>(original, "ResetButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => factory.Clients.Count == 2 && windows.OfType<MainWindow>().Count() == 2);
+                var replacement = windows.OfType<MainWindow>().Single(window => window != original);
+                await PublishNativeWorld(replacement);
+                Assert.False(HighlightCommand(replacement).IsChecked);
+                Assert.False(Named<WorldViewport>(replacement, "Viewport").HighlightTeleporters);
+            }
+            finally { await CloseNavigationWindowsAsync(windows); }
+
+            async Task PublishNativeWorld(MainWindow window)
+            {
+                var model = (MainWindowViewModel)window.DataContext!;
+                await WaitFor(() => model.Population == 1);
+                factory.Clients.Last().NativeCycle = 1;
+                await Field<SimulationSession>(window, "_session").RefreshSnapshotAsync();
+                await WaitFor(() => model.NativeCycle == 1);
+            }
+        }, CancellationToken.None);
+
+        static MenuItem HighlightCommand(MainWindow window) =>
+            Named<LegacyMenuBar>(window, "HistoricMenuBar")
+                .FindCommandItem(Core.LegacyMenus.LegacyCommandId.ObjectsHilightTeleporters)!;
+    }
+
+    [Fact]
     public async Task ResetCapturesTheCurrentSpareOnceAndDoesNotReplayTheOriginalHandoffAfterItClears()
     {
         await DesktopTestApplication.Session.Dispatch(async () =>

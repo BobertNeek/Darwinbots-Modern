@@ -133,6 +133,8 @@ public static class NativeSnapshotParser
         }).ToArray();
         var teleporters = (native.Teleporters ?? []).Select(value => new TeleporterSnapshot(value.Id, value.Center, value.Radius, value.Destination)
         {
+            Width = value.Width,
+            Height = value.Height,
             Mode = TeleporterMode(value),
             Color = value.Color ?? 0xffb9bdb6u,
             Velocity = value.Velocity is { Length: 2 } ? value.Velocity : [0f, 0f],
