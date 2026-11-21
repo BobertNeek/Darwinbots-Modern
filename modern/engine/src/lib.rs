@@ -98,7 +98,9 @@ pub(crate) use shot::{
     ProjectileEffect, ProjectileImpact, ProjectilePool, ProjectileSpawn, ProjectileTarget,
     projectile_effect,
 };
-pub use simulation_cycle::{CycleEvent, CyclePhase, CycleTrace, QueueChangeKind};
+pub use simulation_cycle::{
+    CycleEvent, CyclePhase, CycleTrace, NativeRedrawCadence, QueueChangeKind,
+};
 pub use spatial::SpatialIndex;
 pub use species::{SpeciesDefinition, SpeciesId, SpeciesSettings};
 pub use stats::SimulationStats;

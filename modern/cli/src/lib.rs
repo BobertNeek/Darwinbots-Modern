@@ -3,7 +3,9 @@ mod native_comparison;
 mod probe;
 
 use clap::{Parser, Subcommand, ValueEnum};
-use darwinbots_engine::{BackendPreference, Engine, EngineConfig, SpeciesDefinition, SpeciesId};
+use darwinbots_engine::{
+    BackendPreference, Engine, EngineConfig, NativeRedrawCadence, SpeciesDefinition, SpeciesId,
+};
 use serde_json::json;
 use std::hash::{Hash, Hasher};
 use std::{error::Error, ffi::OsString, fs, io::Write, path::PathBuf, time::Instant};
@@ -32,6 +34,9 @@ enum Command {
         /// Starting chloroplasts for repopulation from the original Global.gset profile.
         #[arg(long, default_value_t = 0, value_parser = clap::value_parser!(i32).range(0..=32_000))]
         start_chloroplasts: i32,
+        /// Reproduce position writeback from the original display cadence.
+        #[arg(long, value_enum, default_value_t = NativeRedrawArgument::Off)]
+        native_redraw: NativeRedrawArgument,
         #[arg(long)]
         output_sim: PathBuf,
     },
@@ -104,6 +109,23 @@ enum Command {
 }
 
 #[derive(Clone, Copy, Debug, ValueEnum)]
+enum NativeRedrawArgument {
+    Off,
+    EveryCycle,
+    EveryTenthCycle,
+}
+
+impl From<NativeRedrawArgument> for NativeRedrawCadence {
+    fn from(value: NativeRedrawArgument) -> Self {
+        match value {
+            NativeRedrawArgument::Off => Self::Off,
+            NativeRedrawArgument::EveryCycle => Self::EveryCycle,
+            NativeRedrawArgument::EveryTenthCycle => Self::EveryTenthCycle,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, ValueEnum)]
 enum BackendArgument {
     Auto,
     Cpu,
@@ -132,6 +154,7 @@ where
             ticks,
             until_cycle,
             start_chloroplasts,
+            native_redraw,
             output_sim,
         } => {
             let input_bytes = fs::read(&simulation)?;
@@ -149,7 +172,7 @@ where
             if i128::from(start) + i128::from(ticks) > i128::from(i32::MAX) {
                 return Err("replay exceeds the original signed Long cycle range".into());
             }
-            advance(&mut engine, ticks)?;
+            advance(&mut engine, ticks, native_redraw.into())?;
             engine.validate_invariants()?;
             let end = engine
                 .snapshot()
@@ -233,9 +256,9 @@ where
             let mut engine = create_engine(population, backend, seed)?;
             let bot = read_bot(&engine, &bot)?;
             populate(&mut engine, &bot, population)?;
-            advance(&mut engine, warmup_ticks)?;
+            advance(&mut engine, warmup_ticks, NativeRedrawCadence::Off)?;
             let started = Instant::now();
-            advance(&mut engine, ticks)?;
+            advance(&mut engine, ticks, NativeRedrawCadence::Off)?;
             let elapsed = started.elapsed().as_secs_f64().max(f64::EPSILON);
             serde_json::to_writer(
                 &mut output,
@@ -331,11 +354,15 @@ fn read_bot(
     dna_source::read(engine, path)
 }
 
-fn advance(engine: &mut Engine, ticks: u64) -> Result<(), Box<dyn Error>> {
+fn advance(
+    engine: &mut Engine,
+    ticks: u64,
+    native_redraw: NativeRedrawCadence,
+) -> Result<(), Box<dyn Error>> {
     let mut remaining = ticks;
     while remaining > 0 {
         let batch = remaining.min(u32::MAX as u64) as u32;
-        engine.tick_many(batch)?;
+        engine.tick_many_with_native_redraw(batch, native_redraw)?;
         remaining -= batch as u64;
     }
     Ok(())
