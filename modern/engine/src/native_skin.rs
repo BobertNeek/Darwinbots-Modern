@@ -1,41 +1,143 @@
-//! Original OptionsForm.AssignSkin with an isolated VB6 random stream.
+//! Original OptionsForm AddItem appearance and AssignSkin.
 //!
-//! Clock-dependent slot six uses explicitly supplied raw Single Timer seconds.
-//! No simulation RNG, Gaussian cache, DNA definition, or live actor is touched.
+//! Both entry points use raw Single Timer seconds. Staging uses the caller's
+//! uniform stream, while the league's skin-only operation owns a private stream.
 
 use crate::EngineError;
-use crate::dna::native_load_image;
+use crate::dna::{DnaBlock, native_load_image};
 use crate::native_random::NativeRandom;
+
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) struct StagedSpeciesAppearance {
+    pub argb: u32,
+    pub skin: [i16; 8],
+}
+
+/// Prepare AddItem's appearance from the original basename bytes and DNA text.
+/// Validation precedes all draws. Only the supplied uniform stream is advanced.
+pub(crate) fn assign_staged_species_appearance(
+    random: &mut NativeRandom,
+    filename: &[u8],
+    source_text: &str,
+    use_old_colors: bool,
+    color_timer_seconds: f32,
+    skin_timer_seconds: f32,
+) -> Result<StagedSpeciesAppearance, EngineError> {
+    validate_timer(color_timer_seconds, "native color")?;
+    validate_timer(skin_timer_seconds, "native skin")?;
+    let (name, dna) = skin_source(filename, source_text)?;
+    let argb = add_item_color(random, filename, use_old_colors, color_timer_seconds);
+    let skin = assign_skin_from_image(random, &name, dna, skin_timer_seconds);
+    Ok(StagedSpeciesAppearance { argb, skin })
+}
 
 pub(crate) fn assign_skin(
     alias: &str,
     source_text: &str,
     timer_seconds: f32,
 ) -> Result<[i16; 8], EngineError> {
-    if !timer_seconds.is_finite() || !(0.0..86400.0).contains(&timer_seconds) {
-        return Err(EngineError::Invariant(
-            "native skin Timer must be finite and within [0, 86400) seconds".into(),
-        ));
-    }
-    let name = alias.replace(".txt", "");
-    if name.is_empty() || !name.is_ascii() {
+    validate_timer(timer_seconds, "native skin")?;
+    if !alias.is_ascii() {
         return Err(EngineError::Invariant(
             "native skin aliases must contain a nonempty ASCII name".into(),
+        ));
+    }
+    let (name, dna) = skin_source(alias.as_bytes(), source_text)?;
+    Ok(assign_skin_from_image(
+        &mut NativeRandom::default(),
+        &name,
+        dna,
+        timer_seconds,
+    ))
+}
+
+fn validate_timer(seconds: f32, operation: &str) -> Result<(), EngineError> {
+    if !(0.0..86400.0).contains(&seconds) {
+        return Err(EngineError::Invariant(format!(
+            "{operation} Timer must be finite and within [0, 86400) seconds"
+        )));
+    }
+    Ok(())
+}
+
+fn skin_source(
+    filename: &[u8],
+    source_text: &str,
+) -> Result<(Vec<u8>, Vec<DnaBlock>), EngineError> {
+    // Replace removes every literal ".txt" before VB Asc reads the name's bytes.
+    let extension = b".txt";
+    let mut name = Vec::with_capacity(filename.len());
+    let mut remainder = filename;
+    while let Some(index) = remainder
+        .windows(extension.len())
+        .position(|bytes| bytes == extension)
+    {
+        name.extend_from_slice(&remainder[..index]);
+        remainder = &remainder[index + extension.len()..];
+    }
+    name.extend_from_slice(remainder);
+    if name.is_empty() {
+        return Err(EngineError::Invariant(
+            "native skin aliases must contain a nonempty name".into(),
         ));
     }
     // Original LoadDNA failure can display a modal before returning False.
     // Reject unsupported malformed raw inputs atomically instead of silently
     // pretending that modal workflow completed with an alias-only profile.
-    let dna = native_load_image(source_text)?;
-    let mut random = NativeRandom::default();
+    Ok((name, native_load_image(source_text)?))
+}
+
+fn add_item_color(
+    random: &mut NativeRandom,
+    filename: &[u8],
+    use_old_colors: bool,
+    timer_seconds: f32,
+) -> u32 {
+    fn channel(draw: f32, scale: f64, offset: f64) -> u32 {
+        // DARWIN.EXE passes the widened x87 expression to VB's __vbaFpI2.
+        (f64::from(draw) * scale + offset).round_ties_even() as u32
+    }
+
+    fn argb(red: u32, green: u32, blue: u32) -> u32 {
+        0xff00_0000 | (red << 16) | (green << 8) | blue
+    }
+
+    random.randomize_timer(timer_seconds);
+    // AddItem's IIf evaluates both RGB arms in order even for a named override.
+    let old_color = argb(
+        channel(random.unit(), 200.0, 55.0),
+        channel(random.unit(), 200.0, 55.0),
+        channel(random.unit(), 255.0, 0.0),
+    );
+    let full_color = argb(
+        channel(random.unit(), 255.0, 0.0),
+        channel(random.unit(), 255.0, 0.0),
+        channel(random.unit(), 255.0, 0.0),
+    );
+    match filename {
+        b"Base.txt" => 0xff00_00ff,
+        b"Mutate.txt" | b"Test.txt" => 0xffff_0000,
+        b"robotA.txt" => 0xffff_8000,
+        b"robotB.txt" => 0xff00_80ff,
+        _ if use_old_colors => old_color,
+        _ => full_color,
+    }
+}
+
+fn assign_skin_from_image(
+    random: &mut NativeRandom,
+    name: &[u8],
+    dna: Vec<DnaBlock>,
+    timer_seconds: f32,
+) -> [i16; 8] {
     random.randomize(0.0);
     let name_draws: Vec<_> = name
-        .bytes()
-        .map(|character| f64::from(random.rnd(-f32::from(character))))
+        .iter()
+        .map(|&character| f64::from(random.rnd(-f32::from(character))))
         .collect();
     let mut next = 0.0_f64;
     for draw in name_draws {
-        next = folded_draw(&mut random, next, draw);
+        next = folded_draw(random, next, draw);
     }
     let name_draw = next;
 
@@ -44,15 +146,13 @@ pub(crate) fn assign_skin(
     random.randomize(0.0);
     let mut dna_draws = Vec::with_capacity(dna.len());
     for block in dna {
-        // Spell out the nested source expression's value-before-tipo order.
-        // This order remains subject to genuine original stable-skin capture;
-        // a source-derived vector is not evidence of executable evaluation.
+        // DARWIN.EXE loads value at 0x71a6b7 before tipo at 0x71a6f3.
         let value_draw = f64::from(random.rnd(-(block.value as f32)));
         let type_draw = f64::from(random.rnd(-(block.class as u8 as f32)));
-        dna_draws.push(folded_draw(&mut random, value_draw, type_draw));
+        dna_draws.push(folded_draw(random, value_draw, type_draw));
     }
     for draw in dna_draws {
-        next = folded_draw(&mut random, next, draw);
+        next = folded_draw(random, next, draw);
     }
 
     random.randomize(next * 1000.0);
@@ -67,7 +167,7 @@ pub(crate) fn assign_skin(
     random.randomize_timer(timer_seconds);
     let radius = scale_skin_draw(random.unit(), 61);
     skin[6] = (f32::from(skin[6] + radius * 2) / 3.0_f32).round_ties_even() as i16;
-    Ok(skin)
+    skin
 }
 
 fn scale_skin_draw(draw: f32, scale: u16) -> i16 {
@@ -100,6 +200,95 @@ fn source_angle(x: f32, y: f32) -> f32 {
 mod tests {
     use super::*;
 
+    fn appearance_random() -> NativeRandom {
+        serde_json::from_value(serde_json::json!({
+            "state": 0x08_d82a,
+            "gaussian_spare": 0.125,
+        }))
+        .unwrap()
+    }
+
+    #[test]
+    fn original_add_item_uses_both_palettes_before_its_exact_filename_override() {
+        // DARWIN.EXE 2.48.32, 0x717500–0x7176d2. The two RGB calls both run
+        // before IIf. The last of the six Rnd states is 0x2a9cf8.
+        let cases: &[(&[u8], bool, u32)] = &[
+            (b"Palette.txt", true, 0xff45_ed29),
+            (b"Palette.txt", false, 0xff0a_b72a),
+            (b"Base.txt", true, 0xff00_00ff),
+            (b"Mutate.txt", false, 0xffff_0000),
+            (b"Test.txt", true, 0xffff_0000),
+            (b"robotA.txt", true, 0xffff_8000),
+            (b"robotB.txt", false, 0xff00_80ff),
+            (b"base.txt", false, 0xff0a_b72a),
+        ];
+        for &(filename, use_old_colors, expected) in cases {
+            let mut random = appearance_random();
+            assert_eq!(
+                add_item_color(&mut random, filename, use_old_colors, 1.25),
+                expected
+            );
+            assert_eq!(random.state(), 0x2a_9cf8);
+        }
+    }
+
+    #[test]
+    fn original_add_item_appearance_uses_two_timers_and_one_uniform_stream() {
+        let cases: &[(&[u8], u32, [i16; 8])] = &[
+            (
+                b"Test.txt",
+                0xffff_0000,
+                [36, 504, 10, 212, 26, 622, 16, 287],
+            ),
+            (
+                b"Palette.txt",
+                0xff45_ed29,
+                [36, 504, 10, 212, 26, 4, 24, 444],
+            ),
+        ];
+        for &(name, argb, skin) in cases {
+            let mut random = appearance_random();
+            let appearance = assign_staged_species_appearance(
+                &mut random,
+                name,
+                "start stop",
+                true,
+                1.25,
+                12_345.5,
+            )
+            .unwrap();
+            assert_eq!(appearance, StagedSpeciesAppearance { argb, skin });
+            assert_eq!(random.state(), 0x31_2200);
+            assert_eq!(random.gaussian_spare(), Some(0.125));
+        }
+    }
+
+    #[test]
+    fn invalid_add_item_inputs_do_not_consume_the_uniform_stream() {
+        let original = appearance_random();
+        let cases: &[(&[u8], &str, f32, f32)] = &[
+            (b"Test.txt", "start stop", f32::NAN, 0.0),
+            (b"Test.txt", "start stop", 0.0, 86_400.0),
+            (b".txt", "start stop", 0.0, 0.0),
+            (b"Test.txt", "start 32768 stop", 0.0, 0.0),
+        ];
+        for &(name, source, color_timer, skin_timer) in cases {
+            let mut random = original.clone();
+            assert!(
+                assign_staged_species_appearance(
+                    &mut random,
+                    name,
+                    source,
+                    false,
+                    color_timer,
+                    skin_timer
+                )
+                .is_err()
+            );
+            assert_eq!(random, original);
+        }
+    }
+
     #[test]
     fn original_skin_draws_floor_without_rounding_the_scaled_product_to_single() {
         // DARWIN.EXE 2.48.32, 0x71a99d and 0x71aa7d: FMUL is followed by
@@ -117,8 +306,7 @@ mod tests {
         // literal source LoadDNA images, not by importing/running this port.
         // Authority: original revision467a8a0 OptionsForm3411-3472,
         // Physics607-624, and Microsoft's VBMath Rnd/Randomize equivalents.
-        // These pin the declared value-before-tipo interpretation. Original
-        // executable evaluation order still needs a genuine stable-skin capture.
+        // The executable confirms the value-before-tipo evaluation order.
         let vectors = [
             (
                 "Test.txt",
