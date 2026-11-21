@@ -5,6 +5,36 @@ namespace Darwinbots.Desktop.Core.Tests;
 
 public sealed class LegacyGraphAutoSaveTests
 {
+    [Theory]
+    [InlineData(12, GraphMetric.SelectiveGeneticDistance, "Genetic_Distance_x1000-")]
+    [InlineData(13, GraphMetric.GenerationalDistance, "Max_Generational_Distance")]
+    [InlineData(14, GraphMetric.SlowGeneticDistance, "Simple_Genetic_Distance_x1000-")]
+    public void OriginalGeneticGraphsUseTheirOwnRecordRowsAndSegmentNames(int index, GraphMetric metric, string caption)
+    {
+        var root = Directory.CreateTempSubdirectory("darwinbots-genetic-graph-save-");
+        try
+        {
+            const string stamp = "original-run";
+            const int previousCounter = 4;
+            var run = new LegacyGraphRecordingRun(root.FullName, stamp);
+            run.RestoreNativeState(new(stamp, [new(index, true, previousCounter)]));
+            Assert.Equal(metric, LegacyGraphRecordingRun.NativeMetricAt(index));
+            var graph = run.Graph(metric);
+            Assert.True(graph.Enabled);
+            Assert.Equal(previousCounter, graph.Counter);
+            var updates = new List<NativeGraphRecordingRow>();
+            run.NativeSettingsChanged += (_, row) => updates.Add(row);
+
+            for (var value = 1; value <= 999; value++)
+                graph.AddPoint([new("Alga.txt", 0xff11_22_33, value)], "normal");
+
+            Assert.Equal(new NativeGraphRecordingRow(index, true, 5), Assert.Single(updates));
+            Assert.Equal(Path.Combine(root.FullName, stamp, caption + "5.gsave"),
+                Assert.Single(root.EnumerateFiles("*.gsave", SearchOption.AllDirectories)).FullName);
+        }
+        finally { root.Delete(recursive: true); }
+    }
+
     [Fact]
     public void OriginalGraphRetriesTheSameNumberAndKeepsTheSegmentThroughReset()
     {
