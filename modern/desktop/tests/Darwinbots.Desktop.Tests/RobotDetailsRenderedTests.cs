@@ -1,5 +1,6 @@
 using Avalonia.Headless;
 using Avalonia.Controls;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Darwinbots.Desktop.Core;
 using Darwinbots.Desktop.Views;
@@ -73,6 +74,8 @@ public sealed class RobotDetailsRenderedTests
                 // exclude the dead flash and another robot's live packet.
                 Assert.Contains(window.GetVisualDescendants().OfType<TextBlock>(),
                     block => block.Text?.Contains("SHOTS          2", StringComparison.Ordinal) == true);
+                var tabs = Assert.Single(window.GetVisualDescendants().OfType<TabControl>());
+                Assert.DoesNotContain(tabs.Items.OfType<TabItem>(), tab => Equals(tab.Header, "MUTATION DETAILS"));
                 using var frame = window.CaptureRenderedFrame();
                 Assert.NotNull(frame);
                 Assert.True(frame.PixelSize.Width >= 900);
@@ -88,6 +91,44 @@ public sealed class RobotDetailsRenderedTests
             {
                 if (window.IsVisible) window.Close();
             }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task NativeMutationDetailsShowsTheCompleteLogAndFollowsRobotInfoFocus()
+    {
+        string[] log = ["Newest mutation", "Second mutation", "Third mutation", "Fourth mutation", "Oldest mutation"];
+        var first = RecordingEngineClient.Organism with { MutationLog = log };
+        var second = first with { Slot = 4, MutationLog = [] };
+        var snapshot = RecordingEngineClient.CreateSnapshot() with
+        {
+            NativeCycle = 0,
+            Population = 2,
+            Organisms = [first, second],
+        };
+
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            await using var session = new SimulationSession(new RecordingEngineClient(snapshot));
+            await session.RefreshSnapshotAsync();
+            var focus = new OrganismKey(first.Slot, first.Generation);
+            var window = new RobotDetailsWindow(session, focus, readFocus: () => focus);
+            try
+            {
+                window.Show();
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                var tabs = Assert.Single(window.GetVisualDescendants().OfType<TabControl>());
+                tabs.SelectedItem = Assert.Single(tabs.Items.OfType<TabItem>(), tab => Equals(tab.Header, "MUTATION DETAILS"));
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                var details = Assert.Single(window.GetVisualDescendants().OfType<TextBox>(), box => box.Name == "RobotMutationDetails");
+                Assert.True(details.IsReadOnly);
+                Assert.Equal(string.Join(Environment.NewLine, log), details.Text);
+
+                focus = new OrganismKey(second.Slot, second.Generation);
+                await session.StepAsync();
+                await Dispatcher.UIThread.InvokeAsync(() => Assert.Equal("No mutations", details.Text), DispatcherPriority.Background);
+            }
+            finally { window.Close(); }
         }, CancellationToken.None);
     }
 }

@@ -15,6 +15,7 @@ public enum RobotDetailsTab
     Dna,
     Memory,
     GeneActivations,
+    MutationDetails,
 }
 
 public sealed class RobotDetailsWindow : Window
@@ -45,13 +46,16 @@ public sealed class RobotDetailsWindow : Window
         Content = "Display memory after DNA execution, before physics",
         IsVisible = false,
     };
+    private readonly TextBox? _mutationDetails;
+    private IReadOnlyList<string>? _mutationLog;
+    private IReadOnlyList<string>? _displayedMutationLog;
     private readonly TextBlock _activationSummary = new();
     private readonly StackPanel _activationTimeline = new();
     private readonly TextBlock _status = new();
     private readonly TabControl _tabs = new();
 
     public RobotDetailsWindow(EngineSnapshot snapshot, OrganismKey focus, string dna = "")
-        : this(null, focus, RobotDetailsTab.Facts, dna)
+        : this(null, focus, RobotDetailsTab.Facts, dna, snapshot.NativeCycle.HasValue)
     {
         SetSnapshot(snapshot);
     }
@@ -61,7 +65,7 @@ public sealed class RobotDetailsWindow : Window
         OrganismKey focus,
         RobotDetailsTab initialTab = RobotDetailsTab.Facts,
         Func<OrganismKey?>? readFocus = null)
-        : this(session, focus, initialTab, string.Empty, readFocus)
+        : this(session, focus, initialTab, string.Empty, session.LatestSnapshot.NativeCycle.HasValue, readFocus)
     {
         SetSnapshot(session.LatestSnapshot);
     }
@@ -75,6 +79,7 @@ public sealed class RobotDetailsWindow : Window
         OrganismKey focus,
         RobotDetailsTab initialTab,
         string dna,
+        bool native,
         Func<OrganismKey?>? readFocus = null)
     {
         _session = session;
@@ -175,6 +180,24 @@ public sealed class RobotDetailsWindow : Window
                 },
             },
         });
+        if (native)
+        {
+            _mutationDetails = new TextBox
+            {
+                Name = "RobotMutationDetails",
+                IsReadOnly = true,
+                AcceptsReturn = true,
+                TextWrapping = TextWrapping.Wrap,
+                Background = _dna.Background,
+                FontFamily = _dna.FontFamily,
+                FontSize = _dna.FontSize,
+            };
+            _tabs.Items.Add(new TabItem
+            {
+                Header = "MUTATION DETAILS",
+                Content = new Border { Padding = new Thickness(12), Child = _mutationDetails },
+            });
+        }
         _tabs.SelectedIndex = (int)initialTab;
         DockPanel.SetDock(_postDnaMemory, Dock.Top);
         _postDnaMemory.IsCheckedChanged += (_, _) => SynchronizePostDnaMemoryWatch();
@@ -183,6 +206,7 @@ public sealed class RobotDetailsWindow : Window
         {
             if (change.Property == IsVisibleProperty) SynchronizePostDnaMemoryWatch();
         };
+        _tabs.SelectionChanged += (_, _) => RefreshMutationDetails();
 
         var root = new Grid { RowDefinitions = new RowDefinitions("76,*,42") };
         root.Children.Add(new Border
@@ -372,6 +396,8 @@ public sealed class RobotDetailsWindow : Window
     {
         _diagnostic.Update(snapshot, _focus);
         var selected = FindActor(_focus);
+        _mutationLog = selected?.MutationLog;
+        RefreshMutationDetails();
         // Console showdna initially displays its actor's facts alongside the selected actor's DNA.
         var consoleActor = snapshot.Tick == _followedTick ? FindActor(_consoleDnaFacts) : null;
         var organism = consoleActor ?? selected;
@@ -474,6 +500,23 @@ public sealed class RobotDetailsWindow : Window
     private static string FormatMemory(IReadOnlyList<MemoryCellSnapshot> memory) =>
         memory.Count == 0 ? "No non-zero public memory cells were published."
             : string.Join(Environment.NewLine, memory.Select(cell => $"{cell.Address,4}  {cell.Value,10}"));
+
+    private void RefreshMutationDetails()
+    {
+        if (_mutationDetails is null || _tabs.SelectedIndex != (int)RobotDetailsTab.MutationDetails) return;
+        var log = _mutationLog;
+        if (ReferenceEquals(log, _displayedMutationLog)) return;
+        var previous = _displayedMutationLog;
+        _displayedMutationLog = log;
+        if (log is not null && previous is not null && log.SequenceEqual(previous, StringComparer.Ordinal)) return;
+
+        _mutationDetails.Text = log switch
+        {
+            null => string.Empty,
+            { Count: 0 } => "No mutations",
+            _ => string.Join(Environment.NewLine, log),
+        };
+    }
 
     private static string FormatParent(OrganismKey?[]? parents, int index) =>
         parents is { Length: > 0 } && parents.ElementAtOrDefault(index) is { } parent
