@@ -122,6 +122,7 @@ public sealed partial class SetupWindow : Window
             var (count, energy) = _nativeSpeciesImport ? (5, 3_000) : (50, 1_000);
             foreach (var file in await _storage.OpenDnaFilesAsync(this, _nativeSpeciesImport ? mainDirectory : null))
                 Species.Add(new(Path.GetFileNameWithoutExtension(file.Name), file.Content, false, 0xffd07a2d, count, energy, 1.0, false,
+                    comment: _nativeSpeciesImport ? LegacyDnaText.ReadLeadingComment(file.Content) : null,
                     mutationProfile: file.MutationProfile, dnaPath: file.LocalPath));
         }
         catch (Exception error) { SetupStatus.Text = $"IMPORT FAILED · {error.Message}"; }
