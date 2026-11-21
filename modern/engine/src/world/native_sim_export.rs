@@ -522,6 +522,9 @@ impl Engine {
         if let Some(guid) = self.native_sim_guid {
             number(t, "sim_guid", f64::from(guid))?;
         }
+        if let Some(preset) = c.native_field_size {
+            number(t, "field_size", f64::from(preset))?;
+        }
         if let Some(restart) = self.native_restart_export_override() {
             flag(t, "restart", restart)?;
         }

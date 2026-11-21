@@ -20,6 +20,10 @@ pub(super) struct NativeBuckets {
 }
 
 impl NativeBuckets {
+    pub(super) fn initialized_extent(&self) -> Option<[f32; 2]> {
+        (self.extent != [0.0; 2]).then_some(self.extent)
+    }
+
     fn cell(&self, position: [f32; 2]) -> [i32; 2] {
         std::array::from_fn(|axis| {
             (position[axis] / BUCKET_SIZE).floor().clamp(

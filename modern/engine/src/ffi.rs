@@ -318,6 +318,8 @@ enum EngineCommand {
         aim: i32,
     },
     UpdateEnvironment {
+        #[serde(default)]
+        field_size: Option<u8>,
         metabolism_cost: i32,
         vegetable_energy_per_tick: i32,
         sunlight_energy: i32,
@@ -1172,6 +1174,7 @@ fn db_engine_command_batch_impl(
                 .set_organism_aim(OrganismId::new(slot, generation), aim)
                 .map(|_| serde_json::Value::Null),
             EngineCommand::UpdateEnvironment {
+                field_size,
                 metabolism_cost,
                 vegetable_energy_per_tick,
                 sunlight_energy,
@@ -1213,6 +1216,10 @@ fn db_engine_command_batch_impl(
                         auto_speciation,
                         speciation_genetic_distance_percent,
                     )
+                })
+                .and_then(|_| match field_size {
+                    Some(preset) => engine.set_live_field_size(preset),
+                    None => Ok(()),
                 })
                 .map(|_| {
                     if let Some(enabled) = toroidal_world {
@@ -1948,6 +1955,34 @@ mod tests {
             assert_eq!(db_buffer_free(&mut buffer), DbStatus::Ok);
         }
         (status, result)
+    }
+
+    #[test]
+    fn live_field_size_is_atomic_with_other_settings() {
+        let mut engine = Engine::new_native(EngineConfig::testing()).unwrap();
+        let mut command = serde_json::json!({
+            "type": "update_environment", "metabolism_cost": 5,
+            "vegetable_energy_per_tick": 0, "sunlight_energy": 123,
+            "gravity": [0, 0], "drag": 0, "brownian_motion": 0
+        });
+        let (status, _) = classic_test_batch(&mut engine, serde_json::json!([command]));
+        assert_eq!(status, DbStatus::Ok);
+        assert_eq!(engine.snapshot().world_size, [1000.0; 2]);
+        assert_eq!(engine.configuration().native_field_size, None);
+
+        let old = SaveFile::encode(&engine).unwrap();
+        command["field_size"] = 26.into();
+        command["metabolism_cost"] = 12.into();
+        let (status, _) = classic_test_batch(&mut engine, serde_json::json!([command]));
+        assert_eq!(status, DbStatus::EngineError);
+        assert_eq!(SaveFile::encode(&engine).unwrap(), old);
+
+        command["field_size"] = 5.into();
+        let (status, _) = classic_test_batch(&mut engine, serde_json::json!([command]));
+        assert_eq!(status, DbStatus::Ok);
+        assert_eq!(engine.configuration().metabolism_cost, 12);
+        assert_eq!(engine.configuration().native_field_size, Some(5));
+        assert_eq!(engine.snapshot().world_size, [40_000.0, 30_000.0]);
     }
 
     fn populated_native_cpu_candidate_fixture() -> Engine {

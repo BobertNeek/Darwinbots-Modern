@@ -37,6 +37,8 @@ use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::fs;
 use std::time::Instant;
 
+const GPU_SENSING_CELL_SIZE: f32 = 1_000.0;
+
 use crate::physics::{
     MovementInput, MovementState, apply_angular_damping, apply_resistance, apply_static_friction,
     apply_voluntary_impulse, brownian_rotation, derived_mass, environment_impulse,
@@ -546,6 +548,8 @@ pub struct Snapshot {
     /// Original signed SimOpts.TotRunCycle, separate from the monotonic API tick.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub native_cycle: Option<i32>,
+    #[serde(default)]
+    pub native_f1_enabled: bool,
     #[serde(default = "default_true")]
     pub death_poffs_enabled: bool,
     #[serde(default)]
@@ -605,6 +609,7 @@ impl Default for Snapshot {
             schema_version: 0,
             tick: 0,
             native_cycle: None,
+            native_f1_enabled: false,
             death_poffs_enabled: true,
             ordinary_restart_available: false,
             ordinary_restart_on_extinction: false,
@@ -640,6 +645,7 @@ impl PartialEq for Snapshot {
     fn eq(&self, other: &Self) -> bool {
         self.tick == other.tick
             && self.native_cycle == other.native_cycle
+            && self.native_f1_enabled == other.native_f1_enabled
             && self.death_poffs_enabled == other.death_poffs_enabled
             && self.ordinary_restart_available == other.ordinary_restart_available
             && self.ordinary_restart_on_extinction == other.ordinary_restart_on_extinction
@@ -1068,6 +1074,7 @@ impl From<Db3sV2EngineConfig> for EngineConfig {
             vegetable_population_cap: value.vegetable_population_cap,
             world_width: value.world_width,
             world_height: value.world_height,
+            native_field_size: None,
             toroidal_world: value.toroidal_world,
             fixed_bot_radii: false,
             axis_topology: None,
@@ -1997,6 +2004,7 @@ impl From<Db3sV2Snapshot> for Snapshot {
             schema_version: default_snapshot_schema_version(),
             tick: value.tick,
             native_cycle: None,
+            native_f1_enabled: false,
             death_poffs_enabled: true,
             ordinary_restart_available: false,
             ordinary_restart_on_extinction: false,
@@ -2823,6 +2831,7 @@ impl Engine {
                 schema_version: default_snapshot_schema_version(),
                 tick: 0,
                 native_cycle: None,
+                native_f1_enabled: false,
                 death_poffs_enabled: true,
                 ordinary_restart_available: true,
                 ordinary_restart_on_extinction: false,
@@ -3412,6 +3421,9 @@ impl Engine {
         );
         self.config.world_width = if short { 16000.0 } else { 9237.0 };
         self.config.world_height = if short { 12000.0 } else { 6928.0 };
+        if self.config.native_field_size.is_some() {
+            self.config.native_field_size = Some(if short { 2 } else { 1 });
+        }
         self.config.toroidal_world = true;
         self.config.axis_topology = Some([true, true]);
         self.config.fixed_bot_radii = false;
@@ -6340,6 +6352,37 @@ impl Engine {
         Ok(())
     }
 
+    pub fn set_live_field_size(&mut self, preset: u8) -> Result<(), EngineError> {
+        let extent = crate::config::native_field_dimensions(preset).ok_or_else(|| {
+            EngineError::Invariant("Field size must be a legacy preset from 1 to 25.".into())
+        })?;
+        if self.native_f1_enabled() {
+            return Err(EngineError::Invariant(
+                "Field size cannot change during an F1 contest.".into(),
+            ));
+        }
+        if extent != [self.config.world_width, self.config.world_height] {
+            if let RuntimePhysics::Gpu(backend) = &self.physics
+                && let Err(error) =
+                    backend.validate_sensing_grid_extent(extent, GPU_SENSING_CELL_SIZE)
+            {
+                if !self.config.allow_cpu_fallback {
+                    return Err(error);
+                }
+                self.activate_cpu_fallback(error);
+            }
+            if self.native_random.is_some() {
+                // OptionsForm OK changes SimOpts but leaves Quads.Init_Buckets
+                // for the next genuine startup or native reload.
+                self.synchronize_native_buckets();
+            }
+            [self.config.world_width, self.config.world_height] = extent;
+        }
+        self.config.native_field_size = Some(preset);
+        self.publish_snapshot();
+        Ok(())
+    }
+
     pub fn update_db2_settings(
         &mut self,
         physics: Option<crate::PhysicsSettings>,
@@ -7522,7 +7565,7 @@ impl Engine {
                         &radii,
                         &alive,
                         [self.config.world_width, self.config.world_height],
-                        1_000.0,
+                        GPU_SENSING_CELL_SIZE,
                         1_000.0,
                     )
                     .map(|(targets, instances)| (targets, Some(instances))),
@@ -12997,6 +13040,7 @@ impl Engine {
             schema_version: default_snapshot_schema_version(),
             tick: self.tick,
             native_cycle: self.native_cycle,
+            native_f1_enabled: self.native_f1_enabled(),
             death_poffs_enabled: self.death_poffs_enabled,
             ordinary_restart_available: self.ordinary_restart_available(),
             ordinary_restart_on_extinction: self.ordinary_restart.enabled,
@@ -14026,6 +14070,126 @@ const fn default_snapshot_schema_version() -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn native_field_size_presets_follow_options_slider_breakpoints() {
+        for (preset, extent) in [
+            (1, [9237.0, 6928.0]),
+            (2, [16_000.0, 12_000.0]),
+            (12, [96_000.0, 72_000.0]),
+            (13, [192_000.0, 144_000.0]),
+            (25, [2_496_000.0, 1_872_000.0]),
+        ] {
+            assert_eq!(crate::config::native_field_dimensions(preset), Some(extent));
+        }
+        assert_eq!(crate::config::native_field_dimensions(0), None);
+        assert_eq!(crate::config::native_field_dimensions(26), None);
+    }
+
+    #[test]
+    fn live_field_size_preserves_geometry_until_the_normal_native_cycle() {
+        let mut world = Engine::new_native(EngineConfig {
+            world_width: 16_000.0,
+            world_height: 12_000.0,
+            fixed_bot_radii: true,
+            toroidal_world: false,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let robot = world
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [12_000.0, 9_000.0])
+            .unwrap();
+        world
+            .slots
+            .get_mut(robot)
+            .unwrap()
+            .program
+            .memory
+            .write(MEM_FIXED, 1);
+        world
+            .add_obstacle(Obstacle::new(1, [14_000.0, 8_000.0], [14_200.0, 8_200.0]))
+            .unwrap();
+        world
+            .add_teleporter(Teleporter::new(1, [800.0; 2], 60.0, [1_200.0; 2]))
+            .unwrap();
+        world.set_native_light_availability(0.125);
+        let old = world.snapshot().clone();
+        let old_rng = world.native_random.as_ref().unwrap().state();
+
+        world.set_live_field_size(5).unwrap();
+        assert_eq!(world.snapshot().world_size, [40_000.0, 30_000.0]);
+        assert_eq!(world.snapshot().tick, old.tick);
+        assert_eq!(world.snapshot().organisms, old.organisms);
+        assert_eq!(world.snapshot().obstacles, old.obstacles);
+        assert_eq!(world.snapshot().teleporters, old.teleporters);
+        assert_eq!(world.memory_at(robot, 219).unwrap(), 12_000);
+        assert_eq!(world.native_random.as_ref().unwrap().state(), old_rng);
+        assert_eq!(world.native_light_availability(), 0.125);
+        assert_eq!(
+            world.native_buckets.initialized_extent(),
+            Some([16_000.0, 12_000.0])
+        );
+
+        let mut world = crate::SaveFile::decode(&crate::SaveFile::encode(&world).unwrap()).unwrap();
+        assert_eq!(world.config.native_field_size, Some(5));
+        world.tick().unwrap();
+        assert_eq!(world.memory_at(robot, 219).unwrap(), 9600);
+        assert_eq!(world.memory_at(robot, 217).unwrap(), 9000);
+        let area = (60.0_f64.powi(2) * f64::from(std::f32::consts::PI)) as f32;
+        assert_eq!(
+            world.native_light_availability(),
+            f64::from(area) / (1_200_000_000.0 - 40_000.0)
+        );
+        assert_eq!(
+            world.native_buckets.initialized_extent(),
+            Some([16_000.0, 12_000.0])
+        );
+
+        let native = world.export_native_sim().unwrap();
+        let file = crate::native_binary::NativeRecordFile::decode(&native).unwrap();
+        let tail = crate::native_binary::NativeSimulationTail::decode(&file.tail).unwrap();
+        assert_eq!(tail.integer("field_size").unwrap(), 5);
+        assert_eq!(tail.integer("field_width").unwrap(), 40_000);
+        assert_eq!(tail.integer("field_height").unwrap(), 30_000);
+        let mut imported = Engine::from_native_sim(&native).unwrap();
+        assert_eq!(imported.config.native_field_size, Some(5));
+        imported.synchronize_native_buckets();
+        assert_eq!(
+            imported.native_buckets.initialized_extent(),
+            Some([40_000.0, 30_000.0])
+        );
+
+        world.set_live_field_size(1).unwrap();
+        assert_eq!(world.snapshot().world_size, [9237.0, 6928.0]);
+        assert_eq!(
+            world.robot_state(robot).unwrap().kinematics.position,
+            [12_000.0, 9_000.0]
+        );
+        assert_eq!(world.snapshot().obstacles[0].minimum, [14_000.0, 8_000.0]);
+        world.tick().unwrap();
+        assert_eq!(
+            world.robot_state(robot).unwrap().kinematics.position,
+            [9177.0, 6868.0]
+        );
+        let obstacle = &world.snapshot().obstacles[0];
+        assert_ne!(obstacle.minimum, [14_000.0, 8_000.0]);
+        assert_eq!(
+            [
+                obstacle.maximum[0] - obstacle.minimum[0],
+                obstacle.maximum[1] - obstacle.minimum[1]
+            ],
+            [200.0, 200.0]
+        );
+        assert_eq!(
+            world.native_buckets.initialized_extent(),
+            Some([16_000.0, 12_000.0])
+        );
+
+        world.native_f1 = Some(true);
+        assert!(world.set_live_field_size(2).is_err());
+        assert_eq!(world.config.native_field_size, Some(1));
+        assert_eq!(world.snapshot().world_size, [9237.0, 6928.0]);
+    }
 
     #[test]
     fn render_readout_publication_preserves_native_edge_positions() {
