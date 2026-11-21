@@ -262,29 +262,38 @@ impl Engine {
             number(&mut tail, "mutation_min", 10000.0)?;
             number(&mut tail, "speciation_min_population", 10.0)?;
         }
+        let archived_species_count = origin
+            .as_ref()
+            .map(|origin| origin.integer("species_count"))
+            .transpose()?
+            .unwrap_or_default() as u64;
         self.write_native_configuration(&mut tail)?;
         for (i, projected) in species_projection.iter().enumerate() {
             let source_index = projected.source_index;
             let species = &self.species[source_index];
             let species_id = SpeciesId(source_index as u32);
             let p = format!("species[{i}].");
-            if let Some(origin) = &origin {
-                let name = ansi(&species.name)?;
-                for old in 0..origin.integer("species_count")? {
-                    let old_p = format!("species[{old}].");
-                    if origin.bytes(&(old_p.clone() + "name"))? == name {
-                        for field in origin
-                            .fields()
-                            .iter()
-                            .filter(|f| f.name.starts_with(&old_p))
-                        {
-                            tail.set_value(
-                                &(p.clone() + &field.name[old_p.len()..]),
-                                field.value.clone(),
-                            )?;
-                        }
-                        break;
+            let mut archived_start_energy = None;
+            if let Some(origin) = &origin
+                && let Some(old) = species.lineage_id.checked_sub(1)
+                && old < archived_species_count
+                && projected.name == species.name.as_str()
+            {
+                let old_p = format!("species[{old}].");
+                if origin.bytes(&(old_p.clone() + "name"))? == ansi(projected.name)? {
+                    for field in origin
+                        .fields()
+                        .iter()
+                        .filter(|f| f.name.starts_with(&old_p))
+                    {
+                        tail.set_value(
+                            &(p.clone() + &field.name[old_p.len()..]),
+                            field.value.clone(),
+                        )?;
                     }
+                    // An imported roster row can survive without a living
+                    // species template. Original saves still write its Stnrg.
+                    archived_start_energy = Some(origin.integer(&(old_p + "start_energy"))?);
                 }
             }
             text(&mut tail, &(p.clone() + "name"), projected.name)?;
@@ -357,7 +366,12 @@ impl Engine {
                 if projected.classic_alias {
                     3000.0
                 } else {
-                    template.map_or(3000, |t| t.initial_energy) as f64
+                    f64::from(
+                        template
+                            .map(|t| t.initial_energy)
+                            .or(archived_start_energy)
+                            .unwrap_or(3000),
+                    )
                 },
             )?;
             number(
@@ -771,6 +785,57 @@ impl Engine {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn native_save_preserves_starting_energy_and_spares_by_imported_species_row() {
+        let mut original = NativeRecordFile::decode(include_bytes!(
+            "../../tests/fixtures/db24832-original-user.sim"
+        ))
+        .unwrap();
+        original.robots.clear();
+        let mut tail = NativeSimulationTail::decode(&original.tail).unwrap();
+        // Same filename is legal in an archived roster. The two rows still
+        // carry independent species options even when neither has a resident.
+        let shared_name = native_io::text(tail.bytes("species[0].name").unwrap());
+        text(&mut tail, "species[1].name", &shared_name).unwrap();
+        text(&mut tail, "species[1].path", "C:\\Other Robots").unwrap();
+        number(&mut tail, "species[0].quantity", 0.0).unwrap();
+        number(&mut tail, "species[0].start_energy", 2_750.0).unwrap();
+        number(&mut tail, "species[1].start_energy", 2_575.0).unwrap();
+        let mut second_shapes = tail.bytes("species[1].mutation_shapes").unwrap().to_vec();
+        second_shapes[88..92].copy_from_slice(&2.0_f32.to_le_bytes());
+        tail.set_value(
+            "species[1].mutation_shapes",
+            NativeValue::Bytes(second_shapes),
+        )
+        .unwrap();
+        original.tail = tail.encode().unwrap();
+        let world = Engine::from_native_sim(&original.encode().unwrap()).unwrap();
+        let restored = crate::SaveFile::decode(&crate::SaveFile::encode(&world).unwrap()).unwrap();
+        for state in [&world, &restored] {
+            assert!(state.species_templates.iter().all(Option::is_none));
+            let saved = NativeRecordFile::decode(&state.export_native_sim().unwrap()).unwrap();
+            let saved_tail = NativeSimulationTail::decode(&saved.tail).unwrap();
+            for field in [
+                "species[0].quantity",
+                "species[0].start_energy",
+                "species[1].quantity",
+                "species[1].start_energy",
+                "species[1].path",
+            ] {
+                assert_eq!(saved_tail.value(field).unwrap(), tail.value(field).unwrap());
+            }
+            for row in 0..2 {
+                for (name, first_spare) in [("mutation_rates", 44), ("mutation_shapes", 88)] {
+                    let field = format!("species[{row}].{name}");
+                    assert_eq!(
+                        saved_tail.bytes(&field).unwrap()[first_spare..],
+                        tail.bytes(&field).unwrap()[first_spare..]
+                    );
+                }
+            }
+        }
+    }
 
     #[test]
     fn live_native_sim_export_updates_resources_memory_world_and_shots() {
