@@ -153,7 +153,10 @@ public sealed class RenderedWorldToolsCausalTests
                 await WaitFor(
                     () => graphWindow.OwnedWindows.OfType<GraphSeriesWindow>().Count() == 2,
                     () => "Graph Suite did not open two live graph windows.");
-                Assert.All(graphWindow.ViewModel.RunningGraphs, graph => Assert.NotEmpty(graph.Samples));
+                await WaitFor(
+                    () => graphWindow.ViewModel.RunningGraphs.Count == 2
+                        && graphWindow.ViewModel.RunningGraphs.All(graph => graph.Samples.Count > 0),
+                    () => "The live graph windows did not receive their opening samples.");
 
                 var export = graphWindow.ViewModel.ExportCsv();
                 Assert.Contains("Population", export, StringComparison.Ordinal);
