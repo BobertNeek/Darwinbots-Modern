@@ -13296,7 +13296,7 @@ fn credit_tied_energy(receiver: &mut BiologyState, amount: f32, native: bool) {
         // Update_Ties uses Double factors and rounds each complete sum to Single.
         let amount = f64::from(amount);
         receiver.energy = (f64::from(receiver.energy) + amount * 0.7).min(32_000.0) as f32;
-        receiver.body = (f64::from(receiver.body) + amount * 0.029).min(32_000.0) as f32;
+        receiver.body = native_tie_sharing::energy_body_credit(receiver.body, amount).min(32_000.0);
         receiver.waste = (f64::from(receiver.waste) + amount * 0.01) as f32;
         return;
     }
