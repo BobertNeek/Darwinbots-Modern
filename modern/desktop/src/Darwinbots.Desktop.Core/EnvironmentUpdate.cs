@@ -228,6 +228,7 @@ public static class NativeCommandSerializer
             world_width = options.WorldWidth,
             world_height = options.WorldHeight,
             native_field_size = options.NativeFieldSize,
+            native_cost_preset = (int?)options.NativeCostPreset,
             backend = options.Backend,
             allow_cpu_fallback = true,
             metabolism_cost = options.EffectiveMetabolismCost,
@@ -384,15 +385,19 @@ public static class NativeCommandSerializer
     };
 
     internal static object CreateLiveSettingsBatch(EnvironmentUpdate environment, MutationSettingsUpdate mutation,
-        GlobalSimulationCostSettings? costs = null)
+        GlobalSimulationCostSettings? costs = null, Db2CostPreset? preset = null)
     {
         List<object> commands = [EnvironmentCommand(environment), MutationSettingsCommand(mutation)];
-        if (costs is not null) commands.Add(CostSettingsCommand(costs));
+        if (costs is not null || preset is not null) commands.Add(CostSettingsCommand(costs, preset));
         return new { version = 1, commands };
     }
 
-    internal static object CostSettingsCommand(GlobalSimulationCostSettings settings) =>
-        new { type = "update_cost_settings", costs = DnaCosts(settings) };
+    internal static object CostSettingsCommand(GlobalSimulationCostSettings? settings, Db2CostPreset? preset = null)
+    {
+        var command = new { type = "update_cost_settings", costs = settings is null ? null : DnaCosts(settings) };
+        if (preset is { } selected) return new { command.type, command.costs, preset = (int)selected };
+        return command;
+    }
 
 
     private static object EnvironmentCommand(EnvironmentUpdate update)

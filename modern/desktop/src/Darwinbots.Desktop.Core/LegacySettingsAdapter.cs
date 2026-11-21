@@ -7,6 +7,7 @@ internal static class LegacySettingsAdapter
 {
     internal const int ContestModeOffset = 45;
     internal const int OrdinaryRestartOffset = 46;
+    private const int CostPresetOffsetInTail = 4;
 
     internal static List<string> Encode(DesktopSettings settings)
     {
@@ -155,7 +156,9 @@ internal static class LegacySettingsAdapter
         // OptionsForm.CustomWaste maps modern disabled zero to native -1.
         Number(tail + 1, settings.Waste.AlzheimerThreshold == 0 ? -1 : settings.Waste.AlzheimerThreshold);
         Number(tail + 2, settings.Recording.SamplingInterval);
-        Number(tail + 3, 2); Number(tail + 4, 2); Number(tail + 5, physics.Elasticity); Number(tail + 6, physics.MaxVelocity);
+        Number(tail + 3, 2);
+        Number(tail + CostPresetOffsetInTail, (int)(settings.NativeCostPreset ?? Db2CostPreset.Custom));
+        Number(tail + 5, physics.Elasticity); Number(tail + 6, physics.MaxVelocity);
         Flag(tail + 7, settings.Shots.EnergyShotsDoNotDecay); Number(tail + 8, vegetation.SunUpThreshold); Flag(tail + 9, vegetation.SunUpEnabled);
         Number(tail + 10, vegetation.SunDownThreshold); Flag(tail + 11, vegetation.SunDownEnabled); Number(tail + 15, vegetation.SunThresholdMode);
         Flag(tail + 17 + 5 * count, settings.Shots.WasteShotsDoNotDecay);
@@ -208,6 +211,22 @@ internal static class LegacySettingsAdapter
         int index = global + 2;
         return index < fields.Count && int.TryParse(fields[index]?.Trim('"'), NumberStyles.Integer, CultureInfo.InvariantCulture, out var size)
             && Db2FieldSize.IsValid(size) ? size : null;
+    }
+
+    internal static Db2CostPreset? ReadRetainedCostPreset(IReadOnlyList<string>? fields)
+    {
+        if (fields is not { Count: > 1 }
+            || !int.TryParse(fields[1]?.Trim('"'), NumberStyles.Integer, CultureInfo.InvariantCulture, out var speciesMinusOne)
+            || speciesMinusOne is < -1 or > 999) return null;
+        // The tail follows 171 fixed fields and 96 fields per species.
+        return ReadCostPreset(fields, 171 + 96 * (speciesMinusOne + 1));
+    }
+
+    private static Db2CostPreset? ReadCostPreset(IReadOnlyList<string> fields, int tail)
+    {
+        int index = tail + CostPresetOffsetInTail;
+        return index < fields.Count && int.TryParse(fields[index]?.Trim('"'), NumberStyles.Integer, CultureInfo.InvariantCulture, out var preset)
+            && Enum.IsDefined((Db2CostPreset)preset) ? (Db2CostPreset)preset : null;
     }
 
     private static uint ToVbColor(uint color) => ((color & 0xff) << 16) | (color & 0xff00) | ((color >> 16) & 0xff);
@@ -410,6 +429,7 @@ internal static class LegacySettingsAdapter
         {
             OrganismCapacity = 32000, WorldWidth = worldWidth, WorldHeight = worldHeight,
             NativeFieldSize = ReadFieldSize(lines, global),
+            NativeCostPreset = ReadCostPreset(lines, tail) ?? Db2CostPreset.Custom,
             Seed = NativeSeed(global + 89), LegacySettingsFields = lines.TakeWhile(line => !line.StartsWith("#DARWINBOTS_MODERN_SETTINGS", StringComparison.Ordinal)).ToArray(),
             OrdinaryRestartOnExtinction = Flag(global + OrdinaryRestartOffset),
             MutationSettings = MutationSettingsUpdate.Default with { GlobalMultiplier = Float(27, 1) },

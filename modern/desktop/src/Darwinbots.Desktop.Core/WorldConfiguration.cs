@@ -21,6 +21,7 @@ public sealed record WorldConfiguration(
     public bool? FixedBotRadii { get; init; }
     public IReadOnlyList<SpeciesImport>? StartupSpecies { get; init; }
     public int? NativeFieldSize { get; init; }
+    public Db2CostPreset? NativeCostPreset { get; init; }
 }
 
 internal static class NativeConfigurationParser
@@ -125,6 +126,8 @@ internal static class NativeConfigurationParser
                 : null,
             NativeFieldSize = config.TryGetProperty("native_field_size", out var size) && size.ValueKind == JsonValueKind.Number
                 && size.TryGetInt32(out var fieldSize) && Db2FieldSize.IsValid(fieldSize) ? fieldSize : null,
+            NativeCostPreset = config.TryGetProperty("native_cost_preset", out var presetValue) && presetValue.ValueKind == JsonValueKind.Number
+                && presetValue.TryGetInt32(out var preset) && Enum.IsDefined((Db2CostPreset)preset) ? (Db2CostPreset)preset : null,
         };
     }
 }

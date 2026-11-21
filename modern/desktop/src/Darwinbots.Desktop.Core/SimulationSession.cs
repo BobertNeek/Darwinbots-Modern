@@ -126,6 +126,10 @@ public sealed class SimulationSession : IAsyncDisposable
             engine.UpdateCostSettings(configuration.Costs with { GlobalMultiplier = multiplier });
         }, cancellationToken);
 
+    public Task UpdateCostSettingsAsync(GlobalSimulationCostSettings? settings, Db2CostPreset? preset,
+        CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.UpdateCostSettings(settings, preset), cancellationToken);
+
     public async Task<DnaImportReport> ImportDnaAsync(
         string dna,
         float[]? position = null,
@@ -624,6 +628,10 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task UpdateLiveSettingsAsync(EnvironmentUpdate environment, MutationSettingsUpdate mutation,
         GlobalSimulationCostSettings? costs = null, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.UpdateLiveSettings(environment, mutation, costs), cancellationToken);
+
+    public Task UpdateLiveSettingsAsync(EnvironmentUpdate environment, MutationSettingsUpdate mutation,
+        GlobalSimulationCostSettings? costs, Db2CostPreset? preset, CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.UpdateLiveSettings(environment, mutation, costs, preset), cancellationToken);
 
     public async Task<WorldConfiguration?> ReadConfigurationAsync(CancellationToken cancellationToken = default)
     {

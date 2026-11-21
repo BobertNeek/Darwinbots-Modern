@@ -18,6 +18,7 @@ public sealed record DesktopSettings
     public float WorldWidth { get; init; } = 16_000f;
     public float WorldHeight { get; init; } = 12_000f;
     public int? NativeFieldSize { get; init; }
+    public Db2CostPreset? NativeCostPreset { get; init; }
     public StartingMode StartingMode { get; init; } = StartingMode.StarterBotsAndVegetables;
     public ZerobotSustenance ZerobotSustenance { get; init; } = ZerobotSustenance.DisabledMetabolism;
     public bool AutomaticZerobotProgression { get; init; } = true;
@@ -65,6 +66,7 @@ public sealed record DesktopSettings
         WorldWidth = setup.WorldWidth,
         WorldHeight = setup.WorldHeight,
         NativeFieldSize = setup.NativeFieldSize,
+        NativeCostPreset = setup.NativeCostPreset,
         StartingMode = setup.StartingMode,
         ZerobotSustenance = setup.ZerobotSustenance,
         AutomaticZerobotProgression = setup.AutomaticZerobotProgression,
@@ -106,6 +108,7 @@ public sealed record DesktopSettings
             Backend = snapshot.Backend is "CPU" or "GPU" ? snapshot.Backend : startup.Backend,
             Seed = configuration.Seed ?? startup.Seed,
             NativeFieldSize = configuration.NativeFieldSize,
+            NativeCostPreset = configuration.NativeCostPreset,
             PopulationCapacity = configuration.PopulationCapacity,
             VegetablePopulationCap = configuration.VegetablePopulationCap,
             WorldWidth = snapshot.WorldSize[0],
@@ -182,6 +185,7 @@ public sealed record DesktopSettings
             WorldWidth = WorldWidth,
             WorldHeight = WorldHeight,
             NativeFieldSize = NativeFieldSize,
+            NativeCostPreset = NativeCostPreset,
             MetabolismCost = MetabolismCost,
             VegetableEnergyPerTick = VegetableEnergyPerTick,
             SunlightEnergy = SunlightEnergy,
@@ -236,6 +240,8 @@ public sealed record DesktopSettings
         if (!root.TryGetProperty("ordinaryRestartOnExtinction", out _)
             && LegacySettingsAdapter.ReadRetainedFlag(settings.LegacySettingsFields, LegacySettingsAdapter.OrdinaryRestartOffset))
             settings = settings with { OrdinaryRestartOnExtinction = true };
+        if (!root.TryGetProperty("nativeCostPreset", out _))
+            settings = settings with { NativeCostPreset = LegacySettingsAdapter.ReadRetainedCostPreset(settings.LegacySettingsFields) };
         return settings;
     }
 
@@ -259,6 +265,8 @@ public sealed record DesktopSettings
             throw new InvalidDataException("Capacity and world dimensions must be positive.");
         if (NativeFieldSize is { } size && !Db2FieldSize.IsValid(size))
             throw new InvalidDataException("Original field size must be between 1 and 25.");
+        if (NativeCostPreset is { } preset && !Enum.IsDefined(preset))
+            throw new InvalidDataException("Original cost preset must be No Costs, F1, or Custom.");
     }
 
     private static string ReadString(JsonElement root, string name, string fallback) =>
