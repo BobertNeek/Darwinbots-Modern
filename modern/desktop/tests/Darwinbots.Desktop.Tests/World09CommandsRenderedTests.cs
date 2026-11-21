@@ -355,6 +355,77 @@ public sealed class World09CommandsRenderedTests
         }, CancellationToken.None);
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task NativeRobotInfoConsoleUsesTheCurrentArenaFocusWithoutAdvancing(bool native)
+    {
+        var first = RecordingEngineClient.Organism with { Position = [300f, 225f] };
+        var second = new OrganismSnapshot(4, 1, [220f, 200f], [0f, 0f], 1_000, 10);
+        var secondKey = new OrganismKey(second.Slot, second.Generation);
+        var engine = new RecordingEngineClient(RecordingEngineClient.CreateSnapshot() with
+        {
+            NativeCycle = native ? 20 : null,
+            Population = 2,
+            WorldSize = [640f, 480f],
+            Organisms = [first, second],
+        });
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], new WorldSetupOptions(),
+                new World09EngineFactory(engine), new AuditStorageService())
+            {
+                WindowState = WindowState.Normal,
+                Width = 1280,
+                Height = 900,
+            };
+            try
+            {
+                window.Show();
+                var model = ViewModel(window);
+                await WaitFor(() => model.Population == 2);
+                window.FindControl<Button>("PauseButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                window.FindControl<LegacyMenuBar>("HistoricMenuBar")!
+                    .FindCommandItem(LegacyCommandId.RobotShowInfo)!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => window.OwnedWindows.OfType<RobotDetailsWindow>().Any());
+                var info = Assert.Single(window.OwnedWindows.OfType<RobotDetailsWindow>());
+                var console = info.GetVisualDescendants().OfType<Button>()
+                    .SingleOrDefault(button => button.Name == "NativeRobotInfoOpenConsole");
+                if (!native)
+                {
+                    Assert.Null(console);
+                    return;
+                }
+                Assert.NotNull(console);
+                Assert.True(console.IsVisible);
+                Assert.Contains(info.GetVisualDescendants().OfType<Button>(),
+                    button => button.Name == "NativeRobotInfoDescendants" && button.IsVisible);
+                var session = Session(window)!;
+                var initialTick = session.LatestSnapshot.Tick;
+
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                ClickWorld(window, window.FindControl<WorldViewport>("Viewport")!, 220, 200);
+                Assert.Equal(secondKey, model.SelectedKey);
+                Assert.Contains("3:2", info.Title);
+                console.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                var consoleWindow = Assert.Single(window.OwnedWindows.OfType<RobotConsoleWindow>());
+                Assert.Contains("4:1", consoleWindow.Title);
+                Assert.False(consoleWindow.IsDialog);
+                console.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Assert.Same(consoleWindow, Assert.Single(window.OwnedWindows.OfType<RobotConsoleWindow>()));
+                Assert.Equal(secondKey, model.SelectedKey);
+
+                model.ClearSelection();
+                console.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Assert.Same(consoleWindow, Assert.Single(window.OwnedWindows.OfType<RobotConsoleWindow>()));
+                Assert.Contains(info.GetVisualDescendants().OfType<TextBlock>(), label => label.Text == "NO ROBOT SELECTED");
+                Assert.Null(model.SelectedKey);
+                Assert.Equal(initialTick, session.LatestSnapshot.Tick);
+            }
+            finally { window.Close(); }
+        }, CancellationToken.None);
+    }
+
     private static SimulationSession? Session(MainWindow window) =>
         typeof(MainWindow).GetField("_session", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(window) as SimulationSession;
 
