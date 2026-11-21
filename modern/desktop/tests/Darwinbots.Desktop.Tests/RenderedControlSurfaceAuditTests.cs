@@ -13,6 +13,7 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Darwinbots.Desktop.Controls;
 using Darwinbots.Desktop.Core;
+using Darwinbots.Desktop.Core.LegacyMenus;
 using Darwinbots.Desktop.Services;
 using Darwinbots.Desktop.ViewModels;
 using Darwinbots.Desktop.Views;
@@ -367,6 +368,72 @@ public sealed class RenderedControlSurfaceAuditTests
             }
             finally { await CloseNavigationWindowsAsync(windows); }
         }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task BackgroundPictureReturnsWhenASimulationLoadsOrStartsInTheSameSession()
+    {
+        var png = Convert.FromBase64String(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=");
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var factory = new AuditEngineClientFactory();
+            var storage = new AuditStorageService { OpenedBackgroundPicture = ("arena.png", png), OpenedSimulation = [1] };
+            var windows = new List<Window>();
+            using var opened = Window.WindowOpenedEvent.AddClassHandler<Window>((window, _) => windows.Add(window));
+            var original = new MainWindow([], new WorldSetupOptions(), factory, storage);
+            try
+            {
+                ShowForInteraction(original, 1280, 900);
+                var originalView = Named<WorldViewport>(original, "Viewport");
+                var originalModel = (MainWindowViewModel)original.DataContext!;
+                await WaitFor(() => originalModel.Population == 1);
+
+                Activate(original, LegacyCommandId.ViewImportBackground);
+                await WaitFor(() => originalModel.Status == "BACKGROUND · arena.png");
+                Assert.True(originalView.OverlayProjection.HasBackgroundImage);
+                Activate(original, LegacyCommandId.ViewRemoveBackground);
+                await WaitFor(() => originalModel.Status == "BACKGROUND REMOVED");
+                Assert.False(originalView.HasBackgroundImage);
+
+                var client = factory.Clients.Single();
+                client.RejectLoads = true;
+                Activate(original, LegacyCommandId.FileLoadSimulation);
+                await WaitFor(() => originalModel.Status.Contains("Controlled audit load rejection.", StringComparison.Ordinal));
+                Assert.False(originalView.HasBackgroundImage);
+                client.RejectLoads = false;
+                Activate(original, LegacyCommandId.FileLoadSimulation);
+                await WaitFor(() => originalModel.Status == "LOADED");
+                Assert.True(originalView.OverlayProjection.HasBackgroundImage);
+
+                Named<Button>(original, "ResetButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => factory.Clients.Count == 2 && client.Calls.Contains("Dispose"));
+                var reset = windows.OfType<MainWindow>().Single(window => window != original);
+                var resetView = Named<WorldViewport>(reset, "Viewport");
+                Assert.False(originalView.HasBackgroundImage);
+                Assert.True(resetView.OverlayProjection.HasBackgroundImage);
+
+                var resetModel = (MainWindowViewModel)reset.DataContext!;
+                await WaitFor(() => resetModel.Population == 1);
+                Activate(reset, LegacyCommandId.ViewRemoveBackground);
+                await WaitFor(() => resetModel.Status == "BACKGROUND REMOVED");
+                Assert.False(resetView.HasBackgroundImage);
+                Activate(reset, LegacyCommandId.FileNewSimulation);
+                await WaitFor(() => windows.OfType<SetupWindow>().Any());
+                var setup = Assert.Single(windows.OfType<SetupWindow>());
+                Named<Button>(setup, "StartNewButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => factory.Clients.Count == 3);
+                var fresh = windows.OfType<MainWindow>().Single(window => window != original && window != reset);
+                Assert.True(Named<WorldViewport>(fresh, "Viewport").OverlayProjection.HasBackgroundImage);
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                using var frame = fresh.CaptureRenderedFrame();
+                Assert.NotNull(frame);
+            }
+            finally { await CloseNavigationWindowsAsync(windows); }
+        }, CancellationToken.None);
+
+        static void Activate(MainWindow window, LegacyCommandId command) =>
+            ActivateMenu(Named<LegacyMenuBar>(window, "HistoricMenuBar").FindCommandItem(command)!);
     }
 
     [Fact]
@@ -2120,6 +2187,7 @@ internal sealed class AuditStorageService : IDesktopStorageService
     public ConcurrentQueue<(TopLevel Owner, NativeRestartSource Source)> NativeRepopulationSourceRequests { get; } = [];
     public string? PickedSimulationPath { get; init; }
     public byte[]? OpenedSimulation { get; set; }
+    public (string Name, byte[] Data)? OpenedBackgroundPicture { get; init; }
     public DesktopSettings? SettingsToOpen { get; init; }
     public byte[]? RgbMonitorPresetToOpen { get; set; }
     public byte[]? SavedRgbMonitorPreset { get; private set; }
@@ -2160,6 +2228,7 @@ internal sealed class AuditStorageService : IDesktopStorageService
     public Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner, string? mainDirectory = null, bool allowMultiple = true) => Task.FromResult(DnaFiles);
     public Task<DesktopSettings?> OpenSettingsAsync(TopLevel owner, string? mainDirectory = null) => Task.FromResult(SettingsToOpen);
     public Task<byte[]?> OpenRgbMonitorPresetAsync(TopLevel owner) => Task.FromResult(RgbMonitorPresetToOpen);
+    public Task<(string Name, byte[] Data)?> OpenBackgroundPictureAsync(TopLevel owner) => Task.FromResult(OpenedBackgroundPicture);
 
     public Task<bool> SaveRgbMonitorPresetAsync(TopLevel owner, ReadOnlyMemory<byte> preset)
     {

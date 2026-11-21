@@ -150,6 +150,7 @@ public sealed partial class MainWindow : Window
     private bool _safemodeBackup;
     private bool _safeModeRecoveryWorld;
     private ulong? _lastAutomaticSaveTick;
+    private byte[]? _lastBackgroundPicture;
     private bool _deadRecordingEnabled;
     private bool _excludeRepopulatingDead;
     private bool _startupComplete;
@@ -173,6 +174,7 @@ public sealed partial class MainWindow : Window
     private int _shapeWorldGeneration;
     private ShapesWindow? _shapesWindow;
     private readonly Stopwatch _runtimeClock = new();
+    private bool _windowClosed;
     private double _activeCostMultiplier;
     private TrayIcon? _trayIcon;
     private NativeMenuItem? _trayIgnoreErrorsItem;
@@ -850,7 +852,7 @@ public sealed partial class MainWindow : Window
             () => new LegacyCommandState(true, false),
             async _ => await ImportBackgroundAsync());
         handlers[LegacyCommandId.ViewRemoveBackground] = Handler(
-            () => LegacyCommandState.Available,
+            () => new LegacyCommandState(Viewport.HasBackgroundImage, false, Viewport.HasBackgroundImage ? null : "No background picture is loaded."),
             _ => Task.FromResult(RemoveBackground()));
         handlers[LegacyCommandId.ObjectsNewTeleporter] = Handler(
             EngineState,
@@ -1215,6 +1217,7 @@ public sealed partial class MainWindow : Window
                 sunChange = context.SunChange;
                 caches = context.Caches;
             }
+            var backgroundPicture = _lastBackgroundPicture;
             if (openSetup)
             {
                 var stageAppearance = _engineFactory is NativeEngineClientFactory
@@ -1230,6 +1233,7 @@ public sealed partial class MainWindow : Window
                         _mazeDimensions = mazeDimensions,
                         _nativeMenuLoadSeed = this._nativeMenuLoadSeed,
                     };
+                    replacement.ShowBackgroundPicture(backgroundPicture);
                     SetApplicationMainWindow(replacement);
                     replacement.Show();
                     setupWindow.Close();
@@ -1245,6 +1249,7 @@ public sealed partial class MainWindow : Window
                     _mazeDimensions = mazeDimensions,
                     _nativeMenuLoadSeed = this._nativeMenuLoadSeed,
                 };
+                replacement.ShowBackgroundPicture(backgroundPicture);
                 SetApplicationMainWindow(replacement);
                 replacement.Show();
             }
@@ -1603,23 +1608,24 @@ public sealed partial class MainWindow : Window
 
     private async Task<LegacyCommandResult> ImportBackgroundAsync()
     {
-        var files = await StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
-        {
-            Title = "Import Darwinbots background picture",
-            AllowMultiple = false,
-            FileTypeFilter =
-            [
-                new Avalonia.Platform.Storage.FilePickerFileType("Images") { Patterns = ["*.png", "*.jpg", "*.jpeg", "*.bmp"] },
-            ],
-        });
-        if (files.Count == 0) return LegacyCommandResult.Cancel();
-        await using var stream = await files[0].OpenReadAsync();
+        if (await _storage.OpenBackgroundPictureAsync(this) is not { } picture || _windowClosed)
+            return LegacyCommandResult.Cancel();
+        ShowBackgroundPicture(picture.Data);
+        return LegacyCommandResult.Success($"BACKGROUND · {picture.Name}");
+    }
+
+    private void ShowBackgroundPicture(byte[]? data)
+    {
+        if (data is null) return;
+        using var stream = new MemoryStream(data, writable: false);
         Viewport.SetBackgroundImage(new Avalonia.Media.Imaging.Bitmap(stream));
-        return LegacyCommandResult.Success($"BACKGROUND · {files[0].Name}");
+        _lastBackgroundPicture = data;
+        RefreshLegacyMenuStates();
     }
 
     private LegacyCommandResult RemoveBackground()
     {
+        // New and loaded simulations reapply the last imported picture.
         Viewport.SetBackgroundImage(null);
         return LegacyCommandResult.Success("BACKGROUND REMOVED");
     }
@@ -4122,6 +4128,7 @@ public sealed partial class MainWindow : Window
             _toolWindows.LoadGraphWorld(snapshot, _nativeGraphLayout);
             Viewport.ShowPhylogeny([]);
             _toolWindows.CloseAll<PhylogenyWindow>();
+            if (!Viewport.HasBackgroundImage) ShowBackgroundPicture(_lastBackgroundPicture);
             // A rejected load publishes no snapshot and must keep user-closed
             // graphs closed. Loading publications defer this until success.
             _automaticEvolutionGraphBoundary = null;
@@ -4517,6 +4524,8 @@ public sealed partial class MainWindow : Window
         InvalidateTeleporterDrag();
         _runTimer.Stop();
         _runtimeClock.Stop();
+        Viewport.SetBackgroundImage(null);
+        _lastBackgroundPicture = null;
         _toolWindows.CloseAll();
         _trayIcon?.Dispose();
         var session = _session;
