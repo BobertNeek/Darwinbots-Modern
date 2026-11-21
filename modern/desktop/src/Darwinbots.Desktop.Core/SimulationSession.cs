@@ -767,6 +767,13 @@ public sealed class SimulationSession : IAsyncDisposable
             engine.SetOrganismEnergy(slot, generation, energy);
         }, cancellationToken);
 
+    internal Task SetNativeConsoleEnergyAsync(OrganismKey focus, float energy, CancellationToken cancellationToken, Action? validate) =>
+        Enqueue(engine =>
+        {
+            validate?.Invoke();
+            engine.SetNativeConsoleEnergy(focus, energy);
+        }, cancellationToken);
+
     public Task UpdateRestrictionOptionsAsync(RestrictionOptions options, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(options);

@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Text.Json;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
@@ -100,6 +101,9 @@ public sealed class RobotConsoleRenderedTests
 
                 await RunAndWaitAsync(command, buttons["RUN"], transcript, "set 310 123", "mem[310] = 123");
                 Assert.Contains("Memory:3:2:310:123", engine.Calls);
+
+                await RunAndWaitAsync(command, buttons["RUN"], transcript, "energy 4321", "energy = 4321");
+                Assert.Contains("Energy:3:2:4321", engine.Calls);
 
                 var callsBeforeInvalid = engine.Calls.ToArray();
                 await RunAndWaitAsync(command, buttons["RUN"], transcript, "set nope 42", "ERROR: Unknown memory address 'nope'.");
@@ -691,6 +695,73 @@ public sealed class RobotConsoleRenderedTests
         run.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         await WaitForAsync(() => transcript.Text?.Length > before + input.Length + 3);
         return transcript.Text![before..];
+    }
+
+    [Fact]
+    public async Task NativeConsoleEnergyChangesSingleWithoutWritingTheSensedMemory()
+    {
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            await using var session = new SimulationSession(new NativeEngineClient(new WorldSetupOptions
+            {
+                Backend = "Cpu",
+                PopulationCapacity = 32,
+            }));
+            await session.ImportDnaAsync("start *.nrg 50 store stop");
+            Assert.NotNull(session.LatestSnapshot.NativeCycle);
+            var robot = Assert.Single(session.LatestSnapshot.Organisms);
+            await session.SetOrganismEnergyAsync(robot.Slot, robot.Generation, 1_000);
+            var console = new RobotConsoleWindow(session, new OrganismKey(robot.Slot, robot.Generation));
+            try
+            {
+                console.Show();
+                console.UpdateLayout();
+                var transcript = Assert.Single(console.GetVisualDescendants().OfType<TextBox>(), box => box.IsReadOnly);
+                var submit = typeof(RobotConsoleWindow).GetMethod("RunCommandAsync",
+                    BindingFlags.Instance | BindingFlags.NonPublic)!;
+                var start = session.LatestSnapshot.Tick;
+                await EnterEnergy("energy 32001", 32_001.0f);
+                await EnterEnergy("energy -3.25", -3.25f);
+                await EnterEnergy("energy", 0.0f);
+                await EnterEnergy("energy &H400", 1_024.0f);
+                await EnterEnergy("energy  999", 0.0f);
+                await EnterEnergy("energy 1234.5tail 999", 1_234.5f);
+                Assert.Equal(start, session.LatestSnapshot.Tick);
+                Assert.Equal(1_000, Memory(310));
+
+                await RunAsync("execrob");
+                Assert.Equal(1_000, Memory(50));
+                Assert.Equal(start, session.LatestSnapshot.Tick);
+
+                await RunAsync("cycle 1");
+                Assert.Equal(start + 1, session.LatestSnapshot.Tick);
+                Assert.Equal(1_000, Memory(50));
+                Assert.Equal(1_234, Memory(310));
+                Assert.Equal(-234, Memory(203));
+                Assert.Equal(234, Memory(204));
+
+                Task RunAsync(string input) => (Task)submit.Invoke(console, [input])!;
+
+                int Memory(ushort address) => Assert.Single(Assert.Single(session.LatestSnapshot.Organisms).Memory,
+                    cell => cell.Address == address).Value;
+
+                async Task EnterEnergy(string input, float expected)
+                {
+                    var previous = transcript.Text;
+                    await RunAsync(input);
+                    Assert.Equal(previous + $"> {input}\n", transcript.Text);
+
+                    using var save = JsonDocument.Parse((await session.SaveAsync()).AsMemory(10));
+                    var saved = Assert.Single(save.RootElement.GetProperty("slots").EnumerateArray(),
+                        slot => slot.GetProperty("organism").ValueKind != JsonValueKind.Null);
+                    var materials = saved.GetProperty("organism").GetProperty("materials");
+                    Assert.Equal(expected, materials.GetProperty("energy").GetSingle());
+                    Assert.Equal(1_000.0f, materials.GetProperty("previous_energy").GetSingle());
+                    Assert.Equal(1_000, Memory(310));
+                }
+            }
+            finally { console.Close(); }
+        }, CancellationToken.None);
     }
 
     private static async Task RunAndWaitAsync(

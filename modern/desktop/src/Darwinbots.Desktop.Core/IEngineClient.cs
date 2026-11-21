@@ -204,6 +204,8 @@ public interface IEngineClient : IDisposable
     void UpdateDisqualificationRules(int level) { }
     void UpdateRecognitionFudging(int mode) { }
     void SetOrganismEnergy(uint slot, uint generation, int energy);
+    void SetNativeConsoleEnergy(OrganismKey focus, float energy) =>
+        throw new NotSupportedException("This engine client does not support native console energy.");
     void UpdateRestrictionOptions(RestrictionOptions options);
     void ConfigureLocalMode(LocalModeConfig config);
     void StartLocalMode();

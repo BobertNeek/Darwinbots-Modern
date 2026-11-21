@@ -491,6 +491,11 @@ enum EngineCommand {
         generation: u32,
         energy: i32,
     },
+    SetNativeConsoleEnergy {
+        slot: u32,
+        generation: u32,
+        energy: f32,
+    },
     UpdateRestrictionOptions {
         options: crate::RestrictionOptions,
     },
@@ -1812,6 +1817,13 @@ fn db_engine_command_batch_impl(
                 energy,
             } => engine
                 .set_organism_energy(OrganismId::new(slot, generation), energy)
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::SetNativeConsoleEnergy {
+                slot,
+                generation,
+                energy,
+            } => engine
+                .set_native_console_energy(OrganismId::new(slot, generation), energy)
                 .map(|_| serde_json::Value::Null),
             EngineCommand::UpdateRestrictionOptions { options } => engine
                 .update_restriction_options(options)
@@ -3864,6 +3876,69 @@ mod tests {
         );
         assert_eq!(status, DbStatus::EngineError);
         assert_eq!(before, SaveFile::encode(&engine).unwrap());
+    }
+
+    #[test]
+    fn native_console_energy_changes_physical_energy_before_the_native_senses_latch() {
+        let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+        let id = world
+            .spawn_at(
+                LegacyDna::parse("start *.nrg 50 store stop").unwrap(),
+                [500.0; 2],
+            )
+            .unwrap();
+        let energy_command = |id: OrganismId, energy: f32| {
+            serde_json::json!([{
+                "type": "set_native_console_energy",
+                "slot": id.slot(),
+                "generation": id.generation(),
+                "energy": energy,
+            }])
+        };
+
+        // Inputs outside the memory word limits are valid physical energy.
+        for energy in [-3.25_f32, 0.0, 32_001.0, 1_234.5] {
+            assert_eq!(
+                classic_test_batch(&mut world, energy_command(id, energy)).0,
+                DbStatus::Ok
+            );
+            let materials = &world.robot_state(id).unwrap().materials;
+            assert_eq!(materials.energy.to_bits(), energy.to_bits());
+            assert_eq!(materials.previous_energy, 1_000.0);
+            assert_eq!(world.memory_at(id, 310).unwrap(), 1_000);
+            assert_eq!(world.snapshot().tick, 0);
+        }
+        let save = SaveFile::encode(&world).unwrap();
+        world = SaveFile::decode(&save).unwrap();
+        assert_eq!(world.robot_state(id).unwrap().materials.energy, 1_234.5);
+        assert_eq!(world.memory_at(id, 310).unwrap(), 1_000);
+
+        world.execute_robots().unwrap();
+        assert_eq!(world.memory_at(id, 50).unwrap(), 1_000);
+        assert_eq!(world.snapshot().tick, 0);
+        world.tick().unwrap();
+        assert_eq!(world.memory_at(id, 50).unwrap(), 1_000);
+        assert_eq!(world.memory_at(id, 310).unwrap(), 1_234);
+        assert_eq!(world.memory_at(id, 203).unwrap(), -234);
+        assert_eq!(world.memory_at(id, 204).unwrap(), 234);
+        world.execute_robots().unwrap();
+        assert_eq!(world.memory_at(id, 50).unwrap(), 1_234);
+
+        let mut portable = source_fixture_engine(false);
+        let portable_id = portable
+            .spawn(LegacyDna::parse("start stop").unwrap())
+            .unwrap();
+        assert_ne!(
+            classic_test_batch(&mut portable, energy_command(portable_id, 0.0)).0,
+            DbStatus::Ok
+        );
+        assert_eq!(
+            portable.robot_state(portable_id).unwrap().materials.energy,
+            1_000.0
+        );
+        assert!(portable.set_organism_energy(portable_id, 0).is_err());
+        portable.set_organism_energy(portable_id, 250).unwrap();
+        assert_eq!(portable.memory_at(portable_id, 310).unwrap(), 250);
     }
 
     fn populated_native_cpu_candidate_fixture() -> Engine {

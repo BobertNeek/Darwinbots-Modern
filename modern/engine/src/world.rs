@@ -4957,6 +4957,24 @@ impl Engine {
         Ok(())
     }
 
+    pub(crate) fn set_native_console_energy(
+        &mut self,
+        id: OrganismId,
+        energy: f32,
+    ) -> Result<(), EngineError> {
+        if self.native_cycle.is_none() || !energy.is_finite() {
+            return Err(EngineError::Invariant(
+                "native console energy requires original simulation mode and a finite Single"
+                    .into(),
+            ));
+        }
+        // The VB console writes nrg alone. WriteSenses will publish mem(310)
+        // and compute pain and pleasure using the previous onrg.
+        self.slots.get_mut(id)?.materials.energy = energy;
+        self.publish_snapshot();
+        Ok(())
+    }
+
     pub fn update_restriction_options(
         &mut self,
         options: RestrictionOptions,

@@ -1160,6 +1160,16 @@ public sealed partial class NativeEngineClient : IEngineClient
             commands = new[] { new { type = "set_organism_energy", slot, generation, energy } },
         }, "set organism energy");
 
+    public void SetNativeConsoleEnergy(OrganismKey focus, float energy) => ExecuteBatch(
+        new
+        {
+            version = 1,
+            commands = new[]
+            {
+                new { type = "set_native_console_energy", slot = focus.Slot, generation = focus.Generation, energy },
+            },
+        }, "set native console energy");
+
     public void UpdateRestrictionOptions(RestrictionOptions options) => ExecuteBatch(
         new
         {
