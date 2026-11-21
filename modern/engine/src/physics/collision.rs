@@ -90,13 +90,27 @@ pub(crate) fn segment_aabb_fraction(
 }
 
 fn native_magnitude(vector: [f32; 2]) -> f32 {
+    vector_magnitude(vector, false)
+}
+
+pub(crate) fn native_full_magnitude(vector: [f32; 2]) -> f32 {
+    vector_magnitude(vector, true)
+}
+
+fn vector_magnitude(vector: [f32; 2], full_quotient: bool) -> f32 {
     let maximum = vector[0].abs().max(vector[1].abs());
     let minimum = vector[0].abs().min(vector[1].abs());
     if maximum < 0.00001 {
         0.0
     } else {
-        let ratio = minimum / maximum;
-        (f64::from(maximum) * (1.0 + f64::from(ratio).powi(2)).sqrt()) as f32
+        // Common.VectorMagnitude keeps the quotient through the Double power
+        // expression before narrowing the completed result to Single.
+        let ratio = if full_quotient {
+            f64::from(minimum) / f64::from(maximum)
+        } else {
+            f64::from(minimum / maximum)
+        };
+        (f64::from(maximum) * (1.0 + ratio.powi(2)).sqrt()) as f32
     }
 }
 
