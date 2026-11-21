@@ -396,6 +396,52 @@ mod tests {
     }
 
     #[test]
+    fn native_linear_age_cost_flag_roundtrips_independently_of_its_rate() {
+        use crate::native_binary::{NativeRecordFile, NativeSimulationTail, NativeValue};
+
+        let mut seed = Engine::new_native(EngineConfig::testing()).unwrap();
+        let id = seed
+            .spawn_at(LegacyDna::parse("start stop").unwrap(), [500.0; 2])
+            .unwrap();
+        seed.slots.get_mut(id).unwrap().counters.age = 4;
+        let mut original = NativeRecordFile::decode(&seed.export_native_sim().unwrap()).unwrap();
+        let mut tail = NativeSimulationTail::decode(&original.tail).unwrap();
+        let mut costs = tail.bytes("costs").unwrap().to_vec();
+
+        for (slot, value) in [(31, 4.0_f32), (32, 2.0), (33, 0.25), (54, 1.0)] {
+            costs[slot * 4..slot * 4 + 4].copy_from_slice(&value.to_le_bytes());
+        }
+        // Robots.Upkeep uses the separate slot 60 switch, even when slot 33
+        // contains a nonzero coefficient. Compare actual Single energy.
+        for (enabled, expected_energy) in [(false, 996.0), (true, 995.5)] {
+            let flag = if enabled { 1.0_f32 } else { 0.0 };
+            costs[60 * 4..61 * 4].copy_from_slice(&flag.to_le_bytes());
+            tail.set_value("costs", NativeValue::Bytes(costs.clone()))
+                .unwrap();
+            original.tail = tail.encode().unwrap();
+            let imported = Engine::from_native_sim(&original.encode().unwrap()).unwrap();
+            let modern = crate::SaveFile::encode(&imported).unwrap();
+            let mut resumed = crate::SaveFile::decode(&modern).unwrap();
+            assert_eq!(resumed.config.dna_costs.age_linear, 0.25);
+            assert_eq!(resumed.config.dna_costs.age_linear_enabled, Some(enabled));
+
+            let native = NativeRecordFile::decode(&resumed.export_native_sim().unwrap()).unwrap();
+            let saved_tail = NativeSimulationTail::decode(&native.tail).unwrap();
+            let saved_costs = saved_tail.bytes("costs").unwrap();
+            assert_eq!(&saved_costs[33 * 4..34 * 4], &0.25_f32.to_le_bytes());
+            assert_eq!(&saved_costs[60 * 4..61 * 4], &flag.to_le_bytes());
+
+            let robot = resumed.slots.ids_in_slot_order()[0];
+            assert_eq!(resumed.slots.get(robot).unwrap().materials.energy, 1_000.0);
+            resumed.upkeep_phase();
+            assert_eq!(
+                resumed.slots.get(robot).unwrap().materials.energy,
+                expected_energy
+            );
+        }
+    }
+
+    #[test]
     fn native_corpse_death_uses_fifteen_after_senses_including_older_zero_defaults() {
         for threshold in [0, 15] {
             for (energy, expected_corpses) in [(0.0, 1), (14.5, 1), (15.0, 0)] {

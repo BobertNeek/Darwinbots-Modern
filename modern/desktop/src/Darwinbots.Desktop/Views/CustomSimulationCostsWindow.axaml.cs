@@ -56,6 +56,7 @@ public sealed partial class CustomSimulationCostsWindow : Window
         SetDisplayValue(AgeBase, costs.AgeBase);
         SetDisplayValue(AgeStart, costs.AgeStart);
         SetDisplayValue(AgeLinear, costs.AgeLinear);
+        AgeLinearEnabled.IsChecked = costs.EffectiveAgeLinearEnabled;
         SetDisplayValue(AgeLogarithmic, costs.AgeLogarithmic);
         SetDisplayValue(DynamicMultiplier, costs.DynamicMultiplier);
         DynamicAllRobots.IsChecked = costs.DynamicAllRobots;
@@ -66,11 +67,11 @@ public sealed partial class CustomSimulationCostsWindow : Window
         DynamicAllowNegative.IsChecked = costs.DynamicAllowNegative;
         SetDisplayValue(DynamicLowerZeroThreshold, costs.DynamicLowerZeroThreshold);
         SetDisplayValue(DynamicLowerReinstateThreshold, costs.DynamicLowerReinstateThreshold);
-        SetDisplayValue(DynamicUpperReinstateThreshold, costs.DynamicUpperReinstateThreshold);
     }
 
     private GlobalSimulationCostSettings ReadCosts()
     {
+        var ageLinear = Read(AgeLinear, Costs.AgeLinear);
         return Costs with
         {
             GlobalMultiplier = Read(GlobalCostMultiplier, Costs.GlobalMultiplier),
@@ -98,7 +99,8 @@ public sealed partial class CustomSimulationCostsWindow : Window
             Virus = Read(VirusCost, Costs.Virus),
             AgeBase = Read(AgeBase, Costs.AgeBase),
             AgeStart = Read(AgeStart, Costs.AgeStart),
-            AgeLinear = Read(AgeLinear, Costs.AgeLinear),
+            AgeLinear = ageLinear,
+            AgeLinearEnabled = ReadAgeLinearEnabled(AgeLinearEnabled, Costs.AgeLinearEnabled, ageLinear),
             AgeLogarithmic = Read(AgeLogarithmic, Costs.AgeLogarithmic),
             DynamicMultiplier = Read(DynamicMultiplier, Costs.DynamicMultiplier),
             DynamicAllRobots = DynamicAllRobots.IsChecked == true,
@@ -111,7 +113,6 @@ public sealed partial class CustomSimulationCostsWindow : Window
             DynamicAllowNegative = DynamicAllowNegative.IsChecked == true,
             DynamicLowerZeroThreshold = Read(DynamicLowerZeroThreshold, Costs.DynamicLowerZeroThreshold),
             DynamicLowerReinstateThreshold = Read(DynamicLowerReinstateThreshold, Costs.DynamicLowerReinstateThreshold),
-            DynamicUpperReinstateThreshold = Read(DynamicUpperReinstateThreshold, Costs.DynamicUpperReinstateThreshold),
         };
     }
 
@@ -126,6 +127,12 @@ public sealed partial class CustomSimulationCostsWindow : Window
 
     internal static double? ReadRangePercent(NumericUpDown control, double? explicitValue, double effectiveValue) =>
         control.Value is { } value && value != DisplayValue(control, effectiveValue) ? (double)value : explicitValue;
+
+    internal static bool? ReadAgeLinearEnabled(CheckBox control, bool? explicitValue, double coefficient)
+    {
+        var enabled = control.IsChecked == true;
+        return explicitValue is null && enabled == (coefficient != 0) ? null : enabled;
+    }
 
     private void Apply_Click(object? sender, RoutedEventArgs e)
     {

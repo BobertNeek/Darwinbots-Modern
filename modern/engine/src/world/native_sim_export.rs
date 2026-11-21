@@ -717,7 +717,14 @@ impl Engine {
             (57, d.dynamic_upper_range_percent),
             (58, d.dynamic_lower_range_percent),
             (59, d.dynamic_lower_reinstate_threshold),
-            (60, if d.age_linear != 0.0 { 1.0 } else { 0.0 }),
+            (
+                60,
+                if d.linear_age_cost_enabled() {
+                    1.0
+                } else {
+                    0.0
+                },
+            ),
             (61, if d.dynamic_all_robots { 1.0 } else { 0.0 }),
             (62, if d.dynamic_allow_negative { 1.0 } else { 0.0 }),
         ] {
@@ -1396,7 +1403,13 @@ mod tests {
         assert_eq!(imported.teleporters[0].center, [800.0, 800.0]);
         assert_eq!(imported.teleporters[0].width, 120.0);
         assert_eq!(imported.config.vegetation, engine.config.vegetation);
-        assert_eq!(imported.config.dna_costs, engine.config.dna_costs);
+        assert_eq!(
+            imported.config.dna_costs,
+            crate::DnaCosts {
+                age_linear_enabled: Some(false),
+                ..engine.config.dna_costs
+            },
+        );
     }
 
     #[test]

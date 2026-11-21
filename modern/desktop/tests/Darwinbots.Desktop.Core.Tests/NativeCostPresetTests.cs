@@ -58,6 +58,53 @@ public sealed class NativeCostPresetTests
         Assert.Equal(0, config.RootElement.GetProperty("native_cost_preset").GetInt32());
     }
 
+    [Theory]
+    [InlineData(false, "0")]
+    [InlineData(true, "1")]
+    public void NativeAgeLinearCostUsesSeparateSetSlotsForTheRateAndEnableFlag(bool enabled, string nativeFlag)
+    {
+        // Original OptionsForm.SaveSett writes the VB6 Costs array. In an
+        // empty roster the array starts at record 100, with rate 33 and flag 60.
+        const int rate = 100 + 33;
+        const int flag = 100 + 60;
+        var fields = NativeFields(Db2SettingsCodec.Encode(new DesktopSettings()));
+        fields[rate] = "0.25";
+        fields[flag] = nativeFlag;
+
+        var settings = Decode(fields);
+        var costs = settings.GlobalSettings.Costs;
+        Assert.Equal(0.25, costs.AgeLinear);
+        Assert.Equal(enabled, costs.AgeLinearEnabled);
+        Assert.Equal(enabled, costs.EffectiveAgeLinearEnabled);
+
+        // The old Modern field remains round-trippable in the extension. It
+        // has no meaning for the native SET cost table.
+        var withLegacyAlias = settings with
+        {
+            GlobalSettings = settings.GlobalSettings with
+            {
+                Costs = costs with { DynamicUpperReinstateThreshold = 89 },
+            },
+        };
+        var encoded = Db2SettingsCodec.Encode(withLegacyAlias);
+        Assert.Equal(89, Db2SettingsCodec.Decode(encoded).GlobalSettings.Costs.DynamicUpperReinstateThreshold);
+        var saved = NativeFields(encoded);
+        Assert.Equal("0.25", saved[rate]);
+        Assert.Equal(nativeFlag, saved[flag]);
+
+        using var payload = JsonDocument.Parse(NativeCommandSerializer.SerializeEngineConfig(settings.ToWorldSetup()));
+        Assert.Equal(enabled, payload.RootElement.GetProperty("dna_costs").GetProperty("age_linear_enabled").GetBoolean());
+    }
+
+    [Fact]
+    public void OlderModernCostsKeepTheNonzeroRateAsTheDefaultLinearAgeEnable()
+    {
+        var old = new GlobalSettings { Costs = new GlobalSimulationCostSettings { AgeLinear = 0.25 } };
+        var restored = GlobalSettings.FromJson(old.ToJson()).Costs;
+        Assert.Null(restored.AgeLinearEnabled);
+        Assert.True(restored.EffectiveAgeLinearEnabled);
+    }
+
     private static string[] NativeFields(byte[] bytes) => LegacyDnaText.Decode(bytes)
         .Split("#DARWINBOTS_MODERN_SETTINGS_V1#")[0].Split("\r\n");
 

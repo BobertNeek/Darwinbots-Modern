@@ -145,7 +145,7 @@ internal static class LegacySettingsAdapter
             (28,cost.Slime), (29,cost.Shell), (30,cost.BodyUpkeep), (31,cost.AgeBase), (32,cost.AgeStart), (33,cost.AgeLinear),
             (51,cost.AgeLogarithmic), (52,cost.DynamicLowerZeroThreshold), (53,cost.DynamicTargetPopulation), (54,cost.GlobalMultiplier), (55,cost.DynamicSensitivity),
             (57,cost.EffectiveDynamicUpperRangePercent), (58,cost.EffectiveDynamicLowerRangePercent),
-            (59,cost.DynamicLowerReinstateThreshold), (60,cost.DynamicUpperReinstateThreshold) };
+            (59,cost.DynamicLowerReinstateThreshold), (60,cost.EffectiveAgeLinearEnabled ? 1 : 0) };
         foreach (var (index, value) in indexedCosts) Number(costs + index, value);
         // SaveSett writes Single costs. CostsForm uses VB True (-1) for dynamic costs
         // and the positive CheckBox.Value for Include Plants and Allow Negative CostX.
@@ -397,13 +397,13 @@ internal static class LegacySettingsAdapter
             TieFormation = Cost(22), ShotFormation = Cost(23), DnaUpkeep = Cost(24), DnaCopy = Cost(25),
             Venom = Cost(26), Poison = Cost(27), Slime = Cost(28), Shell = Cost(29),
             BodyUpkeep = Cost(30), AgeBase = Cost(31), AgeStart = Cost(32), AgeLinear = Cost(33),
-            AgeLogarithmic = Cost(51), GlobalMultiplier = Number(costs + 54, 1),
+            AgeLinearEnabled = Cost(60) == 1, AgeLogarithmic = Cost(51), GlobalMultiplier = Number(costs + 54, 1),
             DynamicTargetPopulation = Integer(costs + 53), DynamicSensitivity = Number(costs + 55, 1),
             DynamicMultiplier = Flag(costs + 56) ? 1 : 0, DynamicPopulationRange = Integer(costs + 57),
             DynamicAllRobots = Flag(costs + 61, true), DynamicAllowNegative = Flag(costs + 62),
             DynamicLowerZeroThreshold = Cost(52), DynamicUpperZeroThreshold = Cost(58),
             DynamicUpperRangePercent = Cost(57), DynamicLowerRangePercent = Cost(58),
-            DynamicLowerReinstateThreshold = Cost(59), DynamicUpperReinstateThreshold = Cost(60),
+            DynamicLowerReinstateThreshold = Cost(59),
         };
         // ReadSettFromFile supplies 50 when the native Single is zero.
         if (costSettings.DynamicSensitivity == 0)

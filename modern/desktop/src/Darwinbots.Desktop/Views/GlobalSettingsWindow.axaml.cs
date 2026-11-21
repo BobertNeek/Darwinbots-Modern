@@ -96,6 +96,7 @@ public sealed partial class GlobalSettingsWindow : Window
         AgeBase.Value = (decimal)costs.AgeBase;
         AgeStart.Value = (decimal)costs.AgeStart;
         AgeLinear.Value = (decimal)costs.AgeLinear;
+        AgeLinearEnabled.IsChecked = costs.EffectiveAgeLinearEnabled;
         AgeLogarithmic.Value = (decimal)costs.AgeLogarithmic;
         DynamicMultiplier.Value = (decimal)costs.DynamicMultiplier;
         DynamicAllRobots.IsChecked = costs.DynamicAllRobots;
@@ -106,7 +107,6 @@ public sealed partial class GlobalSettingsWindow : Window
         DynamicAllowNegative.IsChecked = costs.DynamicAllowNegative;
         DynamicLowerZeroThreshold.Value = (decimal)costs.DynamicLowerZeroThreshold;
         DynamicLowerReinstateThreshold.Value = (decimal)costs.DynamicLowerReinstateThreshold;
-        DynamicUpperReinstateThreshold.Value = (decimal)costs.DynamicUpperReinstateThreshold;
         LeagueOfflineOwned.IsChecked = settings.League.OwnedByOfflineModes;
         DisqualificationRule.SelectedIndex = settings.League.DisqualificationRule;
         RecognitionFudging.SelectedIndex = settings.League.RecognitionFudging;
@@ -208,6 +208,8 @@ public sealed partial class GlobalSettingsWindow : Window
             AgeBase = (double)(AgeBase.Value ?? 0),
             AgeStart = (double)(AgeStart.Value ?? 0),
             AgeLinear = (double)(AgeLinear.Value ?? 0),
+            AgeLinearEnabled = CustomSimulationCostsWindow.ReadAgeLinearEnabled(AgeLinearEnabled,
+                Settings.Costs.AgeLinearEnabled, (double)(AgeLinear.Value ?? 0)),
             AgeLogarithmic = (double)(AgeLogarithmic.Value ?? 0),
             DynamicMultiplier = (double)(DynamicMultiplier.Value ?? 0),
             DynamicAllRobots = DynamicAllRobots.IsChecked == true,
@@ -220,7 +222,6 @@ public sealed partial class GlobalSettingsWindow : Window
             DynamicAllowNegative = DynamicAllowNegative.IsChecked == true,
             DynamicLowerZeroThreshold = (double)(DynamicLowerZeroThreshold.Value ?? 0),
             DynamicLowerReinstateThreshold = (double)(DynamicLowerReinstateThreshold.Value ?? 0),
-            DynamicUpperReinstateThreshold = (double)(DynamicUpperReinstateThreshold.Value ?? 0),
         },
         League = new GlobalLeagueSettings { OwnedByOfflineModes = true, DisqualificationRule = Math.Max(0, DisqualificationRule.SelectedIndex), RecognitionFudging = Math.Max(0, RecognitionFudging.SelectedIndex) },
         Evolution = Settings.Evolution with
