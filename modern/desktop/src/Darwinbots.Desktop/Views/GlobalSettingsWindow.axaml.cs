@@ -39,6 +39,7 @@ public sealed partial class GlobalSettingsWindow : Window
         BodyCutoff.Value = main.BodyCutoff;
         GreedyEnforcement.IsChecked = main.GreedyEnforcement;
         NewSeed.IsChecked = main.NewSeed;
+        NewSeedOnLoad.IsChecked = main.EffectiveNewSeedOnLoad;
         SafeMode.IsChecked = main.SafeMode;
         StartChloroplasts.Value = main.StartChloroplasts ?? Db2VegetationOptions.Default.StartChloroplasts;
         FindBestWeight.Value = main.EffectiveFindBestWeight;
@@ -142,6 +143,8 @@ public sealed partial class GlobalSettingsWindow : Window
             BodyCutoff = (int)(BodyCutoff.Value ?? 0),
             GreedyEnforcement = GreedyEnforcement.IsChecked == true,
             NewSeed = NewSeed.IsChecked == true,
+            NewSeedOnLoad = NewSeedOnLoad.IsChecked == true && Settings.Main.NewSeedOnLoad is null
+                ? null : NewSeedOnLoad.IsChecked == true,
             MainDirectory = MainDirectory.Text ?? string.Empty,
             SafeMode = SafeMode.IsChecked == true,
             StartChloroplasts = StartChloroplasts.Value is { } amount

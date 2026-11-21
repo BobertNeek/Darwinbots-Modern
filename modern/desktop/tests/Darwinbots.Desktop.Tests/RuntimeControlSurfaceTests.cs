@@ -2442,7 +2442,19 @@ internal sealed class RecordingEngineClient : IEngineClient
     public void SetOrganismAim(uint slot, uint generation, int aim) => Calls.Enqueue($"Aim:{slot}:{generation}:{aim}");
     public byte[] Save() { Calls.Enqueue("Save"); return BitConverter.GetBytes(_tick); }
     public byte[] SaveWithoutMutations() { Calls.Enqueue("SaveWithoutMutations"); return [9, 8, 7]; }
+    public int? NativeLoadSeed { get; set; }
+    public int CaptureNativeLoadSeed(bool generateSeed)
+    {
+        if (NativeLoadSeed is not { } seed) return 0;
+        Calls.Enqueue($"CaptureNativeLoadSeed:{generateSeed}");
+        return seed;
+    }
     public void Load(byte[] save) => _tick = BitConverter.ToUInt64(save);
+    public void LoadWithNativeSeed(byte[] save, int seed)
+    {
+        Load(save);
+        Calls.Enqueue($"LoadWithNativeSeed:{seed}");
+    }
     public EngineSnapshot Snapshot()
     {
         return _snapshot with

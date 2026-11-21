@@ -604,10 +604,31 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
             if (settings.Main.StartChloroplasts is null
                 && SetupStorageService.ReadNativeStartingChloroplasts(settings.Main.MainDirectory) is { } amount)
                 settings = settings with { Main = settings.Main with { StartChloroplasts = amount } };
+            var main = settings.Main;
+            if (main.NewSeedOnLoad is null && ReadLegacyNewSeedOnLoad(main.MainDirectory) is { } newSeedOnLoad)
+                settings = settings with { Main = main with { NewSeedOnLoad = newSeedOnLoad } };
             return settings;
         }
         catch (FileNotFoundException) { return null; }
         catch (DirectoryNotFoundException) { return null; }
+    }
+
+    private static bool? ReadLegacyNewSeedOnLoad(string mainDirectory)
+    {
+        if (string.IsNullOrWhiteSpace(mainDirectory) || !Path.IsPathFullyQualified(mainDirectory)
+            || mainDirectory.StartsWith("//", StringComparison.Ordinal)
+            || mainDirectory.StartsWith(@"\\", StringComparison.Ordinal)) return null;
+        try
+        {
+            // frmGset writes a separate Boolean for Load Simulation after Start New.
+            return File.ReadLines(Path.Combine(mainDirectory, "Global.gset")).ElementAtOrDefault(4)?.Trim().ToUpperInvariant() switch
+            {
+                "#TRUE#" => true,
+                "#FALSE#" => false,
+                _ => null,
+            };
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { return null; }
     }
 
     public async Task SaveGlobalSettingsAsync(GlobalSettings settings)

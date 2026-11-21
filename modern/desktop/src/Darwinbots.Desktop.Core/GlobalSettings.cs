@@ -38,6 +38,10 @@ public sealed record GlobalMainSettings
     public int BodyCutoff { get; init; }
     public bool GreedyEnforcement { get; init; }
     public bool NewSeed { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? NewSeedOnLoad { get; init; }
+    [JsonIgnore]
+    public bool EffectiveNewSeedOnLoad => NewSeedOnLoad != false;
     public string MainDirectory { get; init; } = string.Empty;
     public bool SafeMode { get; init; } = true;
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

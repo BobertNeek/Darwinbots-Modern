@@ -104,6 +104,7 @@ public sealed partial class MainWindow : Window
     private readonly LegacyGraphRecordingRun _graphRecording;
     private readonly bool _keepGraphsUpdatingOnClose;
     private NativeGraphLayoutState? _nativeGraphLayout;
+    private readonly bool _newSeedOnLoad;
     private bool _tickInFlight;
     private bool _navigationInFlight;
     private bool _editingLiveSettings;
@@ -194,7 +195,7 @@ public sealed partial class MainWindow : Window
         WorldSetupOptions setup,
         IEngineClientFactory engineFactory,
         IDesktopStorageService storage,
-        Action? launchSafeModeBackup, bool? keepGraphsUpdatingOnClose = null)
+        Action? launchSafeModeBackup = null, bool? keepGraphsUpdatingOnClose = null, bool? newSeedOnLoad = null)
     {
         _startupArguments = arguments.ToArray();
         _setup = setup with { NativeGaussianSpare = null, NativeSunChange = null, NativeProcessCaches = null };
@@ -206,6 +207,7 @@ public sealed partial class MainWindow : Window
         _globalSettings = setup.GlobalSettings;
         // The original reads GraphUp at process startup, before opening Setup.
         _keepGraphsUpdatingOnClose = keepGraphsUpdatingOnClose ?? (setup.GlobalSettings.Main.KeepGraphsUpdatingOnClose == true);
+        _newSeedOnLoad = newSeedOnLoad ?? setup.GlobalSettings.Main.EffectiveNewSeedOnLoad;
         _safemodeBackup = setup.GlobalSettings.Main.SafeMode || setup.Recording.SafeModeBackup;
         _startupBots = new StartupDnaWorkflow(
             setup.WorldWidth,
@@ -1216,7 +1218,7 @@ public sealed partial class MainWindow : Window
                     startChloroplasts: _liveEnvironment.Vegetation.StartChloroplasts);
                 setupWindow.WorldCreated += options =>
                 {
-                    var replacement = new MainWindow(_startupArguments, options, _engineFactory, _storage, _launchSafeModeBackup, _keepGraphsUpdatingOnClose)
+                    var replacement = new MainWindow(_startupArguments, options, _engineFactory, _storage, _launchSafeModeBackup, _keepGraphsUpdatingOnClose, _newSeedOnLoad)
                     {
                         _mazeDimensions = mazeDimensions,
                     };
@@ -1230,7 +1232,7 @@ public sealed partial class MainWindow : Window
             else
             {
                 var replacement = new MainWindow(_startupArguments,
-                    (editedSetup ?? CreateNextWorldSetup()) with { NativeGaussianSpare = spare, NativeSunChange = sunChange, NativeProcessCaches = caches }, _engineFactory, _storage, _launchSafeModeBackup, _keepGraphsUpdatingOnClose)
+                    (editedSetup ?? CreateNextWorldSetup()) with { NativeGaussianSpare = spare, NativeSunChange = sunChange, NativeProcessCaches = caches }, _engineFactory, _storage, _launchSafeModeBackup, _keepGraphsUpdatingOnClose, _newSeedOnLoad)
                 {
                     _mazeDimensions = mazeDimensions,
                 };
@@ -1312,10 +1314,12 @@ public sealed partial class MainWindow : Window
     private Task<LegacyCommandResult> LoadSimulationCommandAsync() =>
         WithPausedSimulationFileDialogAsync(async session =>
         {
+            var seed = await session.CaptureNativeLoadSeedAsync(_newSeedOnLoad);
+            if (!OwnsSimulationFileCommand(session)) return LegacyCommandResult.Cancel();
             if (await _storage.OpenSimulationWithSourceAsync(this, _globalSettings.Main.MainDirectory) is not { } save
                 || !OwnsSimulationFileCommand(session))
                 return LegacyCommandResult.Cancel();
-            await LoadSimulationWithSourceAsync(save.Data, save.LocalPath);
+            await LoadSimulationWithSourceAsync(save.Data, save.LocalPath, nativeLoadSeed: seed);
             return LegacyCommandResult.Success("LOADED");
         });
 
@@ -3946,7 +3950,7 @@ public sealed partial class MainWindow : Window
 
     private Task LoadSimulationAsync(byte[] save) => LoadSimulationWithSourceAsync(save, null);
 
-    private async Task LoadSimulationWithSourceAsync(byte[] save, string? sourcePath, bool resumeRestartMode = false, bool isSafeModeRecovery = false)
+    private async Task LoadSimulationWithSourceAsync(byte[] save, string? sourcePath, bool resumeRestartMode = false, bool isSafeModeRecovery = false, int nativeLoadSeed = 0)
     {
         _runTimer.Stop();
         await _advanceGate.WaitAsync();
@@ -3960,7 +3964,7 @@ public sealed partial class MainWindow : Window
             _graphRecording.IsSuspended = true;
             var mainDirectory = _globalSettings.Main.MainDirectory;
             await _session.LoadWithNativeRestartSourcesAsync(save,
-                source => SetupStorageService.ResolveNativeRestartSource(source, sourcePath, mainDirectory));
+                source => SetupStorageService.ResolveNativeRestartSource(source, sourcePath, mainDirectory), nativeSeed: nativeLoadSeed);
             SetLegacyVideoOff(false);
             _awaitingVideoFrame = false;
             if (resumeRestartMode) await _session.ResumeRestartModeAsync();

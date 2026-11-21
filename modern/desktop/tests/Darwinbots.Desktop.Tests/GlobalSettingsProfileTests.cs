@@ -30,6 +30,8 @@ public sealed class GlobalSettingsProfileTests
                     Click(setup, "GlobalSettingsButton");
                     var globals = await GlobalDialog(setup);
                     Assert.Equal(0m, Named<NumericUpDown>(globals, "StartChloroplasts").Value);
+                    Assert.True(Named<CheckBox>(globals, "NewSeedOnLoad").IsChecked);
+                    Named<CheckBox>(globals, "NewSeedOnLoad").IsChecked = false;
                     Named<CheckBox>(globals, "FixedRatio").IsChecked = true;
                     Named<CheckBox>(globals, "SafeMode").IsChecked = false;
                     Named<NumericUpDown>(globals, "StartChloroplasts").Value = 4321m;
@@ -40,6 +42,7 @@ public sealed class GlobalSettingsProfileTests
                     Assert.True(created.GlobalSettings.Main.FixedRatio);
                     Assert.Equal(4321, created.GlobalSettings.Main.StartChloroplasts);
                     Assert.Equal(0, created.Vegetation.StartChloroplasts);
+                    Assert.False(created.GlobalSettings.Main.NewSeedOnLoad);
                     Assert.False(created.ToEnvironmentUpdate().Recording!.SafeModeBackup);
                 }
                 finally { Close(setup); }
@@ -91,6 +94,7 @@ public sealed class GlobalSettingsProfileTests
                     Click(reopened, "GlobalSettingsButton");
                     var globals = await GlobalDialog(reopened);
                     Assert.True(Named<CheckBox>(globals, "FixedRatio").IsChecked);
+                    Assert.False(Named<CheckBox>(globals, "NewSeedOnLoad").IsChecked);
                     Assert.True(Named<CheckBox>(globals, "OldColors").IsChecked);
                     Assert.True(Named<CheckBox>(globals, "VideoOff").IsChecked);
                     Assert.False(Named<CheckBox>(globals, "SafeMode").IsChecked);
@@ -145,6 +149,31 @@ public sealed class GlobalSettingsProfileTests
 
             await storage.SaveGlobalSettingsAsync(defaults with { Main = defaults.Main with { StartChloroplasts = 0 } });
             Assert.Equal(0, storage.LoadGlobalSettings()!.Main.StartChloroplasts);
+            Assert.Equal(original, await File.ReadAllTextAsync(legacyPath));
+        }
+        finally { profile.Delete(recursive: true); }
+    }
+
+    [Fact]
+    public async Task ConfiguredLegacyDirectorySuppliesTheSeparateLoadSeedPreference()
+    {
+        var profile = Directory.CreateTempSubdirectory("darwinbots-global-seed-");
+        try
+        {
+            var legacy = profile.CreateSubdirectory("Original install");
+            var legacyPath = Path.Combine(legacy.FullName, "Global.gset");
+            const string original = "#TRUE#\r\n32100\r\n#FALSE#\r\n#TRUE#\r\n#FALSE#\r\n";
+            await File.WriteAllTextAsync(legacyPath, original);
+            var storage = new AvaloniaDesktopStorageService(profile.FullName);
+            var settings = new GlobalSettings { Main = new GlobalMainSettings { MainDirectory = legacy.FullName } };
+
+            await storage.SaveGlobalSettingsAsync(settings);
+            var imported = Assert.IsType<GlobalSettings>(storage.LoadGlobalSettings());
+            Assert.False(imported.Main.EffectiveNewSeedOnLoad);
+            Assert.False(imported.Main.NewSeed);
+
+            await storage.SaveGlobalSettingsAsync(settings with { Main = settings.Main with { NewSeedOnLoad = true } });
+            Assert.True(storage.LoadGlobalSettings()!.Main.EffectiveNewSeedOnLoad);
             Assert.Equal(original, await File.ReadAllTextAsync(legacyPath));
         }
         finally { profile.Delete(recursive: true); }
