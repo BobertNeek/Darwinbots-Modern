@@ -102,7 +102,7 @@ public sealed record LegacyGraphPointValue(string Name, uint Color, double Value
 public sealed class LegacyGraphAutoSave(Func<string> directory, string caption)
 {
     private const int RingLength = 1001;
-    private const int MaximumColumns = 65;
+    internal const int MaximumColumns = 65;
     private readonly List<Column> _columns = [];
     private readonly Queue<string> _pending = [];
     private int _pivot;

@@ -136,9 +136,13 @@ public sealed partial class GraphSuiteView : UserControl
         if (TopLevel.GetTopLevel(this) is Window window) window.Close();
     }
 
-    private void RefreshChart()
+    internal IReadOnlyList<GraphSeriesViewModel> SeriesFor(GraphSeriesViewModel graph) =>
+        _viewModel.RunningGraphs.Where(candidate => candidate.Metric == graph.Metric
+            && candidate.UsesSampleOrder == graph.UsesSampleOrder).ToArray();
+
+    internal void RefreshChart()
     {
         var selected = _displayedSeries ?? _viewModel.RunningGraphs.LastOrDefault();
-        SeriesChart.SetSeries(selected is null ? [] : _viewModel.RunningGraphs.Where(graph => graph.Metric == selected.Metric).ToArray());
+        SeriesChart.SetSeries(selected is null ? [] : SeriesFor(selected));
     }
 }
