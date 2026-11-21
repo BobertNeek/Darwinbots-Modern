@@ -11122,7 +11122,12 @@ impl Engine {
                                 return Ok(false);
                             }
                             let mut packet_value = power.max(0.0);
-                            let energy_loss = scale_tie_amount(packet_value, 0.90);
+                            let energy_loss = if native_boundary {
+                                // releasenrg stores EnergyLost after the x87 multiply.
+                                store_scaled_sum(0.0, f64::from(packet_value), 0.90).min(32_000.0)
+                            } else {
+                                scale_tie_amount(packet_value, 0.90)
+                            };
                             if !native_boundary && (packet_value <= 0.0 || energy_loss <= 0.0) {
                                 return Ok(false);
                             }

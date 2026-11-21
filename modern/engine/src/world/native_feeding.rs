@@ -62,6 +62,50 @@ mod tests {
     use super::*;
 
     #[test]
+    fn native_releasenrg_preserves_the_original_energy_debit_midpoint() {
+        use super::super::*;
+        // Original 2.48.32 cycle 311, robot 110 and incoming shot 3.
+        for (native, expected) in [(true, 0x45ce_c76b), (false, 0x45ce_c76c)] {
+            let config = EngineConfig::testing();
+            let mut world = if native {
+                Engine::new_native(config).unwrap()
+            } else {
+                Engine::new(config).unwrap()
+            };
+            let owner = world
+                .spawn_at(LegacyDna::parse("stop").unwrap(), [300.0, 500.0])
+                .unwrap();
+            let target = world
+                .spawn_at(LegacyDna::parse("stop").unwrap(), [600.0, 500.0])
+                .unwrap();
+            world.slots.get_mut(target).unwrap().materials.energy = f32::from_bits(0x45d5_0cc6);
+
+            assert!(
+                world
+                    .apply_projectile_effect_at_boundary(
+                        owner,
+                        ProjectileTarget::Organism(target.slot() as usize),
+                        ProjectileEffect::ReleaseEnergy,
+                        f32::from_bits(0x435e_f73d),
+                        0.0,
+                        None,
+                        None,
+                        0,
+                        0,
+                        [600.0, 500.0],
+                        [40.0, 0.0],
+                        9.0,
+                        358.33786,
+                        native,
+                    )
+                    .unwrap()
+            );
+            let energy = world.slots.get(target).unwrap().materials.energy;
+            assert_eq!(energy.to_bits(), expected);
+        }
+    }
+
+    #[test]
     fn energy_feed_caps_the_return_packet_and_obeys_explicit_shot_death() {
         use super::super::*;
         let mut world = Engine::new(EngineConfig {
