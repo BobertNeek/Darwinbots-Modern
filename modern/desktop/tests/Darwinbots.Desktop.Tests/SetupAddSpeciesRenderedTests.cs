@@ -45,7 +45,7 @@ public sealed class SetupAddSpeciesRenderedTests
                     Assert.NotEmpty(startingRows);
 
                     await AddSpeciesAsync(window, 5, 3_000);
-                    picker.AssertStartedIn(expectedFolder);
+                    picker.AssertOptions(expectedFolder, allowMultiple: false);
                     Assert.Equal(startingRows, window.Species.Take(startingRows.Length));
 
                     WorldSetupOptions? created = null;
@@ -144,7 +144,7 @@ public sealed class SetupAddSpeciesRenderedTests
                     var added = await AddSpeciesAsync(editor, native ? 5 : 50, native ? 3_000 : 1_000,
                         native ? "Base.txt" : "Base");
                     Assert.Equal(native ? 0xff0000ffu : 0xffd07a2du, added.Color);
-                    picker.AssertStartedIn(native ? robots.FullName : null);
+                    picker.AssertOptions(native ? robots.FullName : null, allowMultiple: !native);
                     editor.UpdateLayout();
                     var details = Assert.Single(editor.GetVisualDescendants().OfType<Expander>(), control => control.DataContext == added);
                     details.IsExpanded = true;
@@ -240,12 +240,13 @@ public sealed class SetupAddSpeciesRenderedTests
             }
         }
 
-        public void AssertStartedIn(string? expectedPath)
+        public void AssertOptions(string? expectedPath, bool allowMultiple)
         {
             Assert.Equal(expectedPath, _lookup, ignoreCase: true);
             if (_lookup is not null) Assert.True(Directory.Exists(_lookup));
             var options = Assert.IsType<FilePickerOpenOptions>(_open);
             Assert.Same(expectedPath is null ? null : _folder, options.SuggestedStartLocation);
+            Assert.Equal(allowMultiple, options.AllowMultiple);
         }
     }
 

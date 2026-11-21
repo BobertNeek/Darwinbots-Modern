@@ -8,7 +8,7 @@ public sealed record DesktopTextFile(string Name, string Content, string? LocalP
 
 public interface IDesktopStorageService
 {
-    Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner, string? mainDirectory = null);
+    Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner, string? mainDirectory = null, bool allowMultiple = true);
     Task<bool> SaveLivingSnapshotAsync(
         TopLevel owner,
         string suggestedFileName,
