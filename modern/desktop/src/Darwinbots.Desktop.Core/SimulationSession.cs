@@ -335,6 +335,21 @@ public sealed class SimulationSession : IAsyncDisposable
         return count;
     }
 
+    public async Task<string> ReadRobotTagAsync(OrganismKey focus, CancellationToken cancellationToken = default)
+    {
+        string? description = null;
+        await Enqueue(engine => description = engine.ReadRobotTag(focus), cancellationToken,
+            publishSnapshot: false).ConfigureAwait(false);
+        return description ?? throw new InvalidDataException("Engine returned no robot description.");
+    }
+
+    public async Task<string> SetRobotTagAsync(OrganismKey focus, string tag, CancellationToken cancellationToken = default)
+    {
+        string? description = null;
+        await Enqueue(engine => description = engine.SetRobotTag(focus, tag), cancellationToken).ConfigureAwait(false);
+        return description ?? throw new InvalidDataException("Engine returned no robot description.");
+    }
+
     public async Task<string> ExportDnaAsync(uint slot, uint generation, CancellationToken cancellationToken = default)
     {
         string? result = null;

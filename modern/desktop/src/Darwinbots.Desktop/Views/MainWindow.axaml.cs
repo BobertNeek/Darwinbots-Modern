@@ -1980,7 +1980,8 @@ public sealed partial class MainWindow : Window
                     parent => ReproduceFromNativeRobotInfoAsync(session, parent),
                     openNativeConsole: () => _session == session && !_loadingSimulation && session.LatestSnapshot.NativeCycle.HasValue
                         ? ShowSelectedRobotConsoleAsync()
-                        : Task.FromResult(LegacyCommandResult.Failure("SIMULATION IS UNAVAILABLE")))
+                        : Task.FromResult(LegacyCommandResult.Failure("SIMULATION IS UNAVAILABLE")),
+                    editNativeShortDescription: (owner, displayed) => EditNativeRobotDescriptionAsync(session, owner, displayed))
                 { Topmost = true };
                 _nativeRobotInfoWindow = viewer;
                 void FollowSelection(object? sender, System.ComponentModel.PropertyChangedEventArgs change)
@@ -2010,6 +2011,61 @@ public sealed partial class MainWindow : Window
         window.SelectTab(tab);
         window.SetSnapshot(session.LatestSnapshot);
         return window;
+    }
+
+    private async Task<string?> EditNativeRobotDescriptionAsync(
+        SimulationSession session, RobotDetailsWindow owner, OrganismSnapshot displayed)
+    {
+        var focus = new OrganismKey(displayed.Slot, displayed.Generation);
+        var worldGeneration = _worldLoadGeneration;
+
+        bool OwnsSelection()
+        {
+            if (!IsVisible || _loadingSimulation || _navigationInFlight
+                || _session != session || _worldLoadGeneration != worldGeneration || !owner.IsVisible
+                || _nativeRobotInfoWindow != owner || SelectedRobotKey() != focus)
+                return false;
+
+            var snapshot = session.LatestSnapshot;
+            return snapshot.NativeCycle.HasValue
+                && snapshot.Organisms.Any(robot => robot.Slot == focus.Slot && robot.Generation == focus.Generation
+                    && robot.UniqueId == displayed.UniqueId && robot.SimulationId == displayed.SimulationId);
+        }
+
+        string description;
+        await _advanceGate.WaitAsync();
+        try
+        {
+            if (!OwnsSelection()) return null;
+            description = await session.ReadRobotTagAsync(focus);
+        }
+        finally { _advanceGate.Release(); }
+        if (!OwnsSelection()) return null;
+
+        var dialog = new LegacyValueWindow("Short description", "Enter short description for robot.",
+            description, "Up to 45 characters. Cancel clears the description.", useDefaultButtons: true);
+        var topmost = owner.Topmost;
+        var wasRunning = _runTimer.IsEnabled;
+        _runTimer.Stop();
+        owner.Topmost = false;
+        try
+        {
+            await dialog.ShowDialog(owner);
+            await _advanceGate.WaitAsync();
+            try
+            {
+                if (!OwnsSelection()) return null;
+                return await session.SetRobotTagAsync(focus, dialog.Accepted ? dialog.RawValue : string.Empty);
+            }
+            finally { _advanceGate.Release(); }
+        }
+        finally
+        {
+            owner.Topmost = topmost;
+            if (wasRunning && IsVisible && !_loadingSimulation && !_navigationInFlight
+                && _session == session && _worldLoadGeneration == worldGeneration)
+                _runTimer.Start();
+        }
     }
 
     private async Task<OrganismKey?> ReproduceFromNativeRobotInfoAsync(SimulationSession session, OrganismSnapshot displayed)
@@ -3830,6 +3886,7 @@ public sealed partial class MainWindow : Window
             _shapeDimensions = ShapeCreationDimensions.Default;
             _shapesWindow?.SetDimensions(_shapeDimensions);
             _worldLoadGeneration++;
+            _nativeRobotInfoWindow?.InvalidateShortDescription();
             _safeModeRecoveryWorld = isSafeModeRecovery;
             // A rejected load publishes no snapshot and must keep user-closed
             // graphs closed. Loading publications defer this until success.

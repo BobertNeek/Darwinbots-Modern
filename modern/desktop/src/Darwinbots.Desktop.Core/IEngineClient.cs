@@ -43,6 +43,9 @@ public interface IEngineClient : IDisposable
     void ReplaceDna(uint slot, uint generation, string dna);
     int TagOrganismsByName(string founderName, string tag) =>
         throw new NotSupportedException("Robot tagging is unavailable in this engine client.");
+    string ReadRobotTag(OrganismKey focus) => string.Empty;
+    string SetRobotTag(OrganismKey focus, string tag) =>
+        throw new NotSupportedException("Robot descriptions are unavailable in this engine client.");
     string ExportDna(uint slot, uint generation);
     string ExportSpeciesTemplateDna(uint species) =>
         throw new NotSupportedException("This engine client does not support startup species DNA export.");
