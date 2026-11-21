@@ -7570,8 +7570,6 @@ impl Engine {
                         target_position[0] - observer_position[0],
                         target_position[1] - observer_position[1],
                     ];
-                    let target_distance =
-                        target_delta[0] * target_delta[0] + target_delta[1] * target_delta[1];
                     let target_radius = target.materials.radius;
                     if self.obstacles.iter().any(|obstacle| {
                         obstacle.vision_policy != ShapeVisionPolicy::SeeThrough
@@ -7585,9 +7583,16 @@ impl Engine {
                     }) {
                         continue;
                     }
-                    let center_distance = target_distance.sqrt();
-                    let edge_distance =
-                        (center_distance - observer_radius - target_radius).max(0.0);
+                    let edge_distance = if native {
+                        // CompareRobots3 subtracts both radii before storing the Single edge distance.
+                        let center = crate::physics::native_full_magnitude(target_delta);
+                        (f64::from(center) - f64::from(observer_radius) - f64::from(target_radius))
+                            as f32
+                    } else {
+                        let [x, y] = target_delta;
+                        (x * x + y * y).sqrt() - observer_radius - target_radius
+                    }
+                    .max(0.0);
                     if edge_distance > target_range {
                         continue;
                     }
