@@ -2251,7 +2251,7 @@ public sealed partial class MainWindow : Window
         if (_session is null) return;
         try
         {
-            await AdvanceSimulationAsync(1);
+            await AdvanceSimulationCoreAsync(1, redrawNative: true);
         }
         catch (Exception error)
         {
@@ -3008,34 +3008,44 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private async Task AdvanceSimulationAsync(uint count)
+    private Task AdvanceSimulationAsync(uint count) => AdvanceSimulationCoreAsync(count, redrawNative: false);
+
+    private async Task AdvanceSimulationCoreAsync(uint count, bool redrawNative)
     {
         await _advanceGate.WaitAsync();
         try
         {
-            if (_session is null) return;
-            while (count > 0)
-            {
-                var before = _session.LatestSnapshot;
-                if (_lastAutomaticSaveTick is { } savedTick && before.Tick < savedTick)
-                    _lastAutomaticSaveTick = null;
-                var interval = _liveEnvironment.Recording?.AutosaveInterval ?? 0;
-                var batch = CycleAutosavePolicy.LimitBatch(before.Tick, count, _safemodeBackup, interval, before.LocalMode, before.NativeCycle);
-                if (_deadRecordingEnabled)
-                {
-                    var deaths = new List<DeathRecordSnapshot>();
-                    try { await _session.StepRecordingDeathsAsync(batch, deaths.AddRange); }
-                    finally { await RecordSimulationDeathsAsync(deaths); }
-                }
-                else await _session.StepAsync(batch);
-                count -= batch;
-                var after = _session.LatestSnapshot;
-                if (_lastAutomaticSaveTick != after.Tick
-                    && CycleAutosavePolicy.IsDue(after.Tick, _safemodeBackup, interval, after.LocalMode, after.NativeCycle))
-                    await SaveAutomaticCheckpointAsync();
-            }
+            if (_session is not { } session || count == 0) return;
+            if (redrawNative && session.LatestSnapshot.NativeCycle.HasValue)
+                await session.AdvanceWithNativeRedrawAsync(() => AdvanceCyclesAsync(session, count));
+            else
+                await AdvanceCyclesAsync(session, count);
         }
         finally { _advanceGate.Release(); }
+    }
+
+    private async Task AdvanceCyclesAsync(SimulationSession session, uint count)
+    {
+        while (count > 0)
+        {
+            var before = session.LatestSnapshot;
+            if (_lastAutomaticSaveTick is { } savedTick && before.Tick < savedTick)
+                _lastAutomaticSaveTick = null;
+            var interval = _liveEnvironment.Recording?.AutosaveInterval ?? 0;
+            var batch = CycleAutosavePolicy.LimitBatch(before.Tick, count, _safemodeBackup, interval, before.LocalMode, before.NativeCycle);
+            if (_deadRecordingEnabled)
+            {
+                var deaths = new List<DeathRecordSnapshot>();
+                try { await session.StepRecordingDeathsAsync(batch, deaths.AddRange); }
+                finally { await RecordSimulationDeathsAsync(deaths); }
+            }
+            else await session.StepAsync(batch);
+            count -= batch;
+            var after = session.LatestSnapshot;
+            if (_lastAutomaticSaveTick != after.Tick
+                && CycleAutosavePolicy.IsDue(after.Tick, _safemodeBackup, interval, after.LocalMode, after.NativeCycle))
+                await SaveAutomaticCheckpointAsync();
+        }
     }
 
     private async Task SaveAutomaticCheckpointAsync()
