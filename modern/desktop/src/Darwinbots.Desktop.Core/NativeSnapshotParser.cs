@@ -248,6 +248,7 @@ public static class NativeSnapshotParser
             NativeCycle = native.NativeCycle,
             NativeSunOn = native.NativeSunOn,
             NativeF1Enabled = native.NativeF1Enabled,
+            NativeScenePalette = native.ScenePalette is { } palette ? new(palette.ChartArgb, palette.ArenaArgb) : null,
             RenderInstances = renderInstances,
             Species = species,
             MutationSettings = new MutationSettingsSnapshot(
@@ -551,10 +552,15 @@ public static class NativeSnapshotParser
         return defaults;
     }
 
+    private sealed record NativeScenePalette(
+        [property: JsonPropertyName("chart_argb")] uint ChartArgb,
+        [property: JsonPropertyName("arena_argb")] uint ArenaArgb);
+
     private sealed record NativeSnapshot(
         [property: JsonPropertyName("tick")] ulong Tick,
         [property: JsonPropertyName("native_cycle")] int? NativeCycle,
         [property: JsonPropertyName("native_sun_on")] bool? NativeSunOn,
+        [property: JsonPropertyName("native_scene_palette")] NativeScenePalette? ScenePalette,
         [property: JsonPropertyName("world_size")] float[]? WorldSize,
         [property: JsonPropertyName("organisms")] NativeOrganism[] Organisms,
         [property: JsonPropertyName("render_instances")] NativeRenderInstance[]? RenderInstances,

@@ -362,6 +362,7 @@ public sealed partial record HistorySampleSnapshot
 }
 public sealed record SpeciesGraphSampleSnapshot(string Name, uint Color, IReadOnlyDictionary<string, double> Values);
 public sealed record GraphSamplingSettings(bool Selective = false, bool Generational = false, bool Slow = false);
+public sealed record NativeScenePaletteSnapshot(uint ChartArgb, uint ArenaArgb);
 
 public sealed record PhaseTimingsSnapshot(
     double Dna, double Intent, double Spatial, double Sensing, double Interactions,
@@ -382,6 +383,7 @@ public sealed record EngineSnapshot(
     public bool NativeF1Enabled { get; init; }
     // Set by the desktop session for scheduled or explicit viewport frames.
     public bool? ViewportFrame { get; init; }
+    public NativeScenePaletteSnapshot? NativeScenePalette { get; init; }
     public IReadOnlyList<RenderInstanceSnapshot> RenderInstances { get; init; } = [];
     public IReadOnlyList<SpeciesSnapshot> Species { get; init; } = [];
     public MutationSettingsSnapshot MutationSettings { get; init; } = MutationSettingsSnapshot.Default;
