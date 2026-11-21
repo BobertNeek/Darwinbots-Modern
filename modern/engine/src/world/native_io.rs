@@ -134,6 +134,13 @@ pub(super) fn shape_drift(t: &NativeSimulationTail) -> Result<ShapeDriftSettings
     })
 }
 
+pub(super) fn read_cost_preset(t: &NativeSimulationTail) -> Result<u8, EngineError> {
+    Ok(match t.integer("cost_radio")? {
+        value @ 0..=2 => value as u8,
+        _ => 2,
+    })
+}
+
 fn configuration(t: &NativeSimulationTail) -> Result<EngineConfig, EngineError> {
     let n = |name| t.number(name).map(|v| v as f32);
     let b = |name| t.integer(name).map(|v| v != 0);
@@ -220,6 +227,7 @@ fn configuration(t: &NativeSimulationTail) -> Result<EngineConfig, EngineError> 
         fixed_bot_radii: b("fixed_radii")?,
         shapes_visible: b("shapes_visible")?,
         shape_drift: Some(shape_drift(t)?),
+        native_cost_preset: Some(read_cost_preset(t)?),
         brownian_motion: n("brownian")?,
         gravity: [0.0, n("y_gravity")?],
         physics: PhysicsSettings {

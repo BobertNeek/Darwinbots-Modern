@@ -117,7 +117,8 @@ enum EngineCommand {
         settings: crate::GraphSamplingSettings,
     },
     UpdateCostSettings {
-        costs: crate::DnaCosts,
+        costs: Option<crate::DnaCosts>,
+        preset: Option<u8>,
     },
     UpdateAdvancedMutationSettings {
         settings: crate::AdvancedMutationSettings,
@@ -916,7 +917,9 @@ fn db_engine_command_batch_impl(
                         .map(|records| serde_json::json!({ "death_records": records }))
                 } else if require_native_repopulation_source {
                     engine
-                        .tick_requiring_native_repopulation_source(&cancelled_native_repopulation_lineages)
+                        .tick_requiring_native_repopulation_source(
+                            &cancelled_native_repopulation_lineages,
+                        )
                         .map(|_| serde_json::Value::Null)
                 } else if capture_deaths {
                     engine
@@ -933,8 +936,8 @@ fn db_engine_command_batch_impl(
                 engine.configure_graph_sampling(settings);
                 Ok(serde_json::Value::Null)
             }
-            EngineCommand::UpdateCostSettings { costs } => engine
-                .update_cost_settings(costs)
+            EngineCommand::UpdateCostSettings { costs, preset } => engine
+                .update_cost_settings_with_preset(costs, preset)
                 .map(|_| serde_json::Value::Null),
             EngineCommand::UpdateAdvancedMutationSettings { settings } => engine
                 .update_advanced_mutation_settings(settings)
@@ -2784,6 +2787,42 @@ mod tests {
         assert_eq!(engine.configuration().metabolism_cost, 12);
         assert_eq!(engine.configuration().native_field_size, Some(5));
         assert_eq!(engine.snapshot().world_size, [40_000.0, 30_000.0]);
+    }
+
+    #[test]
+    fn cost_preset_only_command_preserves_costs_and_rejects_invalid_options_atomically() {
+        let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+        let costs = world.cost_settings().clone();
+        let (status, _) = classic_test_batch(
+            &mut world,
+            serde_json::json!([
+                {"type":"update_cost_settings", "preset":2}
+            ]),
+        );
+        assert_eq!(status, DbStatus::Ok);
+        assert_eq!(world.configuration().native_cost_preset, Some(2));
+        assert_eq!(world.cost_settings(), &costs);
+        let before = SaveFile::encode(&world).unwrap();
+
+        let (status, _) = classic_test_batch(
+            &mut world,
+            serde_json::json!([
+                {"type":"update_cost_settings", "preset":0},
+                {"type":"update_cost_settings", "preset":3, "costs":{"movement":123}}
+            ]),
+        );
+        assert_eq!(status, DbStatus::EngineError);
+        assert_eq!(SaveFile::encode(&world).unwrap(), before);
+
+        let (status, _) = classic_test_batch(
+            &mut world,
+            serde_json::json!([
+                {"type":"update_cost_settings", "costs":{"movement":5}}
+            ]),
+        );
+        assert_eq!(status, DbStatus::Ok);
+        assert_eq!(world.configuration().native_cost_preset, Some(2));
+        assert_eq!(world.cost_settings().movement, 5.0);
     }
 
     fn populated_native_cpu_candidate_fixture() -> Engine {
