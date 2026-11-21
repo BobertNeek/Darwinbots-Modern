@@ -522,6 +522,32 @@ impl Engine {
         if let Some(guid) = self.native_sim_guid {
             number(t, "sim_guid", f64::from(guid))?;
         }
+        if self.native_cycle.is_some()
+            && self.local_mode.status == LocalModeStatus::Running
+            && let Some(evolution) = &self.local_mode.evolution
+            && evolution.phase == crate::EvolutionPhase::Evolving
+            && matches!(
+                evolution.config.mode,
+                crate::EvolutionMode::SimpleSurvival | crate::EvolutionMode::Eco
+            )
+        {
+            // Master updates these phase globals in modes 4 and 5.
+            // The restart mode, settings and stage files remain external to SIM.
+            for (name, value) in [
+                ("energy_difference", evolution.energy_delta),
+                ("energy_average", evolution.previous_energy_delta),
+                ("handicap", evolution.handicap),
+                ("mode_cycles", f64::from(evolution.mode_cycles)),
+                ("hide_pred_offset", f64::from(evolution.hide_offset)),
+                ("energy_difference2", evolution.inverse_delta),
+                ("energy_average2", evolution.previous_inverse_delta),
+                ("handicap2", evolution.inverse_handicap),
+            ] {
+                number(t, name, value)?;
+            }
+            flag(t, "hide_pred", evolution.hidden)?;
+            flag(t, "stagnant", evolution.stagnant)?;
+        }
         let topology = c.axis_topology();
         // SimOpts.F1 marks an actual contest, including league matches and
         // evolution champion tests (restart 6), but not seeding or restart 9.
@@ -771,6 +797,75 @@ impl Engine {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn native_sim_exports_the_running_survival_phase_only() {
+        use crate::{EvolutionConfig, EvolutionMode};
+
+        for (kind, mode, writes_phase) in [
+            (
+                LocalModeKind::SimpleSurvival,
+                EvolutionMode::SimpleSurvival,
+                true,
+            ),
+            (LocalModeKind::EcoSurvival, EvolutionMode::Eco, true),
+            (LocalModeKind::Zerobot, EvolutionMode::Zerobot, false),
+        ] {
+            let mut world = Engine::new_native(EngineConfig {
+                organism_capacity: 64,
+                ..EngineConfig::testing()
+            })
+            .unwrap();
+            world
+                .configure_local_mode(LocalModeConfig {
+                    kind,
+                    staged_evolution: Some(EvolutionConfig {
+                        mode,
+                        source_dna: "start 111 901 store stop".into(),
+                        cycle_length: 150,
+                        zerobot_initial_dna_length: 4,
+                        ..EvolutionConfig::default()
+                    }),
+                    ..LocalModeConfig::default()
+                })
+                .unwrap();
+            world.start_local_mode().unwrap();
+
+            let phase = world.local_mode.evolution.as_mut().unwrap();
+            phase.energy_delta = 0.125;
+            phase.previous_energy_delta = 0.25;
+            phase.handicap = -1.5;
+            phase.mode_cycles = 17;
+            phase.hide_offset = 46.5;
+            phase.hidden = true;
+            phase.inverse_delta = 0.375;
+            phase.previous_inverse_delta = 0.625;
+            phase.inverse_handicap = -2.0;
+            phase.stagnant = true;
+            let live = crate::SaveFile::encode(&world).unwrap();
+            let save = NativeRecordFile::decode(&world.export_native_sim().unwrap()).unwrap();
+            let tail = NativeSimulationTail::decode(&save.tail).unwrap();
+            for (name, expected) in [
+                ("energy_difference", 0.125),
+                ("energy_average", 0.25),
+                ("handicap", -1.5),
+                ("mode_cycles", 17.0),
+                ("hide_pred_offset", 46.0),
+                ("hide_pred", -1.0),
+                ("energy_difference2", 0.375),
+                ("energy_average2", 0.625),
+                ("handicap2", -2.0),
+                ("stagnant", -1.0),
+            ] {
+                assert_eq!(
+                    tail.number(name).unwrap(),
+                    if writes_phase { expected } else { 0.0 },
+                    "{name}"
+                );
+            }
+            assert_eq!(crate::SaveFile::encode(&world).unwrap(), live);
+        }
+    }
 
     #[test]
     fn live_native_sim_export_updates_resources_memory_world_and_shots() {
