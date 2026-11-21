@@ -121,9 +121,19 @@ public sealed partial class SetupWindow : Window
             var mainDirectory = (_speciesEditor ? _globalSettings : _profileSettings).Main.MainDirectory;
             var (count, energy) = _nativeSpeciesImport ? (5, 3_000) : (50, 1_000);
             foreach (var file in await _storage.OpenDnaFilesAsync(this, _nativeSpeciesImport ? mainDirectory : null))
-                Species.Add(new(Path.GetFileNameWithoutExtension(file.Name), file.Content, false, 0xffd07a2d, count, energy, 1.0, false,
+            {
+                var color = (_nativeSpeciesImport, file.Name) switch
+                {
+                    (true, "Base.txt") => 0xff0000ff,
+                    (true, "Mutate.txt" or "Test.txt") => 0xffff0000,
+                    (true, "robotA.txt") => 0xffff8000,
+                    (true, "robotB.txt") => 0xff0080ff,
+                    _ => 0xffd07a2d,
+                };
+                Species.Add(new(Path.GetFileNameWithoutExtension(file.Name), file.Content, false, color, count, energy, 1.0, false,
                     comment: _nativeSpeciesImport ? LegacyDnaText.ReadLeadingComment(file.Content) : null,
                     mutationProfile: file.MutationProfile, dnaPath: file.LocalPath));
+            }
         }
         catch (Exception error) { SetupStatus.Text = $"IMPORT FAILED · {error.Message}"; }
     }
