@@ -8,6 +8,7 @@ using Avalonia.Media;
 using System.Globalization;
 using System.Text;
 using Darwinbots.Desktop.Core;
+using Darwinbots.Desktop.Core.LegacyMenus;
 
 namespace Darwinbots.Desktop.Views;
 
@@ -55,7 +56,6 @@ public sealed class RobotDetailsWindow : Window
         Name = "NativeRobotInfoReproduce",
         Content = "Reproduce",
         HorizontalAlignment = HorizontalAlignment.Left,
-        Margin = new Thickness(0, 10, 0, 0),
         IsVisible = false,
     };
     private readonly TextBox _dna = new();
@@ -86,8 +86,9 @@ public sealed class RobotDetailsWindow : Window
         OrganismKey focus,
         RobotDetailsTab initialTab = RobotDetailsTab.Facts,
         Func<OrganismKey?>? readFocus = null,
-        Func<OrganismSnapshot, Task<OrganismKey?>>? reproduceNative = null)
-        : this(session, focus, initialTab, string.Empty, session.LatestSnapshot.NativeCycle.HasValue, readFocus, reproduceNative)
+        Func<OrganismSnapshot, Task<OrganismKey?>>? reproduceNative = null,
+        Func<Task<LegacyCommandResult>>? openNativeConsole = null)
+        : this(session, focus, initialTab, string.Empty, session.LatestSnapshot.NativeCycle.HasValue, readFocus, reproduceNative, openNativeConsole)
     {
         SetSnapshot(session.LatestSnapshot);
     }
@@ -103,7 +104,8 @@ public sealed class RobotDetailsWindow : Window
         string dna,
         bool native,
         Func<OrganismKey?>? readFocus = null,
-        Func<OrganismSnapshot, Task<OrganismKey?>>? reproduceNative = null)
+        Func<OrganismSnapshot, Task<OrganismKey?>>? reproduceNative = null,
+        Func<Task<LegacyCommandResult>>? openNativeConsole = null)
     {
         _session = session;
         _readFocus = readFocus;
@@ -271,11 +273,29 @@ public sealed class RobotDetailsWindow : Window
             Margin = new Thickness(0, 10, 0, 0),
             Children = { descendants, _descendantCount },
         });
+        var robotTools = new WrapPanel
+        {
+            ItemSpacing = 6,
+            LineSpacing = 6,
+            Margin = new Thickness(0, 10, 0, 0),
+        };
+        if (openNativeConsole is not null)
+        {
+            var console = new Button { Name = "NativeRobotInfoOpenConsole", Content = "Open console" };
+            console.Click += async (_, _) =>
+            {
+                try { _status.Text = (await openNativeConsole()).Status; }
+                catch (Exception error) { _status.Text = error.Message; }
+            };
+            robotTools.Children.Add(console);
+        }
         if (_reproduceNative is not null)
         {
-            _nativeFactsActions.Children.Add(_reproduce);
+            robotTools.Children.Add(_reproduce);
             _reproduce.Click += ReproduceNative_Click;
         }
+        if (robotTools.Children.Count > 0)
+            _nativeFactsActions.Children.Add(robotTools);
         DockPanel.SetDock(_nativeFactsActions, Dock.Bottom);
         body.Children.Add(new Border
         {

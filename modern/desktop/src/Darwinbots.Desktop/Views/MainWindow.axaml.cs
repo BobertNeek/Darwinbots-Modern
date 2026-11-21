@@ -1977,7 +1977,11 @@ public sealed partial class MainWindow : Window
             var info = _toolWindows.ShowOrActivate(NativeRobotInfoKey, () =>
             {
                 var viewer = new RobotDetailsWindow(session, focus, tab, SelectedRobotKey,
-                    parent => ReproduceFromNativeRobotInfoAsync(session, parent)) { Topmost = true };
+                    parent => ReproduceFromNativeRobotInfoAsync(session, parent),
+                    openNativeConsole: () => _session == session && !_loadingSimulation && session.LatestSnapshot.NativeCycle.HasValue
+                        ? ShowSelectedRobotConsoleAsync()
+                        : Task.FromResult(LegacyCommandResult.Failure("SIMULATION IS UNAVAILABLE")))
+                { Topmost = true };
                 _nativeRobotInfoWindow = viewer;
                 void FollowSelection(object? sender, System.ComponentModel.PropertyChangedEventArgs change)
                 {
@@ -2066,8 +2070,8 @@ public sealed partial class MainWindow : Window
 
     private async Task<LegacyCommandResult> ShowSelectedRobotConsoleAsync()
     {
-        var organism = _viewModel.SelectedOrganism!;
         if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        if (_viewModel.SelectedOrganism is not { } organism) return LegacyCommandResult.Failure("NO ROBOT SELECTED");
         var focus = new OrganismKey(organism.Slot, organism.Generation);
         var generation = _worldLoadGeneration;
         var native = session.LatestSnapshot.NativeCycle.HasValue;
