@@ -509,6 +509,15 @@ impl LegacyDna {
         Some(self.with_blocks(self.blocks[start..end].to_vec()))
     }
 
+    pub(crate) fn gene_for_virus(&self, requested: i32, native_flow: bool) -> Option<Self> {
+        if !native_flow {
+            return self.gene(requested);
+        }
+        let index = usize::try_from(requested.saturating_sub(1)).ok()?;
+        let (start, end) = self.native_gene_range(index)?;
+        Some(self.with_blocks(self.blocks[start..end].to_vec()))
+    }
+
     pub(crate) fn delete_gene(&self, requested: i32, native_flow: bool) -> Option<Self> {
         let index = usize::try_from(requested.saturating_sub(1)).ok()?;
         let (start, end) = if native_flow {
@@ -545,6 +554,30 @@ impl LegacyDna {
         );
         blocks.extend(self.blocks[insert_at..].iter().copied());
         self.with_blocks(blocks)
+    }
+
+    pub(crate) fn insert_native_virus(&self, payload: &Self, after_gene: usize) -> Option<Self> {
+        // Shots.addgene inserts after GeneEnd or at the beginning if the
+        // selected gene is zero. The projectile's internal end is not copied.
+        let insert_at = match after_gene.checked_sub(1) {
+            Some(index) => self.native_gene_range(index)?.1,
+            None => 0,
+        };
+        let payload_len = payload
+            .blocks
+            .iter()
+            .position(|block| block.class == TokenClass::End)
+            .unwrap_or(payload.blocks.len());
+        if payload_len == 0
+            || insert_at >= self.blocks.len()
+            || self.blocks.len() + payload_len > MAX_DNA_BLOCKS
+        {
+            return None;
+        }
+        let mut blocks = self.blocks[..insert_at].to_vec();
+        blocks.extend_from_slice(&payload.blocks[..payload_len]);
+        blocks.extend_from_slice(&self.blocks[insert_at..]);
+        Some(self.with_blocks(blocks))
     }
 
     /// DB2 `DNAtoInt` and `simplematch`: align insertions before counting unmatched bases.
