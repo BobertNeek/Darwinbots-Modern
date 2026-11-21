@@ -119,6 +119,6 @@ pub use vision::{EyeSnapshot, VisionSnapshot, absolute_eye_width, eye_sight_dist
 pub use visual_phenotype::{SkinPoint, VisualPhenotype, default_skin, generated_skin};
 pub use vm::{ActivationFrame, DnaVm, VmContext, VmMemory, VmReport, VmTermination};
 pub use world::{
-    Engine, GeneActivationMeterSnapshot, LineageEntry, MemoryCellSnapshot, OrganismSnapshot,
-    Snapshot,
+    Engine, GeneActivationMeterSnapshot, LineageEntry, MemoryCellSnapshot, NativeScenePalette,
+    OrganismSnapshot, Snapshot,
 };

@@ -180,6 +180,9 @@ mod staged_evolution;
 #[path = "world/native_random_world.rs"]
 mod native_random_world;
 use native_random_world::NativeStartBoundary;
+#[path = "world/native_scene_palette.rs"]
+mod native_scene_palette;
+pub use native_scene_palette::NativeScenePalette;
 #[path = "world/native_script_placement.rs"]
 mod native_script_placement;
 
@@ -593,6 +596,9 @@ pub struct Snapshot {
     pub native_f1_enabled: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub gene_activation_meter: Option<GeneActivationMeterSnapshot>,
+    /// Seeded chart and arena colors before the original global Old Colors override.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub native_scene_palette: Option<NativeScenePalette>,
     #[serde(default = "default_true")]
     pub death_poffs_enabled: bool,
     #[serde(default)]
@@ -655,6 +661,7 @@ impl Default for Snapshot {
             native_sun_on: None,
             native_f1_enabled: false,
             gene_activation_meter: None,
+            native_scene_palette: None,
             death_poffs_enabled: true,
             ordinary_restart_available: false,
             ordinary_restart_on_extinction: false,
@@ -693,6 +700,7 @@ impl PartialEq for Snapshot {
             && self.native_sun_on == other.native_sun_on
             && self.native_f1_enabled == other.native_f1_enabled
             && self.gene_activation_meter == other.gene_activation_meter
+            && self.native_scene_palette == other.native_scene_palette
             && self.death_poffs_enabled == other.death_poffs_enabled
             && self.ordinary_restart_available == other.ordinary_restart_available
             && self.ordinary_restart_on_extinction == other.ordinary_restart_on_extinction
@@ -2059,6 +2067,7 @@ impl From<Db3sV2Snapshot> for Snapshot {
             native_sun_on: None,
             native_f1_enabled: false,
             gene_activation_meter: None,
+            native_scene_palette: None,
             death_poffs_enabled: true,
             ordinary_restart_available: false,
             ordinary_restart_on_extinction: false,
@@ -2409,6 +2418,7 @@ struct EngineCycleCheckpoint {
     native_buckets: native_collisions::NativeBuckets,
     dynamic_cost_state: DynamicCostRuntimeState,
     native_sim_guid: Option<i32>,
+    native_scene_palette: Option<NativeScenePalette>,
     native_cycle: Option<i32>,
     native_restarted_this_cycle: bool,
     native_population_census: Option<[usize; 2]>,
@@ -2461,6 +2471,8 @@ pub struct Engine {
     native_f1: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     native_sim_guid: Option<i32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    native_scene_palette: Option<NativeScenePalette>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     native_cycle: Option<i32>,
     #[serde(skip)]
@@ -2825,6 +2837,7 @@ impl Engine {
             native_origin: None,
             native_f1: None,
             native_sim_guid: None,
+            native_scene_palette: None,
             native_cycle: None,
             native_restarted_this_cycle: false,
             native_population_census: None,
@@ -2971,6 +2984,7 @@ impl Engine {
                 native_sun_on: None,
                 native_f1_enabled: false,
                 gene_activation_meter: None,
+                native_scene_palette: None,
                 death_poffs_enabled: true,
                 ordinary_restart_available: true,
                 ordinary_restart_on_extinction: false,
@@ -3055,6 +3069,7 @@ impl Engine {
             native_origin: None,
             native_f1: None,
             native_sim_guid: None,
+            native_scene_palette: None,
             native_cycle: None,
             native_restarted_this_cycle: false,
             native_population_census: None,
@@ -6220,6 +6235,7 @@ impl Engine {
             native_random: self.native_random.clone(),
             native_buckets: self.native_buckets.clone(),
             native_sim_guid: self.native_sim_guid,
+            native_scene_palette: self.native_scene_palette,
             native_cycle: self.native_cycle,
             native_restarted_this_cycle: self.native_restarted_this_cycle,
             native_population_census: self.native_population_census,
@@ -6241,6 +6257,7 @@ impl Engine {
         self.native_random = checkpoint.native_random;
         self.native_buckets = checkpoint.native_buckets;
         self.native_sim_guid = checkpoint.native_sim_guid;
+        self.native_scene_palette = checkpoint.native_scene_palette;
         self.native_cycle = checkpoint.native_cycle;
         self.native_restarted_this_cycle = checkpoint.native_restarted_this_cycle;
         self.native_population_census = checkpoint.native_population_census;
@@ -6613,6 +6630,7 @@ impl Engine {
             native_origin: self.native_origin.clone(),
             native_f1: self.native_f1,
             native_sim_guid: self.native_sim_guid,
+            native_scene_palette: self.native_scene_palette,
             native_cycle: self.native_cycle,
             native_restarted_this_cycle: self.native_restarted_this_cycle,
             native_population_census: self.native_population_census,
@@ -14529,6 +14547,7 @@ impl Engine {
             native_sun_on: self.native_sun_on(),
             native_f1_enabled: self.native_f1_enabled(),
             gene_activation_meter: self.snapshot.gene_activation_meter.take(),
+            native_scene_palette: self.native_scene_palette,
             death_poffs_enabled: self.death_poffs_enabled,
             ordinary_restart_available: self.ordinary_restart_available(),
             ordinary_restart_on_extinction: self.ordinary_restart.enabled,
@@ -14606,6 +14625,7 @@ impl Engine {
                 "native cycle cannot precede -1".into(),
             ));
         }
+        engine.recover_older_native_scene_palette();
         if engine
             .native_population_census
             .is_some_and(|census| census.into_iter().any(|count| count > MAX_ROBOTS))
