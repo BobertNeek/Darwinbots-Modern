@@ -223,6 +223,7 @@ public interface IEngineClient : IDisposable
     byte[] SaveLegacyWithoutMutationDetails() => throw new NotSupportedException("This engine client does not support legacy simulation export without mutation details.");
     byte[] SaveWithoutMutations();
     int CaptureNativeLoadSeed(bool generateSeed) => 0;
+    void SetNativeSeedMetadata(int seed) { }
     void Load(byte[] save);
     void LoadWithNativeSeed(byte[] save, int seed) => Load(save);
     EngineSnapshot Snapshot();

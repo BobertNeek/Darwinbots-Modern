@@ -2071,6 +2071,17 @@ pub extern "C" fn db_engine_load_with_native_seed(
     })
 }
 
+/// Set the live native seed field without restarting its random stream.
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
+#[unsafe(no_mangle)]
+pub extern "C" fn db_engine_set_native_seed_metadata(engine: *mut Engine, seed: i32) -> DbStatus {
+    let Some(engine) = (unsafe { engine.as_mut() }) else {
+        return DbStatus::NullPointer;
+    };
+    engine.set_native_seed_metadata(seed);
+    DbStatus::Ok
+}
+
 fn db_engine_load_impl(
     engine: *mut Engine,
     save_data: *const u8,
@@ -2231,6 +2242,38 @@ mod tests {
             }
         }))
         .unwrap()
+    }
+
+    #[test]
+    fn native_menu_seed_metadata_changes_the_archive_seed_without_touching_rng_or_portable_worlds()
+    {
+        use crate::native_binary::{NativeRecordFile, NativeSimulationTail};
+
+        let archive = include_bytes!("../tests/fixtures/db24832-movement-start-48032.sim");
+        let mut native = Engine::from_native_sim(archive).unwrap();
+        native.set_native_gaussian_spare(Some(0.125)).unwrap();
+        let mut expected = native.db3s_v3_payload().unwrap();
+        assert_eq!(expected["config"]["seed"], 48_032);
+
+        for seed in [-1, 0] {
+            assert_eq!(
+                db_engine_set_native_seed_metadata(&mut native, seed),
+                DbStatus::Ok
+            );
+            expected["config"]["seed"] = serde_json::json!(u64::from(seed as u32));
+            assert_eq!(native.db3s_v3_payload().unwrap(), expected);
+            let exported = NativeRecordFile::decode(&native.export_native_sim().unwrap()).unwrap();
+            let tail = NativeSimulationTail::decode(&exported.tail).unwrap();
+            assert_eq!(tail.integer("seed").unwrap(), seed);
+        }
+
+        let mut portable = Engine::new(EngineConfig::testing()).unwrap();
+        let before = SaveFile::encode(&portable).unwrap();
+        assert_eq!(
+            db_engine_set_native_seed_metadata(&mut portable, 3),
+            DbStatus::Ok
+        );
+        assert_eq!(SaveFile::encode(&portable).unwrap(), before);
     }
 
     #[test]

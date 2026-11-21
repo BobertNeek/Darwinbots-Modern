@@ -43,6 +43,13 @@ impl Engine {
         }
     }
 
+    /// F2 changes SimOpts.UserSeedNumber before choosing a file, without Randomize.
+    pub(crate) fn set_native_seed_metadata(&mut self, seed: i32) {
+        if self.native_cycle.is_some() {
+            self.config.seed = u64::from(seed as u32);
+        }
+    }
+
     fn initialize_native_start(&mut self) {
         self.initialize_native_load();
         self.projectiles.reset_native_slots(50);
