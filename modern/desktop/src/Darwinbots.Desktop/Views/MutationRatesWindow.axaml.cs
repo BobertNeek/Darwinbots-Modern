@@ -24,7 +24,7 @@ public sealed partial class MutationRatesWindow : Window
 
     public MutationRatesWindow() : this(MutationProfileUpdate.Default) { }
 
-    public MutationRatesWindow(MutationProfileUpdate profile)
+    public MutationRatesWindow(MutationProfileUpdate profile, bool applyOnClose = false)
     {
         _profile = profile ?? throw new ArgumentNullException(nameof(profile));
         InitializeComponent();
@@ -33,6 +33,17 @@ public sealed partial class MutationRatesWindow : Window
         ClassSelector.SelectedIndex = 0;
         LoadClass();
         WireChanges();
+        if (applyOnClose)
+        {
+            CancelButton.IsVisible = false;
+            Closing += (_, args) =>
+            {
+                if (Accepted || args.CloseReason is not (WindowCloseReason.WindowClosing or WindowCloseReason.Undefined))
+                    return;
+                SaveClass();
+                Accepted = true;
+            };
+        }
     }
 
     private void WireChanges()
