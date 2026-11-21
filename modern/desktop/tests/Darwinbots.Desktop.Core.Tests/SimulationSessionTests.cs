@@ -502,6 +502,7 @@ internal sealed class FakeEngineClient : IEngineClient
         return _population > 0 ? new(0, 0) : null;
     }
     public Action? BeforeTick { get; set; }
+    public int? NativeCycle { get; set; }
     public Action? BeforeDnaExport { get; set; }
     public OrganismSnapshot[] SnapshotOrganisms { get; set; } = [];
     public float? NativeGaussianSpare { get; set; }
@@ -535,6 +536,7 @@ internal sealed class FakeEngineClient : IEngineClient
         return new EngineSnapshot(_tick, _population, Backend, SnapshotOrganisms)
         {
             DeathPoffsEnabled = NativeProcessCaches.DeathPoffsEnabled,
+            NativeCycle = NativeCycle,
         };
     }
 
