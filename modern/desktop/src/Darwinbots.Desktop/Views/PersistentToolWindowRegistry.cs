@@ -53,11 +53,14 @@ public sealed class PersistentToolWindowRegistry
         return window;
     }
 
-    public void PublishSnapshot(EngineSnapshot snapshot, bool updateGraphs = true)
+    public void PublishSnapshot(EngineSnapshot snapshot, bool updateGraphs = true, bool updateGraphPalette = true)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         foreach (var window in _windows.Values.OfType<IPersistentSnapshotToolWindow>().ToArray())
-            if (updateGraphs || window is not GraphSuiteWindow) window.SetSnapshot(snapshot);
+        {
+            if (updateGraphs || window is not GraphSuiteWindow graph) window.SetSnapshot(snapshot);
+            else if (updateGraphPalette) graph.SetScenePalette(snapshot);
+        }
     }
 
     internal bool WantsNativeGraphSamples => _windows.Values.OfType<GraphSuiteWindow>()

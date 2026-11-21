@@ -78,6 +78,7 @@ public sealed partial class MainWindow : Window
     private readonly bool _keepGraphsUpdatingOnClose;
     private NativeGraphLayoutState? _nativeGraphLayout;
     private bool _graphResetModalInFlight;
+    private readonly bool _nativeOldColors;
     private bool _tickInFlight;
     private bool _navigationInFlight;
     private bool _windowClosed;
@@ -146,7 +147,8 @@ public sealed partial class MainWindow : Window
         WorldSetupOptions setup,
         IEngineClientFactory engineFactory,
         IDesktopStorageService storage,
-        bool? keepGraphsUpdatingOnClose)
+        bool? keepGraphsUpdatingOnClose,
+        bool? nativeOldColors = null)
     {
         _startupArguments = arguments.ToArray();
         _setup = setup with { NativeGaussianSpare = null, NativeSunChange = null, NativeProcessCaches = null };
@@ -156,6 +158,7 @@ public sealed partial class MainWindow : Window
         _globalSettings = setup.GlobalSettings;
         // The original reads GraphUp at process startup, before opening Setup.
         _keepGraphsUpdatingOnClose = keepGraphsUpdatingOnClose ?? (setup.GlobalSettings.Main.KeepGraphsUpdatingOnClose == true);
+        _nativeOldColors = nativeOldColors ?? setup.GlobalSettings.Main.EffectiveOldColors;
         _safemodeBackup = setup.GlobalSettings.Main.SafeMode || setup.Recording.SafeModeBackup;
         _startupBots = new StartupDnaWorkflow(
             setup.WorldWidth,
@@ -170,7 +173,8 @@ public sealed partial class MainWindow : Window
         _zerobotProgression = null;
         InitializeComponent();
         Viewport.FixedRatio = _globalSettings.Main.FixedRatio;
-        Viewport.OldColors = _globalSettings.Main.OldColors;
+        Viewport.NativeOldColors = _nativeOldColors;
+        Viewport.OldColors = _globalSettings.Main.OldColors == true;
         if (_globalSettings.Evolution.Enabled) {
             var kind = _globalSettings.Evolution.Mode switch {
                 EvolutionMode.Zerobot => LocalModeKind.Zerobot,
@@ -1031,10 +1035,11 @@ public sealed partial class MainWindow : Window
             }
             if (openSetup)
             {
-                var setupWindow = new SetupWindow(_storage, spare, sunChange, caches);
+                var setupWindow = new SetupWindow(_storage, spare, sunChange, caches, nativeOldColors: _nativeOldColors);
                 setupWindow.WorldCreated += options =>
                 {
-                    var replacement = new MainWindow(_startupArguments, options, _engineFactory, _storage, _keepGraphsUpdatingOnClose);
+                    var replacement = new MainWindow(_startupArguments, options, _engineFactory, _storage,
+                        _keepGraphsUpdatingOnClose, _nativeOldColors);
                     SetApplicationMainWindow(replacement);
                     replacement.Show();
                     setupWindow.Close();
@@ -1046,7 +1051,7 @@ public sealed partial class MainWindow : Window
             {
                 var replacement = new MainWindow(_startupArguments,
                     (editedSetup ?? CreateNextWorldSetup()) with { NativeGaussianSpare = spare, NativeSunChange = sunChange, NativeProcessCaches = caches },
-                    _engineFactory, _storage, _keepGraphsUpdatingOnClose);
+                    _engineFactory, _storage, _keepGraphsUpdatingOnClose, _nativeOldColors);
                 SetApplicationMainWindow(replacement);
                 replacement.Show();
             }
@@ -1481,7 +1486,8 @@ public sealed partial class MainWindow : Window
         {
             var configuration = await _session.ReadConfigurationAsync();
             if (configuration is null) return LegacyCommandResult.Failure("SPECIES SETTINGS UNAVAILABLE");
-            var dialog = new SetupWindow(_storage, speciesEditor: CreateNextWorldSetup() with { Species = configuration.Species });
+            var dialog = new SetupWindow(_storage, speciesEditor: CreateNextWorldSetup() with { Species = configuration.Species },
+                nativeOldColors: _nativeOldColors);
             await dialog.ShowDialog(this);
             if (dialog.EditedOptions is not { } edited) return LegacyCommandResult.Cancel();
             if (dialog.StartNewRequested) startNew = edited;
@@ -1555,7 +1561,7 @@ public sealed partial class MainWindow : Window
         if (_session?.LatestSnapshot.LocalMode is { Status: LocalModeStatus.Running, Kind: LocalModeKind.Zerobot,
             Evolution: { Phase: "evolving", FitnessWeight: { } weight } })
             settings = settings with { Main = settings.Main with { FindBestWeight = weight } };
-        var dialog = new GlobalSettingsWindow(settings);
+        var dialog = new GlobalSettingsWindow(settings, nativeWorld: _session?.LatestSnapshot is not { NativeCycle: null });
         await dialog.ShowDialog(this);
         if (!dialog.Accepted) return LegacyCommandResult.Cancel();
         var keepUpdating = dialog.Settings.Main.KeepGraphsUpdatingOnClose;
@@ -1567,10 +1573,18 @@ public sealed partial class MainWindow : Window
                 return LegacyCommandResult.Failure($"GRAPH PREFERENCE SAVE FAILED · {error.Message}", error);
             }
         }
+        if (dialog.Settings.Main.OldColors != _globalSettings.Main.OldColors)
+        {
+            try { await _storage.SaveOldColorsPreferenceAsync(dialog.Settings.Main.OldColors); }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException or JsonException or InvalidDataException)
+            {
+                return LegacyCommandResult.Failure($"OLD COLORS PREFERENCE SAVE FAILED · {error.Message}", error);
+            }
+        }
         _globalSettings = dialog.Settings;
         SynchronizeSafemodePreference(_globalSettings.Main.SafeMode);
         Viewport.FixedRatio = _globalSettings.Main.FixedRatio;
-        Viewport.OldColors = _globalSettings.Main.OldColors;
+        Viewport.OldColors = _globalSettings.Main.OldColors == true;
         if (_globalSettings.Evolution.Enabled) {
             var kind = _globalSettings.Evolution.Mode switch {
                 EvolutionMode.Zerobot => LocalModeKind.Zerobot,
@@ -2060,7 +2074,7 @@ public sealed partial class MainWindow : Window
                         _lastGraphRefreshTick = snapshot.Tick;
                     }
                     var currentGraphWorld = !loading && !_windowClosed && graphGeneration == _graphRecording.Generation;
-                    _toolWindows.PublishSnapshot(snapshot, updateGraphs && currentGraphWorld);
+                    _toolWindows.PublishSnapshot(snapshot, updateGraphs && currentGraphWorld, updateGraphPalette: currentGraphWorld);
                     if (currentGraphWorld) SynchronizeAutomaticEvolutionGraphs(snapshot);
                     BuoyancyWarning.IsVisible = !_globalSettings.Main.SuppressBuoyancy
                         && (_liveEnvironment.Gravity[1] == 0 || !_liveEnvironment.Vegetation.PondMode || _liveEnvironment.WrapY)
@@ -3222,7 +3236,7 @@ public sealed partial class MainWindow : Window
                 var window = new GraphSuiteWindow(_session?.LatestSnapshot ?? EngineSnapshot.Empty, _graphRecording,
                     () => _liveEnvironment.AutoSpeciation, consumeNativeSample: CaptureCurrentGraphSampleAsync,
                     keepUpdatingOnClose: _keepGraphsUpdatingOnClose, consumeNativeResetSample: CaptureGraphResetSampleAsync,
-                    runNativeResetModal: RunNativeGraphResetModalAsync);
+                    runNativeResetModal: RunNativeGraphResetModalAsync, nativeOldColors: _nativeOldColors);
                 window.SetNativeLayout(_nativeGraphLayout);
                 window.NativeLayoutEdited += PersistGraphLayout;
                 window.SamplingChanged += ConfigureGraphSampling;

@@ -10,13 +10,15 @@
       <TextBlock x:Name="TitleText" Classes="section" />
       <TextBlock x:Name="ValueText" Grid.Column="1" Foreground="#2D826F" />
     </Grid>
-    <Border Grid.Row="1" Background="#F4F1E8" BorderBrush="#D4D0C4" BorderThickness="1" Padding="8">
+    <Border x:Name="ChartPlotFrame" Grid.Row="1" Background="#F4F1E8" BorderBrush="#D4D0C4" BorderThickness="1" Padding="8">
       <controls:GraphSeriesChart x:Name="SeriesChart" />
     </Border>
     <Grid x:Name="GraphRecordingControls" Grid.Row="2" ColumnDefinitions="Auto,Auto,Auto,*" ColumnSpacing="10" IsVisible="False">
       <Button x:Name="UpdateGraphNowButton" Content="Update Now" Click="UpdateGraphNow_Click" />
       <Button x:Name="ResetGraphButton" Grid.Column="1" Content="Reset" Click="ResetGraph_Click" />
-      <CheckBox x:Name="SaveGraphData" Grid.Column="2" Content="Save on d.p. 999" Click="SaveGraphData_Click" />
+      <Border x:Name="SaveGraphBackdrop" Grid.Column="2">
+        <CheckBox x:Name="SaveGraphData" Content="Save on d.p. 999" Click="SaveGraphData_Click" />
+      </Border>
       <TextBlock x:Name="SaveGraphStatus" Grid.Column="3" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
     </Grid>
   </Grid>

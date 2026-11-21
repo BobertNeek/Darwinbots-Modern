@@ -27,7 +27,7 @@ public sealed partial class App : Application
             setup.WorldCreated += options =>
             {
                 var simulation = new MainWindow(desktop.Args ?? [], options, NativeEngineClientFactory.Instance,
-                    AvaloniaDesktopStorageService.Instance, setup.InitialKeepGraphsUpdatingOnClose);
+                    AvaloniaDesktopStorageService.Instance, setup.InitialKeepGraphsUpdatingOnClose, setup.InitialOldColors);
                 desktop.MainWindow = simulation;
                 simulation.Show();
                 setup.Close();

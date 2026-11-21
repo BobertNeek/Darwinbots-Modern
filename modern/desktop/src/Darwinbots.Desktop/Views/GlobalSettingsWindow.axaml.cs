@@ -6,14 +6,17 @@ namespace Darwinbots.Desktop.Views;
 
 public sealed partial class GlobalSettingsWindow : Window
 {
+    private readonly bool _defaultOldColors;
+
     public bool Accepted { get; private set; }
     public GlobalSettings Settings { get; private set; }
 
     public GlobalSettingsWindow() : this(new GlobalSettings()) { }
 
-    public GlobalSettingsWindow(GlobalSettings settings)
+    public GlobalSettingsWindow(GlobalSettings settings, bool nativeWorld = true)
     {
         Settings = settings ?? throw new ArgumentNullException(nameof(settings));
+        _defaultOldColors = nativeWorld;
         InitializeComponent();
         Populate(settings);
     }
@@ -22,7 +25,7 @@ public sealed partial class GlobalSettingsWindow : Window
     {
         var main = settings.Main;
         FixedRatio.IsChecked = main.FixedRatio;
-        OldColors.IsChecked = main.OldColors;
+        OldColors.IsChecked = main.OldColors ?? _defaultOldColors;
         SuppressBuoyancy.IsChecked = main.SuppressBuoyancy;
         VideoOff.IsChecked = main.VideoOff;
         HideTray.IsChecked = main.HideTray;
@@ -120,7 +123,8 @@ public sealed partial class GlobalSettingsWindow : Window
         Main = Settings.Main with
         {
             FixedRatio = FixedRatio.IsChecked == true,
-            OldColors = OldColors.IsChecked == true,
+            OldColors = Settings.Main.OldColors is null && (OldColors.IsChecked == true) == _defaultOldColors
+                ? null : OldColors.IsChecked == true,
             SuppressBuoyancy = SuppressBuoyancy.IsChecked == true,
             VideoOff = VideoOff.IsChecked == true,
             GraphUpdatesPerTick = (int)(GraphUpdates.Value ?? 1),

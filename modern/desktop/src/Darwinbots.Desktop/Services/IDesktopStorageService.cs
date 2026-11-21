@@ -38,4 +38,6 @@ public interface IDesktopStorageService
     Task SaveLastStartAsync(ReadOnlyMemory<byte> settings) => Task.CompletedTask;
     bool? LoadGraphClosePreference() => null;
     Task SaveGraphClosePreferenceAsync(bool? keepUpdating) => Task.CompletedTask;
+    bool? LoadOldColorsPreference() => null;
+    Task SaveOldColorsPreferenceAsync(bool? oldColors) => Task.CompletedTask;
 }
