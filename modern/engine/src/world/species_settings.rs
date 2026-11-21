@@ -55,7 +55,19 @@ impl Engine {
         for (entry, dna) in prepared {
             let mut definition = entry.definition;
             let id = if let Some(id) = entry.species_id {
-                definition.lineage_id = self.species[id.0 as usize].lineage_id;
+                let previous = &self.species[id.0 as usize];
+                definition.lineage_id = previous.lineage_id;
+                if definition.name != previous.name {
+                    for robot in self
+                        .slots
+                        .iter_mut()
+                        .filter_map(|slot| slot.organism.as_mut())
+                    {
+                        if robot.identity.species == id && robot.identity.species_file.is_empty() {
+                            robot.identity.species_file.clone_from(&previous.name);
+                        }
+                    }
+                }
                 self.species[id.0 as usize] = definition;
                 id
             } else {
@@ -114,6 +126,8 @@ mod tests {
             .spawn_species_batch(LegacyDna::parse("stop").unwrap(), second, [[800.0; 2]], 900)
             .unwrap();
         let before = world.snapshot().organisms.clone();
+        assert_eq!(before[0].founder_name, "First");
+        assert_eq!(before[1].founder_name, "Second");
         world
             .update_species_settings(vec![entry(Some(first), "Renamed"), entry(None, "Added")])
             .unwrap();

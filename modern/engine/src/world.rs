@@ -13711,7 +13711,7 @@ impl RuntimePhysics {
 fn snapshot_organism(
     id: OrganismId,
     organism: &RobotState,
-    _species: &[SpeciesDefinition],
+    species: &[SpeciesDefinition],
     config: &EngineConfig,
     native: bool,
 ) -> OrganismSnapshot {
@@ -13740,7 +13740,9 @@ fn snapshot_organism(
             .map(|(address, value)| MemoryCellSnapshot { address, value })
             .collect(),
         species: organism.identity.species,
-        founder_name: if native {
+        founder_name: if native && organism.identity.species.0 != 0 {
+            native_census_filename(organism, species).to_owned()
+        } else if native {
             organism.identity.species_file.clone()
         } else {
             String::new()
