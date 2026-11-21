@@ -15,18 +15,18 @@ pub(super) fn returned_velocity(actual: [f32; 2], incoming: [f32; 2]) -> [f32; 2
 }
 
 pub(super) fn receive_energy(materials: &mut BiologyState, partial: f32) -> f32 {
-    let total = f64::from(materials.energy) + f64::from(partial) * 0.95;
+    let partial = f64::from(partial);
+    let total = f64::from(materials.energy) + partial * 0.95;
     let overflow = if total > 32_000.0 {
         (total - 32_000.0) as f32
     } else {
         0.0
     };
-    materials.energy = total.min(32_000.0) as f32;
-    materials.body =
-        (f64::from(materials.body) + f64::from(partial) * 0.004 + f64::from(overflow) * 0.1)
-            .min(32_000.0) as f32;
-    materials.waste = (f64::from(materials.waste) + f64::from(partial) * 0.01) as f32;
-    (f64::from(partial) * 0.95) as f32
+    materials.energy = store_scaled_sum(materials.energy, partial, 0.95).min(32_000.0);
+    materials.body = (f64::from(materials.body) + partial * 0.004 + f64::from(overflow) * 0.1)
+        .min(32_000.0) as f32;
+    materials.waste = (f64::from(materials.waste) + partial * 0.01) as f32;
+    (partial * 0.95) as f32
 }
 
 fn native_shot_dot(first: [f32; 2], second: [f32; 2]) -> f32 {
@@ -891,6 +891,25 @@ mod native_loop_tests {
             adult_energy
         );
         assert_eq!(world.stats.projectile_impacts, 0);
+    }
+
+    #[test]
+    fn native_takenrg_rounds_energy_after_the_extended_product_and_sum() {
+        // Original 2.48.32 cycle 306. Robot 239 absorbed two shots, and
+        // robot 296 absorbed one. Each subsequently spent 100 in storebody.
+        for (initial, shots, expected) in [
+            (0x44d3_305b, &[195.0, 200.0][..], 0x44f5_985a),
+            (0x4575_125b, &[235.0][..], 0x457c_c65a),
+        ] {
+            let mut materials = BiologyState {
+                energy: f32::from_bits(initial),
+                ..Default::default()
+            };
+            for &partial in shots {
+                receive_energy(&mut materials, partial);
+            }
+            assert_eq!((materials.energy - 100.0).to_bits(), expected);
+        }
     }
 
     #[test]
