@@ -115,6 +115,9 @@ public static class Db2GenomeRecordFile
 {
     public const string Header = "Rob id,Parent id,Founder name,Generation,Birth cycle,Age,Mutations,New mutations,Dna length,Offspring number,kills,Fitness,Energy,Chloroplasts";
     public const string MutationHistoryHeader = "Rob id,Mutation History";
+    private const int FounderColumn = 2;
+    private const int NumericSuffixColumns = 11;
+    private const int MetadataColumns = FounderColumn + 1 + NumericSuffixColumns;
 
     public static string MutationHistoryPath(string snapshotPath) =>
         Path.ChangeExtension(snapshotPath, null) + "_Mutations.txt";
@@ -246,10 +249,7 @@ public static class Db2GenomeRecordFile
                 continue;
             }
 
-            var fields = CsvFields(lines[lineIndex]);
-            if (fields.Count != 14)
-                throw new InvalidDataException("DB2 genome record metadata is invalid.");
-            var record = ParseRecord(fields);
+            var record = ParseMetadata(lines[lineIndex]);
             lineIndex++;
 
             var payload = new List<string>();
@@ -264,22 +264,46 @@ public static class Db2GenomeRecordFile
         return records;
     }
 
-    private static Db2GenomeRecord ParseRecord(IReadOnlyList<string> fields) => new(
-        ParseUInt64(fields[0], "robot id"),
-        ParseUInt64(fields[1], "parent id"),
-        fields[2],
-        ParseUInt32(fields[3], "generation"),
-        ParseUInt64(fields[4], "birth cycle"),
-        ParseUInt64(fields[5], "age"),
-        ParseUInt64(fields[6], "mutations"),
-        ParseUInt64(fields[7], "new mutations"),
-        ParseUInt32(fields[8], "DNA length"),
-        ParseUInt64(fields[9], "offspring number"),
-        ParseUInt64(fields[10], "kills"),
-        ParseFitness(fields[11]),
-        ParseResource(fields[12], "energy"),
-        ParseResource(fields[13], "chloroplasts"),
-        string.Empty);
+    private static Db2GenomeRecord ParseMetadata(string line) => ParseRecord(ReadMetadataFields(line)
+        ?? throw new InvalidDataException("DB2 genome record metadata is invalid."));
+
+    private static (IReadOnlyList<string> Fields, string Founder, int Suffix)? ReadMetadataFields(string line)
+    {
+        if (line.Contains('"'))
+        {
+            // Earlier Modern archives used CSV quoting for names containing commas or quotes.
+            var quoted = CsvFields(line);
+            if (quoted.Count != MetadataColumns) return null;
+            return (quoted, quoted[FounderColumn], FounderColumn + 1);
+        }
+
+        var fields = line.Split(',');
+        if (fields.Length < MetadataColumns) return null;
+        int suffix = fields.Length - NumericSuffixColumns;
+        var founder = string.Join(",", fields, FounderColumn, suffix - FounderColumn);
+        return (fields, founder, suffix);
+    }
+
+    private static Db2GenomeRecord ParseRecord((IReadOnlyList<string> Fields, string Founder, int Suffix) metadata)
+    {
+        var (fields, founder, suffix) = metadata;
+        return new(
+            ParseUInt64(fields[0], "robot id"),
+            ParseUInt64(fields[1], "parent id"),
+            founder,
+            ParseUInt32(fields[suffix], "generation"),
+            ParseUInt64(fields[suffix + 1], "birth cycle"),
+            ParseUInt64(fields[suffix + 2], "age"),
+            ParseUInt64(fields[suffix + 3], "mutations"),
+            ParseUInt64(fields[suffix + 4], "new mutations"),
+            ParseUInt32(fields[suffix + 5], "DNA length"),
+            ParseUInt64(fields[suffix + 6], "offspring number"),
+            ParseUInt64(fields[suffix + 7], "kills"),
+            ParseFitness(fields[suffix + 8]),
+            ParseResource(fields[suffix + 9], "energy"),
+            ParseResource(fields[suffix + 10], "chloroplasts"),
+            string.Empty);
+    }
 
     private static Db2GenomeRecord Record(
         ulong id,
@@ -303,8 +327,13 @@ public static class Db2GenomeRecordFile
     {
         // Detokenized DNA comments can contain quotes, including in the hash.
         if (line.TrimStart().StartsWith('\'')) return false;
-        var fields = CsvFields(line);
-        if (fields.Count != 14) return false;
+        int firstComma = line.IndexOf(',');
+        if (firstComma < 0) return false;
+        int secondComma = line.IndexOf(',', firstComma + 1);
+        if (secondComma < 0 || !IsId(line[..firstComma]) || !IsId(line[(firstComma + 1)..secondComma]))
+            return false;
+        // Unclosed quotes in a record-shaped row are a CSV error, independent of the numeric suffix.
+        if (ReadMetadataFields(line) is not { } fields) return false;
         try
         {
             _ = ParseRecord(fields);
@@ -314,6 +343,9 @@ public static class Db2GenomeRecordFile
         {
             return false;
         }
+
+        static bool IsId(string value) => ulong.TryParse(value.Trim().Trim('"'),
+            NumberStyles.Integer, CultureInfo.InvariantCulture, out _);
     }
 
     private static List<string> CsvFields(string line)
@@ -383,7 +415,7 @@ public static class Db2GenomeRecordFile
         {
             record.Id.ToString(CultureInfo.InvariantCulture),
             record.ParentId.ToString(CultureInfo.InvariantCulture),
-            Csv(record.Founder),
+            EncodeFounder(record.Founder),
             record.Generation.ToString(CultureInfo.InvariantCulture),
             record.BirthCycle.ToString(CultureInfo.InvariantCulture),
             record.Age.ToString(CultureInfo.InvariantCulture),
@@ -400,8 +432,8 @@ public static class Db2GenomeRecordFile
         if (!record.Dna.EndsWith('\n')) builder.Append("\r\n");
     }
 
-    private static string Csv(string value) =>
-        value.IndexOfAny([',', '"', '\r', '\n']) < 0
+    private static string EncodeFounder(string value) =>
+        value.IndexOfAny(['"', '\r', '\n']) < 0
             ? value
             : $"\"{value.Replace("\"", "\"\"", StringComparison.Ordinal)}\"";
 
