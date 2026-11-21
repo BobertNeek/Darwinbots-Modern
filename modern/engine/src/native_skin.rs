@@ -58,16 +58,21 @@ pub(crate) fn assign_skin(
     random.randomize(next * 1000.0);
     let mut skin = [0_i16; 8];
     for index in (0..8).step_by(2) {
-        skin[index] = (random.unit() * 61.0_f32).floor() as i16;
+        skin[index] = scale_skin_draw(random.unit(), 61);
         if index == 4 {
             random.randomize(name_draw * 1000.0);
         }
-        skin[index + 1] = (random.unit() * 629.0_f32).floor() as i16;
+        skin[index + 1] = scale_skin_draw(random.unit(), 629);
     }
     random.randomize_timer(timer_seconds);
-    let radius = (random.unit() * 61.0_f32).floor() as i16;
+    let radius = scale_skin_draw(random.unit(), 61);
     skin[6] = (f32::from(skin[6] + radius * 2) / 3.0_f32).round_ties_even() as i16;
     Ok(skin)
+}
+
+fn scale_skin_draw(draw: f32, scale: u16) -> i16 {
+    // AssignSkin passes the x87 product directly to VB's Int-to-Integer helper.
+    (f64::from(draw) * f64::from(scale)).floor() as i16
 }
 
 fn folded_draw(random: &mut NativeRandom, x: f64, y: f64) -> f64 {
@@ -94,6 +99,17 @@ fn source_angle(x: f32, y: f32) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn original_skin_draws_floor_without_rounding_the_scaled_product_to_single() {
+        // DARWIN.EXE 2.48.32, 0x71a99d and 0x71aa7d: FMUL is followed by
+        // __vbaR8IntI2 without a Single spill. These exact Rnd states would
+        // round the f32 products up to 19 and 31 before applying Int.
+        for (state, scale, expected) in [(0x4f_bcda, 61, 18), (0x0c_9dea, 629, 30)] {
+            let draw = state as f32 / 16_777_216.0;
+            assert_eq!(scale_skin_draw(draw, scale), expected);
+        }
+    }
 
     #[test]
     fn original_source_skin_vectors_include_the_full_load_image_and_raw_single_timer() {
