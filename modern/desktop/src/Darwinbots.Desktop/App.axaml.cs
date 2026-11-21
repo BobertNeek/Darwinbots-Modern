@@ -38,8 +38,8 @@ public sealed partial class App : Application
     {
         if (CreateSafeModeBackupWindow(arguments, storage) is { } viewer) return viewer;
 
-        MainWindow OpenWorld(WorldSetupOptions options, bool? keepGraphsUpdatingOnClose = null, bool? newSeedOnLoad = null) =>
-            new(arguments, options, NativeEngineClientFactory.Instance, storage, null, keepGraphsUpdatingOnClose, newSeedOnLoad);
+        MainWindow OpenWorld(WorldSetupOptions options, bool? keepGraphsUpdatingOnClose = null, bool? newSeedOnLoad = null, bool? nativeOldColors = null) =>
+            new(arguments, options, NativeEngineClientFactory.Instance, storage, null, keepGraphsUpdatingOnClose, newSeedOnLoad, nativeOldColors);
         if (arguments.Length == 0 && storage.FindRestartContinuation() is { } continuation)
         {
             var globals = SetupWindow.ReadProfileSettings(storage, out _);
@@ -84,7 +84,7 @@ public sealed partial class App : Application
             if (startupError is not null) setup.ShowStartupLoadError(startupError);
             setup.WorldCreated += options =>
             {
-                var simulation = OpenWorld(options, setup.InitialKeepGraphsUpdatingOnClose, setup.InitialNewSeedOnLoad);
+                var simulation = OpenWorld(options, setup.InitialKeepGraphsUpdatingOnClose, setup.InitialNewSeedOnLoad, setup.InitialOldColors);
                 setMainWindow(simulation);
                 simulation.Show();
                 setup.Close();

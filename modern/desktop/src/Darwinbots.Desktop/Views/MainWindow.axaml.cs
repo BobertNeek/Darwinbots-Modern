@@ -105,6 +105,7 @@ public sealed partial class MainWindow : Window
     private readonly bool _keepGraphsUpdatingOnClose;
     private NativeGraphLayoutState? _nativeGraphLayout;
     private readonly bool _newSeedOnLoad;
+    private readonly bool _nativeOldColors;
     private int _nativeMenuLoadSeed;
     private bool _tickInFlight;
     private bool _navigationInFlight;
@@ -203,7 +204,7 @@ public sealed partial class MainWindow : Window
         WorldSetupOptions setup,
         IEngineClientFactory engineFactory,
         IDesktopStorageService storage,
-        Action? launchSafeModeBackup = null, bool? keepGraphsUpdatingOnClose = null, bool? newSeedOnLoad = null)
+        Action? launchSafeModeBackup = null, bool? keepGraphsUpdatingOnClose = null, bool? newSeedOnLoad = null, bool? nativeOldColors = null)
     {
         _startupArguments = arguments.ToArray();
         _setup = setup with { NativeGaussianSpare = null, NativeSunChange = null, NativeProcessCaches = null };
@@ -216,6 +217,7 @@ public sealed partial class MainWindow : Window
         // The original reads GraphUp at process startup, before opening Setup.
         _keepGraphsUpdatingOnClose = keepGraphsUpdatingOnClose ?? (setup.GlobalSettings.Main.KeepGraphsUpdatingOnClose == true);
         _newSeedOnLoad = newSeedOnLoad ?? setup.GlobalSettings.Main.EffectiveNewSeedOnLoad;
+        _nativeOldColors = nativeOldColors ?? setup.GlobalSettings.Main.EffectiveOldColors;
         _safemodeBackup = setup.GlobalSettings.Main.SafeMode || setup.Recording.SafeModeBackup;
         _startupBots = new StartupDnaWorkflow(
             setup.WorldWidth,
@@ -234,6 +236,7 @@ public sealed partial class MainWindow : Window
         _zerobotProgression = null;
         InitializeComponent();
         Viewport.FixedRatio = _globalSettings.Main.FixedRatio;
+        Viewport.NativeOldColors = _nativeOldColors;
         Viewport.OldColors = _globalSettings.Main.EffectiveOldColors;
         if (_globalSettings.Evolution.Enabled) {
             var kind = _globalSettings.Evolution.Mode switch {
@@ -1225,10 +1228,10 @@ public sealed partial class MainWindow : Window
                     : null;
                 var setupWindow = new SetupWindow(_storage, spare, sunChange, caches,
                     allowLastExitResume: _startupArguments.Count == 0, loadLastExitSettings: false, stageNativeAppearance: stageAppearance,
-                    startChloroplasts: _liveEnvironment.Vegetation.StartChloroplasts);
+                    startChloroplasts: _liveEnvironment.Vegetation.StartChloroplasts, nativeOldColors: _nativeOldColors);
                 setupWindow.WorldCreated += options =>
                 {
-                    var replacement = new MainWindow(_startupArguments, options, _engineFactory, _storage, _launchSafeModeBackup, _keepGraphsUpdatingOnClose, _newSeedOnLoad)
+                    var replacement = new MainWindow(_startupArguments, options, _engineFactory, _storage, _launchSafeModeBackup, _keepGraphsUpdatingOnClose, _newSeedOnLoad, _nativeOldColors)
                     {
                         _mazeDimensions = mazeDimensions,
                         _nativeMenuLoadSeed = this._nativeMenuLoadSeed,
@@ -1244,7 +1247,7 @@ public sealed partial class MainWindow : Window
             else
             {
                 var replacement = new MainWindow(_startupArguments,
-                    (editedSetup ?? CreateNextWorldSetup()) with { NativeGaussianSpare = spare, NativeSunChange = sunChange, NativeProcessCaches = caches }, _engineFactory, _storage, _launchSafeModeBackup, _keepGraphsUpdatingOnClose, _newSeedOnLoad)
+                    (editedSetup ?? CreateNextWorldSetup()) with { NativeGaussianSpare = spare, NativeSunChange = sunChange, NativeProcessCaches = caches }, _engineFactory, _storage, _launchSafeModeBackup, _keepGraphsUpdatingOnClose, _newSeedOnLoad, _nativeOldColors)
                 {
                     _mazeDimensions = mazeDimensions,
                     _nativeMenuLoadSeed = this._nativeMenuLoadSeed,
@@ -1862,7 +1865,7 @@ public sealed partial class MainWindow : Window
             var dialog = new SetupWindow(_storage,
                 speciesEditor: CreateNextWorldSetup() with { Species = configuration.Species },
                 nativeSpeciesImport: session.LatestSnapshot.NativeCycle.HasValue,
-                stageNativeAppearance: session.StageNativeSpeciesAppearanceAsync);
+                stageNativeAppearance: session.StageNativeSpeciesAppearanceAsync, nativeOldColors: _nativeOldColors);
             await dialog.ShowDialog(this);
             if (dialog.EditedOptions is not { } edited) return LegacyCommandResult.Cancel();
             if (dialog.StartNewRequested) startNew = edited;

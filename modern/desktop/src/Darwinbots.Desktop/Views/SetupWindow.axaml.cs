@@ -42,6 +42,7 @@ public sealed partial class SetupWindow : Window
     public event Action<WorldSetupOptions>? WorldCreated;
     internal bool InitialKeepGraphsUpdatingOnClose { get; }
     internal bool InitialNewSeedOnLoad { get; }
+    internal bool InitialOldColors { get; }
 
     public SetupWindow() : this(AvaloniaDesktopStorageService.Instance)
     {
@@ -50,7 +51,7 @@ public sealed partial class SetupWindow : Window
     public SetupWindow(IDesktopStorageService storage, float? nativeGaussianSpare = null, byte? nativeSunChange = null,
         NativeProcessCachesSnapshot? nativeProcessCaches = null, WorldSetupOptions? speciesEditor = null, bool allowLastExitResume = true,
         bool loadLastExitSettings = true, bool nativeSpeciesImport = true,
-        Func<string, string, bool, Task<NativeSpeciesAppearance?>>? stageNativeAppearance = null, int? startChloroplasts = null)
+        Func<string, string, bool, Task<NativeSpeciesAppearance?>>? stageNativeAppearance = null, int? startChloroplasts = null, bool? nativeOldColors = null)
     {
         _speciesEditor = speciesEditor is not null;
         _nativeSpeciesImport = nativeSpeciesImport;
@@ -81,6 +82,7 @@ public sealed partial class SetupWindow : Window
             _environment = _environment with { Vegetation = _environment.Vegetation with { StartChloroplasts = amount } };
             _startingChloroplastsConfigured = _liveStartingChloroplastsConfigured = true;
         }
+        InitialOldColors = nativeOldColors ?? (speciesEditor?.GlobalSettings ?? _globalSettings).Main.EffectiveOldColors;
         _workflow.Reset(ReadSetupOptions());
         if (!_speciesEditor && loadLastExitSettings) RestoreLastExitSettings();
         OnboardingPanel.IsVisible = !_speciesEditor && _storage.IsFirstRun;
@@ -226,7 +228,7 @@ public sealed partial class SetupWindow : Window
             {
                 var name = _nativeSpeciesImport ? file.Name : Path.GetFileNameWithoutExtension(file.Name);
                 var appearance = _nativeSpeciesImport && _stageNativeAppearance is not null
-                    ? await _stageNativeAppearance(file.Name, file.Content, main.EffectiveOldColors)
+                    ? await _stageNativeAppearance(file.Name, file.Content, InitialOldColors)
                     : null;
                 var color = appearance?.Argb ?? ((_nativeSpeciesImport, file.Name) switch
                 {
