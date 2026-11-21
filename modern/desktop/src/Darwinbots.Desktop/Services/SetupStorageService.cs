@@ -94,6 +94,7 @@ public static class SetupStorageService
         var originalRoot = IsLocalPath(configuredRoot) && Path.IsPathFullyQualified(configuredRoot) ? configuredRoot : null;
         var adjacentRoot = string.Equals(Path.GetFileName(saveDirectory), "Saves", StringComparison.OrdinalIgnoreCase)
             ? Path.GetDirectoryName(saveDirectory) : saveDirectory;
+        var useDefaultDirectory = string.IsNullOrWhiteSpace(savedDirectory);
 
         if (savedDirectory.StartsWith("&#", StringComparison.Ordinal))
         {
@@ -104,12 +105,7 @@ public static class SetupStorageService
                 if (adjacentRoot is not null) yield return Path.Combine(adjacentRoot, relative, name);
             }
         }
-        else if (string.IsNullOrWhiteSpace(savedDirectory))
-        {
-            if (originalRoot is not null) yield return Path.Combine(originalRoot, "Robots", name);
-            if (adjacentRoot is not null) yield return Path.Combine(adjacentRoot, "Robots", name);
-        }
-        else if (IsLocalPath(savedDirectory))
+        else if (!useDefaultDirectory && IsLocalPath(savedDirectory))
         {
             if (Path.IsPathFullyQualified(savedDirectory)) yield return Path.Combine(savedDirectory, name);
             else if (!Path.IsPathRooted(savedDirectory))
@@ -118,6 +114,9 @@ public static class SetupStorageService
                 if (originalRoot is not null) yield return Path.Combine(originalRoot, savedDirectory, name);
             }
         }
+        // LoadDNA tries MainDir\Robots after the saved location fails.
+        if (originalRoot is not null) yield return Path.Combine(originalRoot, "Robots", name);
+        if (useDefaultDirectory && adjacentRoot is not null) yield return Path.Combine(adjacentRoot, "Robots", name);
         if (saveDirectory is not null) yield return Path.Combine(saveDirectory, name);
         foreach (var packaged in PackagedSpeciesPaths(name)) yield return packaged;
     }
