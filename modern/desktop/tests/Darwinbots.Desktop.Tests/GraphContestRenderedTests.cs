@@ -108,7 +108,12 @@ public sealed class GraphContestRenderedTests
                     new((ulong)tick, 99_999, 0, 0, 0, 0, 0) { SpeciesGraphs = [Alga(99_999)] };
                 var probe = Sample(1, 1);
                 var samplesRequested = new List<GraphSamplingSettings?>();
-                var opening = EngineSnapshot.Empty with { Tick = 1, NativeCycle = 1, Population = 99_999, History = [History(1)] };
+                var opening = EngineSnapshot.Empty with
+                {
+                    Tick = 1, NativeCycle = 1, Population = 99_999, History = [History(1)],
+                    Species = [new SpeciesSnapshot("Alga.txt", true, 0xff123456u, 0, false)],
+                    Organisms = [new OrganismSnapshot(0, 0, [20f, 20f], [0f, 0f], 1_000, 10, Vegetable: true)],
+                };
                 var suite = new GraphSuiteWindow(opening, run, consumeNativeSample: (settings, consume) =>
                 {
                     samplesRequested.Add(settings);
@@ -122,8 +127,11 @@ public sealed class GraphContestRenderedTests
                     suite.FindControl<GraphSuiteView>("GraphView")!.FindControl<Button>("OpenGraphButton")!
                         .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                     var graph = Assert.Single(suite.OwnedWindows.OfType<GraphSeriesWindow>());
+                    var series = Assert.Single(suite.ViewModel.RunningGraphs);
                     await FlushGraphPresentationAsync();
                     Assert.Equal(new GraphSamplingSettings(), Assert.Single(samplesRequested));
+                    Assert.True(series.UsesSampleOrder);
+                    Assert.Equal(new GraphSample(1, 1), Assert.Single(series.Samples));
                     var save = graph.FindControl<CheckBox>("SaveGraphData")!;
                     Assert.True(save.IsVisible);
                     var point = save.TranslatePoint(new Point(save.Bounds.Width / 2, save.Bounds.Height / 2), graph)!.Value;
@@ -132,23 +140,52 @@ public sealed class GraphContestRenderedTests
                     Assert.True(save.IsChecked);
 
                     suite.SetSnapshot(opening with { Tick = 999, NativeCycle = 999, History = [History(1), History(999)] });
+                    Assert.Equal(new GraphSample(1, 1), Assert.Single(series.Samples));
                     suite.RecordNativeSamples(Enumerable.Range(2, 997).Select(tick => Sample(tick, tick)).ToArray(), run.Generation);
                     Assert.False(File.Exists(firstPath));
                     suite.RecordNativeSamples([Sample(999, 999)], run.Generation);
                     await WaitFor(() => File.Exists(firstPath), () => "The first 999 native graph samples did not produce a segment.");
                     Assert.Equal(Enumerable.Range(1, 999).Select(value => (double)value), Read(firstPath));
+                    Assert.Equal(Enumerable.Range(1, 999).Select(value => new GraphSample((ulong)value, value)), series.Samples);
+                    var csv = suite.ViewModel.ExportCsv();
+                    Assert.Contains(",999,999\r\n", csv);
+                    Assert.DoesNotContain("99999", csv);
 
                     probe = Sample(999, 99_999);
                     graph.FindControl<Button>("ResetGraphButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                     await FlushGraphPresentationAsync();
                     Assert.Equal(new GraphSamplingSettings?[] { new(), null }, samplesRequested);
                     Assert.True(save.IsChecked);
+                    Assert.Empty(series.Samples);
                     suite.RecordNativeSamples(Enumerable.Range(1_000, 998).Select(tick => Sample(tick, tick)).ToArray(), run.Generation);
                     Assert.False(File.Exists(secondPath));
                     suite.RecordNativeSamples([Sample(1_998, 1_998)], run.Generation);
                     await WaitFor(() => File.Exists(secondPath), () => "The chart reset did not start a fresh native segment.");
                     Assert.Equal(Enumerable.Range(1_000, 999).Select(value => (double)value), Read(secondPath));
                     Assert.Equal(new GraphSamplingSettings?[] { new(), null }, samplesRequested);
+
+                    var imported = Assert.Single(suite.ViewModel.ImportLegacyGsave([File.ReadAllText(firstPath)]));
+                    suite.SetSnapshot(opening with { Tick = 2_003, NativeCycle = 2_003, History = [History(2_003)] });
+                    suite.RecordNativeSamples(Enumerable.Range(1_999, 5).Select(tick => Sample(tick, tick)).ToArray(), run.Generation);
+                    Assert.Equal(Enumerable.Range(1_004, 1_000).Select(value => new GraphSample((ulong)value, value)), series.Samples);
+                    Assert.False(imported.UsesSampleOrder);
+                    Assert.Equal(Enumerable.Range(1, 999).Select(value => (double)value), imported.Samples.Select(sample => sample.Value));
+
+                    suite.RecordNativeSamples([new NativeGraphRecordingSample(2_004, 2_004, [], [])], run.Generation);
+                    Assert.Equal(1_000, series.Samples.Count);
+                    Assert.Equal(new GraphSample(2_004, 0), series.Samples[^1]);
+
+                    suite.ViewModel.SelectedChoice = GraphCatalog.For(GraphMetric.CustomizableGraph1);
+                    suite.FindControl<GraphSuiteView>("GraphView")!.FindControl<Button>("OpenGraphButton")!
+                        .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    var custom = Assert.Single(suite.ViewModel.RunningGraphs.Where(value => value.UsesSampleOrder
+                        && value.Metric == imported.Metric));
+                    run.BeginRun("new-native-run");
+                    probe = Sample(1, 42);
+                    suite.SetSnapshot(opening);
+                    Assert.Equal(new GraphSample(1, 42), Assert.Single(series.Samples));
+                    Assert.Equal(new GraphSample(1, 42), Assert.Single(custom.Samples));
+                    Assert.Equal(Enumerable.Range(1, 999).Select(value => (double)value), imported.Samples.Select(sample => sample.Value));
                 }
                 finally { suite.Close(); }
 
@@ -858,15 +895,28 @@ public sealed class GraphContestRenderedTests
                 await WaitFor(
                     () => graphWindow.OwnedWindows.OfType<GraphSeriesWindow>().Count() == 2,
                     () => "Graph Suite did not open two live graph windows.");
-                Assert.All(graphWindow.ViewModel.RunningGraphs, graph => Assert.NotEmpty(graph.Samples));
-
-                var preUpdateTick = graphWindow.ViewModel.RunningGraphs
-                    .SelectMany(graph => graph.Samples)
-                    .Max(sample => sample.Tick);
-                await session.StepAsync(100);
+                var liveGraphWindows = graphWindow.OwnedWindows.OfType<GraphSeriesWindow>().ToArray();
+                var liveSeries = graphWindow.ViewModel.RunningGraphs;
                 await WaitFor(
-                    () => graphWindow.ViewModel.RunningGraphs.All(graph => graph.Samples.Any(sample => sample.Tick > preUpdateTick)),
-                    () => "Live graph windows did not receive the next Rust history sample.");
+                    () => liveSeries.Count == 2 * setup.Species.Count && liveSeries.All(graph => graph.Samples.Count == 1),
+                    () => "The live graph windows did not receive their opening samples.");
+
+                void UpdateLiveGraphs()
+                {
+                    foreach (var liveGraphWindow in liveGraphWindows)
+                        liveGraphWindow.FindControl<Button>("UpdateGraphNowButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                }
+
+                var preUpdateTick = session.LatestSnapshot.Tick;
+                await session.StepAsync(100);
+                await FlushGraphPresentationAsync();
+                Assert.All(liveSeries, graph => Assert.Equal(preUpdateTick, Assert.Single(graph.Samples).Tick));
+                var updateTick = session.LatestSnapshot.Tick;
+                Assert.True(updateTick > preUpdateTick);
+                UpdateLiveGraphs();
+                await WaitFor(
+                    () => liveSeries.All(graph => graph.Samples.Count == 2 && graph.Samples[^1].Tick == updateTick),
+                    () => "Update Now did not feed the stepped world into both live graphs.");
 
                 var export = graphWindow.ViewModel.ExportCsv();
                 Assert.StartsWith("series_id,metric,title,expression,tick,value\r\n", export, StringComparison.Ordinal);
@@ -881,15 +931,17 @@ public sealed class GraphContestRenderedTests
                 graphView.FindControl<Button>("JoinCompareButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 Assert.Contains("JOINED", graphWindow.ViewModel.Status, StringComparison.Ordinal);
 
-                var resetTick = graphWindow.ViewModel.RunningGraphs
-                    .SelectMany(graph => graph.Samples)
-                    .Max(sample => sample.Tick);
                 graphView.FindControl<Button>("ResetGraphsButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                Assert.All(graphWindow.ViewModel.RunningGraphs, graph => Assert.Empty(graph.Samples));
+                Assert.All(liveSeries, graph => Assert.Empty(graph.Samples));
                 await session.StepAsync(100);
+                await FlushGraphPresentationAsync();
+                Assert.All(liveSeries, graph => Assert.Empty(graph.Samples));
+                var postResetTick = session.LatestSnapshot.Tick;
+                Assert.True(postResetTick > updateTick);
+                UpdateLiveGraphs();
                 await WaitFor(
-                    () => graphWindow.ViewModel.RunningGraphs.All(graph => graph.Samples.Count > 0 && graph.Samples.Min(sample => sample.Tick) > resetTick),
-                    () => "Reset graphs did not resume from a new live history segment.");
+                    () => liveSeries.All(graph => graph.Samples.Count == 1 && graph.Samples[0].Tick == postResetTick),
+                    () => "Update Now did not start a fresh point series after Reset All.");
 
                 var contestButton = window.FindControl<Button>("ContestResultsButton")!;
                 contestButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));

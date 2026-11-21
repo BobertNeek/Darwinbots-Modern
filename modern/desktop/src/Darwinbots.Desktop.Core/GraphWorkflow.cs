@@ -126,6 +126,7 @@ public sealed class GraphSeriesViewModel : INotifyPropertyChanged
     private string _title;
     private string? _customExpression;
     private bool _isSelected;
+    private bool _usesSampleOrder;
 
     public GraphSeriesViewModel(
         string id,
@@ -156,6 +157,7 @@ public sealed class GraphSeriesViewModel : INotifyPropertyChanged
     public string? CustomExpression { get => _customExpression; private set => Set(ref _customExpression, value); }
     public IReadOnlyList<GraphSample> Samples { get => _samples; private set => Set(ref _samples, value); }
     public bool IsSelected { get => _isSelected; set => Set(ref _isSelected, value); }
+    public bool UsesSampleOrder { get => _usesSampleOrder; internal set => Set(ref _usesSampleOrder, value); }
     public double CurrentValue => Samples.Count == 0 ? 0 : Samples[^1].Value;
     public string CurrentValueText => CurrentValue.ToString("N1", CultureInfo.InvariantCulture);
 
@@ -186,14 +188,17 @@ public sealed class GraphSeriesViewModel : INotifyPropertyChanged
 
 public sealed class GraphSuiteViewModel : INotifyPropertyChanged
 {
+    // grafico.NewPoints clears the current pivot in the original 1,001-slot ring.
+    private const int NativeVisiblePoints = 1_000;
     private IReadOnlyList<GraphMetricSample> _samples;
     private IReadOnlyList<SpeciesGraphSampleSnapshot> _currentSpecies = [];
+    private bool _usesNativeFeed;
     private GraphChoice _selectedChoice = GraphCatalog.Metrics[0];
     private string _status = "SELECT A GRAPH";
     private string _comparisonText = "NO COMPARISON";
     private ulong? _historyCutoffTick;
     private readonly Dictionary<GraphMetric, ulong> _metricCutoffTicks = [];
-    private readonly Dictionary<GraphMetric, List<GraphMetricSample>> _immediatePoints = [];
+    private readonly Dictionary<GraphMetric, List<GraphMetricSample>> _chartPoints = [];
     private static readonly string[] DynamicCostLabels =
         ["Cost Multiplier", "Population / Target", "Upper Range", "Lower Range", "Zero Level", "Reinstatement Level"];
     private static readonly uint[] DynamicCostColors =
@@ -222,6 +227,9 @@ public sealed class GraphSuiteViewModel : INotifyPropertyChanged
     }
 
     public IReadOnlyList<GraphMetricSample> HistorySamples => _samples;
+    private IEnumerable<GraphSeriesViewModel> ProjectedGraphs => _usesNativeFeed
+        ? RunningGraphs.Where(graph => !graph.Id.StartsWith("legacy-", StringComparison.Ordinal))
+        : RunningGraphs;
     public string Status { get => _status; private set => Set(ref _status, value); }
     public string ComparisonText { get => _comparisonText; private set => Set(ref _comparisonText, value); }
 
@@ -264,20 +272,32 @@ public sealed class GraphSuiteViewModel : INotifyPropertyChanged
     public void Update(EngineSnapshot snapshot)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
-        _samples = GraphMetricSampleProjector.FromSnapshot(snapshot);
+        _samples = _usesNativeFeed ? [] : GraphMetricSampleProjector.FromSnapshot(snapshot);
         _currentSpecies = snapshot.Species.Select((species, index) => (species, index))
             .Where(value => snapshot.Organisms.Any(robot => robot.Species == value.index))
             .Select(value => new SpeciesGraphSampleSnapshot(value.species.Name, value.species.Color, new Dictionary<string, double>()))
             .ToArray();
-        foreach (var graph in RunningGraphs)
-            graph.Update(ProjectGraph(graph));
+        if (!_usesNativeFeed)
+            foreach (var graph in RunningGraphs) graph.Update(ProjectGraph(graph));
     }
 
     public void SetSamples(IReadOnlyList<GraphMetricSample> samples)
     {
         _samples = samples ?? throw new ArgumentNullException(nameof(samples));
-        foreach (var graph in RunningGraphs)
+        foreach (var graph in ProjectedGraphs)
             graph.Update(ProjectGraph(graph));
+    }
+
+    public void SetNativeFeed(bool enabled)
+    {
+        if (_usesNativeFeed == enabled) return;
+        ClearPreviousGraphWorld();
+        _usesNativeFeed = enabled;
+        foreach (var graph in ProjectedGraphs)
+        {
+            graph.UsesSampleOrder = enabled;
+            if (enabled) graph.Reset();
+        }
     }
 
     public void ConfigureCustomMetric(int slot, string name, string expression)
@@ -307,7 +327,7 @@ public sealed class GraphSuiteViewModel : INotifyPropertyChanged
         var graphs = new List<GraphSeriesViewModel>();
         var latest = _samples.LastOrDefault();
         var speciesGraphs = latest?.SpeciesGraphs?.Count > 0 ? latest.SpeciesGraphs : _currentSpecies;
-        if (metric == GraphMetric.DynamicCostStats && latest?.DynamicCostSeries?.Count == 6)
+        if (metric == GraphMetric.DynamicCostStats && (_usesNativeFeed || latest?.DynamicCostSeries?.Count == 6))
         {
             for (var index = 0; index < DynamicCostLabels.Length; index++)
                 graphs.Add(new GraphSeriesViewModel($"graph-{RunningGraphs.Count + graphs.Count + 1}", metric,
@@ -323,6 +343,7 @@ public sealed class GraphSuiteViewModel : INotifyPropertyChanged
             graphs.Add(new GraphSeriesViewModel($"graph-{RunningGraphs.Count + 1}", metric, title, [], custom?.Expression));
         foreach (var opened in graphs)
         {
+            opened.UsesSampleOrder = _usesNativeFeed;
             opened.Update(ProjectGraph(opened));
             RunningGraphs.Add(opened);
         }
@@ -335,23 +356,26 @@ public sealed class GraphSuiteViewModel : INotifyPropertyChanged
     {
         _historyCutoffTick = _samples.LastOrDefault()?.Tick;
         _metricCutoffTicks.Clear();
-        _immediatePoints.Clear();
+        _chartPoints.Clear();
         foreach (var graph in RunningGraphs) graph.Reset();
         ComparisonText = "NO COMPARISON";
         Status = "ALL GRAPHS RESET";
         GraphsReset?.Invoke();
     }
 
-    public void ResetGraph(GraphMetric metric)
+    public void ResetGraph(GraphMetric metric) => ResetGraph(metric, preserveImported: false);
+
+    public void ResetGraph(GraphMetric metric, bool preserveImported)
     {
-        _immediatePoints.Remove(metric);
+        _chartPoints.Remove(metric);
         if (_samples.LastOrDefault() is { } latest) _metricCutoffTicks[metric] = latest.Tick;
-        foreach (var graph in RunningGraphs.Where(graph => graph.Metric == metric)) graph.Reset();
+        var graphs = preserveImported ? ProjectedGraphs : RunningGraphs;
+        foreach (var graph in graphs.Where(graph => graph.Metric == metric)) graph.Reset();
     }
 
     public void CloseGraph(GraphMetric metric)
     {
-        _immediatePoints.Remove(metric);
+        _chartPoints.Remove(metric);
         _metricCutoffTicks.Remove(metric);
     }
 
@@ -359,19 +383,29 @@ public sealed class GraphSuiteViewModel : INotifyPropertyChanged
     {
         _historyCutoffTick = null;
         _metricCutoffTicks.Clear();
-        _immediatePoints.Clear();
+        _chartPoints.Clear();
+        if (_usesNativeFeed)
+        {
+            foreach (var graph in ProjectedGraphs) graph.Reset();
+        }
     }
 
-    public void AppendImmediatePoint(GraphMetric metric, GraphMetricSample sample)
+    public void AppendImmediatePoint(GraphMetric metric, GraphMetricSample sample) => AppendChartPoints(metric, [sample]);
+
+    public void AppendChartPoints(GraphMetric metric, IReadOnlyList<GraphMetricSample> samples)
     {
-        if (!_immediatePoints.TryGetValue(metric, out var points))
+        if (samples.Count == 0) return;
+        if (!_chartPoints.TryGetValue(metric, out var points))
         {
             points = [];
-            _immediatePoints.Add(metric, points);
+            _chartPoints.Add(metric, points);
         }
-        if (points.Count == 1_001) points.RemoveAt(0);
-        points.Add(sample);
-        foreach (var graph in RunningGraphs.Where(graph => graph.Metric == metric))
+        var limit = _usesNativeFeed ? NativeVisiblePoints : 1_001;
+        var retainedCount = Math.Min(samples.Count, limit);
+        var expiredCount = points.Count + retainedCount - limit;
+        if (expiredCount > 0) points.RemoveRange(0, expiredCount);
+        points.AddRange(samples.Skip(samples.Count - retainedCount));
+        foreach (var graph in ProjectedGraphs.Where(graph => graph.Metric == metric))
             graph.Update(ProjectGraph(graph));
     }
 
@@ -444,11 +478,16 @@ public sealed class GraphSuiteViewModel : INotifyPropertyChanged
 
     private IReadOnlyList<GraphSample> ProjectGraph(GraphMetric metric, CustomMetricSlotViewModel? custom, string? speciesName = null, int? dynamicCostIndex = null)
     {
+        _chartPoints.TryGetValue(metric, out var points);
+        if (_usesNativeFeed)
+            return points is null ? [] : GraphMetricSampleProjector.Project(points, metric, custom, speciesName,
+                dynamicCostIndex, keepEmptySpeciesSamples: true);
+
         var cutoff = _historyCutoffTick;
         if (_metricCutoffTicks.TryGetValue(metric, out var metricCutoff))
             cutoff = Math.Max(cutoff ?? 0, metricCutoff);
         var samples = cutoff is { } tick ? _samples.Where(sample => sample.Tick > tick).ToArray() : _samples;
-        if (_immediatePoints.TryGetValue(metric, out var points))
+        if (points is not null)
             samples = samples.Concat(points).OrderBy(sample => sample.Tick).ToArray();
         return GraphMetricSampleProjector.Project(samples, metric, custom, speciesName, dynamicCostIndex);
     }
@@ -457,7 +496,7 @@ public sealed class GraphSuiteViewModel : INotifyPropertyChanged
     {
         if (sender is not CustomMetricSlotViewModel custom) return;
         var metric = CustomMetric(custom.Slot);
-        foreach (var graph in RunningGraphs.Where(value => value.Metric == metric))
+        foreach (var graph in ProjectedGraphs.Where(value => value.Metric == metric))
         {
             graph.UpdateDefinition(custom.Name, custom.Expression);
             graph.Update(ProjectGraph(graph));
@@ -507,15 +546,17 @@ public static class GraphMetricSampleProjector
         GraphMetric metric,
         CustomMetricSlotViewModel? custom,
         string? speciesName = null,
-        int? dynamicCostIndex = null)
+        int? dynamicCostIndex = null,
+        bool keepEmptySpeciesSamples = false)
     {
-        return samples.Where(sample => speciesName is null || sample.SpeciesGraphs?.Count > 0).Select(sample =>
+        return samples.Where(sample => keepEmptySpeciesSamples || speciesName is null || sample.SpeciesGraphs?.Count > 0).Select(sample =>
         {
             if (dynamicCostIndex is { } index)
                 return new GraphSample(sample.Tick, sample.DynamicCostSeries?.ElementAtOrDefault(index) ?? 0);
             if (speciesName is not null)
             {
                 var species = sample.SpeciesGraphs?.FirstOrDefault(value => value.Name == speciesName);
+                if (keepEmptySpeciesSamples && species is null) return new GraphSample(sample.Tick, 0);
                 sample = sample with { Values = SpeciesValues(species) };
             }
             return new GraphSample(sample.Tick, ProjectValue(sample, metric, custom));

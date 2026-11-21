@@ -63,22 +63,30 @@ public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWi
         SamplingChanged?.Invoke(settings);
     }
 
-    private bool UsesNativeSamples => _consumeNativeSample is not null && _snapshot.NativeCycle.HasValue;
+    private bool UsesNativeSamples => _recording is not null && _consumeNativeSample is not null && _snapshot.NativeCycle.HasValue;
 
     internal bool WantsNativeGraphSamples => UsesNativeSamples && IsVisible && _recording?.IsSuspended == false
         && _recordingCharts.Values.Any(chart => chart.Windows.Any(window => window.IsCollecting));
 
     public void SetSnapshot(EngineSnapshot snapshot)
     {
+        var usedNativeSamples = UsesNativeSamples;
         _snapshot = snapshot;
+        var usesNativeSamples = UsesNativeSamples;
+        ViewModel.SetNativeFeed(usesNativeSamples);
         GraphView.SetSnapshot(snapshot);
         if (_recording is null || _recording.IsSuspended) return;
         var reset = _recordingCharts
-            .Where(pair => pair.Value.Generation != _recording.Generation
-                || (!UsesNativeSamples && snapshot.Tick < pair.Value.MostRecentTick))
+            .Where(pair => pair.Value.Generation != _recording.Generation || usedNativeSamples != usesNativeSamples
+                || (!usesNativeSamples && snapshot.Tick < pair.Value.MostRecentTick))
             .ToArray();
-        if (reset.Length > 0) ResetRecordingCharts(reset, feedImmediately: true);
-        if (UsesNativeSamples || snapshot.History.Count == 0) return;
+        if (reset.Length > 0)
+        {
+            if (usesNativeSamples)
+                foreach (var (metric, _) in reset) ViewModel.ResetGraph(metric, preserveImported: true);
+            ResetRecordingCharts(reset, feedImmediately: true);
+        }
+        if (usesNativeSamples || snapshot.History.Count == 0) return;
         foreach (var (metric, chart) in _recordingCharts)
         {
             foreach (var sample in ViewModel.HistorySamples)
@@ -93,16 +101,20 @@ public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWi
     public void RecordNativeSamples(IReadOnlyList<NativeGraphRecordingSample> samples, int generation)
     {
         if (!WantsNativeGraphSamples || _recording?.Generation != generation) return;
+        var points = samples.Select(ProjectNativePoint).ToArray();
         foreach (var (metric, chart) in _recordingCharts)
         {
             if (chart.Generation != generation || chart.AwaitingNativeRead || !chart.Windows.Any(window => window.IsCollecting))
                 continue;
-            foreach (var sample in samples)
+            List<GraphMetricSample> accepted = [];
+            foreach (var sample in points)
             {
                 if (sample.Tick <= chart.MostRecentTick) continue;
-                RecordPoint(metric, chart, ProjectNativePoint(sample));
+                RecordPoint(metric, chart, sample);
                 chart.MostRecentTick = sample.Tick;
+                accepted.Add(sample);
             }
+            ViewModel.AppendChartPoints(metric, accepted);
         }
     }
 
