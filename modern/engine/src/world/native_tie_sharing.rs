@@ -148,17 +148,20 @@ mod tests {
         receiver.materials.body = 249.218_03;
         // Robot 143 at cycle 330 after receiving energy shot 173.
         receiver.materials.energy = f32::from_bits(0x44b7_4ceb);
+        // Robot 223 at cycle 299 after receiving a 177-energy shot.
+        receiver.materials.waste = f32::from_bits(0x4264_26f5);
         let mut donor = receiver.clone();
         donor.materials.energy = 2_000.0;
         donor.materials.poison = 0.0;
 
-        for (mut native, expected_energy_bits, expected_body) in [
+        for (mut native, expected_energy_bits, expected_body, expected_waste_bits) in [
             (
                 Some(crate::native_random::NativeRandom::default()),
                 0x4501_2675,
                 278.218_05,
+                0x4286_137b,
             ),
-            (None, 0x4501_2676, 278.218_02),
+            (None, 0x4501_2676, 278.218_02, 0x4286_137a),
         ] {
             for give_energy in [false, true] {
                 let mut receiver = receiver.clone();
@@ -175,6 +178,7 @@ mod tests {
                     expected_energy_bits
                 );
                 assert_eq!(receiver.materials.body, expected_body);
+                assert_eq!(receiver.materials.waste.to_bits(), expected_waste_bits);
             }
         }
     }
