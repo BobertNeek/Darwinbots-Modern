@@ -106,9 +106,7 @@ impl Engine {
             if d2 == 0.0 {
                 continue;
             }
-            // Common.bas Dot rounds to Single at the function return.
-            let dot =
-                (f64::from(d[0]) * f64::from(p[0]) + f64::from(d[1]) * f64::from(p[1])) as f32;
+            let dot = crate::physics::native_dot(d, p);
             let discriminant = (f64::from(dot).powi(2)
                 - f64::from(d2) * (f64::from(p2) - f64::from(radius).powi(2)))
                 as f32;
