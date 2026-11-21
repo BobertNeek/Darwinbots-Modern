@@ -1318,14 +1318,19 @@ public sealed partial class MainWindow : Window
 
     private async Task<LegacyCommandResult> ToggleShotDecayAsync(bool energy)
     {
-        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        var shots = energy
-            ? _liveEnvironment.Shots with { EnergyShotsDoNotDecay = !_liveEnvironment.Shots.EnergyShotsDoNotDecay }
-            : _liveEnvironment.Shots with { WasteShotsDoNotDecay = !_liveEnvironment.Shots.WasteShotsDoNotDecay };
-        _liveEnvironment = _liveEnvironment with { Shots = shots };
-        await _session.UpdateEnvironmentAsync(_liveEnvironment);
-        var enabled = energy ? shots.EnergyShotsDoNotDecay : shots.WasteShotsDoNotDecay;
-        return LegacyCommandResult.Success($"{(energy ? "ENERGY" : "WASTE")} SHOT DECAY · {(enabled ? "OFF" : "ON")}");
+        await _advanceGate.WaitAsync();
+        try
+        {
+            if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+            var noDecay = energy ? !_liveEnvironment.Shots.EnergyShotsDoNotDecay
+                : !_liveEnvironment.Shots.WasteShotsDoNotDecay;
+            await session.SetShotDecayAsync(energy, noDecay);
+            var shots = energy ? _liveEnvironment.Shots with { EnergyShotsDoNotDecay = noDecay }
+                : _liveEnvironment.Shots with { WasteShotsDoNotDecay = noDecay };
+            _liveEnvironment = _liveEnvironment with { Shots = shots };
+            return LegacyCommandResult.Success($"{(energy ? "ENERGY" : "WASTE")} SHOT DECAY · {(noDecay ? "OFF" : "ON")}");
+        }
+        finally { _advanceGate.Release(); }
     }
 
     private async Task<LegacyCommandResult> ToggleTiesAsync()

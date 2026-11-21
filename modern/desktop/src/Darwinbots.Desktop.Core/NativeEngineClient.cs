@@ -624,6 +624,10 @@ public sealed partial class NativeEngineClient : IEngineClient
             "update organism mutation profile");
     }
 
+    public void SetShotDecay(bool energy, bool doNotDecay) => ExecuteBatch(
+        new { version = 1, commands = new[] { new { type = "set_shot_decay", energy, do_not_decay = doNotDecay } } },
+        "update shot decay");
+
     public void SetTiesEnabled(bool enabled) => ExecuteBatch(
         new { version = 1, commands = new[] { new { type = "set_ties_enabled", enabled } } },
         "update tie policy");
