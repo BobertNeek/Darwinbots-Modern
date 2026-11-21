@@ -8,6 +8,7 @@ using Avalonia.VisualTree;
 using Darwinbots.Desktop.Controls;
 using Darwinbots.Desktop.Core;
 using Darwinbots.Desktop.Core.LegacyMenus;
+using Darwinbots.Desktop.Services;
 using Darwinbots.Desktop.ViewModels;
 using Darwinbots.Desktop.Views;
 using Xunit;
@@ -117,6 +118,78 @@ public sealed class RobotConsoleRenderedTests
             {
                 foreach (var ownedWindow in window.OwnedWindows.ToArray()) ownedWindow.Close();
                 if (window.IsVisible) window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task ConsoleCycleUsesTheOwnerForSourceRecoveryAndSafeModeCheckpoint()
+    {
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            const string dna = "start\nstop\n";
+            var missing = new NativeRestartSource(42, $"console-alga-{Guid.NewGuid():N}.txt", "Robots");
+            var factory = new AuditEngineClientFactory(encodeTickInSave: true);
+            var storage = new AuditStorageService
+            {
+                ResolveNativeRepopulationSource = (_, source) =>
+                    Task.FromResult<DesktopTextFile?>(new DesktopTextFile(source.Filename, dna)),
+            };
+            var setup = new WorldSetupOptions
+            {
+                GlobalSettings = new GlobalSettings { Main = new GlobalMainSettings { SafeMode = true } },
+                Species = [new SpeciesImport("Luna", dna, false, 0xff239ac0, 1, 1_000, 0, false, 1)],
+            };
+            var window = new MainWindow([], setup, factory, storage);
+            try
+            {
+                window.Show();
+                var viewModel = Assert.IsType<MainWindowViewModel>(window.DataContext);
+                await WaitForAsync(() => viewModel.SelectedKey == new OrganismKey(3, 2)
+                    && viewModel.Status.Contains("WORLD READY", StringComparison.Ordinal));
+                var engine = Assert.Single(factory.Clients);
+                var session = (SimulationSession)typeof(MainWindow)
+                    .GetField("_session", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(window)!;
+                engine.NativeCycle = 1999;
+                engine.UnresolvedNativeRepopulationSources.Add(missing);
+                await session.RefreshSnapshotAsync();
+                engine.Calls.Clear();
+
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                menu.FindCommandItem(LegacyCommandId.RobotOpenConsole)!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitForAsync(() => window.OwnedWindows.OfType<RobotConsoleWindow>().Any());
+                var console = Assert.Single(window.OwnedWindows.OfType<RobotConsoleWindow>());
+                console.UpdateLayout();
+                var transcript = Assert.Single(console.GetVisualDescendants().OfType<TextBox>().Where(box => box.IsReadOnly));
+                var command = Assert.Single(console.GetVisualDescendants().OfType<TextBox>().Where(box => !box.IsReadOnly));
+                var run = Assert.Single(console.GetVisualDescendants().OfType<Button>().Where(button => Equals(button.Content, "RUN")));
+
+                await RunAndWaitAsync(command, run, transcript, "cycle 2", "cycle 2 (+2)");
+
+                Assert.EndsWith("> cycle 2\ncycle 2 (+2)\n", transcript.Text, StringComparison.Ordinal);
+                var request = Assert.Single(storage.NativeRepopulationSourceRequests);
+                Assert.Same(window, request.Owner);
+                Assert.Equal(missing, request.Source);
+                var binding = Assert.Single(engine.NativeRestartBindings);
+                Assert.True(binding.PreserveExisting);
+                Assert.Equal(new NativeRestartBinding(missing.LineageId, dna), Assert.Single(binding.Sources));
+                Assert.Equal(new[] { "Tick:1", "Save", "Tick:1" },
+                    engine.Calls.Where(call => call.StartsWith("Tick:", StringComparison.Ordinal) || call == "Save"));
+                Assert.Equal(1ul, BitConverter.ToUInt64(Assert.Single(storage.AutosaveWrites)));
+                Assert.Equal(2ul, session.LatestSnapshot.Tick);
+                Assert.Equal(2001, session.LatestSnapshot.NativeCycle);
+
+                var load = typeof(MainWindow).GetMethod("LoadSimulationAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
+                await (Task)load.Invoke(window, [new byte[] { 1 }])!;
+                engine.Calls.Clear();
+                await RunAndWaitAsync(command, run, transcript, "step", "This console belongs to a previous simulation.");
+                Assert.DoesNotContain(engine.Calls, call => call.StartsWith("Tick:", StringComparison.Ordinal));
+                Assert.Equal(2ul, session.LatestSnapshot.Tick);
+            }
+            finally
+            {
+                foreach (var ownedWindow in window.OwnedWindows.ToArray()) ownedWindow.Close();
+                window.Close();
             }
         }, CancellationToken.None);
     }

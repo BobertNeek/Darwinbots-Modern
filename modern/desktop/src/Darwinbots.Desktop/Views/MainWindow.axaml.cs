@@ -76,6 +76,7 @@ public sealed partial class MainWindow : Window
     private bool _tickInFlight;
     private bool _navigationInFlight;
     private bool _windowClosed;
+    private int _worldLoadGeneration;
     private readonly SemaphoreSlim _advanceGate = new(1, 1);
     private volatile bool _loadingSimulation;
     private OrganismKey? _moveOrganism;
@@ -1637,12 +1638,13 @@ public sealed partial class MainWindow : Window
     private async Task<LegacyCommandResult> ShowSelectedRobotConsoleAsync()
     {
         var organism = _viewModel.SelectedOrganism!;
-        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
         var focus = new OrganismKey(organism.Slot, organism.Generation);
+        var generation = _worldLoadGeneration;
         _toolWindows.ShowOrActivate(
-            $"robot-console:{focus.Slot}:{focus.Generation}",
+            $"robot-console:{generation}:{focus.Slot}:{focus.Generation}",
             () => new RobotConsoleWindow(
-                _session,
+                session,
                 focus,
                 () =>
                 {
@@ -1653,7 +1655,8 @@ public sealed partial class MainWindow : Window
                 {
                     Pause_Click(this, new RoutedEventArgs());
                     return Task.CompletedTask;
-                }));
+                },
+                (count, cancellationToken) => AdvanceSimulationCoreAsync(count, session, generation, cancellationToken)));
         return LegacyCommandResult.Success("ROBOT CONSOLE OPEN");
     }
 
@@ -2970,6 +2973,7 @@ public sealed partial class MainWindow : Window
             var mainDirectory = _globalSettings.Main.MainDirectory;
             await _session.LoadWithNativeRestartSourcesAsync(save,
                 source => SetupStorageService.ResolveNativeRestartSource(source, sourcePath, mainDirectory));
+            _worldLoadGeneration++;
             // A rejected load publishes no snapshot and must keep user-closed
             // graphs closed. Loading publications defer this until success.
             _automaticEvolutionGraphBoundary = null;
@@ -2983,12 +2987,21 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private async Task AdvanceSimulationAsync(uint count)
+    private Task AdvanceSimulationAsync(uint count) => AdvanceSimulationCoreAsync(count);
+
+    private async Task<(ulong Tick, ulong Advanced)> AdvanceSimulationCoreAsync(uint count,
+        SimulationSession? expectedSession = null, int? expectedGeneration = null, CancellationToken cancellationToken = default)
     {
-        await _advanceGate.WaitAsync();
+        await _advanceGate.WaitAsync(cancellationToken);
         try
         {
-            if (_windowClosed || _session is not { } session || count == 0) return;
+            if (expectedSession is not null && (_windowClosed || expectedSession != _session
+                || expectedGeneration != _worldLoadGeneration))
+                throw new InvalidOperationException("This console belongs to a previous simulation.");
+            if (_windowClosed || _session is not { } session || count == 0)
+                return (_session?.LatestSnapshot.Tick ?? 0, 0);
+
+            var startingTick = session.LatestSnapshot.Tick;
             // A recovered pending checkpoint already contains the completed cycle.
             if (session.LatestSnapshot.OrdinaryRestartPending)
                 await session.FinishOrdinaryRestartAsync();
@@ -2996,6 +3009,7 @@ public sealed partial class MainWindow : Window
                 && await session.HasUnresolvedNativeRepopulationSourcesAsync();
             while (count > 0)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var before = session.LatestSnapshot;
                 if (_lastAutomaticSaveTick is { } savedTick && before.Tick < savedTick)
                     _lastAutomaticSaveTick = null;
@@ -3006,8 +3020,19 @@ public sealed partial class MainWindow : Window
                 var batch = observesOrdinaryRestart || requiresOriginalSource
                     ? 1u
                     : CycleAutosavePolicy.LimitBatch(before.Tick, count, _safemodeBackup, interval, before.LocalMode, before.NativeCycle);
-                if (requiresOriginalSource) await StepResolvingNativeRepopulationSourcesAsync(session);
-                else await session.StepAsync(batch);
+                if (requiresOriginalSource)
+                {
+                    try
+                    {
+                        await StepResolvingNativeRepopulationSourcesAsync(session);
+                    }
+                    catch (MissingNativeRepopulationSourceException)
+                    {
+                        _runTimer.Stop();
+                        break;
+                    }
+                }
+                else await session.StepAsync(batch, cancellationToken);
                 count -= batch;
                 var after = session.LatestSnapshot;
                 if (after.OrdinaryRestartPending)
@@ -3020,10 +3045,8 @@ public sealed partial class MainWindow : Window
                 if (count > 0 && requiresOriginalSource)
                     requiresOriginalSource = await session.HasUnresolvedNativeRepopulationSourcesAsync();
             }
-        }
-        catch (MissingNativeRepopulationSourceException)
-        {
-            _runTimer.Stop();
+            var tick = session.LatestSnapshot.Tick;
+            return (tick, tick >= startingTick ? tick - startingTick : 0);
         }
         finally { _advanceGate.Release(); }
     }
