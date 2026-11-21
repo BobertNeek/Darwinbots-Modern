@@ -48,7 +48,8 @@ public sealed partial class App : Application
             error = $"Simulation file not found: {requestedSave}";
         }
 
-        var setup = new SetupWindow(storage, allowLastExitResume: arguments.Length == 0);
+        var setup = new SetupWindow(storage, allowLastExitResume: arguments.Length == 0,
+            stageNativeAppearance: SetupWindow.CreateNativeAppearanceProvider());
         if (error is not null) setup.ShowStartupLoadError(error);
         setup.WorldCreated += options =>
         {
