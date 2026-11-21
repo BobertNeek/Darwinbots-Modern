@@ -467,6 +467,9 @@ pub struct OrganismSnapshot {
     #[serde(default)]
     pub memory: Vec<MemoryCellSnapshot>,
     pub species: SpeciesId,
+    /// Native per-robot FName, independently of its registered species name.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub founder_name: String,
     pub vegetable: bool,
     pub parents: [Option<OrganismId>; 2],
     pub body: i32,
@@ -1632,6 +1635,7 @@ impl From<Db3sV2OrganismSnapshot> for OrganismSnapshot {
             occurrence_counts: vec![0; 21],
             memory: Vec::new(),
             species: value.species.into(),
+            founder_name: String::new(),
             vegetable: value.vegetable,
             parents: value.parents.map(|parent| parent.map(Into::into)),
             body: value.body,
@@ -4964,6 +4968,7 @@ impl Engine {
             self.slots.get(id)?,
             &self.species,
             &self.config,
+            self.native_random.is_some(),
         ))
     }
 
@@ -5293,6 +5298,28 @@ impl Engine {
             }
         }
         Ok(exported.to_source_with_runtime_metadata(generation, mutations, tag))
+    }
+
+    pub(crate) fn rename_robot_founder(&mut self, id: OrganismId, name: String) -> bool {
+        if self.native_random.is_none()
+            || self.local_mode.has_active_restart_mode()
+            || name.trim().is_empty()
+            || matches!(name.as_str(), "." | "..")
+            || name.contains(['/', '\\'])
+            || name.chars().any(char::is_control)
+        {
+            return false;
+        }
+        let Ok(robot) = self.slots.get_mut(id) else {
+            return false;
+        };
+        if robot.identity.species_file == name {
+            return false;
+        }
+        // salvarob changes only the selected robot's original filename.
+        robot.identity.species_file = name;
+        self.publish_snapshot();
+        true
     }
 
     /// Export the retained startup genome even if no living candidate remains.
@@ -12951,6 +12978,7 @@ impl Engine {
                         organism,
                         &self.species,
                         &self.config,
+                        self.native_random.is_some(),
                     )
                 })
             })
@@ -13685,6 +13713,7 @@ fn snapshot_organism(
     organism: &RobotState,
     _species: &[SpeciesDefinition],
     config: &EngineConfig,
+    native: bool,
 ) -> OrganismSnapshot {
     OrganismSnapshot {
         id,
@@ -13711,6 +13740,11 @@ fn snapshot_organism(
             .map(|(address, value)| MemoryCellSnapshot { address, value })
             .collect(),
         species: organism.identity.species,
+        founder_name: if native {
+            organism.identity.species_file.clone()
+        } else {
+            String::new()
+        },
         vegetable: organism.flags.vegetable,
         parents: organism.identity.parents,
         body: resource_readback(organism.materials.body),
@@ -14934,6 +14968,27 @@ mod native_publication55_tests {
         world
             .spawn_at(LegacyDna::parse("stop").unwrap(), position)
             .unwrap()
+    }
+
+    #[test]
+    fn save_dna_rename_is_ignored_during_a_restart_mode() {
+        let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+        let id = inert(&mut world, [500.0; 2]);
+        let before = world.organism(id).unwrap();
+        world.local_mode.status = LocalModeStatus::Running;
+        world.local_mode.evolution = Some(
+            crate::EvolutionState::new(
+                crate::EvolutionConfig::default(),
+                vec![crate::EvolutionGenome {
+                    dna: LegacyDna::parse("start 10 .up store stop").unwrap(),
+                    mutation_profile: StandardMutationProfile::default(),
+                }],
+            )
+            .unwrap(),
+        );
+        assert!(world.local_mode.has_active_restart_mode());
+        assert!(!world.rename_robot_founder(id, "Oracle,movement.txt".to_owned()));
+        assert_eq!(world.organism(id).unwrap(), before);
     }
 
     #[test]

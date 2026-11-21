@@ -1,6 +1,5 @@
 //! Native organism groups retain robot state and commit as one operation.
 
-use super::native_io::{color, skin, text};
 use super::*;
 use crate::SaveFile;
 use crate::native_binary::{NativeRecordFile, NativeValue};
@@ -104,34 +103,6 @@ impl Engine {
             let old_slot = record.word("old_slot")?;
             if old_slot <= 0 || old_slots.contains_key(&old_slot) {
                 return Err(invalid("duplicate or invalid old robot slot"));
-            }
-            let name = text(record.bytes("species_name")?);
-            if record.word("corpse")? == 0
-                && name != "Corpse"
-                && !self.species.iter().any(|s| s.name == name)
-            {
-                // AddSpecie uses default species mutation rates; the robot
-                // retains its own complete incoming mutation profile.
-                self.register_species(SpeciesDefinition {
-                    name,
-                    vegetable: record.word("vegetable")? != 0,
-                    color: color(record.long("color")?),
-                    skin: skin(record.bytes("skin")?),
-                    custom_skin: true,
-                    minimum_population: 5,
-                    reseed: false,
-                    mutation_profile: Some(self.default_mutation_profile.clone()),
-                    restrictions: Some(RestrictionColumn {
-                        disable_vision: record.word("cant_see")? != 0,
-                        disable_dna: record.word("disable_dna")? != 0,
-                        disable_movement: record.word("disable_movement")? != 0,
-                        disable_reproduction: record.word("cant_reproduce")? != 0,
-                        virus_immune: record.word("virus_immune")? != 0,
-                        disable_mutations: record.word("mutations_enabled")? == 0,
-                        ..RestrictionColumn::default()
-                    }),
-                    ..SpeciesDefinition::default()
-                });
             }
             let mut robot = self.native_robot(record)?;
             // Incoming metadata is owned by the live robot. Removal releases
