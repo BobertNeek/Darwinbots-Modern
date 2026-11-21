@@ -10,7 +10,6 @@ public sealed class GeneActivationsWindow : Window, IPersistentSnapshotToolWindo
     private readonly TextBlock _focusLabel = new();
     private readonly TextBlock _activity = new()
     {
-        FontFamily = new FontFamily("Consolas"),
         TextWrapping = TextWrapping.Wrap,
     };
     private OrganismKey? _focus;
