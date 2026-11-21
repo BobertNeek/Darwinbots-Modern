@@ -73,7 +73,9 @@ mod player_insertion;
 
 #[path = "world/file_teleporters.rs"]
 mod file_teleporters;
+mod gene_activation_meter;
 mod species_settings;
+pub use gene_activation_meter::GeneActivationMeterSnapshot;
 
 #[path = "world/file_transfer_transaction.rs"]
 mod file_transfer_transaction;
@@ -541,6 +543,8 @@ pub struct Snapshot {
     /// Original signed SimOpts.TotRunCycle, separate from the monotonic API tick.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub native_cycle: Option<i32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gene_activation_meter: Option<GeneActivationMeterSnapshot>,
     #[serde(default = "default_true")]
     pub death_poffs_enabled: bool,
     #[serde(default = "default_world_size")]
@@ -592,6 +596,7 @@ impl Default for Snapshot {
             schema_version: 0,
             tick: 0,
             native_cycle: None,
+            gene_activation_meter: None,
             death_poffs_enabled: true,
             world_size: [0.0; 2],
             organisms: Vec::new(),
@@ -623,6 +628,7 @@ impl PartialEq for Snapshot {
     fn eq(&self, other: &Self) -> bool {
         self.tick == other.tick
             && self.native_cycle == other.native_cycle
+            && self.gene_activation_meter == other.gene_activation_meter
             && self.death_poffs_enabled == other.death_poffs_enabled
             && self.schema_version == other.schema_version
             && self.world_size == other.world_size
@@ -1976,6 +1982,7 @@ impl From<Db3sV2Snapshot> for Snapshot {
             schema_version: default_snapshot_schema_version(),
             tick: value.tick,
             native_cycle: None,
+            gene_activation_meter: None,
             death_poffs_enabled: true,
             world_size: value.world_size,
             organisms: value.organisms.into_iter().map(Into::into).collect(),
@@ -2794,6 +2801,7 @@ impl Engine {
                 schema_version: default_snapshot_schema_version(),
                 tick: 0,
                 native_cycle: None,
+                gene_activation_meter: None,
                 death_poffs_enabled: true,
                 world_size,
                 organisms: Vec::new(),
@@ -6644,6 +6652,11 @@ impl Engine {
             organism.program.current_gene = u32::from(report.current_gene);
             organism.program.condition_count = report.conditions_evaluated;
             organism.program.activation_bitmap = report.activations.clone();
+            if let Some(meter) = self.snapshot.gene_activation_meter.as_mut()
+                && meter.focus == Some(OrganismId::new(slot_index as u32, generation))
+            {
+                meter.record(&report.activations);
+            }
             organism.program.activation_history.push(ActivationFrame {
                 tick: self.tick,
                 activations: report.activations,
@@ -12939,6 +12952,7 @@ impl Engine {
             schema_version: default_snapshot_schema_version(),
             tick: self.tick,
             native_cycle: self.native_cycle,
+            gene_activation_meter: self.snapshot.gene_activation_meter.take(),
             death_poffs_enabled: self.death_poffs_enabled,
             world_size: [self.config.world_width, self.config.world_height],
             organisms,
