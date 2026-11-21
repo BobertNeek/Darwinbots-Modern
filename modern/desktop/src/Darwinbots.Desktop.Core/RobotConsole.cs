@@ -16,20 +16,24 @@ public sealed class RobotConsoleController
     private readonly OrganismKey _focus;
     private readonly Func<Task>? _play;
     private readonly Func<Task>? _pause;
+    private readonly Action<bool>? _showDna;
 
     public RobotConsoleController(
         SimulationSession session,
         OrganismKey focus,
         Func<Task>? play = null,
-        Func<Task>? pause = null)
+        Func<Task>? pause = null,
+        Action<bool>? showDna = null)
     {
         _session = session;
         _focus = focus;
         _play = play;
         _pause = pause;
+        _showDna = showDna;
     }
 
-    public async Task<string> ExecuteAsync(string input, CancellationToken cancellationToken = default)
+    public async Task<string> ExecuteAsync(string input, CancellationToken cancellationToken = default,
+        bool selectConsoleRobotForDna = false)
     {
         var command = RobotConsoleCommand.Parse(input);
         switch (command.Name)
@@ -80,6 +84,11 @@ public sealed class RobotConsoleController
             case "debug":
                 return PrintDebug();
             case "showdna":
+                if (_showDna is { } showDna)
+                {
+                    showDna(selectConsoleRobotForDna);
+                    return "ROBOT DNA OPEN";
+                }
                 return await _session.ExportDnaAsync(_focus.Slot, _focus.Generation, cancellationToken)
                     .ConfigureAwait(false);
             default:

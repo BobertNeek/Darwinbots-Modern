@@ -1589,11 +1589,12 @@ public sealed partial class MainWindow : Window
         RobotDetailsTab tab)
     {
         var focus = new OrganismKey(organism.Slot, organism.Generation);
-        if (tab == RobotDetailsTab.Facts && session.LatestSnapshot.NativeCycle.HasValue)
+        if (session.LatestSnapshot.NativeCycle.HasValue && tab is RobotDetailsTab.Facts or RobotDetailsTab.Dna)
         {
             var info = _toolWindows.ShowOrActivate(NativeRobotInfoKey,
                 () => new RobotDetailsWindow(session, focus, tab, SelectedRobotKey) { Topmost = true });
-            info.SetFollowedSnapshot(session.LatestSnapshot);
+            if (tab == RobotDetailsTab.Dna) info.SelectTab(tab);
+            info.SetFollowedSnapshot(session.LatestSnapshot, tab == RobotDetailsTab.Dna ? focus : null);
             return info;
         }
 
@@ -1646,12 +1647,13 @@ public sealed partial class MainWindow : Window
     private async Task<LegacyCommandResult> ShowSelectedRobotConsoleAsync()
     {
         var organism = _viewModel.SelectedOrganism!;
-        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
         var focus = new OrganismKey(organism.Slot, organism.Generation);
+        var native = session.LatestSnapshot.NativeCycle.HasValue;
         _toolWindows.ShowOrActivate(
             $"robot-console:{focus.Slot}:{focus.Generation}",
             () => new RobotConsoleWindow(
-                _session,
+                session,
                 focus,
                 () =>
                 {
@@ -1662,8 +1664,25 @@ public sealed partial class MainWindow : Window
                 {
                     Pause_Click(this, new RoutedEventArgs());
                     return Task.CompletedTask;
-                }));
+                }, showDna: native ? ShowNativeDna : null));
         return LegacyCommandResult.Success("ROBOT CONSOLE OPEN");
+
+        void ShowNativeDna(bool selectConsoleRobot)
+        {
+            if (_loadingSimulation || _session != session || !session.LatestSnapshot.NativeCycle.HasValue)
+                throw new InvalidOperationException("This console belongs to a previous simulation.");
+            var actor = session.LatestSnapshot.Organisms.FirstOrDefault(value => value.Slot == focus.Slot
+                && value.Generation == focus.Generation && value.UniqueId == organism.UniqueId
+                && value.SimulationId == organism.SimulationId)
+                ?? throw new InvalidOperationException("The console robot no longer exists.");
+            if (selectConsoleRobot)
+            {
+                _viewModel.Select(focus);
+                Viewport.SelectKey(focus);
+                RefreshLegacyMenuStates();
+            }
+            ShowRobotDetails(session, actor, RobotDetailsTab.Dna);
+        }
     }
 
     private async Task<LegacyCommandResult> ShowSelectedGeneActivationsAsync()

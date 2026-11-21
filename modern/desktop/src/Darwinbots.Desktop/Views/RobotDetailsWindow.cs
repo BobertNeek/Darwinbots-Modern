@@ -21,6 +21,7 @@ public sealed class RobotDetailsWindow : Window
     private readonly Func<OrganismKey?>? _readFocus;
     private OrganismKey? _focus;
     private ulong _followedTick;
+    private OrganismKey? _consoleDnaFacts;
     private long _dnaReadVersion;
     private readonly RobotDiagnosticModel _diagnostic = new();
     private readonly TextBlock _subtitle = new();
@@ -258,15 +259,22 @@ public sealed class RobotDetailsWindow : Window
         });
     }
 
-    internal void SetFollowedSnapshot(EngineSnapshot snapshot)
+    internal void SetFollowedSnapshot(EngineSnapshot snapshot, OrganismKey? consoleDnaFacts = null)
     {
         _followedTick = snapshot.Tick;
+        _consoleDnaFacts = consoleDnaFacts;
         var focus = _readFocus?.Invoke();
-        if (focus != _focus)
+        var focusChanged = focus != _focus;
+        if (focusChanged)
         {
             _focus = focus;
             Title = focus is { } key ? $"Darwinbots — Robot Details {key.Slot}:{key.Generation}" : "Darwinbots — Robot Details";
-            _dna.Text = string.Empty;
+        }
+        if (focusChanged || consoleDnaFacts.HasValue)
+        {
+            _dna.Text = consoleDnaFacts.HasValue && !focus.HasValue
+                ? "This Robot is dead.  No DNA available."
+                : string.Empty;
             _status.Text = "Engine-owned values refresh each published cycle.";
             _ = RefreshDnaAsync();
         }
@@ -276,8 +284,10 @@ public sealed class RobotDetailsWindow : Window
     public void SetSnapshot(EngineSnapshot snapshot)
     {
         _diagnostic.Update(snapshot, _focus);
-        var organism = _focus is { } focus ? snapshot.Organisms.FirstOrDefault(value =>
-            value.Slot == focus.Slot && value.Generation == focus.Generation) : null;
+        var selected = FindActor(_focus);
+        // Console showdna initially displays its actor's facts alongside the selected actor's DNA.
+        var consoleActor = snapshot.Tick == _followedTick ? FindActor(_consoleDnaFacts) : null;
+        var organism = consoleActor ?? selected;
         if (organism is null)
         {
             _subtitle.Text = _focus is { } removed ? $"ROBOT {removed.Slot}:{removed.Generation} · REMOVED" : "NO ROBOT SELECTED";
@@ -289,13 +299,15 @@ public sealed class RobotDetailsWindow : Window
             return;
         }
 
+        var factFocus = new OrganismKey(organism.Slot, organism.Generation);
         var species = snapshot.Species.ElementAtOrDefault((int)organism.Species)?.Name ?? "UNASSIGNED";
         var dnaSummary = string.IsNullOrWhiteSpace(_dna.Text)
             ? "UNAVAILABLE"
             : _dna.Text.Replace("\r\n", " / ", StringComparison.Ordinal).Replace('\n', ' ');
-        var memorySummary = organism.Memory.Count == 0
+        var memory = selected?.Memory ?? [];
+        var memorySummary = memory.Count == 0
             ? "NONE"
-            : string.Join(", ", organism.Memory.Select(cell => cell.Address.ToString(CultureInfo.InvariantCulture)));
+            : string.Join(", ", memory.Select(cell => cell.Address.ToString(CultureInfo.InvariantCulture)));
         _subtitle.Text = $"LIVE ROBOT {organism.Slot}:{organism.Generation} · {species.ToUpperInvariant()} · TICK {snapshot.Tick:N0}";
         _facts.Text = string.Join(Environment.NewLine,
             $"ARRAY ID       {organism.Slot:N0}",
@@ -319,8 +331,8 @@ public sealed class RobotDetailsWindow : Window
             $"TOUCH / TASTE  {organism.Touch:N0} / {organism.Taste:N0}",
             $"SKIN           {organism.Phenotype.Skin.Length:N0} points · COLOR #{organism.Phenotype.Color & 0x00ffffff:X6}",
             $"EYES           {organism.Vision.Eyes.Length:N0} · FOCUS {organism.Vision.FocusEye:N0}",
-            $"TIES           {snapshot.Ties.Count(tie => tie.First == _focus || tie.Second == _focus):N0}",
-            $"SHOTS          {snapshot.Shots.Count(shot => shot.Alive && shot.Owner == _focus):N0}",
+            $"TIES           {snapshot.Ties.Count(tie => tie.First == factFocus || tie.Second == factFocus):N0}",
+            $"SHOTS          {snapshot.Shots.Count(shot => shot.Alive && shot.Owner == factFocus):N0}",
             $"NEW / TOTAL M.  {organism.NewMutations:N0} / {organism.TotalMutations:N0}",
             $"SUBSPECIES     {organism.Subspecies:N0}",
             $"LAST MUTATION  {organism.LastMutationKind ?? "NONE"} @ {organism.LastMutationCycle?.ToString("N0") ?? "-"}",
@@ -331,12 +343,12 @@ public sealed class RobotDetailsWindow : Window
             $"DNA VIEW       {dnaSummary}",
             $"MEMORY VIEW    {memorySummary}");
         _factsTab.Text = _facts.Text;
-        _memory.Text = organism.Memory.Count == 0
+        _memory.Text = selected is null ? string.Empty : memory.Count == 0
             ? "No non-zero public memory cells were published."
             : string.Join(Environment.NewLine,
-                organism.Memory.Select(cell => $"{cell.Address,4}  {cell.Value,10}"));
-        if (!string.IsNullOrWhiteSpace(organism.DebugText))
-            _memory.Text += $"{Environment.NewLine}{Environment.NewLine}DEBUG{Environment.NewLine}{organism.DebugText}";
+                memory.Select(cell => $"{cell.Address,4}  {cell.Value,10}"));
+        if (selected is { DebugText: { } debug } && !string.IsNullOrWhiteSpace(debug))
+            _memory.Text += $"{Environment.NewLine}{Environment.NewLine}DEBUG{Environment.NewLine}{debug}";
 
         _activationSummary.Text = _diagnostic.ActivationSummary;
         _activationTimeline.Children.Clear();
@@ -356,6 +368,10 @@ public sealed class RobotDetailsWindow : Window
                 },
             });
         }
+
+        OrganismSnapshot? FindActor(OrganismKey? focus) => focus is { } key
+            ? snapshot.Organisms.FirstOrDefault(value => value.Slot == key.Slot && value.Generation == key.Generation)
+            : null;
     }
 
     private static string FormatParent(OrganismKey?[]? parents, int index) =>

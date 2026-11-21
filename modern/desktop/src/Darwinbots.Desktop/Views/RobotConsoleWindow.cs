@@ -19,7 +19,8 @@ public sealed class RobotConsoleWindow : Window
         SimulationSession session,
         OrganismKey focus,
         Func<Task>? play = null,
-        Func<Task>? pause = null)
+        Func<Task>? pause = null,
+        Action<bool>? showDna = null)
     {
         Title = $"Darwinbots — Robot Console {focus.Slot}:{focus.Generation}";
         Width = 760;
@@ -28,7 +29,7 @@ public sealed class RobotConsoleWindow : Window
         MinHeight = 420;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         Background = Brush.Parse("#F4F0E6");
-        _controller = new RobotConsoleController(session, focus, play, pause);
+        _controller = new RobotConsoleController(session, focus, play, pause, showDna);
 
         var root = new Grid { RowDefinitions = new RowDefinitions("66,*,86") };
         root.Children.Add(new Border
@@ -78,7 +79,7 @@ public sealed class RobotConsoleWindow : Window
         var step = Button("STEP", (_, _) => _ = RunCommandAsync("step"));
         var eyes = Button("EYES", (_, _) => _ = RunCommandAsync("eyes"));
         var debug = Button("DEBUG", (_, _) => _ = RunCommandAsync("debug"));
-        var dna = Button("DNA", (_, _) => _ = RunCommandAsync("showdna"));
+        var dna = Button("DNA", (_, _) => _ = RunCommandAsync("showdna", selectConsoleRobotForDna: true));
         var playButton = Button("PLAY", async (_, _) => await RunCommandAsync("play"));
         var pauseButton = Button("PAUSE", async (_, _) => await RunCommandAsync("pause"));
         var controls = new StackPanel
@@ -125,7 +126,7 @@ public sealed class RobotConsoleWindow : Window
     private void RunCommand_Click(object? sender, RoutedEventArgs e) =>
         _ = RunCommandAsync(_command.Text ?? string.Empty);
 
-    private async Task RunCommandAsync(string input)
+    private async Task RunCommandAsync(string input, bool selectConsoleRobotForDna = false)
     {
         if (_commandInFlight || string.IsNullOrWhiteSpace(input)) return;
         _commandInFlight = true;
@@ -133,7 +134,7 @@ public sealed class RobotConsoleWindow : Window
         {
             _transcript.Text += $"> {input.Trim()}\n";
             _command.Clear();
-            var result = await _controller.ExecuteAsync(input).ConfigureAwait(true);
+            var result = await _controller.ExecuteAsync(input, selectConsoleRobotForDna: selectConsoleRobotForDna).ConfigureAwait(true);
             _transcript.Text += result + "\n";
             _transcript.CaretIndex = _transcript.Text?.Length ?? 0;
         }

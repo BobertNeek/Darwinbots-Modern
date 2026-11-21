@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Interactivity;
+using Avalonia.Input;
 using Avalonia.Media.Imaging;
 using Avalonia.VisualTree;
 using Darwinbots.Desktop.Controls;
@@ -90,6 +91,9 @@ public sealed class RobotConsoleRenderedTests
                 await RunAndWaitAsync(command, buttons["RUN"], transcript, "printmem 310", "mem[310] = 0");
                 Assert.Contains("> printmem 310", transcript.Text, StringComparison.Ordinal);
 
+                await RunAndWaitAsync(command, buttons["RUN"], transcript, "showdna", "start\nstop");
+                Assert.Empty(window.OwnedWindows.OfType<RobotDetailsWindow>());
+
                 await RunAndWaitAsync(command, buttons["RUN"], transcript, "set 310 123", "mem[310] = 123");
                 Assert.Contains("Memory:3:2:310:123", engine.Calls);
 
@@ -112,6 +116,110 @@ public sealed class RobotConsoleRenderedTests
                 console.Close();
                 Assert.False(console.IsVisible);
                 Assert.Equal(callsBeforeClose, engine.Calls.ToArray());
+            }
+            finally
+            {
+                foreach (var ownedWindow in window.OwnedWindows.ToArray()) ownedWindow.Close();
+                if (window.IsVisible) window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task NativeConsoleDnaDistinguishesTheTypedCommandFromTheDnaButton()
+    {
+        const string firstDna = "start\n1101 501 store\nstop";
+        const string secondDna = "start\n2202 502 store\nstop";
+        var setup = new WorldSetupOptions
+        {
+            Backend = "Cpu",
+            Species =
+            [
+                new SpeciesImport("First Console Robot", firstDna, false, 0xff239ac0, 1, 1_000, 0, false, 1),
+                new SpeciesImport("Second Arena Robot", secondDna, false, 0xff349857, 1, 1_000, 0, false, 1),
+            ],
+        };
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], setup, NativeEngineClientFactory.Instance, new AuditStorageService())
+            {
+                WindowState = WindowState.Normal, Width = 1_280, Height = 900,
+            };
+            try
+            {
+                window.Show();
+                var model = Assert.IsType<MainWindowViewModel>(window.DataContext);
+                await WaitForAsync(() => model.Population == 2 && model.SelectedKey.HasValue && model.NativeCycle.HasValue);
+                var session = (SimulationSession)typeof(MainWindow)
+                    .GetField("_session", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(window)!;
+                var consoleFocus = model.SelectedKey!.Value;
+                var other = Assert.Single(session.LatestSnapshot.Organisms, actor => actor.Slot != consoleFocus.Slot);
+                var selectedFocus = new OrganismKey(other.Slot, other.Generation);
+                var selectedDna = await session.ExportDnaAsync(selectedFocus.Slot, selectedFocus.Generation);
+                var consoleDna = await session.ExportDnaAsync(consoleFocus.Slot, consoleFocus.Generation);
+                Assert.NotEqual(selectedDna, consoleDna);
+                var viewport = window.FindControl<WorldViewport>("Viewport")!;
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                menu.FindCommandItem(LegacyCommandId.RobotShowInfo)!
+                    .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitForAsync(() => window.OwnedWindows.OfType<RobotDetailsWindow>().Any());
+                var info = Assert.Single(window.OwnedWindows.OfType<RobotDetailsWindow>());
+                menu.FindCommandItem(LegacyCommandId.RobotOpenConsole)!
+                    .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitForAsync(() => window.OwnedWindows.OfType<RobotConsoleWindow>().Any());
+                var console = Assert.Single(window.OwnedWindows.OfType<RobotConsoleWindow>());
+                console.UpdateLayout();
+                info.UpdateLayout();
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                var transcript = Assert.Single(console.GetVisualDescendants().OfType<TextBox>(), box => box.IsReadOnly);
+                var command = Assert.Single(console.GetVisualDescendants().OfType<TextBox>(), box => !box.IsReadOnly);
+                var run = Assert.Single(console.GetVisualDescendants().OfType<Button>(), button => Equals(button.Content, "RUN"));
+                var dnaButton = Assert.Single(console.GetVisualDescendants().OfType<Button>(), button => Equals(button.Content, "DNA"));
+                var tabs = Assert.Single(info.GetVisualDescendants().OfType<TabControl>());
+                var dnaTab = Assert.Single(tabs.Items.OfType<TabItem>(), item => Equals(item.Header, "DNA"));
+                var dna = Assert.IsType<TextBox>(Assert.IsType<Border>(dnaTab.Content).Child);
+
+                var size = session.LatestSnapshot.WorldSize;
+                var scaleX = viewport.Bounds.Width / size[0];
+                var scaleY = viewport.Bounds.Height / size[1];
+                if (viewport.FixedRatio) scaleX = scaleY = Math.Min(scaleX, scaleY);
+                var robotPoint = new Point(other.Position[0] * scaleX * viewport.Zoom + viewport.Pan.X,
+                    other.Position[1] * scaleY * viewport.Zoom + viewport.Pan.Y);
+                var pointer = viewport.TranslatePoint(robotPoint, window);
+                Assert.True(pointer.HasValue);
+                window.MouseDown(pointer.Value, MouseButton.Left, RawInputModifiers.None);
+                window.MouseUp(pointer.Value, MouseButton.Left, RawInputModifiers.None);
+                Assert.Equal(selectedFocus, model.SelectedKey);
+                await RunAndWaitAsync(command, run, transcript, "showdna", "ROBOT DNA OPEN");
+                await WaitForAsync(() => dna.Text == selectedDna);
+                Assert.Same(info, Assert.Single(window.OwnedWindows.OfType<RobotDetailsWindow>()));
+                Assert.True(info.Topmost);
+                Assert.Same(dnaTab, tabs.SelectedItem);
+                Assert.Equal(selectedFocus, model.SelectedKey);
+                Assert.True(ShowsFacts(consoleFocus));
+
+                await session.StepAsync();
+                await WaitForAsync(() => ShowsFacts(selectedFocus));
+                Assert.Equal(selectedDna, dna.Text);
+
+                dnaButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitForAsync(() => dna.Text == consoleDna);
+                Assert.Equal(consoleFocus, model.SelectedKey);
+                Assert.Same(dnaTab, tabs.SelectedItem);
+                Assert.True(ShowsFacts(consoleFocus));
+
+                model.ClearSelection();
+                viewport.SelectKey(null);
+                command.Text = "showdna";
+                run.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitForAsync(() => info.IsVisible && dna.Text == "This Robot is dead.  No DNA available.");
+                Assert.Null(model.SelectedKey);
+                Assert.Same(dnaTab, tabs.SelectedItem);
+                Assert.True(ShowsFacts(consoleFocus));
+
+                bool ShowsFacts(OrganismKey actor) => info.GetVisualDescendants().OfType<TextBlock>()
+                    .Any(label => label.Text?.StartsWith($"ARRAY ID       {actor.Slot:N0}{Environment.NewLine}",
+                        StringComparison.Ordinal) == true);
             }
             finally
             {
