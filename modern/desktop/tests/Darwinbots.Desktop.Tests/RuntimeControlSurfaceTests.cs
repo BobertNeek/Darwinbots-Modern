@@ -2243,7 +2243,7 @@ public sealed class RuntimeControlSurfaceTests
         public byte[]? OpenedSimulation { get; set; }
         public int OpenRequests { get; private set; }
 
-        public Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner, string? mainDirectory = null) =>
+        public Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner, string? mainDirectory = null, bool allowMultiple = true) =>
             Task.FromResult<IReadOnlyList<DesktopTextFile>>([]);
 
         public Task<DesktopSettings?> OpenSettingsAsync(TopLevel owner, string? mainDirectory = null) =>

@@ -24,7 +24,7 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         _profileDirectory = Path.GetFullPath(profileDirectory);
     }
 
-    public async Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner, string? mainDirectory = null)
+    public async Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner, string? mainDirectory = null, bool allowMultiple = true)
     {
         var storage = owner.StorageProvider;
         using var folder = mainDirectory is null ? null : await NativeRobotFolderAsync(storage, mainDirectory);
@@ -32,7 +32,7 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         {
             Title = "Import Darwinbots robot DNA",
             SuggestedStartLocation = folder,
-            AllowMultiple = true,
+            AllowMultiple = allowMultiple,
             FileTypeFilter = [RobotFileType()],
         });
         var result = new List<DesktopTextFile>(files.Count);

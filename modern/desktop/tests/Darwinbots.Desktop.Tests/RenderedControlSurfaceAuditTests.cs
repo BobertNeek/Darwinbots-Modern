@@ -2153,7 +2153,7 @@ internal sealed class AuditStorageService : IDesktopStorageService
         return Task.CompletedTask;
     }
 
-    public Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner, string? mainDirectory = null) => Task.FromResult(DnaFiles);
+    public Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner, string? mainDirectory = null, bool allowMultiple = true) => Task.FromResult(DnaFiles);
     public Task<DesktopSettings?> OpenSettingsAsync(TopLevel owner, string? mainDirectory = null) => Task.FromResult(SettingsToOpen);
     public Task<byte[]?> OpenRgbMonitorPresetAsync(TopLevel owner) => Task.FromResult(RgbMonitorPresetToOpen);
 
