@@ -82,7 +82,10 @@ impl Engine {
                 runtime.finish_command(921, CommandOutcome::Consumed, &mut robot.program.memory);
                 runtime.finish_command(922, CommandOutcome::Consumed, &mut robot.program.memory);
             }
-            if robot.materials.chloroplasts > 0.0 && robot.counters.chloroplast_share_delay > 0 {
+            if self.native_random.is_none()
+                && robot.materials.chloroplasts > 0.0
+                && robot.counters.chloroplast_share_delay > 0
+            {
                 robot.counters.chloroplast_share_delay -= 1;
             }
             if let Some(light) = native_light {
