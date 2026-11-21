@@ -556,6 +556,70 @@ mod native_loop_tests {
     }
 
     #[test]
+    fn native_weak_toxins_publish_signed_residuals_after_the_last_overwrite() {
+        let (mut world, owner, target) = feeding_world(100);
+        let shot = world
+            .projectiles
+            .spawn_native_packet(
+                owner,
+                [175.0, 200.0],
+                [40.0, 0.0],
+                4.0,
+                1.0,
+                -5,
+                Some("owner.txt".into()),
+                false,
+                600,
+                123,
+                0,
+            )
+            .unwrap();
+        // CreateShot: 45 energy and one cycle of range give poison power 45 / 40.
+        assert_eq!(world.projectiles.toxin_impact_power(shot), 1.125);
+        {
+            let (first, second) = world.slots.split_at_mut(target.slot() as usize);
+            let donor = first[owner.slot() as usize].organism.as_mut().unwrap();
+            let recipient = second[0].organism.as_mut().unwrap();
+            donor.materials.venom = 0.75;
+            donor.program.memory.write(835, 601);
+            donor.program.memory.write(836, 456);
+            assert_eq!(
+                apply_tie_venom(donor, recipient, 1, &mut world.native_random),
+                Some("tie_resource_venom")
+            );
+        }
+
+        world.tick().unwrap();
+        assert!(world.projectiles.impact_flash[shot as usize]);
+        let robot = world.slots.get_mut(target).unwrap();
+        assert_eq!(robot.program.memory.read(600), 123);
+        assert_eq!(robot.program.memory.read(601), 456);
+        assert!(!robot.effects.poisoning_active);
+        assert!(!robot.effects.paralysis_active);
+        assert_eq!(robot.effects.poisoning_countdown, -0.25);
+        assert_eq!(robot.effects.paralysis_countdown, -0.25);
+        assert_eq!(robot.program.memory.read(838), -1);
+        assert_eq!(robot.program.memory.read(837), -1);
+
+        robot.program.memory.write(600, 13);
+        robot.program.memory.write(601, 46);
+        let checkpoint = crate::SaveFile::encode(&world).unwrap();
+        let mut resumed = crate::SaveFile::decode(&checkpoint).unwrap();
+        resumed.tick().unwrap();
+        let robot = resumed.slots.get(target).unwrap();
+        assert_eq!(robot.program.memory.read(600), 13);
+        assert_eq!(robot.program.memory.read(601), 46);
+        assert_eq!(robot.program.memory.read(838), -1);
+        assert_eq!(robot.program.memory.read(837), -1);
+
+        resumed.native_random = None;
+        resumed.poison_venom_phase();
+        let robot = resumed.slots.get(target).unwrap();
+        assert_eq!(robot.program.memory.read(838), 0);
+        assert_eq!(robot.program.memory.read(837), 0);
+    }
+
+    #[test]
     fn native_flash_cleanup_also_clears_dead_slots_and_continues_exactly_after_db3s() {
         for was_alive in [false, true] {
             let (mut world, owner, _) = feeding_world(100);

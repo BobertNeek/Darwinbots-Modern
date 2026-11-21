@@ -7647,6 +7647,12 @@ impl Engine {
     }
 
     fn poison_venom_phase(&mut self) {
+        let native = self.native_random.is_some();
+        let read_countdown = |countdown: f32| {
+            // Robots.Poisons publishes Int of the residual even after the effect wears off.
+            let ticks = countdown.floor() as i32;
+            if native { ticks } else { ticks.max(0) }
+        };
         for slot in self.phase_slot_range() {
             let Some(robot) = self.slots[slot].organism.as_mut() else {
                 continue;
@@ -7672,7 +7678,7 @@ impl Engine {
                     robot.effects.paralysis_value = 0;
                 }
             }
-            robot.materials.paralyzed = robot.effects.paralysis_countdown.max(0.0).floor() as i32;
+            robot.materials.paralyzed = read_countdown(robot.effects.paralysis_countdown);
             if robot.effects.poisoning_active {
                 if robot.effects.poisoning_location != 0 {
                     robot.program.memory.write(
@@ -7691,7 +7697,7 @@ impl Engine {
                     robot.effects.poisoning_value = 0;
                 }
             }
-            robot.materials.poisoned = robot.effects.poisoning_countdown.max(0.0).floor() as i32;
+            robot.materials.poisoned = read_countdown(robot.effects.poisoning_countdown);
             robot.program.memory.write(837, robot.materials.paralyzed);
             robot.program.memory.write(838, robot.materials.poisoned);
         }
