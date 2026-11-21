@@ -102,12 +102,13 @@ public sealed record LegacyGraphPointValue(string Name, uint Color, double Value
 public sealed class LegacyGraphAutoSave(Func<string> directory, string caption)
 {
     private const int RingLength = 1001;
-    private const int MaximumColumns = 65;
+    internal const int MaximumColumns = 65;
     private readonly List<Column> _columns = [];
     private readonly Queue<string> _pending = [];
     private int _pivot;
 
     public bool Enabled { get; private set; }
+    internal bool HasReusedColumn { get; private set; }
     public int Counter { get; private set; }
     public string Status { get; private set; } = "";
     public event Action? Changed;
@@ -138,6 +139,7 @@ public sealed class LegacyGraphAutoSave(Func<string> directory, string caption)
                     // VB6 reassigns the final slot when the series table is full.
                     column = column with { Values = _columns[^1].Values };
                     _columns[^1] = column;
+                    HasReusedColumn = true;
                 }
             }
             column.Values[_pivot] = sample;
@@ -177,10 +179,24 @@ public sealed class LegacyGraphAutoSave(Func<string> directory, string caption)
         return sum;
     }
 
+    internal IEnumerable<(string Name, uint Color)> LiveColumns() =>
+        _columns.Select(column => (column.Name, column.Color));
+
+    internal IReadOnlyList<GraphSample> ReadLiveSamples(string name, IReadOnlyList<GraphMetricSample> feedPoints)
+    {
+        var column = _columns.Find(column => column.Name == name);
+        if (column is null) return [];
+        // The current pivot has been cleared. Read only submitted ticks, oldest first.
+        var start = (_pivot + RingLength - feedPoints.Count) % RingLength;
+        return feedPoints.Select((sample, index) =>
+            new GraphSample(sample.Tick, column.Values[(start + index) % RingLength])).ToArray();
+    }
+
     public void ResetPoints()
     {
         _pivot = 0;
         _columns.Clear();
+        HasReusedColumn = false;
     }
 
     internal void BeginRun()

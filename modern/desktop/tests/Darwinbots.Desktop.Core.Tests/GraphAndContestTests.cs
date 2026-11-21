@@ -72,6 +72,61 @@ public sealed class GraphAndContestTests
     }
 
     [Fact]
+    public void NativeGraphReusesItsLastSeriesSlotAtTheOriginalCapacity()
+    {
+        var suite = new GraphSuiteViewModel { SelectedChoice = GraphCatalog.For(GraphMetric.Population) };
+        suite.SetNativeFeed(true);
+        suite.OpenSelectedGraph();
+
+        var values = new Dictionary<GraphMetric, double>();
+        var firstSpecies = Enumerable.Range(1, 65).Select(Species).ToArray();
+        suite.AppendImmediatePoint(GraphMetric.Population, new(1, values, firstSpecies));
+        Assert.Equal(65, suite.RunningGraphs.Count);
+        var last = suite.RunningGraphs[^1];
+        Assert.Equal("Species 65.txt", last.SpeciesName);
+
+        suite.AppendImmediatePoint(GraphMetric.Population, new(2, values, [Species(66)]));
+        Assert.Equal(65, suite.RunningGraphs.Count);
+        Assert.Same(last, suite.RunningGraphs[^1]);
+        Assert.Equal("Species 66.txt", last.SpeciesName);
+        Assert.Equal(66, last.CurrentValue);
+        Assert.DoesNotContain(suite.RunningGraphs, series => series.SpeciesName == "Species 65.txt");
+
+        static SpeciesGraphSampleSnapshot Species(int index) => new($"Species {index}.txt", 0xff123456u,
+            new Dictionary<string, double> { ["population"] = index });
+    }
+
+    [Fact]
+    public void NativeOverflowDisplaysTheRecorderColumnsAndKeepsTheDisplacedColumnHistory()
+    {
+        var metric = GraphMetric.Population;
+        var suite = new GraphSuiteViewModel { SelectedChoice = GraphCatalog.For(metric) };
+        suite.SetNativeFeed(true);
+        suite.OpenSelectedGraph();
+        var recorder = new LegacyGraphAutoSave(() => throw new InvalidOperationException("Recording is disabled."), "Populations");
+
+        Feed(41, Enumerable.Range(1, 65).Select(index => Species(index, 66 - index)).ToArray());
+        Feed(41, Enumerable.Range(1, 65).Select(index => Species(index, 76 - index)).ToArray());
+        Feed(42, [.. Enumerable.Range(1, 64).Select(index => Species(index, 66 - index)), Species(66, 9)]);
+
+        Assert.Equal(65, suite.RunningGraphs.Count);
+        Assert.DoesNotContain(suite.RunningGraphs, series => series.SpeciesName == "Species 65.txt");
+        var replacement = Assert.Single(suite.RunningGraphs.Where(series => series.SpeciesName == "Species 66.txt"));
+        Assert.Equal(new[] { new GraphSample(41, 1), new GraphSample(41, 11), new GraphSample(42, 9) }, replacement.Samples);
+        Assert.Contains("Population · Species 66.txt,,41,11\r\n", suite.ExportCsv());
+
+        void Feed(ulong tick, IReadOnlyList<SpeciesGraphSampleSnapshot> species)
+        {
+            var point = new GraphMetricSample(tick, new Dictionary<GraphMetric, double>(), species);
+            recorder.AddPoint(suite.LegacyPoint(metric, point), suite.LegacyHeader(metric));
+            suite.AppendChartPoints(metric, [point], recorder);
+        }
+
+        static SpeciesGraphSampleSnapshot Species(int index, double value) => new($"Species {index}.txt", 0xff123456u,
+            new Dictionary<string, double> { ["population"] = value });
+    }
+
+    [Fact]
     public void NativeSpeciesGraphsKeepSeparateSeriesAndRefreshEachSpeciesValue()
     {
         var history = new HistorySampleSnapshot(100, 5, 12345, 0, 0, 0, 0)
