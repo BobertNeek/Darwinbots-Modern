@@ -622,7 +622,7 @@ public sealed class SimulationSession : IAsyncDisposable
         Enqueue(engine => engine.UpdateEnvironment(update), cancellationToken);
 
     public Task UpdateLiveSettingsAsync(EnvironmentUpdate environment, MutationSettingsUpdate mutation,
-        GlobalSimulationCostSettings? costs, CancellationToken cancellationToken = default) =>
+        GlobalSimulationCostSettings? costs = null, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.UpdateLiveSettings(environment, mutation, costs), cancellationToken);
 
     public async Task<WorldConfiguration?> ReadConfigurationAsync(CancellationToken cancellationToken = default)

@@ -20,6 +20,7 @@ public sealed record WorldConfiguration(
     public ulong? Seed { get; init; }
     public bool? FixedBotRadii { get; init; }
     public IReadOnlyList<SpeciesImport>? StartupSpecies { get; init; }
+    public int? NativeFieldSize { get; init; }
 }
 
 internal static class NativeConfigurationParser
@@ -122,6 +123,8 @@ internal static class NativeConfigurationParser
             StartupSpecies = species.All(entry => entry.Startup.HasValue)
                 ? species.Where(entry => entry.Startup == true).Select(entry => entry.Row).ToArray()
                 : null,
+            NativeFieldSize = config.TryGetProperty("native_field_size", out var size) && size.ValueKind == JsonValueKind.Number
+                && size.TryGetInt32(out var fieldSize) && Db2FieldSize.IsValid(fieldSize) ? fieldSize : null,
         };
     }
 }

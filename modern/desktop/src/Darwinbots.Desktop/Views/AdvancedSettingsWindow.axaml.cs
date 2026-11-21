@@ -16,8 +16,15 @@ public sealed partial class AdvancedSettingsWindow : Window
     private readonly GlobalSimulationCostSettings? _initialCosts;
     private GlobalSimulationCostSettings? _stagedCosts;
 
+    private bool _otherLiveSettingsEdited;
+    private int _initialFieldSizeIndex;
+    private (float Width, float Height) _liveDimensions;
+
     public bool Accepted { get; private set; }
-    public bool LiveSettingsEdited { get; private set; }
+    public bool LiveSettingsEdited => _otherLiveSettingsEdited || StagedFieldSize is not null;
+    private int? StagedFieldSize => FieldSizePanel.IsVisible && FieldSizePreset.IsEnabled
+        && FieldSizePreset.SelectedIndex != _initialFieldSizeIndex && Db2FieldSize.IsValid(FieldSizePreset.SelectedIndex)
+        ? FieldSizePreset.SelectedIndex : null;
     public GlobalSimulationCostSettings? CostUpdate => _stagedCosts != _initialCosts ? _stagedCosts : null;
     public MutationSettingsUpdate MutationUpdate => new(
         MutationsEnabled.IsChecked == true,
@@ -51,11 +58,15 @@ public sealed partial class AdvancedSettingsWindow : Window
             DeadSnapshotEnabled.IsChecked == true,
             ExcludeRepopulatingRobots.IsChecked == true,
             (ulong)(AutosaveInterval.Value ?? 0),
-            (int)(SamplingInterval.Value ?? 200)));
+            (int)(SamplingInterval.Value ?? 200)))
+    {
+        FieldSize = StagedFieldSize,
+    };
 
     public AdvancedSettingsWindow() : this(EnvironmentUpdate.Default, EngineSnapshot.Empty) { }
     public AdvancedSettingsWindow(EnvironmentUpdate update, EngineSnapshot? snapshot = null, int selectedTab = 0,
-        GlobalSimulationCostSettings? costs = null)
+        GlobalSimulationCostSettings? costs = null,
+        bool showFieldSize = false, int? currentFieldSize = null, string? fieldSizeUnavailable = null)
     {
         _initialCosts = _stagedCosts = costs;
         InitializeComponent();
@@ -68,6 +79,8 @@ public sealed partial class AdvancedSettingsWindow : Window
             LiveCustomSimulationCostsButton.IsEnabled = CostPreset.SelectedIndex == 2;
             CostPreset.SelectionChanged += (_, _) => SelectCostPreset();
         }
+        if (showFieldSize && snapshot is not null)
+            InitializeFieldSize(snapshot.WorldSize, currentFieldSize, fieldSizeUnavailable);
         ToroidalWorld.IsCheckedChanged += (_, _) =>
         {
             if (_initializing || _updatingTopology || ToroidalWorld.IsChecked is null) return;
@@ -97,6 +110,37 @@ public sealed partial class AdvancedSettingsWindow : Window
         PopulateMutations(snapshot ?? EngineSnapshot.Empty);
         WireDirtyTracking();
         _initializing = false;
+    }
+
+    private void InitializeFieldSize(float[] dimensions, int? currentPreset, string? unavailable)
+    {
+        _liveDimensions = (dimensions[0], dimensions[1]);
+        if (currentPreset is { } size && Db2FieldSize.IsValid(size))
+        {
+            var mapped = Db2FieldSize.Dimensions(size);
+            if (_liveDimensions == (mapped.Width, mapped.Height)) _initialFieldSizeIndex = size;
+        }
+        FieldSizePanel.IsVisible = true;
+        FieldSizePreset.ItemsSource = new[] { "Current dimensions" }
+            .Concat(Enumerable.Range(Db2FieldSize.Minimum, Db2FieldSize.Maximum).Select(size => $"Size {size}"))
+            .ToArray();
+        FieldSizePreset.SelectedIndex = _initialFieldSizeIndex;
+        FieldSizePreset.IsEnabled = unavailable is null;
+        FieldSizeUnavailable.Text = unavailable;
+        FieldSizeUnavailable.IsVisible = unavailable is not null;
+        UpdateFieldSizePreview();
+        FieldSizePreset.SelectionChanged += (_, _) =>
+        {
+            UpdateFieldSizePreview();
+            DirtyBadge.IsVisible = LiveSettingsEdited;
+        };
+    }
+
+    private void UpdateFieldSizePreview()
+    {
+        var dimensions = _liveDimensions;
+        if (StagedFieldSize is { } size) dimensions = Db2FieldSize.Dimensions(size);
+        FieldSizeDimensions.Text = $"{dimensions.Width:N0} × {dimensions.Height:N0}";
     }
 
     private void PopulateEnvironment(EnvironmentUpdate update)
@@ -245,7 +289,7 @@ public sealed partial class AdvancedSettingsWindow : Window
         foreach (var numeric in this.GetLogicalDescendants().OfType<NumericUpDown>()) numeric.ValueChanged += (_, _) => MarkDirty();
         foreach (var checkBox in this.GetLogicalDescendants().OfType<CheckBox>()) checkBox.IsCheckedChanged += (_, _) => MarkDirty();
         foreach (var slider in this.GetLogicalDescendants().OfType<Slider>()) slider.PropertyChanged += (_, e) => { if (e.Property == Slider.ValueProperty) MarkDirty(); };
-        foreach (var box in this.GetLogicalDescendants().OfType<ComboBox>().Where(box => box != CostPreset))
+        foreach (var box in this.GetLogicalDescendants().OfType<ComboBox>().Where(box => box != CostPreset && box != FieldSizePreset))
             box.SelectionChanged += (_, _) => MarkDirty();
     }
 
@@ -274,7 +318,7 @@ public sealed partial class AdvancedSettingsWindow : Window
     private void MarkDirty()
     {
         if (_initializing) return;
-        LiveSettingsEdited = true;
+        _otherLiveSettingsEdited = true;
         DirtyBadge.IsVisible = true;
     }
     private void Apply_Click(object? sender, RoutedEventArgs e) { Accepted = true; Close(); }

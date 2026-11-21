@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Reflection;
 using Avalonia.Controls;
 using Avalonia.Headless;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
@@ -125,6 +126,127 @@ public sealed class SafeModeAutosaveRenderedTests
                 releaseTurbo.TrySetResult();
                 window.Close();
             }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task CtrlPStagesAndAppliesOriginalFieldSizeExceptDuringF1OrSafeModeRecovery()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"db24832-field-size-recovery-{Guid.NewGuid():N}.db3s");
+        try
+        {
+            await DesktopTestApplication.Session.Dispatch(async () =>
+            {
+                var options = Setup(true) with
+                {
+                    NativeFieldSize = 2, WorldWidth = 19_000, WorldHeight = 13_000,
+                };
+                var storage = new AuditStorageService { LatestAutosave = path };
+                var window = new MainWindow([], options, NativeEngineClientFactory.Instance, storage);
+                try
+                {
+                    Show(window);
+                    await Ready(window);
+                    var session = Field<SimulationSession>(window, "_session");
+                    var viewport = Named<WorldViewport>(window, "Viewport");
+                    var menu = Named<LegacyMenuBar>(window, "HistoricMenuBar");
+
+                    async Task<AdvancedSettingsWindow> OpenGeneral()
+                    {
+                        window.KeyPress(Key.P, RawInputModifiers.Control, PhysicalKey.P, null);
+                        window.KeyRelease(Key.P, RawInputModifiers.Control, PhysicalKey.P, null);
+                        await WaitFor(() => window.OwnedWindows.OfType<AdvancedSettingsWindow>().Any());
+                        var dialog = Assert.Single(window.OwnedWindows.OfType<AdvancedSettingsWindow>());
+                        Assert.Equal(1, Named<TabControl>(dialog, "SettingsTabs").SelectedIndex);
+                        return dialog;
+                    }
+
+                    async Task Dismiss(AdvancedSettingsWindow dialog, string button)
+                    {
+                        Named<Button>(dialog, button).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                        await WaitFor(() => !Field<bool>(window, "_editingLiveSettings"));
+                    }
+
+                    viewport.ShowResourceGauges = true;
+                    viewport.ZoomIn();
+                    var dialog = await OpenGeneral();
+                    var preset = Named<ComboBox>(dialog, "FieldSizePreset");
+                    Assert.Equal(0, preset.SelectedIndex);
+                    Assert.Equal($"{19_000:N0} × {13_000:N0}", Named<TextBlock>(dialog, "FieldSizeDimensions").Text);
+                    Assert.Null(dialog.Update.FieldSize);
+                    preset.SelectedIndex = 13;
+                    Assert.Equal($"{192_000:N0} × {144_000:N0}", Named<TextBlock>(dialog, "FieldSizeDimensions").Text);
+                    Assert.Equal(new float[] { 19_000, 13_000 }, session.LatestSnapshot.WorldSize);
+                    await Dismiss(dialog, "CancelButton");
+                    Assert.Equal(new float[] { 19_000, 13_000 }, session.LatestSnapshot.WorldSize);
+                    Assert.True(viewport.Zoom > 1);
+
+                    dialog = await OpenGeneral();
+                    Named<ComboBox>(dialog, "FieldSizePreset").SelectedIndex = 1;
+                    await Dismiss(dialog, "ApplyButton");
+                    Assert.Equal(new float[] { 9_237, 6_928 }, session.LatestSnapshot.WorldSize);
+                    Assert.Equal(1, (await session.ReadConfigurationAsync())!.NativeFieldSize);
+                    Assert.StartsWith($"{9_237:N0} × {6_928:N0}", Named<TextBlock>(window, "WorldParametersText").Text);
+                    Assert.Equal(1d, viewport.Zoom);
+                    Assert.True(viewport.ShowResourceGauges);
+                    Assert.Null(Field<EnvironmentUpdate>(window, "_liveEnvironment").FieldSize);
+
+                    dialog = await OpenGeneral();
+                    Assert.Equal(1, Named<ComboBox>(dialog, "FieldSizePreset").SelectedIndex);
+                    Assert.Null(dialog.Update.FieldSize);
+                    await Dismiss(dialog, "CancelButton");
+
+                    await File.WriteAllBytesAsync(path, await session.SaveAsync());
+                    await session.ConfigureLocalModeAsync(LocalModeConfig.Default with { Kind = LocalModeKind.Contest });
+                    Assert.True(session.LatestSnapshot.NativeF1Enabled);
+                    dialog = await OpenGeneral();
+                    Assert.False(Named<ComboBox>(dialog, "FieldSizePreset").IsEnabled);
+                    Assert.Contains("F1 contest", Named<TextBlock>(dialog, "FieldSizeUnavailable").Text);
+                    await Dismiss(dialog, "CancelButton");
+
+                    Activate(menu, LegacyCommandId.RecordingRecoverLatestAutosave);
+                    await WaitFor(() => ViewModel(window).Status.StartsWith("RECOVERED", StringComparison.Ordinal));
+                    Assert.False(session.LatestSnapshot.NativeF1Enabled);
+                    dialog = await OpenGeneral();
+                    Assert.False(Named<ComboBox>(dialog, "FieldSizePreset").IsEnabled);
+                    Assert.Contains("Safe Mode recovery", Named<TextBlock>(dialog, "FieldSizeUnavailable").Text);
+                    await Dismiss(dialog, "CancelButton");
+                }
+                finally { window.Close(); }
+            }, CancellationToken.None);
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
+    public async Task SetupRetainsTheLargestOriginalFieldPresetThroughCreateAndSettingsExport()
+    {
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var storage = new AuditStorageService
+            {
+                SettingsToOpen = DesktopSettings.FromWorldSetup(Setup(false) with
+                {
+                    NativeFieldSize = 25, WorldWidth = 2_496_000, WorldHeight = 1_872_000,
+                }),
+            };
+            var window = new SetupWindow(storage);
+            try
+            {
+                WorldSetupOptions? created = null;
+                window.WorldCreated += value => created = value;
+                Show(window);
+                Named<Button>(window, "LoadSettingsButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => Named<TextBlock>(window, "SetupStatus").Text == "SETTINGS LOADED");
+                Assert.Equal(2_496_000m, Named<NumericUpDown>(window, "WorldWidth").Value);
+                Assert.Equal(1_872_000m, Named<NumericUpDown>(window, "WorldHeight").Value);
+                Named<Button>(window, "SaveSettingsButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => storage.SavedSettings is not null);
+                Assert.Equal(25, storage.SavedSettings!.NativeFieldSize);
+                Named<Button>(window, "StartNewButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Assert.Equal(25, Assert.IsType<WorldSetupOptions>(created).NativeFieldSize);
+            }
+            finally { window.Close(); }
         }, CancellationToken.None);
     }
 

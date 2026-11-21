@@ -131,6 +131,7 @@ public sealed partial class MainWindow : Window
     private readonly LegacyCommandRouter _legacyCommands;
     private readonly OfflineDiagnosticRecovery _diagnostics = new();
     private bool _safemodeBackup;
+    private bool _safeModeRecoveryWorld;
     private ulong? _lastAutomaticSaveTick;
     private bool _deadRecordingEnabled;
     private bool _excludeRepopulatingDead;
@@ -1760,31 +1761,60 @@ public sealed partial class MainWindow : Window
         _editingLiveSettings = true;
         try
         {
-            var costs = (await session.ReadConfigurationAsync())?.Costs ?? _globalSettings.Costs;
-            var dialog = new AdvancedSettingsWindow(_liveEnvironment, session.LatestSnapshot, selectedTab, costs);
+            var configuration = await session.ReadConfigurationAsync();
+            if (_windowClosed || _savingLastExit || _loadingSimulation || _navigationInFlight || _session != session)
+                return LegacyCommandResult.Cancel();
+            var current = session.LatestSnapshot;
+            var costs = configuration?.Costs ?? _globalSettings.Costs;
+            var dialog = new AdvancedSettingsWindow(_liveEnvironment, current, selectedTab, costs,
+                showFieldSize: current.NativeCycle is not null, currentFieldSize: configuration?.NativeFieldSize,
+                fieldSizeUnavailable: FieldSizeRestriction(current));
             await dialog.ShowDialog(this);
             if (!dialog.Accepted) return LegacyCommandResult.Cancel();
-            var costUpdate = dialog.CostUpdate;
-            if (dialog.LiveSettingsEdited)
+            await _advanceGate.WaitAsync();
+            try
             {
+                if (_windowClosed || _savingLastExit || _loadingSimulation || _navigationInFlight || _session != session)
+                    return LegacyCommandResult.Cancel();
                 var update = dialog.Update;
-                await session.UpdateLiveSettingsAsync(update, dialog.MutationUpdate, costUpdate);
-                _liveEnvironment = update;
-                SynchronizeRecordingPreferences();
-                RefreshEnvironmentControls();
+                var before = session.LatestSnapshot;
+                if (update.FieldSize is not null && FieldSizeRestriction(before) is { } restriction)
+                    return LegacyCommandResult.Failure(restriction);
+                var costUpdate = dialog.CostUpdate;
+                if (dialog.LiveSettingsEdited)
+                {
+                    await session.UpdateLiveSettingsAsync(update, dialog.MutationUpdate, costUpdate);
+                    _liveEnvironment = update with { FieldSize = null };
+                    SynchronizeRecordingPreferences();
+                    RefreshEnvironmentControls();
+                }
+                else if (costUpdate is not null)
+                    await session.UpdateCostSettingsAsync(costUpdate);
+                if (costUpdate is not null)
+                    _activeCostMultiplier = (await session.ReadConfigurationAsync())?.GlobalCostMultiplier ?? costUpdate.GlobalMultiplier;
+                if (update.FieldSize is not null)
+                {
+                    var applied = await session.ReadConfigurationAsync();
+                    var resized = session.LatestSnapshot;
+                    RefreshWorldDimensions(resized, applied);
+                    if (!before.WorldSize.SequenceEqual(resized.WorldSize))
+                    {
+                        Viewport.SetSnapshot(resized);
+                        Viewport.FitWorld();
+                    }
+                }
+                return LegacyCommandResult.Success("LIVE SETTINGS APPLIED");
             }
-            else if (costUpdate is not null)
-            {
-                await session.UpdateCostSettingsAsync(costUpdate);
-            }
-            if (costUpdate is not null)
-                _activeCostMultiplier = (await session.ReadConfigurationAsync())?.GlobalCostMultiplier ?? costUpdate.GlobalMultiplier;
-            return LegacyCommandResult.Success("LIVE SETTINGS APPLIED");
+            finally { _advanceGate.Release(); }
         }
-        finally
-        {
-            _editingLiveSettings = false;
-        }
+        finally { _editingLiveSettings = false; }
+    }
+
+    private string? FieldSizeRestriction(EngineSnapshot snapshot)
+    {
+        if (_safeModeRecoveryWorld || (RecoveryPanel.IsVisible && RecoveryRecoverButton.IsVisible))
+            return "Field size is locked during Safe Mode recovery.";
+        return snapshot.NativeF1Enabled ? "Field size is locked during an F1 contest." : null;
     }
 
     private async Task<LegacyCommandResult> OpenGlobalMutationRatesCommandAsync()
@@ -2360,7 +2390,7 @@ public sealed partial class MainWindow : Window
                 return LegacyCommandResult.Success(_viewModel.Status);
             }
             _runTimer.Stop();
-            await LoadSimulationWithSourceAsync(await File.ReadAllBytesAsync(path), path);
+            await LoadSimulationWithSourceAsync(await File.ReadAllBytesAsync(path), path, isSafeModeRecovery: true);
             _viewModel.Status = $"RECOVERED · {Path.GetFileName(path)}";
             ClearRecoveryPanel();
             return LegacyCommandResult.Success(_viewModel.Status);
@@ -2531,7 +2561,7 @@ public sealed partial class MainWindow : Window
             var compatibilityWarnings = new List<string>();
             if (_setup.LoadSavePath is { } savePath)
             {
-                await LoadSimulationWithSourceAsync(await File.ReadAllBytesAsync(savePath), savePath, _setup.ResumeRestartMode);
+                await LoadSimulationWithSourceAsync(await File.ReadAllBytesAsync(savePath), savePath, _setup.ResumeRestartMode, _setup.IsAutosaveRecovery);
             }
             else
                 foreach (var species in _setup.Species)
@@ -2615,6 +2645,20 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    private void RefreshWorldDimensions(EngineSnapshot snapshot, WorldConfiguration? configuration)
+    {
+        var size = snapshot.WorldSize;
+        _setup = _setup with
+        {
+            WorldWidth = size[0],
+            WorldHeight = size[1],
+            NativeFieldSize = configuration?.NativeFieldSize,
+        };
+        int capacity = configuration?.PopulationCapacity ?? _setup.PopulationCapacity;
+        int vegetables = configuration?.VegetablePopulationCap ?? _setup.VegetablePopulationCap;
+        WorldParametersText.Text = $"{size[0]:N0} × {size[1]:N0}\nCapacity {capacity:N0}\nVegetables {vegetables:N0}";
+    }
+
     private async Task SynchronizeLoadedWorldAsync()
     {
         if (_session is null) return;
@@ -2647,8 +2691,7 @@ public sealed partial class MainWindow : Window
                 },
             };
             RefreshEnvironmentControls();
-            var size = _session.LatestSnapshot.WorldSize;
-            WorldParametersText.Text = $"{size[0]:N0} × {size[1]:N0}\nCapacity {configuration.PopulationCapacity:N0}\nVegetables {configuration.VegetablePopulationCap:N0}";
+            RefreshWorldDimensions(_session.LatestSnapshot, configuration);
             _insertionSpecies.Clear();
             foreach (var species in configuration.Species) _insertionSpecies.Add(species);
             InsertionSpeciesSelector.SelectedIndex = _insertionSpecies.Count > 0 ? 0 : -1;
@@ -3637,7 +3680,7 @@ public sealed partial class MainWindow : Window
 
     private Task LoadSimulationAsync(byte[] save) => LoadSimulationWithSourceAsync(save, null);
 
-    private async Task LoadSimulationWithSourceAsync(byte[] save, string? sourcePath, bool resumeRestartMode = false)
+    private async Task LoadSimulationWithSourceAsync(byte[] save, string? sourcePath, bool resumeRestartMode = false, bool isSafeModeRecovery = false)
     {
         _runTimer.Stop();
         await _advanceGate.WaitAsync();
@@ -3660,6 +3703,7 @@ public sealed partial class MainWindow : Window
             _shapeDimensions = ShapeCreationDimensions.Default;
             _shapesWindow?.SetDimensions(_shapeDimensions);
             _worldLoadGeneration++;
+            _safeModeRecoveryWorld = isSafeModeRecovery;
             // A rejected load publishes no snapshot and must keep user-closed
             // graphs closed. Loading publications defer this until success.
             _automaticEvolutionGraphBoundary = null;

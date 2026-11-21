@@ -29,6 +29,7 @@ public sealed partial class SetupWindow : Window
     private Db2ShapeCreationOptions? _shapeCreation;
     private Db2ShapeDriftOptions? _shapeDrift;
     private IReadOnlyList<ObstacleSnapshot> _obstacles = [];
+    private int? _nativeFieldSize;
     private IReadOnlyList<string>? _legacySettingsFields;
     private bool _allowEmptyStartupRoster;
     private const string ZerobotDna = "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0";
@@ -56,6 +57,8 @@ public sealed partial class SetupWindow : Window
         _nativeProcessCaches = nativeProcessCaches;
         _workflow = new(new WorldSetupOptions());
         InitializeComponent();
+        WorldWidth.ValueChanged += (_, _) => { if (_controlsReady) _nativeFieldSize = null; };
+        WorldHeight.ValueChanged += (_, _) => { if (_controlsReady) _nativeFieldSize = null; };
         if (!_speciesEditor)
             CreateWorldButton.HotKey = new KeyGesture(Key.Enter, KeyModifiers.Control);
         DataContext = this;
@@ -326,6 +329,7 @@ public sealed partial class SetupWindow : Window
             VegetablePopulationCap = (int)(VegetablePopulationCap.Value ?? 500),
             WorldWidth = fieldWidth,
             WorldHeight = fieldHeight,
+            NativeFieldSize = _nativeFieldSize,
             MetabolismCost = _environment.MetabolismCost,
             VegetableEnergyPerTick = _environment.VegetableEnergyPerTick,
             SunlightEnergy = _environment.SunlightEnergy,
@@ -506,6 +510,7 @@ public sealed partial class SetupWindow : Window
         };
         WorldWidth.Value = (decimal)setup.WorldWidth;
         WorldHeight.Value = (decimal)setup.WorldHeight;
+        _nativeFieldSize = setup.NativeFieldSize;
         PopulationCap.Value = setup.PopulationCapacity;
         VegetablePopulationCap.Value = setup.VegetablePopulationCap;
         Seed.Value = (decimal)setup.Seed;
@@ -557,6 +562,7 @@ public sealed partial class SetupWindow : Window
         _obstacles = [];
         _legacySettingsFields = null;
         ApplyGlobalSettings(_profileSettings);
+        _nativeFieldSize = null;
         Backend.SelectedIndex = 0;
         WorldWidth.Value = 16_000;
         WorldHeight.Value = 12_000;

@@ -378,6 +378,7 @@ public sealed record EngineSnapshot(
     public IReadOnlyList<SpeciesSnapshot> Species { get; init; } = [];
     public MutationSettingsSnapshot MutationSettings { get; init; } = MutationSettingsSnapshot.Default;
     public bool TiesEnabled { get; init; } = true;
+    public bool NativeF1Enabled { get; init; }
     public bool DeathPoffsEnabled { get; init; } = true;
     public bool RobotFixingAllowed { get; init; } = true;
     public bool AsexualReproductionAllowed { get; init; } = true;

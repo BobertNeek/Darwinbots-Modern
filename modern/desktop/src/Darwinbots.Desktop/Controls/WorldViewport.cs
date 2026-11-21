@@ -122,6 +122,14 @@ public sealed class WorldViewport : Control
 
     public void ZoomOut() => SetZoomAt(_zoom / 1.2, new Point(Bounds.Width / 2, Bounds.Height / 2));
 
+    public void FitWorld()
+    {
+        _zoom = 1;
+        _pan = default;
+        _followKey = null;
+        InvalidateVisual();
+    }
+
     public void SetRgbMemoryMonitor(RgbMemoryMonitorSettings? settings)
     {
         settings?.Validate();

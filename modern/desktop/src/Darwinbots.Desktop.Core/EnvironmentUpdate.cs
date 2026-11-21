@@ -145,6 +145,8 @@ public sealed record EnvironmentUpdate(
     Db2RecordingOptions? Recording = null,
     bool? ShapesVisible = null)
 {
+    public int? FieldSize { get; init; }
+
     public static EnvironmentUpdate Default { get; } = new(
         0, 0, 100, [0f, 0f], 0f, 0.5f,
         Db2PhysicsOptions.Default,
@@ -225,6 +227,7 @@ public static class NativeCommandSerializer
             vegetable_population_cap = options.VegetablePopulationCap,
             world_width = options.WorldWidth,
             world_height = options.WorldHeight,
+            native_field_size = options.NativeFieldSize,
             backend = options.Backend,
             allow_cpu_fallback = true,
             metabolism_cost = options.EffectiveMetabolismCost,
@@ -381,7 +384,7 @@ public static class NativeCommandSerializer
     };
 
     internal static object CreateLiveSettingsBatch(EnvironmentUpdate environment, MutationSettingsUpdate mutation,
-        GlobalSimulationCostSettings? costs)
+        GlobalSimulationCostSettings? costs = null)
     {
         List<object> commands = [EnvironmentCommand(environment), MutationSettingsCommand(mutation)];
         if (costs is not null) commands.Add(CostSettingsCommand(costs));
@@ -391,27 +394,35 @@ public static class NativeCommandSerializer
     internal static object CostSettingsCommand(GlobalSimulationCostSettings settings) =>
         new { type = "update_cost_settings", costs = DnaCosts(settings) };
 
-    private static object EnvironmentCommand(EnvironmentUpdate update) => new
+
+    private static object EnvironmentCommand(EnvironmentUpdate update)
     {
-        type = "update_environment",
-        metabolism_cost = update.MetabolismCost,
-        vegetable_energy_per_tick = update.VegetableEnergyPerTick,
-        sunlight_energy = update.SunlightEnergy,
-        gravity = update.Gravity,
-        drag = update.Drag,
-        brownian_motion = update.BrownianMotion,
-        physics = Physics(update.Physics),
-        shots = Shots(update.Shots),
-        corpse_decay = CorpseDecay(update.CorpseDecay),
-        waste = Waste(update.Waste),
-        vegetation = Vegetation(update.Vegetation),
-        recording = Recording(update.Recording),
-        auto_speciation = update.AutoSpeciation,
-        speciation_genetic_distance_percent = update.SpeciationGeneticDistancePercent,
-        toroidal_world = update.ToroidalWorld,
-        shapes_visible = update.ShapesVisible,
-        axis_topology = AxisTopology(update.ToroidalWorld, update.WrapX, update.WrapY),
-    };
+        var command = new
+        {
+            type = "update_environment",
+            metabolism_cost = update.MetabolismCost,
+            vegetable_energy_per_tick = update.VegetableEnergyPerTick,
+            sunlight_energy = update.SunlightEnergy,
+            gravity = update.Gravity,
+            drag = update.Drag,
+            brownian_motion = update.BrownianMotion,
+            physics = Physics(update.Physics),
+            shots = Shots(update.Shots),
+            corpse_decay = CorpseDecay(update.CorpseDecay),
+            waste = Waste(update.Waste),
+            vegetation = Vegetation(update.Vegetation),
+            recording = Recording(update.Recording),
+            auto_speciation = update.AutoSpeciation,
+            speciation_genetic_distance_percent = update.SpeciationGeneticDistancePercent,
+            toroidal_world = update.ToroidalWorld,
+            shapes_visible = update.ShapesVisible,
+            axis_topology = AxisTopology(update.ToroidalWorld, update.WrapX, update.WrapY),
+        };
+        if (update.FieldSize is not { } size) return command;
+        var sizedCommand = JsonSerializer.SerializeToNode(command)!.AsObject();
+        sizedCommand["field_size"] = size;
+        return sizedCommand;
+    }
 
     internal static object Physics(Db2PhysicsOptions value) => new
     {

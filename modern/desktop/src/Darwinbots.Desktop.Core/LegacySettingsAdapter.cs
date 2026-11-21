@@ -95,6 +95,12 @@ internal static class LegacySettingsAdapter
             Flag(r + 4, species.Restrictions.VirusImmune);
         }
         Text(global, ""); Number(global + 1, count); Number(global + 3, settings.WorldWidth); Number(global + 4, settings.WorldHeight);
+        if (settings.NativeFieldSize is { } size)
+        {
+            if (!Db2FieldSize.IsValid(size))
+                throw new InvalidDataException("Original field size must be between 1 and 25.");
+            Number(global + 2, size);
+        }
         Number(global + 5, settings.VegetablePopulationCap); Flag(global + 9, settings.ToroidalWorld);
         var vegetation = settings.Vegetation;
         var physics = settings.Physics;
@@ -187,6 +193,21 @@ internal static class LegacySettingsAdapter
         Flag(footer + 9 + 3 * count, !settings.RobotFixingAllowed);
         Number(footer + 10 + 3 * count, vegetation.Tides); Number(footer + 11 + 3 * count, vegetation.TidesOffset);
         return fields;
+    }
+
+    internal static int? ReadRetainedFieldSize(IReadOnlyList<string>? fields)
+    {
+        if (fields is not { Count: > 1 }
+            || !int.TryParse(fields[1]?.Trim('"'), NumberStyles.Integer, CultureInfo.InvariantCulture, out var speciesMinusOne)
+            || speciesMinusOne is < -1 or > 999) return null;
+        return ReadFieldSize(fields, 2 + (speciesMinusOne + 1) * 40);
+    }
+
+    private static int? ReadFieldSize(IReadOnlyList<string> fields, int global)
+    {
+        int index = global + 2;
+        return index < fields.Count && int.TryParse(fields[index]?.Trim('"'), NumberStyles.Integer, CultureInfo.InvariantCulture, out var size)
+            && Db2FieldSize.IsValid(size) ? size : null;
     }
 
     private static uint ToVbColor(uint color) => ((color & 0xff) << 16) | (color & 0xff00) | ((color >> 16) & 0xff);
@@ -388,6 +409,7 @@ internal static class LegacySettingsAdapter
         return new DesktopSettings
         {
             OrganismCapacity = 32000, WorldWidth = worldWidth, WorldHeight = worldHeight,
+            NativeFieldSize = ReadFieldSize(lines, global),
             Seed = NativeSeed(global + 89), LegacySettingsFields = lines.TakeWhile(line => !line.StartsWith("#DARWINBOTS_MODERN_SETTINGS", StringComparison.Ordinal)).ToArray(),
             OrdinaryRestartOnExtinction = Flag(global + OrdinaryRestartOffset),
             MutationSettings = MutationSettingsUpdate.Default with { GlobalMultiplier = Float(27, 1) },
