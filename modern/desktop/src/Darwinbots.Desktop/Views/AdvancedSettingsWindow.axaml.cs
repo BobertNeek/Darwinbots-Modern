@@ -74,6 +74,14 @@ public sealed partial class AdvancedSettingsWindow : Window
     {
         _initialCosts = _stagedCosts = costs;
         InitializeComponent();
+        Opened += (_, _) =>
+        {
+            if (Owner is not SetupWindow) return;
+            Title = "Darwinbots Simulation Settings";
+            SettingsHeading.Text = "SIMULATION SETTINGS";
+            SettingsSubheading.IsVisible = false;
+            SettingsApplyScope.Text = "Changes apply when you create the simulation.";
+        };
         SettingsTabs.SelectedIndex = Math.Clamp(selectedTab, 0, 3);
         if (costs is not null)
         {

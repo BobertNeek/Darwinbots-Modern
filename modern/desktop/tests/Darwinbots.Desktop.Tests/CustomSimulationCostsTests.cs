@@ -447,6 +447,7 @@ public sealed class CustomSimulationCostsTests
                         sections.SelectedIndex = 2;
                         await WaitFor(() => window.OwnedWindows.OfType<AdvancedSettingsWindow>().Any());
                         var dialog = Assert.Single(window.OwnedWindows.OfType<AdvancedSettingsWindow>());
+                        Assert.Equal("Darwinbots Simulation Settings", dialog.Title);
                         Assert.True(dialog.FindControl<Border>("SimulationCostsPanel")!.IsVisible);
                         Assert.Equal((int)expected, dialog.FindControl<ComboBox>("CostPreset")!.SelectedIndex);
                         Assert.Equal(expected == Db2CostPreset.Custom,
