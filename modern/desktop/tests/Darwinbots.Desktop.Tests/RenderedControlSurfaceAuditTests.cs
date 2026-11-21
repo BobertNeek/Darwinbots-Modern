@@ -712,7 +712,7 @@ public sealed class RenderedControlSurfaceAuditTests
             Assert.Single(window.Species);
             Click(window, Named<Button>(window, "AddDnaButton"));
             Assert.Equal(2, window.Species.Count);
-            Assert.Equal("Audit_Bot", window.Species[^1].Name);
+            Assert.Equal("Audit_Bot.txt", window.Species[^1].Name);
 
             AssertKeyboardIncrement(window, Named<NumericUpDown>(window, "WorldWidth"));
             AssertKeyboardIncrement(window, Named<NumericUpDown>(window, "WorldHeight"));

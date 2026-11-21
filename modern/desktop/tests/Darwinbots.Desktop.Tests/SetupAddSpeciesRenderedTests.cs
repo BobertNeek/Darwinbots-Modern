@@ -51,7 +51,7 @@ public sealed class SetupAddSpeciesRenderedTests
                     WorldSetupOptions? created = null;
                     window.WorldCreated += options => created = options;
                     Click(window, "CreateWorldButton");
-                    var imported = Assert.Single(Assert.IsType<WorldSetupOptions>(created).Species, row => row.Name == "Added Species");
+                    var imported = Assert.Single(Assert.IsType<WorldSetupOptions>(created).Species, row => row.Name == "Added Species.txt");
                     Assert.Equal(5, imported.InitialCount);
                     Assert.Equal(3_000, imported.InitialEnergy);
                     Assert.Equal(file, imported.DnaPath);
@@ -90,7 +90,7 @@ public sealed class SetupAddSpeciesRenderedTests
                     window.Show();
                     var starterColors = window.Species.Select(row => row.Color).ToArray();
 
-                    var added = await AddSpeciesAsync(window, 5, 3_000, Path.GetFileNameWithoutExtension(filename));
+                    var added = await AddSpeciesAsync(window, 5, 3_000, filename);
                     Assert.Equal(expected, added.ToImport(0).Color);
                     Assert.Equal(starterColors, window.Species.Take(starterColors.Length).Select(row => row.Color));
                 }
@@ -113,9 +113,10 @@ public sealed class SetupAddSpeciesRenderedTests
             var file = Path.Combine(temporary.FullName, "Base.txt");
             await File.WriteAllTextAsync(file, Dna);
             var storage = new AvaloniaDesktopStorageService(Path.Combine(temporary.FullName, "profile"));
-            var existing = new SpeciesImport("Existing", "start stop", false, 0xff239ac0, 50, 1_000, 0, false, 0)
+            var existing = new SpeciesImport("Renamed Founder", "start stop", false, 0xff239ac0, 50, 1_000, 0, false, 0)
             {
                 Comment = "Already registered",
+                DnaPath = Path.Combine(robots.FullName, "Original Founder.txt"),
             };
             var engine = new AuditEngineClient
             {
@@ -140,7 +141,8 @@ public sealed class SetupAddSpeciesRenderedTests
                     await WaitForAsync(() => world.OwnedWindows.OfType<SetupWindow>().Any(), "Edit Species did not open.");
                     var editor = Assert.Single(world.OwnedWindows.OfType<SetupWindow>());
                     var picker = new DnaPicker(editor, file);
-                    var added = await AddSpeciesAsync(editor, native ? 5 : 50, native ? 3_000 : 1_000, "Base");
+                    var added = await AddSpeciesAsync(editor, native ? 5 : 50, native ? 3_000 : 1_000,
+                        native ? "Base.txt" : "Base");
                     Assert.Equal(native ? 0xff0000ffu : 0xffd07a2du, added.Color);
                     picker.AssertStartedIn(native ? robots.FullName : null);
                     editor.UpdateLayout();
@@ -155,6 +157,7 @@ public sealed class SetupAddSpeciesRenderedTests
                     Assert.Equal(existing.InitialEnergy, prior.InitialEnergy);
                     Assert.Equal(existing.Comment, prior.Comment);
                     Assert.Equal(existing.Color, prior.Color);
+                    Assert.Equal(existing.DnaPath, prior.DnaPath);
 
                     Click(editor, "SpeciesCancelButton");
                     await WaitForAsync(() => !editor.IsVisible, "Edit Species did not close after Cancel.");
@@ -180,7 +183,7 @@ public sealed class SetupAddSpeciesRenderedTests
         window.FindControl<Button>(button)!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
     private static async Task<SetupSpeciesRow> AddSpeciesAsync(SetupWindow window, int count, float energy,
-        string name = "Added Species")
+        string name = "Added Species.txt")
     {
         Click(window, "AddDnaButton");
         await WaitForAsync(() => window.Species.Any(row => row.Name == name),

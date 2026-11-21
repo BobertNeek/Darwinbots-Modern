@@ -122,6 +122,7 @@ public sealed partial class SetupWindow : Window
             var (count, energy) = _nativeSpeciesImport ? (5, 3_000) : (50, 1_000);
             foreach (var file in await _storage.OpenDnaFilesAsync(this, _nativeSpeciesImport ? mainDirectory : null))
             {
+                var name = _nativeSpeciesImport ? file.Name : Path.GetFileNameWithoutExtension(file.Name);
                 var color = (_nativeSpeciesImport, file.Name) switch
                 {
                     (true, "Base.txt") => 0xff0000ff,
@@ -130,7 +131,7 @@ public sealed partial class SetupWindow : Window
                     (true, "robotB.txt") => 0xff0080ff,
                     _ => 0xffd07a2d,
                 };
-                Species.Add(new(Path.GetFileNameWithoutExtension(file.Name), file.Content, false, color, count, energy, 1.0, false,
+                Species.Add(new(name, file.Content, false, color, count, energy, 1.0, false,
                     comment: _nativeSpeciesImport ? LegacyDnaText.ReadLeadingComment(file.Content) : null,
                     mutationProfile: file.MutationProfile, dnaPath: file.LocalPath));
             }
