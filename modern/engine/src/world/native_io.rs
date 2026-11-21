@@ -125,6 +125,13 @@ fn dna(bytes: &[u8]) -> Result<LegacyDna, EngineError> {
     Ok(LegacyDna::from_legacy_blocks(blocks))
 }
 
+pub(super) fn read_cost_preset(t: &NativeSimulationTail) -> Result<u8, EngineError> {
+    Ok(match t.integer("cost_radio")? {
+        value @ 0..=2 => value as u8,
+        _ => 2,
+    })
+}
+
 fn configuration(t: &NativeSimulationTail) -> Result<EngineConfig, EngineError> {
     let n = |name| t.number(name).map(|v| v as f32);
     let b = |name| t.integer(name).map(|v| v != 0);
@@ -200,6 +207,7 @@ fn configuration(t: &NativeSimulationTail) -> Result<EngineConfig, EngineError> 
         vegetable_population_cap: u("max_population")? as usize,
         fixed_bot_radii: b("fixed_radii")?,
         shapes_visible: b("shapes_visible")?,
+        native_cost_preset: Some(read_cost_preset(t)?),
         brownian_motion: n("brownian")?,
         gravity: [0.0, n("y_gravity")?],
         physics: PhysicsSettings {

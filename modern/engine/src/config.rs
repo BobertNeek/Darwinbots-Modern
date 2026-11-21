@@ -271,6 +271,8 @@ pub struct EngineConfig {
     pub recording: RecordingSettings,
     #[serde(default)]
     pub dna_costs: DnaCosts,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub native_cost_preset: Option<u8>,
     #[serde(default)]
     pub advanced_mutation: AdvancedMutationSettings,
     #[serde(default)]
@@ -323,6 +325,7 @@ impl Default for EngineConfig {
             vegetation: VegetationSettings::default(),
             recording: RecordingSettings::default(),
             dna_costs: DnaCosts::default(),
+            native_cost_preset: None,
             advanced_mutation: AdvancedMutationSettings::default(),
             auto_speciation: false,
             speciation_genetic_distance_percent: default_speciation_genetic_distance_percent(),
