@@ -2,6 +2,7 @@ using System.Reflection;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Interactivity;
+using Avalonia.Platform.Storage;
 using Darwinbots.Desktop.Controls;
 using Darwinbots.Desktop.Core;
 using Darwinbots.Desktop.Core.LegacyMenus;
@@ -168,6 +169,121 @@ public sealed class SafeModeAutosaveRenderedTests
             }
             finally { window.Close(); }
         }, CancellationToken.None);
+    }
+
+    [Fact]
+    public void OriginalSimulationSourcePathsFollowLegacyRootsAndLocalSaveFallbacks()
+    {
+        var profile = Directory.CreateTempSubdirectory("darwinbots-restart-source-paths-");
+        try
+        {
+            var sim = Path.Combine(profile.CreateSubdirectory("Saves").FullName, "fixture.sim");
+            var main = profile.CreateSubdirectory("main");
+            var robots = main.CreateSubdirectory("Robots");
+            var literal = profile.CreateSubdirectory("custom");
+            const string name = "fixture-specific-café.txt";
+            const string savedDna = "' literal café\r\nstart stop";
+            const string rootDna = "' configured\r\nstart stop";
+            const string siblingDna = "' explicit save directory\r\nstart stop";
+            File.WriteAllBytes(Path.Combine(literal.FullName, name), LegacyDnaText.Encode(savedDna));
+            File.WriteAllBytes(Path.Combine(robots.FullName, name), LegacyDnaText.Encode(rootDna));
+            File.WriteAllBytes(Path.Combine(Path.GetDirectoryName(sim)!, name), LegacyDnaText.Encode(siblingDna));
+
+            string? Resolve(string directory) => SetupStorageService.ResolveNativeRestartSource(
+                new NativeRestartSource(1, name, directory), sim, main.FullName);
+            Assert.Equal(savedDna, Resolve(literal.FullName));
+            Assert.Equal(rootDna, Resolve(@"&#\Robots"));
+            Assert.Equal(rootDna, Resolve(""));
+            Assert.Equal(siblingDna, Resolve("relocated"));
+            Assert.Equal(siblingDna, Resolve("https://example.invalid/robots"));
+            Assert.Equal(siblingDna, Resolve(@"\\example.invalid\robots"));
+            File.WriteAllBytes(Path.Combine(literal.FullName, name), [0xef, 0xbb, 0xbf, 0xff]);
+            Assert.Equal(siblingDna, Resolve(literal.FullName));
+            Assert.Null(SetupStorageService.ResolveNativeRestartSource(new(2, "../" + name, ""), sim, main.FullName));
+        }
+        finally { profile.Delete(recursive: true); }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ImportedOriginalSimulationRestartsThroughItsPackagedSourceRoster(bool usePlayerPicker)
+    {
+        const string relative = "modern/engine/tests/fixtures/db24832-original-user.sim";
+        var repository = new DirectoryInfo(AppContext.BaseDirectory);
+        while (repository is not null && !File.Exists(Path.Combine(repository.FullName, relative)))
+            repository = repository.Parent;
+        Assert.NotNull(repository);
+        var profile = Directory.CreateTempSubdirectory("darwinbots-restart-sim-");
+        try
+        {
+            var path = Path.Combine(profile.FullName, "archived.sim");
+            File.Copy(Path.Combine(repository.FullName, relative), path);
+            await DesktopTestApplication.Session.Dispatch(async () =>
+            {
+                var options = Setup(false);
+                if (!usePlayerPicker) options = options with { Species = [], LoadSavePath = path };
+                var storage = AvaloniaDesktopStorageService.Instance;
+                var window = new MainWindow([], options, NativeEngineClientFactory.Instance, storage);
+                try
+                {
+                    Show(window);
+                    if (usePlayerPicker)
+                    {
+                        await Ready(window);
+                        var selected = RestartStorageProxy.Create<IStorageFile>((method, _) => method.Name switch
+                        {
+                            "get_Path" => new Uri(path),
+                            nameof(IStorageFile.OpenReadAsync) => Task.FromResult<Stream>(File.OpenRead(path)),
+                            _ => throw new NotSupportedException(method.Name),
+                        });
+                        var picker = RestartStorageProxy.Create<IStorageProvider>((method, _) => method.Name switch
+                        {
+                            nameof(IStorageProvider.OpenFilePickerAsync) => Task.FromResult<IReadOnlyList<IStorageFile>>([selected]),
+                            _ => throw new NotSupportedException(method.Name),
+                        });
+                        typeof(TopLevel).GetField("_storageProvider", BindingFlags.Instance | BindingFlags.NonPublic)!
+                            .SetValue(window, picker);
+                        Activate(Named<LegacyMenuBar>(window, "HistoricMenuBar"), LegacyCommandId.FileLoadSimulation);
+                    }
+                    await WaitFor(() => ViewModel(window).Status == "LOADED");
+                    var session = Field<SimulationSession>(window, "_session");
+                    var imported = session.LatestSnapshot;
+                    Assert.Equal(281, imported.NativeCycle);
+                    Assert.Equal(196, imported.Population);
+                    Assert.True(imported.OrdinaryRestartAvailable);
+                    Assert.False(imported.OrdinaryRestartOnExtinction);
+                    Assert.Contains(imported.Species, species => species.Name == "Alga_Minimalis_Chloroplastus.txt");
+                    Assert.Contains(imported.Species, species => species.Name == "The One (1G)(Shen)-23.04.05.txt");
+
+                    Activate(Named<LegacyMenuBar>(window, "HistoricMenuBar"), LegacyCommandId.EditRestartAndLeagues);
+                    var restart = Named<CheckBox>(window, "OrdinaryRestartToggle");
+                    Assert.True(restart.IsEnabled);
+                    restart.IsChecked = true;
+                    restart.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    await WaitFor(() => session.LatestSnapshot.OrdinaryRestartOnExtinction);
+
+                    var checkpoint = await session.SaveAsync();
+                    File.Delete(path);
+                    await InvokeTask(window, "LoadSimulationAsync", checkpoint);
+                    var resumed = session.LatestSnapshot;
+                    Assert.Equal(196, resumed.Population);
+                    Assert.True(resumed.OrdinaryRestartOnExtinction);
+                    var original = resumed.Organisms.Select(robot => new OrganismKey(robot.Slot, robot.Generation)).ToArray();
+                    await session.RemoveManyAsync(original, suppressDeathPoffs: true);
+                    Assert.Empty(session.LatestSnapshot.Organisms);
+                    await InvokeTask(window, "AdvanceSimulationAsync", 1u);
+
+                    var restarted = session.LatestSnapshot;
+                    Assert.Equal(1ul, restarted.OrdinaryRestartCount);
+                    Assert.False(restarted.OrdinaryRestartPending);
+                    Assert.Equal(5, restarted.Organisms.Count(robot => !robot.Vegetable));
+                    Assert.Equal(5, restarted.Organisms.Count(robot => robot.Vegetable));
+                }
+                finally { window.Close(); }
+            }, CancellationToken.None);
+        }
+        finally { profile.Delete(recursive: true); }
     }
 
     [Fact]
@@ -429,4 +545,18 @@ public sealed class SafeModeAutosaveRenderedTests
         while (!condition() && DateTime.UtcNow < deadline) await Task.Delay(10);
         Assert.True(condition(), "Timed out waiting for the safe-mode player route.");
     }
+}
+
+public class RestartStorageProxy : DispatchProxy
+{
+    private Func<MethodInfo, object?[], object?> _invoke = null!;
+
+    public static T Create<T>(Func<MethodInfo, object?[], object?> invoke) where T : class
+    {
+        var proxy = DispatchProxy.Create<T, RestartStorageProxy>();
+        ((RestartStorageProxy)(object)proxy)._invoke = invoke;
+        return proxy;
+    }
+
+    protected override object? Invoke(MethodInfo? method, object?[]? args) => _invoke(method!, args ?? []);
 }
