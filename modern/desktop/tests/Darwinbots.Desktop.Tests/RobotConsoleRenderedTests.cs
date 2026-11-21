@@ -194,6 +194,160 @@ public sealed class RobotConsoleRenderedTests
         }, CancellationToken.None);
     }
 
+    [Fact]
+    public async Task NativeConsoleRejectsCommandsAfterTheLoadMenuReusesTheSlotButSurvivesARejectedLoad()
+    {
+        const string oldDna = "start\n111 921 store\nstop";
+        const string replacementDna = "start\n222 921 store\nstop";
+        var setup = new WorldSetupOptions
+        {
+            Backend = "Cpu",
+            Species = [new SpeciesImport("Console Survivor", oldDna, false, 0xff239ac0, 1, 1_000, 0, false, 1)],
+        };
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var picker = new AuditStorageService();
+            var window = new MainWindow([], setup, NativeEngineClientFactory.Instance, picker);
+            try
+            {
+                window.Show();
+                var model = Assert.IsType<MainWindowViewModel>(window.DataContext);
+                await WaitForAsync(() => model.SelectedKey.HasValue && model.NativeCycle.HasValue);
+                var session = (SimulationSession)typeof(MainWindow)
+                    .GetField("_session", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(window)!;
+                var focus = model.SelectedKey!.Value;
+                var original = Assert.Single(session.LatestSnapshot.Organisms);
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                var open = menu.FindCommandItem(LegacyCommandId.RobotOpenConsole)!;
+                var load = menu.FindCommandItem(LegacyCommandId.FileLoadSimulation)!;
+                Click(open);
+                await WaitForAsync(() => window.OwnedWindows.OfType<RobotConsoleWindow>().Any());
+                var previousConsole = Assert.Single(window.OwnedWindows.OfType<RobotConsoleWindow>());
+                Assert.Contains("mem[901] = 17", await SubmitThroughConsoleAsync(previousConsole, "set 901 17"), StringComparison.Ordinal);
+
+                picker.OpenedSimulation = "DB3S"u8.ToArray();
+                Click(load);
+                await WaitForAsync(() => model.Status.Contains("FileLoadSimulation failed", StringComparison.Ordinal));
+                Assert.True(previousConsole.IsVisible);
+                Assert.Contains("mem[901] = 27", await SubmitThroughConsoleAsync(previousConsole, "set 901 27"), StringComparison.Ordinal);
+                Assert.Equal(27, Cell(Assert.Single(session.LatestSnapshot.Organisms), 901));
+
+                using (var source = NativeEngineClientFactory.Instance.Create(setup))
+                {
+                    source.Load(await session.SaveAsync());
+                    source.ReplaceDna(focus.Slot, focus.Generation, replacementDna);
+                    source.SetOrganismMemory(focus.Slot, focus.Generation, 901, 37);
+                    source.SetOrganismEnergy(focus.Slot, focus.Generation, 700);
+                    picker.OpenedSimulation = source.Save();
+                }
+                Click(load);
+                await WaitForAsync(() => model.Status == "LOADED");
+                var fresh = Assert.Single(session.LatestSnapshot.Organisms);
+                Assert.Equal((focus.Slot, focus.Generation, original.UniqueId), (fresh.Slot, fresh.Generation, fresh.UniqueId));
+                Assert.Equal((700, 37, 0), (fresh.Energy, Cell(fresh, 901), Cell(fresh, 921)));
+                Assert.True(previousConsole.IsVisible);
+
+                var responses = new[]
+                {
+                    await SubmitThroughConsoleAsync(previousConsole, "set 901 88"),
+                    await SubmitThroughConsoleAsync(previousConsole, "energy 14"),
+                    await SubmitThroughConsoleAsync(previousConsole, "execrob"),
+                };
+                var current = Assert.Single(session.LatestSnapshot.Organisms);
+                Assert.Equal((700, 37, 0), (current.Energy, Cell(current, 901), Cell(current, 921)));
+                Assert.All(responses, response => Assert.Contains("This console belongs to a previous simulation.",
+                    response, StringComparison.Ordinal));
+
+                Click(open);
+                await WaitForAsync(() => window.OwnedWindows.OfType<RobotConsoleWindow>().Count() == 2);
+                var newConsole = Assert.Single(window.OwnedWindows.OfType<RobotConsoleWindow>(), tool => tool != previousConsole);
+                Assert.Contains("mem[901] = 55", await SubmitThroughConsoleAsync(newConsole, "set 901 55"), StringComparison.Ordinal);
+                Assert.Equal(55, Cell(Assert.Single(session.LatestSnapshot.Organisms), 901));
+            }
+            finally
+            {
+                foreach (var ownedWindow in window.OwnedWindows.ToArray()) ownedWindow.Close();
+                if (window.IsVisible) window.Close();
+            }
+        }, CancellationToken.None);
+
+        static void Click(MenuItem item) => item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        static int Cell(OrganismSnapshot actor, int address) => actor.Memory.SingleOrDefault(cell => cell.Address == address)?.Value ?? 0;
+    }
+
+    [Fact]
+    public async Task NativeConsoleRechecksAQueuedMemoryWriteAfterAddressResolution()
+    {
+        var factory = new AuditEngineClientFactory();
+        var picker = new AuditStorageService { OpenedSimulation = "DB3S"u8.ToArray() };
+        var setup = new WorldSetupOptions
+        {
+            Species = [new SpeciesImport("Console Survivor", "start\nstop", false, 0xff239ac0, 1, 1_000, 0, false, 1)],
+        };
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], setup, factory, picker);
+            using var releaseResolution = new ManualResetEventSlim();
+            try
+            {
+                window.Show();
+                var model = Assert.IsType<MainWindowViewModel>(window.DataContext);
+                await WaitForAsync(() => model.SelectedKey.HasValue && model.Status.Contains("WORLD READY", StringComparison.Ordinal));
+                var session = (SimulationSession)typeof(MainWindow)
+                    .GetField("_session", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(window)!;
+                var engine = Assert.Single(factory.Clients);
+                engine.NativeCycle = 1;
+                await session.RefreshSnapshotAsync();
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                menu.FindCommandItem(LegacyCommandId.RobotOpenConsole)!
+                    .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitForAsync(() => window.OwnedWindows.OfType<RobotConsoleWindow>().Any());
+                var console = Assert.Single(window.OwnedWindows.OfType<RobotConsoleWindow>());
+                var resolving = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                engine.BeforeResolveMemoryAddress = () =>
+                {
+                    resolving.TrySetResult();
+                    if (!releaseResolution.Wait(TimeSpan.FromSeconds(10)))
+                        throw new TimeoutException("The test did not release the memory resolver.");
+                };
+                engine.Calls.Clear();
+                var command = SubmitThroughConsoleAsync(console, "set 901 88");
+                await resolving.Task.WaitAsync(TimeSpan.FromSeconds(5));
+                menu.FindCommandItem(LegacyCommandId.FileLoadSimulation)!
+                    .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                var loading = typeof(MainWindow).GetField("_loadingSimulation", BindingFlags.Instance | BindingFlags.NonPublic)!;
+                await WaitForAsync(() => (bool)loading.GetValue(window)!);
+                releaseResolution.Set();
+                await WaitForAsync(() => model.Status == "LOADED");
+                var response = await command;
+                Assert.True(response.Contains("The simulation is loading.", StringComparison.Ordinal)
+                    || response.Contains("This console belongs to a previous simulation.", StringComparison.Ordinal), response);
+                Assert.Contains("Load", engine.Calls);
+                Assert.DoesNotContain(engine.Calls, call => call.StartsWith("Memory:", StringComparison.Ordinal));
+            }
+            finally
+            {
+                releaseResolution.Set();
+                foreach (var ownedWindow in window.OwnedWindows.ToArray()) ownedWindow.Close();
+                if (window.IsVisible) window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
+    private static async Task<string> SubmitThroughConsoleAsync(RobotConsoleWindow console, string input)
+    {
+        console.UpdateLayout();
+        AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+        var transcript = Assert.Single(console.GetVisualDescendants().OfType<TextBox>(), box => box.IsReadOnly);
+        var command = Assert.Single(console.GetVisualDescendants().OfType<TextBox>(), box => !box.IsReadOnly);
+        var run = Assert.Single(console.GetVisualDescendants().OfType<Button>(), button => Equals(button.Content, "RUN"));
+        var before = transcript.Text?.Length ?? 0;
+        command.Text = input;
+        run.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        await WaitForAsync(() => transcript.Text?.Length > before + input.Length + 3);
+        return transcript.Text![before..];
+    }
+
     private static async Task RunAndWaitAsync(
         TextBox command,
         Button run,

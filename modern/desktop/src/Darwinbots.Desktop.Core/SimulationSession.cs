@@ -290,7 +290,16 @@ public sealed class SimulationSession : IAsyncDisposable
     }
 
     public Task SetOrganismMemoryAsync(uint slot, uint generation, ushort address, int value, CancellationToken cancellationToken = default) =>
-        Enqueue(engine => engine.SetOrganismMemory(slot, generation, address, value), cancellationToken);
+        SetOrganismMemoryAsync(slot, generation, address, value, cancellationToken, null);
+
+    internal Task SetOrganismMemoryAsync(uint slot, uint generation, ushort address, int value,
+        CancellationToken cancellationToken, Action? validate) =>
+        Enqueue(engine =>
+        {
+            // A console can resolve the address before a queued world replacement.
+            validate?.Invoke();
+            engine.SetOrganismMemory(slot, generation, address, value);
+        }, cancellationToken);
 
     public async Task<ushort> ResolveMemoryAddressAsync(string name, CancellationToken cancellationToken = default)
     {
