@@ -77,6 +77,11 @@ public interface IEngineClient : IDisposable
     void AdjudicateLocalRound(uint? winner, string reason);
     void SetOrganismAim(uint slot, uint generation, int aim);
     void UpdateEnvironment(EnvironmentUpdate update);
+    void AcceptNativeAdvancedSettings(EnvironmentUpdate environment, MutationSettingsUpdate mutation)
+    {
+        UpdateEnvironment(environment);
+        UpdateMutationSettings(mutation);
+    }
     void ConfigureGraphSampling(GraphSamplingSettings settings)
     {
         if (settings.Selective || settings.Generational || settings.Slow)

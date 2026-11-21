@@ -1490,9 +1490,13 @@ public sealed partial class MainWindow : Window
                 {
                     Vegetation = update.Vegetation with { Daytime = !update.Vegetation.DayNightEnabled || daytime },
                 };
+                await session.AcceptNativeAdvancedSettingsAsync(update, dialog.MutationUpdate);
             }
-            await session.UpdateEnvironmentAsync(update);
-            await session.UpdateMutationSettingsAsync(dialog.MutationUpdate);
+            else
+            {
+                await session.UpdateEnvironmentAsync(update);
+                await session.UpdateMutationSettingsAsync(dialog.MutationUpdate);
+            }
             _liveEnvironment = update;
             SynchronizeRecordingPreferences();
             RefreshEnvironmentControls();

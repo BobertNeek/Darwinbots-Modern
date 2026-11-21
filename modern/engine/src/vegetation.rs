@@ -104,10 +104,14 @@ impl VegetationRuntime {
             self.sun_change = position + range * 10;
             self.sun_position = f64::from(random.unit());
         } else {
-            self.sun_position = 0.5;
-            self.sun_range = 1.0;
-            // VB6 leaves SunChange intact when randomized sun is disabled.
+            self.normalize_native_sun_band();
         }
+    }
+
+    pub(crate) fn normalize_native_sun_band(&mut self) {
+        self.sun_position = 0.5;
+        self.sun_range = 1.0;
+        // VB6 leaves SunChange intact when randomized sun is disabled.
     }
 
     pub(crate) fn from_legacy_wire_parts(
