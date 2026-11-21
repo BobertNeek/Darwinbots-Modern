@@ -25,7 +25,7 @@ pub(super) fn receive_energy(materials: &mut BiologyState, partial: f32) -> f32 
     materials.energy = store_scaled_sum(materials.energy, partial, 0.95).min(32_000.0);
     materials.body = (f64::from(materials.body) + partial * 0.004 + f64::from(overflow) * 0.1)
         .min(32_000.0) as f32;
-    materials.waste = (f64::from(materials.waste) + partial * 0.01) as f32;
+    materials.waste = store_scaled_sum(materials.waste, partial, 0.01);
     (partial * 0.95) as f32
 }
 
@@ -803,6 +803,19 @@ mod native_loop_tests {
             }
             assert_eq!((materials.energy - 100.0).to_bits(), expected);
         }
+    }
+
+    #[test]
+    fn native_takenrg_preserves_waste_at_the_original_shot_midpoint() {
+        // Robot 202 received this packet at cycle 356 on the original saved
+        // trajectory. Its cycle-357 offspring retains the halved waste.
+        let mut materials = BiologyState {
+            waste: f32::from_bits(0x42ea_e4d1),
+            ..Default::default()
+        };
+        receive_energy(&mut materials, f32::from_bits(0x42d2_ddd6));
+        assert_eq!(materials.waste.to_bits(), 0x42ed_00a3);
+        assert_eq!((materials.waste * 0.5).to_bits(), 0x426d_00a3);
     }
 
     #[test]
