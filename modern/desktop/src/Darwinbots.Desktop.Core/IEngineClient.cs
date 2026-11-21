@@ -78,6 +78,8 @@ public interface IEngineClient : IDisposable
         throw new NotSupportedException("Ordinary simulation restart is unavailable in this engine client.");
     void FinishOrdinaryRestart() =>
         throw new NotSupportedException("Ordinary simulation restart is unavailable in this engine client.");
+    NativeRestartSources ReadNativeRestartSources() => NativeRestartSources.Empty;
+    int BindNativeRestartSources(IReadOnlyList<NativeRestartBinding> sources) => 0;
     void AdjudicateLocalRound(uint? winner, string reason);
     void SetOrganismAim(uint slot, uint generation, int aim);
     void UpdateEnvironment(EnvironmentUpdate update);

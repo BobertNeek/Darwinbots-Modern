@@ -1092,9 +1092,9 @@ public sealed partial class MainWindow : Window
     private async Task<LegacyCommandResult> LoadSimulationCommandAsync()
     {
         if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        if (await _storage.OpenSimulationAsync(this) is not { } save)
+        if (await _storage.OpenSimulationWithSourceAsync(this) is not { } save)
             return LegacyCommandResult.Cancel();
-        await LoadSimulationAsync(save);
+        await LoadSimulationWithSourceAsync(save.Data, save.LocalPath);
         return LegacyCommandResult.Success("LOADED");
     }
 
@@ -1893,7 +1893,7 @@ public sealed partial class MainWindow : Window
                 return LegacyCommandResult.Success(_viewModel.Status);
             }
             _runTimer.Stop();
-            await LoadSimulationAsync(await File.ReadAllBytesAsync(path));
+            await LoadSimulationWithSourceAsync(await File.ReadAllBytesAsync(path), path);
             _viewModel.Status = $"RECOVERED · {Path.GetFileName(path)}";
             ClearRecoveryPanel();
             return LegacyCommandResult.Success(_viewModel.Status);
@@ -2042,7 +2042,7 @@ public sealed partial class MainWindow : Window
             var compatibilityWarnings = new List<string>();
             if (_setup.LoadSavePath is { } savePath)
             {
-                await LoadSimulationAsync(await File.ReadAllBytesAsync(savePath));
+                await LoadSimulationWithSourceAsync(await File.ReadAllBytesAsync(savePath), savePath);
             }
             else
                 foreach (var species in _setup.Species)
@@ -2931,8 +2931,8 @@ public sealed partial class MainWindow : Window
     private async void Load_Click(object? sender, RoutedEventArgs e)
     {
         if (_session is null) return;
-        if (await _storage.OpenSimulationAsync(this) is not { } save) return;
-        await LoadSimulationAsync(save);
+        if (await _storage.OpenSimulationWithSourceAsync(this) is not { } save) return;
+        await LoadSimulationWithSourceAsync(save.Data, save.LocalPath);
         _viewModel.Status = "LOADED";
     }
 
@@ -2956,7 +2956,9 @@ public sealed partial class MainWindow : Window
         finally { _tickInFlight = false; }
     }
 
-    private async Task LoadSimulationAsync(byte[] save)
+    private Task LoadSimulationAsync(byte[] save) => LoadSimulationWithSourceAsync(save, null);
+
+    private async Task LoadSimulationWithSourceAsync(byte[] save, string? sourcePath)
     {
         _runTimer.Stop();
         await _advanceGate.WaitAsync();
@@ -2964,7 +2966,9 @@ public sealed partial class MainWindow : Window
         {
             if (_session is null) return;
             _loadingSimulation = true;
-            await _session.LoadAsync(save);
+            var mainDirectory = _globalSettings.Main.MainDirectory;
+            await _session.LoadWithNativeRestartSourcesAsync(save,
+                source => SetupStorageService.ResolveNativeRestartSource(source, sourcePath, mainDirectory));
             // A rejected load publishes no snapshot and must keep user-closed
             // graphs closed. Loading publications defer this until success.
             _automaticEvolutionGraphBoundary = null;

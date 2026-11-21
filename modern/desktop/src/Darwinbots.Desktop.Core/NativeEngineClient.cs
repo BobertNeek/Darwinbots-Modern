@@ -782,6 +782,37 @@ public sealed partial class NativeEngineClient : IEngineClient
         new { version = 1, commands = new[] { new { type = "finish_ordinary_restart" } } },
         "restart ordinary simulation");
 
+    public NativeRestartSources ReadNativeRestartSources()
+    {
+        EnsureAlive();
+        var result = ExecuteBatchForResult(
+            new { version = 1, commands = new[] { new { type = "read_native_restart_sources" } } },
+            "read original restart sources").GetProperty("results")[0];
+        var sources = result.GetProperty("sources").EnumerateArray().Select(source => new NativeRestartSource(
+            source.GetProperty("lineage_id").GetUInt64(),
+            source.GetProperty("filename").GetString() ?? string.Empty,
+            source.GetProperty("directory").GetString() ?? string.Empty)).ToArray();
+        return new(result.GetProperty("requested").GetBoolean(), sources);
+    }
+
+    public int BindNativeRestartSources(IReadOnlyList<NativeRestartBinding> sources)
+    {
+        EnsureAlive();
+        var result = ExecuteBatchForResult(new
+        {
+            version = 1,
+            commands = new[]
+            {
+                new
+                {
+                    type = "bind_native_restart_sources",
+                    sources = sources.Select(source => new { lineage_id = source.LineageId, dna = source.Dna }).ToArray(),
+                },
+            },
+        }, "bind original restart sources");
+        return result.GetProperty("results")[0].GetInt32();
+    }
+
     public void AdjudicateLocalRound(uint? winner, string reason)
     {
         EnsureAlive();

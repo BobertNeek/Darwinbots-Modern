@@ -522,6 +522,9 @@ impl Engine {
         if let Some(guid) = self.native_sim_guid {
             number(t, "sim_guid", f64::from(guid))?;
         }
+        if let Some(restart) = self.native_restart_export_override() {
+            flag(t, "restart", restart)?;
+        }
         let topology = c.axis_topology();
         // SimOpts.F1 marks an actual contest, including league matches and
         // evolution champion tests (restart 6), but not seeding or restart 9.
