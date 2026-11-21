@@ -1617,8 +1617,10 @@ public sealed class RuntimeControlSurfaceTests
         }, CancellationToken.None);
     }
 
-    [Fact]
-    public async Task PhilogenyMenuCountsAndMarksDescendantsAndDrawsTheWholeLineage()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task NativePhilogenyModalRestoresRunStateAndReplacesLineageWithHighlights(bool wasRunning)
     {
         var ancestor = new OrganismKey(1, 0);
         var focus = new OrganismKey(2, 2);
@@ -1634,6 +1636,8 @@ public sealed class RuntimeControlSurfaceTests
         await DesktopTestApplication.Session.Dispatch(async () =>
         {
             var window = new MainWindow([], new WorldSetupOptions(), new AuditEngineClientFactory(), new AuditStorageService());
+            var timer = Field<DispatcherTimer>(window, "_runTimer");
+            var advanceGate = Field<SemaphoreSlim>(window, "_advanceGate");
             try
             {
                 DesktopTestApplication.UseSession(window, session);
@@ -1644,31 +1648,50 @@ public sealed class RuntimeControlSurfaceTests
                 var viewport = window.FindControl<WorldViewport>("Viewport")!;
                 viewport.SetSnapshot(snapshot);
                 viewport.SelectKeys([unrelated], focus);
+                timer.Interval = TimeSpan.FromMinutes(1);
+                if (wasRunning)
+                    window.FindControl<Button>("RunButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                var priorStatus = viewModel.Status;
                 Invoke(window, "RefreshLegacyMenuStates");
                 window.FindControl<LegacyMenuBar>("HistoricMenuBar")!
                     .FindCommandItem(Core.LegacyMenus.LegacyCommandId.RobotShowPhilogeny)!
                     .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
                 await WaitFor(() => window.OwnedWindows.OfType<PhylogenyWindow>().Any());
                 var tool = Assert.Single(window.OwnedWindows.OfType<PhylogenyWindow>());
+                Assert.True(tool.IsDialog);
+                Assert.True(tool.Topmost);
+                Assert.False(timer.IsEnabled);
+                Assert.Equal(0, advanceGate.CurrentCount);
+                Assert.Equal(focus, viewModel.SelectedKey);
                 var buttons = tool.GetVisualDescendants().OfType<Button>().ToArray();
                 var pausedTick = session.LatestSnapshot.Tick;
                 Click("CalculateDescendants");
                 Assert.Equal("DESCENDANTS 1 · DEPTH 1", tool.GetVisualDescendants().OfType<TextBlock>()
                     .Single(text => text.Name == "DescendantCount").Text);
 
+                PhylogenyLink[] expectedLinks = [new(ancestor, focus), new(focus, child)];
+                IReadOnlyList<PhylogenyLink> Links() => Field<IReadOnlyList<PhylogenyLink>>(viewport, "_phylogenyLinks");
+                Click("ShowWholeLineage");
+                Assert.Equal(expectedLinks, Links());
                 Click("HighlightDescendants");
                 var marks = Field<HashSet<OrganismKey>>(viewport, "_selectedKeys");
                 Assert.True(marks.SetEquals([focus, child, unrelated]));
+                Assert.Empty(Links());
                 Click("ShowWholeLineage");
-                Assert.Equal(new PhylogenyLink[] { new(ancestor, focus), new(focus, child) },
-                    Field<IReadOnlyList<PhylogenyLink>>(viewport, "_phylogenyLinks"));
+                Assert.Equal(expectedLinks, Links());
                 AvaloniaHeadlessPlatform.ForceRenderTimerTick();
                 using var rendered = window.CaptureRenderedFrame();
                 Assert.NotNull(rendered);
                 Assert.Equal(pausedTick, session.LatestSnapshot.Tick);
 
+                tool.Close();
+                await WaitFor(() => advanceGate.CurrentCount == 1 && timer.IsEnabled == wasRunning);
+                Assert.Equal(focus, viewModel.SelectedKey);
+                Assert.Equal(priorStatus, viewModel.Status);
+                Assert.Equal(expectedLinks, Links());
+
                 viewport.SetSnapshot(snapshot with { Tick = 43, NativeCycle = 42 });
-                Assert.Empty(Field<IReadOnlyList<PhylogenyLink>>(viewport, "_phylogenyLinks"));
+                Assert.Empty(Links());
                 Assert.True(marks.SetEquals([focus, child, unrelated]));
 
                 void Click(string name) => Assert.Single(buttons, button => button.Name == name)
@@ -1677,6 +1700,7 @@ public sealed class RuntimeControlSurfaceTests
             finally
             {
                 foreach (var owned in window.OwnedWindows.ToArray()) owned.Close();
+                timer.Stop();
                 SetField(window, "_session", null);
                 window.Close();
             }
