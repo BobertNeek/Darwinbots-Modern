@@ -1,6 +1,7 @@
 using System.Reflection;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Threading;
 using Darwinbots.Desktop.Controls;
 using Darwinbots.Desktop.Core;
 using Darwinbots.Desktop.Core.LegacyMenus;
@@ -72,7 +73,24 @@ public sealed class NativeRobotFileIntegrationTests
                 watch.IsChecked = true;
                 await session.StepAsync();
                 Assert.Equal(first, session.LatestSnapshot.NativePostDnaMemory?.Focus);
-                await session.RemoveAsync(first.Slot, first.Generation);
+                watch.IsChecked = false;
+                var tick = session.LatestSnapshot.Tick;
+                var kill = menu.FindCommandItem(LegacyCommandId.RobotKillEntireOrganism)!;
+                Assert.True(kill.IsEnabled);
+                const string killed = "ORGANISM KILLED · 1 BOT(S)";
+                var continuationQueued = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                var context = SynchronizationContext.Current;
+                try
+                {
+                    // Let the kill command finish before normal-priority snapshot presentation.
+                    SynchronizationContext.SetSynchronizationContext(new MenuInputSynchronizationContext(continuationQueued));
+                    kill.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    if (model.Status != killed)
+                        Assert.True(continuationQueued.Task.Wait(TimeSpan.FromSeconds(5)), "Kill menu did not complete its engine action.");
+                }
+                finally { SynchronizationContext.SetSynchronizationContext(context); }
+                await WaitFor(() => model.Status == killed);
+                Assert.Equal(tick, session.LatestSnapshot.Tick);
                 Assert.DoesNotContain(session.LatestSnapshot.Organisms,
                     actor => actor.Slot == first.Slot && actor.Generation == first.Generation);
                 Assert.Null(session.LatestSnapshot.NativePostDnaMemory);
@@ -382,5 +400,14 @@ public sealed class NativeRobotFileIntegrationTests
     private sealed class FixedFactory(IEngineClient engine) : IEngineClientFactory
     {
         public IEngineClient Create(WorldSetupOptions setup) => engine;
+    }
+
+    private sealed class MenuInputSynchronizationContext(TaskCompletionSource continuationQueued) : SynchronizationContext
+    {
+        public override void Post(SendOrPostCallback callback, object? state)
+        {
+            Dispatcher.UIThread.Post(() => callback(state), DispatcherPriority.Send);
+            continuationQueued.TrySetResult();
+        }
     }
 }

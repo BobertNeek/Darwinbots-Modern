@@ -987,12 +987,14 @@ public sealed partial class MainWindow : Window
 
     private async Task<LegacyCommandResult> KillSelectedOrganismAsync()
     {
-        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
         var group = SelectedOrganismGroup();
         if (group.Count == 0) return LegacyCommandResult.Failure("SELECT A ROBOT FIRST");
         OrganismKey[] keys = [.. group.Select(value => new OrganismKey(value.Slot, value.Generation))];
-        await _session.RemoveManyAsync(keys, suppressDeathPoffs: true);
-        _viewModel.ClearSelection();
+        await session.RemoveManyAsync(keys, suppressDeathPoffs: true);
+        // Native Robot Info observes the lost selection when the committed snapshot is presented.
+        if (!session.LatestSnapshot.NativeCycle.HasValue)
+            _viewModel.ClearSelection();
         Viewport.SelectSlot(null);
         return LegacyCommandResult.Success($"ORGANISM KILLED · {keys.Length:N0} BOT(S)");
     }
