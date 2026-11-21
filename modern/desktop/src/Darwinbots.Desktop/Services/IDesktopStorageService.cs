@@ -14,6 +14,8 @@ public enum SimulationSaveFormat
 
 public sealed record DesktopSimulationFile(byte[] Data, string? LocalPath = null);
 
+public sealed record DesktopBackgroundPicture(string Name, byte[] Data, string? LocalPath = null);
+
 public interface IDesktopStorageService
 {
     Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner, string? mainDirectory = null, bool allowMultiple = true);
@@ -31,8 +33,8 @@ public interface IDesktopStorageService
     Task<byte[]?> OpenRgbMonitorPresetAsync(TopLevel owner) => Task.FromResult<byte[]?>(null);
     Task<bool> SaveRgbMonitorPresetAsync(TopLevel owner, ReadOnlyMemory<byte> preset) => Task.FromResult(false);
     Task<DesktopSettings?> OpenSettingsAsync(TopLevel owner, string? mainDirectory = null);
-    Task<(string Name, byte[] Data)?> OpenBackgroundPictureAsync(TopLevel owner) =>
-        Task.FromResult<(string Name, byte[] Data)?>(null);
+    Task<DesktopBackgroundPicture?> OpenBackgroundPictureAsync(TopLevel owner) =>
+        Task.FromResult<DesktopBackgroundPicture?>(null);
     Task<string?> PickSimulationPathAsync(TopLevel owner);
     Task<byte[]?> OpenSimulationAsync(TopLevel owner, string? mainDirectory = null);
     async Task<DesktopSimulationFile?> OpenSimulationWithSourceAsync(TopLevel owner, string? mainDirectory = null) =>

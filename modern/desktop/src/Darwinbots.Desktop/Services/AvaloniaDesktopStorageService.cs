@@ -134,7 +134,7 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         return SetupStorageService.DecodeSettings(LocalPath(file) ?? file.Name, memory.ToArray());
     }
 
-    public async Task<(string Name, byte[] Data)?> OpenBackgroundPictureAsync(TopLevel owner)
+    public async Task<DesktopBackgroundPicture?> OpenBackgroundPictureAsync(TopLevel owner)
     {
         var files = await owner.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
@@ -148,7 +148,7 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
             await using var stream = await file.OpenReadAsync();
             using var memory = new MemoryStream();
             await stream.CopyToAsync(memory);
-            return (file.Name, memory.ToArray());
+            return new DesktopBackgroundPicture(file.Name, memory.ToArray(), LocalPath(file));
         }
     }
 

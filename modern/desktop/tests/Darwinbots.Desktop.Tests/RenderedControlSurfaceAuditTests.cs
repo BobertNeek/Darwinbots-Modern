@@ -378,7 +378,7 @@ public sealed class RenderedControlSurfaceAuditTests
         await DesktopTestApplication.Session.Dispatch(async () =>
         {
             var factory = new AuditEngineClientFactory();
-            var storage = new AuditStorageService { OpenedBackgroundPicture = ("arena.png", png), OpenedSimulation = [1] };
+            var storage = new AuditStorageService { OpenedBackgroundPicture = new("arena.png", png), OpenedSimulation = [1] };
             var windows = new List<Window>();
             using var opened = Window.WindowOpenedEvent.AddClassHandler<Window>((window, _) => windows.Add(window));
             var original = new MainWindow([], new WorldSetupOptions(), factory, storage);
@@ -434,6 +434,77 @@ public sealed class RenderedControlSurfaceAuditTests
 
         static void Activate(MainWindow window, LegacyCommandId command) =>
             ActivateMenu(Named<LegacyMenuBar>(window, "HistoricMenuBar").FindCommandItem(command)!);
+    }
+
+    [Fact]
+    public async Task BackgroundPictureReloadsEditedLocalSourceAndFallsBackToTheLastDecodedImage()
+    {
+        var imported = Convert.FromBase64String(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=");
+        var editedForLoad = Convert.FromBase64String(
+            "iVBORw0KGgoAAAANSUhEUgAAAAMAAAACCAIAAAASFvFNAAAAEElEQVR4nGN4xp8EQQxwFgBTkAgL2YNlvQAAAABJRU5ErkJggg==");
+        var editedForNew = Convert.FromBase64String(
+            "iVBORw0KGgoAAAANSUhEUgAAAAQAAAADCAIAAAA7ljmRAAAAEElEQVR4nGMwnOELRww4OQD88w0Ji/qrWgAAAABJRU5ErkJggg==");
+        var path = Path.GetTempFileName();
+        try
+        {
+            await File.WriteAllBytesAsync(path, imported);
+            await DesktopTestApplication.Session.Dispatch(async () =>
+            {
+                var factory = new AuditEngineClientFactory();
+                var storage = new AuditStorageService
+                {
+                    OpenedBackgroundPicture = new("arena.png", imported, path),
+                    OpenedSimulation = [1],
+                };
+                var windows = new List<Window>();
+                using var opened = Window.WindowOpenedEvent.AddClassHandler<Window>((window, _) => windows.Add(window));
+                var original = new MainWindow([], new WorldSetupOptions(), factory, storage);
+                try
+                {
+                    ShowForInteraction(original, 1280, 900);
+                    var model = (MainWindowViewModel)original.DataContext!;
+                    var menu = Named<LegacyMenuBar>(original, "HistoricMenuBar");
+                    await WaitFor(() => model.Population == 1);
+
+                    ActivateMenu(menu.FindCommandItem(LegacyCommandId.ViewImportBackground)!);
+                    await WaitFor(() => model.Status == "BACKGROUND · arena.png");
+                    Assert.Equal(new PixelSize(1, 1), DisplayedSize(original));
+
+                    await File.WriteAllBytesAsync(path, editedForLoad);
+                    ActivateMenu(menu.FindCommandItem(LegacyCommandId.FileLoadSimulation)!);
+                    await WaitFor(() => model.Status == "LOADED");
+                    Assert.Equal(new PixelSize(3, 2), DisplayedSize(original));
+
+                    foreach (var corrupt in new[] { false, true })
+                    {
+                        ActivateMenu(menu.FindCommandItem(LegacyCommandId.ViewRemoveBackground)!);
+                        await WaitFor(() => model.Status == "BACKGROUND REMOVED");
+                        Assert.False(Named<WorldViewport>(original, "Viewport").HasBackgroundImage);
+                        if (corrupt) await File.WriteAllBytesAsync(path, [1, 2, 3]);
+                        else File.Delete(path);
+
+                        ActivateMenu(menu.FindCommandItem(LegacyCommandId.FileLoadSimulation)!);
+                        await WaitFor(() => model.Status == "LOADED");
+                        Assert.Equal(new PixelSize(3, 2), DisplayedSize(original));
+                    }
+
+                    ActivateMenu(menu.FindCommandItem(LegacyCommandId.FileNewSimulation)!);
+                    await WaitFor(() => windows.OfType<SetupWindow>().Any());
+                    var setup = Assert.Single(windows.OfType<SetupWindow>());
+                    await File.WriteAllBytesAsync(path, editedForNew);
+                    Named<Button>(setup, "StartNewButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    await WaitFor(() => factory.Clients.Count == 2);
+                    var fresh = windows.OfType<MainWindow>().Single(window => window != original);
+                    Assert.Equal(new PixelSize(4, 3), DisplayedSize(fresh));
+                }
+                finally { await CloseNavigationWindowsAsync(windows); }
+            }, CancellationToken.None);
+        }
+        finally { File.Delete(path); }
+
+        static PixelSize DisplayedSize(MainWindow window) =>
+            Field<Bitmap>(Named<WorldViewport>(window, "Viewport"), "_backgroundImage").PixelSize;
     }
 
     [Fact]
@@ -2187,7 +2258,7 @@ internal sealed class AuditStorageService : IDesktopStorageService
     public ConcurrentQueue<(TopLevel Owner, NativeRestartSource Source)> NativeRepopulationSourceRequests { get; } = [];
     public string? PickedSimulationPath { get; init; }
     public byte[]? OpenedSimulation { get; set; }
-    public (string Name, byte[] Data)? OpenedBackgroundPicture { get; init; }
+    public DesktopBackgroundPicture? OpenedBackgroundPicture { get; init; }
     public DesktopSettings? SettingsToOpen { get; init; }
     public byte[]? RgbMonitorPresetToOpen { get; set; }
     public byte[]? SavedRgbMonitorPreset { get; private set; }
@@ -2228,7 +2299,7 @@ internal sealed class AuditStorageService : IDesktopStorageService
     public Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner, string? mainDirectory = null, bool allowMultiple = true) => Task.FromResult(DnaFiles);
     public Task<DesktopSettings?> OpenSettingsAsync(TopLevel owner, string? mainDirectory = null) => Task.FromResult(SettingsToOpen);
     public Task<byte[]?> OpenRgbMonitorPresetAsync(TopLevel owner) => Task.FromResult(RgbMonitorPresetToOpen);
-    public Task<(string Name, byte[] Data)?> OpenBackgroundPictureAsync(TopLevel owner) => Task.FromResult(OpenedBackgroundPicture);
+    public Task<DesktopBackgroundPicture?> OpenBackgroundPictureAsync(TopLevel owner) => Task.FromResult(OpenedBackgroundPicture);
 
     public Task<bool> SaveRgbMonitorPresetAsync(TopLevel owner, ReadOnlyMemory<byte> preset)
     {

@@ -150,7 +150,7 @@ public sealed partial class MainWindow : Window
     private bool _safemodeBackup;
     private bool _safeModeRecoveryWorld;
     private ulong? _lastAutomaticSaveTick;
-    private byte[]? _lastBackgroundPicture;
+    private DesktopBackgroundPicture? _lastBackgroundPicture;
     private bool _deadRecordingEnabled;
     private bool _excludeRepopulatingDead;
     private bool _startupComplete;
@@ -1233,7 +1233,7 @@ public sealed partial class MainWindow : Window
                         _mazeDimensions = mazeDimensions,
                         _nativeMenuLoadSeed = this._nativeMenuLoadSeed,
                     };
-                    replacement.ShowBackgroundPicture(backgroundPicture);
+                    replacement.RestoreBackgroundPicture(backgroundPicture);
                     SetApplicationMainWindow(replacement);
                     replacement.Show();
                     setupWindow.Close();
@@ -1249,7 +1249,7 @@ public sealed partial class MainWindow : Window
                     _mazeDimensions = mazeDimensions,
                     _nativeMenuLoadSeed = this._nativeMenuLoadSeed,
                 };
-                replacement.ShowBackgroundPicture(backgroundPicture);
+                replacement.RestoreBackgroundPicture(backgroundPicture);
                 SetApplicationMainWindow(replacement);
                 replacement.Show();
             }
@@ -1610,16 +1610,41 @@ public sealed partial class MainWindow : Window
     {
         if (await _storage.OpenBackgroundPictureAsync(this) is not { } picture || _windowClosed)
             return LegacyCommandResult.Cancel();
-        ShowBackgroundPicture(picture.Data);
+        ShowBackgroundPicture(picture, DecodeBackgroundPicture(picture.Data));
         return LegacyCommandResult.Success($"BACKGROUND · {picture.Name}");
     }
 
-    private void ShowBackgroundPicture(byte[]? data)
+    private void RestoreBackgroundPicture(DesktopBackgroundPicture? picture)
     {
-        if (data is null) return;
+        if (picture is null) return;
+        Avalonia.Media.Imaging.Bitmap? image = null;
+        if (picture.LocalPath is { } path)
+        {
+            try
+            {
+                var data = File.ReadAllBytes(path);
+                image = DecodeBackgroundPicture(data);
+                picture = picture with { Data = data };
+            }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+            {
+                // Keep the last usable image if the local source disappeared or changed to an unreadable file.
+            }
+        }
+        if (image is null && Viewport.HasBackgroundImage) return;
+        ShowBackgroundPicture(picture, image ?? DecodeBackgroundPicture(picture.Data));
+    }
+
+    private static Avalonia.Media.Imaging.Bitmap DecodeBackgroundPicture(byte[] data)
+    {
         using var stream = new MemoryStream(data, writable: false);
-        Viewport.SetBackgroundImage(new Avalonia.Media.Imaging.Bitmap(stream));
-        _lastBackgroundPicture = data;
+        return new Avalonia.Media.Imaging.Bitmap(stream);
+    }
+
+    private void ShowBackgroundPicture(DesktopBackgroundPicture picture, Avalonia.Media.Imaging.Bitmap image)
+    {
+        Viewport.SetBackgroundImage(image);
+        _lastBackgroundPicture = picture;
         RefreshLegacyMenuStates();
     }
 
@@ -4128,7 +4153,7 @@ public sealed partial class MainWindow : Window
             _toolWindows.LoadGraphWorld(snapshot, _nativeGraphLayout);
             Viewport.ShowPhylogeny([]);
             _toolWindows.CloseAll<PhylogenyWindow>();
-            if (!Viewport.HasBackgroundImage) ShowBackgroundPicture(_lastBackgroundPicture);
+            RestoreBackgroundPicture(_lastBackgroundPicture);
             // A rejected load publishes no snapshot and must keep user-closed
             // graphs closed. Loading publications defer this until success.
             _automaticEvolutionGraphBoundary = null;
