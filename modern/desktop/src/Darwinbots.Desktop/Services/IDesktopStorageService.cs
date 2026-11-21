@@ -15,6 +15,8 @@ public interface IDesktopStorageService
         Func<Stream, Task> writeAsync) => Task.FromResult(false);
     Task<bool> AppendDeadSnapshotAsync(Func<Stream, Task> writeAsync) => Task.FromResult(false);
     Task<byte[]?> OpenOrganismAsync(TopLevel owner) => Task.FromResult<byte[]?>(null);
+    Task<(string Name, byte[] Data)?> OpenBackgroundPictureAsync(TopLevel owner) =>
+        Task.FromResult<(string Name, byte[] Data)?>(null);
     Task<DesktopSettings?> OpenSettingsAsync(TopLevel owner);
     Task<string?> PickSimulationPathAsync(TopLevel owner);
     Task<byte[]?> OpenSimulationAsync(TopLevel owner);

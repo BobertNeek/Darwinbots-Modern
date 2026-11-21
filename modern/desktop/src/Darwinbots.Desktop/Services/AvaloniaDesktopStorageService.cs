@@ -67,6 +67,24 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         return SetupStorageService.DecodeSettings(LocalPath(file) ?? file.Name, memory.ToArray());
     }
 
+    public async Task<(string Name, byte[] Data)?> OpenBackgroundPictureAsync(TopLevel owner)
+    {
+        var files = await owner.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Import Darwinbots background picture",
+            AllowMultiple = false,
+            FileTypeFilter = [new FilePickerFileType("Images") { Patterns = ["*.png", "*.jpg", "*.jpeg", "*.bmp"] }],
+        });
+        if (files.FirstOrDefault() is not { } file) return null;
+        using (file)
+        {
+            await using var stream = await file.OpenReadAsync();
+            using var memory = new MemoryStream();
+            await stream.CopyToAsync(memory);
+            return (file.Name, memory.ToArray());
+        }
+    }
+
     public async Task<string?> PickSimulationPathAsync(TopLevel owner)
     {
         var files = await owner.StorageProvider.OpenFilePickerAsync(SimulationOpenOptions("Open Darwinbots Modern save"));
