@@ -51,6 +51,7 @@ mod native_reproduction;
 
 #[path = "world/ordinary_restart.rs"]
 mod ordinary_restart;
+pub(crate) use ordinary_restart::NativeRestartBinding;
 use ordinary_restart::OrdinaryRestart;
 
 #[path = "world/native_shots.rs"]
@@ -3699,13 +3700,14 @@ impl Engine {
         let mut species = Vec::with_capacity(self.species.len());
         let mut species_templates = Vec::with_capacity(self.species_templates.len());
         let mut subspecies_counters = Vec::with_capacity(self.subspecies_counters.len());
-        let keep_startup_roster =
-            self.ordinary_restart.enabled && self.ordinary_restart_available();
+        let restart_enabled = self.ordinary_restart.enabled && self.ordinary_restart_available();
+        let imported_restart = restart_enabled && self.native_origin.is_some();
+        let keep_startup_roster = restart_enabled && !imported_restart;
         for (index, definition) in self.species.iter().enumerate() {
             let keep = index == 0
                 || populations[index] > 0
                 || definition.reseed
-                || definition.minimum_population > 0
+                || (!imported_restart && definition.minimum_population > 0)
                 || (keep_startup_roster
                     && self
                         .species_templates

@@ -60,6 +60,10 @@ enum EngineCommand {
         enabled: bool,
     },
     FinishOrdinaryRestart,
+    ReadNativeRestartSources,
+    BindNativeRestartSources {
+        sources: Vec<crate::world::NativeRestartBinding>,
+    },
     SetNativeRestartSeed {
         seed: u64,
         #[serde(default)]
@@ -579,6 +583,7 @@ fn db_engine_command_batch_impl(
                 EngineCommand::ReadNativeGaussianSpare
                     | EngineCommand::ReadNativeSunChange
                     | EngineCommand::ReadNativeProcessCaches
+                    | EngineCommand::ReadNativeRestartSources
                     | EngineCommand::ExportSpeciesTemplateDna { .. }
                     | EngineCommand::FindBestRobot { .. }
             )
@@ -607,6 +612,9 @@ fn db_engine_command_batch_impl(
                 EngineCommand::ReadNativeProcessCaches => engine
                     .read_native_process_caches()
                     .map(|caches| serde_json::json!(caches)),
+                EngineCommand::ReadNativeRestartSources => engine
+                    .read_native_restart_sources()
+                    .map(|sources| serde_json::json!(sources)),
                 EngineCommand::ExportSpeciesTemplateDna { species } => engine
                     .export_species_template_dna(crate::SpeciesId(*species))
                     .map(|dna| serde_json::json!({ "dna": dna })),
@@ -662,6 +670,12 @@ fn db_engine_command_batch_impl(
             EngineCommand::FinishOrdinaryRestart => engine
                 .finish_ordinary_restart()
                 .map(serde_json::Value::Bool),
+            EngineCommand::ReadNativeRestartSources => engine
+                .read_native_restart_sources()
+                .map(|sources| serde_json::json!(sources)),
+            EngineCommand::BindNativeRestartSources { sources } => engine
+                .bind_native_restart_sources(sources)
+                .map(|bound| serde_json::json!(bound)),
             EngineCommand::SetNativeRestartSeed {
                 seed,
                 skin_timer_seconds,
