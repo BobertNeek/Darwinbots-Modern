@@ -134,7 +134,7 @@ public sealed class RobotConsoleWindow : Window
             _transcript.Text += $"> {input.Trim()}\n";
             _command.Clear();
             var result = await _controller.ExecuteAsync(input).ConfigureAwait(true);
-            _transcript.Text += result + "\n";
+            if (result.Length > 0) _transcript.Text += result + "\n";
             _transcript.CaretIndex = _transcript.Text?.Length ?? 0;
         }
         catch (Exception error)
