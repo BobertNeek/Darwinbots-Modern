@@ -331,6 +331,10 @@ impl Engine {
                         std::mem::swap(&mut candidate.physics, &mut self.physics);
                         std::mem::swap(&mut candidate.recorded_deaths, &mut self.recorded_deaths);
                         std::mem::swap(&mut candidate.player_bot_input, &mut self.player_bot_input);
+                        std::mem::swap(
+                            &mut candidate.native_console_gene_capture,
+                            &mut self.native_console_gene_capture,
+                        );
                         *self = candidate;
                         received = received.saturating_add(1);
                     }
