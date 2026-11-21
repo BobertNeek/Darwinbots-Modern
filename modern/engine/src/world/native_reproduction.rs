@@ -9,6 +9,38 @@ pub(super) enum NativeLoadedCensusStage {
 }
 
 impl Engine {
+    pub(crate) fn reproduce_native_robot_info(
+        &mut self,
+        parent: OrganismId,
+    ) -> Result<Option<OrganismId>, EngineError> {
+        if self.native_cycle.is_none() || !self.has_native_random() {
+            return Err(EngineError::Invariant(
+                "Robot Info reproduction requires original simulation mode".into(),
+            ));
+        }
+        let robot = self.slots.get(parent)?;
+        let child =
+            if robot.flags.exists && (self.asexual_reproduction_allowed || robot.flags.vegetable) {
+                let birth = PendingBirth {
+                    parent,
+                    percentage: 50,
+                    asexual_command: 0,
+                    mutated_command: 0,
+                    mutation_reproduction: robot.program.memory.read(301) > 0,
+                    assisted: true,
+                    sexual: false,
+                    sperm_source: None,
+                };
+                let mut trace = CycleRecorder::disabled(self.tick);
+                self.commit_pending_births(&[birth], &mut trace)?
+            } else {
+                None
+            };
+        // robdata.repro_Click calls Form1.Redraw even when the attempt produced no child.
+        self.native_redraw();
+        Ok(child)
+    }
+
     pub(super) fn mark_native_loaded_census(&mut self) {
         self.native_loaded_census_stage = self
             .native_random
@@ -37,6 +69,154 @@ mod tests {
     use crate::native_binary::{NativeRecordFile, NativeSimulationTail, NativeValue};
     const REPRODUCTION_START: &[u8] =
         include_bytes!("../../tests/fixtures/db24832-reproduction-start-48032.sim");
+
+    fn robot_info_test_world() -> Engine {
+        let mut world = Engine::new_native(EngineConfig {
+            world_width: 8_000.0,
+            world_height: 6_000.0,
+            fixed_bot_radii: true,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        world.mutations_enabled = false;
+        world
+    }
+
+    #[test]
+    fn robot_info_reproduces_at_heading_and_redraws_without_advancing_other_lifecycle_work() {
+        let mut world = robot_info_test_world();
+        world.tick = 12;
+        world.native_cycle = Some(11);
+        world.ties_enabled = false;
+        world.config.dna_costs.tie_formation = 10.0;
+        world.config.dna_costs.dna_copy = 2.0;
+        let dna = LegacyDna::parse("start stop").unwrap();
+        let copy_fee = dna.blocks().len() as f32 * 2.0;
+        let parent = world.spawn_at(dna.clone(), [1_000.0; 2]).unwrap();
+        let unrelated = world
+            .spawn_at(dna.clone(), [5_000.0, f32::from_bits(0x4412_3a39)])
+            .unwrap();
+        let missing = world.register_species(SpeciesDefinition {
+            name: "Reseed witness".into(),
+            reseed: true,
+            minimum_population: 1,
+            ..SpeciesDefinition::default()
+        });
+        world.species_templates[missing.0 as usize] = Some(SpeciesTemplate {
+            retired: false,
+            comment: String::new(),
+            dna,
+            source_text: None,
+            initial_energy: 1_000,
+            initial_population: 1,
+        });
+        world.set_organism_aim(parent, 0).unwrap();
+        let state = world.slots.get_mut(parent).unwrap();
+        state.counters.age = 4;
+        state.kinematics.velocity = [12.25, -7.5];
+        state.kinematics.actual_velocity = state.kinematics.velocity;
+        state.program.memory.write(MEM_REPRO, 12);
+        state.program.memory.write(12, 123);
+        let witness = world.slots.get_mut(unrelated).unwrap();
+        witness.flags.dead = true;
+        witness.counters.age = 8;
+        witness.kinematics.velocity[1] = f32::from_bits(0x4225_ab20);
+        witness.kinematics.actual_velocity[1] = f32::from_bits(0x41b7_4190);
+
+        let child = world.reproduce_native_robot_info(parent).unwrap().unwrap();
+
+        assert_eq!(world.tick, 12);
+        assert_eq!(world.snapshot.native_cycle, Some(11));
+        assert_eq!(world.stats.births, 1);
+        assert_eq!(world.stats.deaths, 0);
+        assert_eq!(world.stats.reseeds, 0);
+        assert_eq!(world.stats.self_reproductions, 0);
+        assert_eq!(world.slots.ids_in_slot_order().len(), 3);
+        let witness = world.slots.get(unrelated).unwrap();
+        assert!(witness.flags.dead);
+        assert_eq!(witness.counters.age, 8);
+        assert_eq!(witness.kinematics.position[1].to_bits(), 0x4412_3a3a);
+        let newborn = world.slots.get(child).unwrap();
+        assert_eq!(newborn.identity.parents, [Some(parent), None]);
+        assert_eq!(newborn.counters.birth_cycle, 11);
+        assert_eq!(newborn.counters.age, 0);
+        assert_eq!(newborn.kinematics.position, [1_120.0, 1_000.0]);
+        assert_eq!(newborn.kinematics.velocity, [12.25, -7.5]);
+        assert_eq!(newborn.kinematics.actual_velocity, [12.25, -7.5]);
+        assert_eq!(newborn.heading(), std::f32::consts::PI);
+        assert_eq!(newborn.materials.energy, 499.5);
+        assert_eq!(newborn.materials.body, 500.0);
+        assert_eq!(newborn.program.memory.read(12), 123);
+        let source = world.slots.get(parent).unwrap();
+        assert_eq!(source.counters.age, 4);
+        assert_eq!(source.materials.body, 500.0);
+        assert_eq!(source.materials.previous_energy, 494.5);
+        assert_eq!(source.materials.energy, 494.5 - copy_fee);
+        assert_eq!(source.program.memory.read(MEM_REPRO), 0);
+        let tie = &world.ties[0];
+        assert_eq!(world.ties.len(), 1);
+        assert_eq!((tie.first, tie.second), (parent, child));
+        assert_eq!(tie.last, 100);
+        assert_eq!((tie.first_port, tie.second_port), (0, 1));
+    }
+
+    #[test]
+    fn robot_info_blocked_birth_draws_once_then_keeps_parent_and_positioned_command() {
+        let mut world = robot_info_test_world();
+        let dna = LegacyDna::parse("start stop").unwrap();
+        let parent = world.spawn_at(dna.clone(), [1_000.0; 2]).unwrap();
+        let witness = world
+            .spawn_at(dna, [5_000.0, f32::from_bits(0x4412_3a39)])
+            .unwrap();
+        world.set_organism_aim(parent, 0).unwrap();
+        let kinematics = &mut world.slots.get_mut(witness).unwrap().kinematics;
+        kinematics.velocity[1] = f32::from_bits(0x4225_ab20);
+        kinematics.actual_velocity[1] = f32::from_bits(0x41b7_4190);
+        // An additional actor occupies the actual forward birth position.
+        world
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [1_120.0, 1_000.0])
+            .unwrap();
+        let source = world.slots.get(parent).unwrap().materials.clone();
+        let mut expected_random = world.native_random.clone().unwrap();
+        expected_random.integer(0, 10);
+
+        assert_eq!(world.reproduce_native_robot_info(parent).unwrap(), None);
+        assert_eq!(world.native_random.as_ref(), Some(&expected_random));
+        assert_eq!(world.tick, 0);
+        assert_eq!(world.stats.births, 0);
+        assert_eq!(world.slots.get(parent).unwrap().materials, source);
+        assert_eq!(
+            world.slots.get(witness).unwrap().kinematics.position[1].to_bits(),
+            0x4412_3a3a
+        );
+        assert!(world.ties.is_empty());
+
+        let positioned = world.manual_reproduce(parent, None, [1_020.0; 2]).unwrap();
+        assert_eq!(
+            world.slots.get(positioned).unwrap().kinematics.position,
+            [1_020.0; 2]
+        );
+        assert!(world.ties.is_empty());
+    }
+
+    #[test]
+    fn robot_info_honors_native_restriction_but_accepts_positive_single_energy() {
+        let mut world = robot_info_test_world();
+        let parent = world
+            .spawn_at(LegacyDna::parse("start stop").unwrap(), [1_000.0; 2])
+            .unwrap();
+        world.asexual_reproduction_allowed = false;
+        let initial_random = world.native_random.clone();
+        assert_eq!(world.reproduce_native_robot_info(parent).unwrap(), None);
+        assert_eq!(world.native_random, initial_random);
+
+        world.asexual_reproduction_allowed = true;
+        let state = world.slots.get_mut(parent).unwrap();
+        state.flags.can_execute_dna = false;
+        state.materials.energy = 1.5;
+        assert!(world.reproduce_native_robot_info(parent).unwrap().is_some());
+        assert_eq!(world.tick, 0);
+    }
 
     #[test]
     fn native_load_repopulation_waits_until_c21_and_preserves_negative_db3s_delay_and_caller_draws()
