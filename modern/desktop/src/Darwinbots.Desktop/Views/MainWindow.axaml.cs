@@ -82,6 +82,7 @@ public sealed partial class MainWindow : Window
     private readonly IDesktopStorageService _storage;
     private bool _tickInFlight;
     private bool _navigationInFlight;
+    private int _worldLoadGeneration;
     private readonly SemaphoreSlim _advanceGate = new(1, 1);
     private volatile bool _loadingSimulation;
     private OrganismKey? _moveOrganism;
@@ -286,6 +287,7 @@ public sealed partial class MainWindow : Window
             _selectedFeature = feature;
             _viewModel.Status = $"{feature.Kind.ToString().ToUpperInvariant()} {feature.Id} SELECTED";
             RefreshFeatureEditorButtons();
+            RefreshLegacyMenuStates();
         };
         RefreshFeatureEditorButtons();
         Viewport.OrganismDragCompleted += async (slot, position) =>
@@ -1767,7 +1769,7 @@ public sealed partial class MainWindow : Window
 
     private async Task<LegacyCommandResult> RemoveSelectedFeatureCommandAsync()
     {
-        if (_session is null || _selectedFeature is not { } feature)
+        if (_session is not { } session || _selectedFeature is not { } feature)
             return LegacyCommandResult.Failure("SELECT A WORLD OBJECT FIRST");
         var route = ObjectEditorPolicy.RouteDelete(ToObjectEditorKind(feature.Kind), SelectedObject());
         if (!route.Allowed)
@@ -1776,24 +1778,66 @@ public sealed partial class MainWindow : Window
         {
             if (!await ConfirmObstacleDeletionAsync(1))
                 return LegacyCommandResult.Failure("DELETION CANCELLED");
-            await _session.RemoveObstacleAsync(feature.Id);
+            await session.RemoveObstacleAsync(feature.Id);
+            _selectedFeature = null;
+            Viewport.SelectFeature(null);
+            RefreshFeatureEditorButtons();
         }
-        else if (_session.LatestSnapshot.FileTeleporters.Any(value => value.Id == feature.Id)) await _session.RemoveFileTeleporterAsync(feature.Id);
-        else await _session.RemoveTeleporterAsync(feature.Id);
-        _selectedFeature = null;
-        Viewport.SelectFeature(null);
-        RefreshFeatureEditorButtons();
+        else
+        {
+            var generation = _worldLoadGeneration;
+            await _advanceGate.WaitAsync();
+            try
+            {
+                if (_loadingSimulation || _navigationInFlight || !IsVisible || _session != session
+                    || generation != _worldLoadGeneration)
+                    return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+                if (!ReferenceEquals(_selectedFeature, feature))
+                    return LegacyCommandResult.Failure("SELECT A WORLD OBJECT FIRST");
+                var snapshot = session.LatestSnapshot;
+                if (snapshot.FileTeleporters.Any(value => value.Id == feature.Id))
+                    await session.RemoveFileTeleporterAsync(feature.Id);
+                else if (snapshot.Teleporters.Any(value => value.Id == feature.Id))
+                    await session.RemoveTeleporterAsync(feature.Id);
+                else return LegacyCommandResult.Failure("SELECT A WORLD OBJECT FIRST");
+
+                if (ReferenceEquals(_selectedFeature, feature))
+                {
+                    _selectedFeature = null;
+                    Viewport.SelectFeature(null);
+                    RefreshFeatureEditorButtons();
+                }
+            }
+            finally { _advanceGate.Release(); }
+        }
         return LegacyCommandResult.Success($"{feature.Kind.ToString().ToUpperInvariant()} {feature.Id} REMOVED");
     }
 
     private async Task<LegacyCommandResult> DeleteAllTeleportersCommandAsync()
     {
-        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        var teleporters = _session.LatestSnapshot.Teleporters.ToArray();
-        var fileTeleporters = _session.LatestSnapshot.FileTeleporters.ToArray();
-        foreach (var teleporter in teleporters) await _session.RemoveTeleporterAsync(teleporter.Id);
-        foreach (var teleporter in fileTeleporters) await _session.RemoveFileTeleporterAsync(teleporter.Id);
-        return LegacyCommandResult.Success($"DELETED {teleporters.Length + fileTeleporters.Length} TELEPORTER(S)");
+        if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        var generation = _worldLoadGeneration;
+        await _advanceGate.WaitAsync();
+        try
+        {
+            if (_loadingSimulation || _navigationInFlight || !IsVisible || _session != session
+                || generation != _worldLoadGeneration)
+                return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+            var snapshot = session.LatestSnapshot;
+            var teleporters = snapshot.Teleporters.Select(teleporter => teleporter.Id).ToArray();
+            var fileTeleporters = snapshot.FileTeleporters.Select(teleporter => teleporter.Id).ToArray();
+            var count = teleporters.Length + fileTeleporters.Length;
+            if (count > 0) await session.RemoveTeleportersAsync(teleporters, fileTeleporters);
+
+            if (_selectedFeature is { Kind: WorldFeatureKind.Teleporter })
+            {
+                _selectedFeature = null;
+                Viewport.SelectFeature(null);
+                RefreshFeatureEditorButtons();
+            }
+            return LegacyCommandResult.Success($"DELETED {count} TELEPORTER(S)");
+        }
+        finally { _advanceGate.Release(); }
     }
 
     private async Task<LegacyCommandResult> DeleteAllObstaclesCommandAsync()
@@ -2941,6 +2985,7 @@ public sealed partial class MainWindow : Window
             if (_session is null) return;
             _loadingSimulation = true;
             await _session.LoadAsync(save);
+            _worldLoadGeneration++;
             // A rejected load publishes no snapshot and must keep user-closed
             // graphs closed. Loading publications defer this until success.
             _automaticEvolutionGraphBoundary = null;

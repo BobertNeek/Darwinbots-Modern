@@ -45,6 +45,11 @@ public interface IEngineClient : IDisposable
     void AddFileTeleporter(FileTeleporterSnapshot teleporter);
     void UpdateFileTeleporter(FileTeleporterSnapshot teleporter);
     void RemoveFileTeleporter(uint id);
+    void RemoveTeleporters(IReadOnlyList<uint> teleporterIds, IReadOnlyList<uint> fileTeleporterIds)
+    {
+        foreach (var id in teleporterIds) RemoveTeleporter(id);
+        foreach (var id in fileTeleporterIds) RemoveFileTeleporter(id);
+    }
     void SetBrownianMotion(float value);
     void UpdateMutationSettings(MutationSettingsUpdate update);
     void UpdateOrganismMutationProfile(uint slot, uint generation, MutationProfileUpdate profile) =>
