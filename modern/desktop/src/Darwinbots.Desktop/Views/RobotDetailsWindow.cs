@@ -1,5 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Input.Platform;
 using Avalonia.Layout;
 using Avalonia.Media;
 using System.Globalization;
@@ -28,6 +30,8 @@ public sealed class RobotDetailsWindow : Window
     private bool _closed;
     private readonly RobotDiagnosticModel _diagnostic = new();
     private readonly TextBlock _subtitle = new();
+    private readonly TextBlock _founderFilename = new() { Name = "RobotFounderFilename", IsVisible = false };
+    private readonly TextBlock _subtitleSuffix = new() { IsVisible = false };
     private readonly TextBlock _facts = new();
     private readonly TextBlock _factsTab = new();
     private readonly TextBox _dna = new();
@@ -81,11 +85,15 @@ public sealed class RobotDetailsWindow : Window
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         Background = Brush.Parse("#F4F0E6");
 
-        _subtitle.Foreground = Brush.Parse("#537B43");
-        _subtitle.FontFamily = new FontFamily("Bahnschrift");
-        _subtitle.FontSize = 11;
-        _subtitle.FontWeight = FontWeight.Bold;
+        foreach (var label in new[] { _subtitle, _founderFilename, _subtitleSuffix })
+        {
+            label.Foreground = Brush.Parse("#537B43");
+            label.FontFamily = new FontFamily("Bahnschrift");
+            label.FontSize = 11;
+            label.FontWeight = FontWeight.Bold;
+        }
         _subtitle.Text = $"LIVE ROBOT {focus.Slot}:{focus.Generation}";
+        _founderFilename.DoubleTapped += CopyFounderFilename;
 
         _facts.TextWrapping = TextWrapping.Wrap;
         _facts.FontFamily = new FontFamily("Consolas");
@@ -193,7 +201,11 @@ public sealed class RobotDetailsWindow : Window
                         FontWeight = FontWeight.Bold,
                         LetterSpacing = 1.4,
                     },
-                    _subtitle,
+                    new StackPanel
+                    {
+                        Orientation = Orientation.Horizontal,
+                        Children = { _subtitle, _founderFilename, _subtitleSuffix },
+                    },
                 },
             },
         });
@@ -223,6 +235,23 @@ public sealed class RobotDetailsWindow : Window
 
         Opened += Window_Opened;
         Closed += Window_Closed;
+    }
+
+    private async void CopyFounderFilename(object? sender, TappedEventArgs e)
+    {
+        if (_founderFilename.Text is not { Length: > 0 } filename || Clipboard is not { } clipboard) return;
+        e.Handled = true;
+        try { await clipboard.SetTextAsync(filename); }
+        catch (Exception error) { _status.Text = $"COPY FAILED · {error.Message}"; }
+    }
+
+    private void SetSubtitle(string text, string? founderFilename = null, string? suffix = null)
+    {
+        _subtitle.Text = text;
+        _founderFilename.Text = founderFilename;
+        _founderFilename.IsVisible = founderFilename is not null;
+        _subtitleSuffix.Text = suffix;
+        _subtitleSuffix.IsVisible = suffix is not null;
     }
 
     private void Window_Opened(object? sender, EventArgs e)
@@ -329,7 +358,7 @@ public sealed class RobotDetailsWindow : Window
             value.Slot == focus.Slot && value.Generation == focus.Generation) : null;
         if (organism is null)
         {
-            _subtitle.Text = _focus is { } removed ? $"ROBOT {removed.Slot}:{removed.Generation} · REMOVED" : "NO ROBOT SELECTED";
+            SetSubtitle(_focus is { } removed ? $"ROBOT {removed.Slot}:{removed.Generation} · REMOVED" : "NO ROBOT SELECTED");
             _facts.Text = _focus is null ? "Select a robot in the simulation." : "The focused robot no longer exists in the live snapshot.";
             _factsTab.Text = _facts.Text;
             _memory.Text = string.Empty;
@@ -345,7 +374,12 @@ public sealed class RobotDetailsWindow : Window
         var memorySummary = organism.Memory.Count == 0
             ? "NONE"
             : string.Join(", ", organism.Memory.Select(cell => cell.Address.ToString(CultureInfo.InvariantCulture)));
-        _subtitle.Text = $"LIVE ROBOT {organism.Slot}:{organism.Generation} · {species.ToUpperInvariant()} · TICK {snapshot.Tick:N0}";
+        var prefix = $"LIVE ROBOT {organism.Slot}:{organism.Generation} · ";
+        var suffix = $" · TICK {snapshot.Tick:N0}";
+        if (snapshot.NativeCycle.HasValue && organism.FounderName is { } founder)
+            SetSubtitle(prefix, founder, suffix);
+        else
+            SetSubtitle($"{prefix}{species.ToUpperInvariant()}{suffix}");
         _facts.Text = string.Join(Environment.NewLine,
             $"ARRAY ID       {organism.Slot:N0}",
             $"UNIQUE ID      {organism.UniqueId:N0}",
