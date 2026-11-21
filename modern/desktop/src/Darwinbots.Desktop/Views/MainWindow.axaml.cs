@@ -1583,7 +1583,10 @@ public sealed partial class MainWindow : Window
             () => new RobotDetailsWindow(
                 session,
                 new OrganismKey(organism.Slot, organism.Generation),
-                tab));
+                tab,
+                showNativeActivations: () => _session == session && session.LatestSnapshot.NativeCycle.HasValue
+                    ? ShowSelectedGeneActivationsAsync(allowEmptyFocus: true)
+                    : Task.FromResult(LegacyCommandResult.Failure("SIMULATION IS UNAVAILABLE"))));
         window.SelectTab(tab);
         window.SetSnapshot(session.LatestSnapshot);
         return window;
@@ -1649,9 +1652,9 @@ public sealed partial class MainWindow : Window
         return LegacyCommandResult.Success("ROBOT CONSOLE OPEN");
     }
 
-    private async Task<LegacyCommandResult> ShowSelectedGeneActivationsAsync()
+    private async Task<LegacyCommandResult> ShowSelectedGeneActivationsAsync(bool allowEmptyFocus = false)
     {
-        if (_session is not { } session || _loadingSimulation || _viewModel.SelectedKey is null)
+        if (_session is not { } session || _loadingSimulation || (!allowEmptyFocus && _viewModel.SelectedKey is null))
             return LegacyCommandResult.Failure("NO ROBOT SELECTED");
 
         var window = _toolWindows.ShowOrActivate("gene-activations", () =>
