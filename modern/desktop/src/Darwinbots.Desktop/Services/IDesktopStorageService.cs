@@ -6,6 +6,8 @@ namespace Darwinbots.Desktop.Services;
 public sealed record DesktopTextFile(string Name, string Content, string? LocalPath = null,
     MutationProfileUpdate? MutationProfile = null);
 
+public sealed record DesktopBackgroundPicture(string Name, byte[] Data, string? LocalPath = null);
+
 public interface IDesktopStorageService
 {
     Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner);
@@ -15,8 +17,8 @@ public interface IDesktopStorageService
         Func<Stream, Task> writeAsync) => Task.FromResult(false);
     Task<bool> AppendDeadSnapshotAsync(Func<Stream, Task> writeAsync) => Task.FromResult(false);
     Task<byte[]?> OpenOrganismAsync(TopLevel owner) => Task.FromResult<byte[]?>(null);
-    Task<(string Name, byte[] Data)?> OpenBackgroundPictureAsync(TopLevel owner) =>
-        Task.FromResult<(string Name, byte[] Data)?>(null);
+    Task<DesktopBackgroundPicture?> OpenBackgroundPictureAsync(TopLevel owner) =>
+        Task.FromResult<DesktopBackgroundPicture?>(null);
     Task<DesktopSettings?> OpenSettingsAsync(TopLevel owner);
     Task<string?> PickSimulationPathAsync(TopLevel owner);
     Task<byte[]?> OpenSimulationAsync(TopLevel owner);
