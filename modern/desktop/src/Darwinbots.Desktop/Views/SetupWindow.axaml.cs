@@ -23,6 +23,7 @@ public sealed partial class SetupWindow : Window
     private GlobalSettings _profileSettings = new();
     private GlobalSettings _globalSettings = new();
     private MutationSettingsUpdate _mutationSettings = MutationSettingsUpdate.Default;
+    private Db2ViewOptions _viewOptions;
     private IReadOnlyList<string>? _legacySettingsFields;
     private bool _allowEmptyStartupRoster;
     private const string ZerobotDna = "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0";
@@ -38,13 +39,14 @@ public sealed partial class SetupWindow : Window
 
     public SetupWindow(IDesktopStorageService storage, float? nativeGaussianSpare = null, byte? nativeSunChange = null,
         NativeProcessCachesSnapshot? nativeProcessCaches = null, WorldSetupOptions? speciesEditor = null,
-        bool allowLastExitResume = true, bool loadLastExitSettings = true)
+        bool allowLastExitResume = true, bool loadLastExitSettings = true, Db2ViewOptions? viewOptions = null)
     {
         _speciesEditor = speciesEditor is not null;
         _storage = storage ?? throw new ArgumentNullException(nameof(storage));
         _nativeGaussianSpare = nativeGaussianSpare;
         _nativeSunChange = nativeSunChange;
         _nativeProcessCaches = nativeProcessCaches;
+        _viewOptions = viewOptions ?? new();
         _workflow = new(new WorldSetupOptions());
         InitializeComponent();
         if (!_speciesEditor)
@@ -285,6 +287,7 @@ public sealed partial class SetupWindow : Window
             Waste = _environment.Waste ?? new Db2WasteOptions(),
             Vegetation = _environment.Vegetation,
             Recording = _environment.Recording ?? new Db2RecordingOptions(),
+            ViewOptions = _viewOptions,
             AutoSpeciation = _environment.AutoSpeciation,
             SpeciationGeneticDistancePercent = _environment.SpeciationGeneticDistancePercent,
             FixedBotRadii = staged.FixedBotRadii,
@@ -470,6 +473,7 @@ public sealed partial class SetupWindow : Window
             Main = _globalSettings.Main with { SafeMode = _environment.Recording?.SafeModeBackup ?? false },
         };
         _mutationSettings = setup.MutationSettings;
+        _viewOptions = setup.ViewOptions;
         _legacySettingsFields = setup.LegacySettingsFields;
         StarterMode.IsChecked = setup.StartingMode == StartingMode.StarterBotsAndVegetables;
         ZerobotMode.IsChecked = setup.StartingMode == StartingMode.Zerobots;
@@ -516,20 +520,25 @@ public sealed partial class SetupWindow : Window
     private async void OpenSave_Click(object? sender, RoutedEventArgs e)
     {
         if (await _storage.PickSimulationPathAsync(this) is { } path)
-            PublishWorld(new WorldSetupOptions { LoadSavePath = path, GlobalSettings = _profileSettings });
+            OpenSavedWorld(path);
     }
 
     private void Resume_Click(object? sender, RoutedEventArgs e)
     {
         if (!ResumeMenuItem.IsVisible) return;
         if (_storage.FindLastExitSimulation() is { } path)
-            PublishWorld(new WorldSetupOptions { LoadSavePath = path, GlobalSettings = _profileSettings });
+            OpenSavedWorld(path);
         else
         {
             ResumeMenuItem.IsVisible = false;
             SetupStatus.Text = "No last simulation is available.";
         }
     }
+
+    private void OpenSavedWorld(string path, bool recover = false) => PublishWorld(new WorldSetupOptions
+    {
+        LoadSavePath = path, IsAutosaveRecovery = recover, GlobalSettings = _profileSettings, ViewOptions = _viewOptions,
+    });
 
     private void Exit_Click(object? sender, RoutedEventArgs e) => Close();
 
@@ -614,7 +623,7 @@ public sealed partial class SetupWindow : Window
     {
         var latest = _storage.FindLatestAutosave();
         if (latest is null) { SetupStatus.Text = "No autosave is available."; return; }
-        PublishWorld(new WorldSetupOptions { LoadSavePath = latest, IsAutosaveRecovery = true, GlobalSettings = _profileSettings });
+        OpenSavedWorld(latest, recover: true);
     }
 
     private async void OnboardingGotIt_Click(object? sender, RoutedEventArgs e)

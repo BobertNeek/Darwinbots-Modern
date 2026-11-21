@@ -159,6 +159,11 @@ public sealed partial class MainWindow : Window
         InitializeComponent();
         Viewport.FixedRatio = _globalSettings.Main.FixedRatio;
         Viewport.OldColors = _globalSettings.Main.OldColors;
+        Viewport.ShowResourceGauges = setup.ViewOptions.ResourceGauges;
+        Viewport.ShowMovementVectors = setup.ViewOptions.MovementVectors;
+        Viewport.ShowShotImpacts = setup.ViewOptions.ShotImpacts;
+        Viewport.ShowSelectedVision = setup.ViewOptions.VisionGrid;
+        ShowVisionToggle.IsChecked = setup.ViewOptions.VisionGrid;
         if (_globalSettings.Evolution.Enabled) {
             var kind = _globalSettings.Evolution.Mode switch {
                 EvolutionMode.Zerobot => LocalModeKind.Zerobot,
@@ -1022,7 +1027,8 @@ public sealed partial class MainWindow : Window
             if (openSetup)
             {
                 var setupWindow = new SetupWindow(_storage, spare, sunChange, caches,
-                    allowLastExitResume: _startupArguments.Count == 0, loadLastExitSettings: false);
+                    allowLastExitResume: _startupArguments.Count == 0, loadLastExitSettings: false,
+                    viewOptions: ReadViewOptions());
                 setupWindow.WorldCreated += options =>
                 {
                     var replacement = new MainWindow(_startupArguments, options, _engineFactory, _storage);
@@ -1583,7 +1589,11 @@ public sealed partial class MainWindow : Window
         GlobalSettings = _globalSettings,
         Recording = _liveEnvironment.Recording ?? new(),
         ShapesVisible = _liveEnvironment.ShapesVisible ?? _setup.ShapesVisible,
+        ViewOptions = ReadViewOptions(),
     };
+
+    private Db2ViewOptions ReadViewOptions() => new(Viewport.ShowResourceGauges, Viewport.ShowMovementVectors,
+        Viewport.ShowShotImpacts, Viewport.ShowSelectedVision);
 
     private async Task<LegacyCommandResult> ShowSelectedRobotInfoAsync()
     {

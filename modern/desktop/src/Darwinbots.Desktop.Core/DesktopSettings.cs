@@ -33,6 +33,8 @@ public sealed record DesktopSettings
     public Db2WasteOptions Waste { get; init; } = new();
     public Db2VegetationOptions Vegetation { get; init; } = Db2VegetationOptions.Default;
     public Db2RecordingOptions Recording { get; init; } = new();
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Db2ViewOptions? ViewOptions { get; init; }
     public bool AutoSpeciation { get; init; }
     public float SpeciationGeneticDistancePercent { get; init; } = 20f;
     public bool ToroidalWorld { get; init; } = true;
@@ -74,6 +76,7 @@ public sealed record DesktopSettings
         Waste = setup.Waste,
         Vegetation = setup.Vegetation,
         Recording = setup.Recording,
+        ViewOptions = setup.ViewOptions,
         AutoSpeciation = setup.AutoSpeciation,
         SpeciationGeneticDistancePercent = setup.SpeciationGeneticDistancePercent,
         ToroidalWorld = setup.ToroidalWorld,
@@ -180,6 +183,7 @@ public sealed record DesktopSettings
             Waste = Waste,
             Vegetation = Vegetation,
             Recording = Recording,
+            ViewOptions = ViewOptions ?? fallback.ViewOptions,
             AutoSpeciation = AutoSpeciation,
             SpeciationGeneticDistancePercent = SpeciationGeneticDistancePercent,
             ToroidalWorld = ToroidalWorld,
@@ -213,6 +217,8 @@ public sealed record DesktopSettings
             _ => throw new NotSupportedException($"Settings schema version {version} is not supported."),
         };
         settings.Validate();
+        if (!root.TryGetProperty("viewOptions", out _))
+            settings = settings with { ViewOptions = LegacySettingsAdapter.ReadRetainedViewOptions(settings.LegacySettingsFields) };
         return settings;
     }
 

@@ -5,6 +5,8 @@ namespace Darwinbots.Desktop.Core;
 // Offsets follow OptionsForm.SaveSett (DB2 2.48.32), including variable species tails.
 internal static class LegacySettingsAdapter
 {
+    private const int ObsoleteSafeModeOffset = 88;
+
     internal static List<string> Encode(DesktopSettings settings)
     {
         // Original SaveSett has one shared shapesAbsorbShots Boolean.
@@ -118,7 +120,7 @@ internal static class LegacySettingsAdapter
         Flag(global + 7, !settings.TiesEnabled);
         Flag(global + 83, settings.WrapX); Flag(global + 84, settings.WrapY);
         Number(global + 85, vegetation.RepopulationAmount); Number(global + 86, vegetation.RepopulationCooldown);
-        Flag(global + 87, physics.ZeroMomentum); Flag(global + 88, true);
+        Flag(global + 87, physics.ZeroMomentum); Flag(global + ObsoleteSafeModeOffset, true);
         // VB6 stores UserSeedNumber as a signed Long; the extension retains all 64 modern bits.
         Number(global + 89, unchecked((int)(settings.Seed ?? 1)));
         Number(extra + 1, vegetation.FeedingToBody); Number(extra + 2, physics.StaticFriction); Number(extra + 3, physics.KineticFriction);
@@ -165,6 +167,12 @@ internal static class LegacySettingsAdapter
             Flag(footer + 10 + count + i * 2, settings.Species[i].Restrictions.KillDisqualified);
         }
         Flag(footer + 4 + count, vegetation.WeatherEnabled || vegetation.SunOnRandom);
+        int view = footer + 5 + count;
+        var viewOptions = settings.ViewOptions ?? ReadRetainedViewOptions(settings.LegacySettingsFields) ?? new();
+        Flag(view, viewOptions.ResourceGauges);
+        Flag(view + 1, viewOptions.MovementVectors);
+        Flag(view + 2, viewOptions.ShotImpacts);
+        Flag(view + 3, viewOptions.VisionGrid);
         Flag(footer + 9 + 3 * count, !settings.RobotFixingAllowed);
         Number(footer + 10 + 3 * count, vegetation.Tides); Number(footer + 11 + 3 * count, vegetation.TidesOffset);
         return fields;
@@ -172,6 +180,48 @@ internal static class LegacySettingsAdapter
 
     private static uint ToVbColor(uint color) => ((color & 0xff) << 16) | (color & 0xff00) | ((color >> 16) & 0xff);
     private static uint FromVbColor(int color) => 0xff000000 | ToVbColor(unchecked((uint)color));
+
+    internal static Db2ViewOptions? ReadRetainedViewOptions(IReadOnlyList<string>? fields)
+    {
+        if (fields is not { Count: > 1 }
+            || !int.TryParse(fields[1]?.Trim('"'), NumberStyles.Integer, CultureInfo.InvariantCulture, out int lastSpecies)
+            || lastSpecies is < -1 or > 999)
+            return null;
+        int count = lastSpecies + 1;
+        int obstacleCountField = 189 + 101 * count + 8;
+        int obstacles = 0;
+        if (obstacleCountField < fields.Count && !string.IsNullOrWhiteSpace(fields[obstacleCountField])
+            && (!int.TryParse(fields[obstacleCountField]?.Trim('"'), NumberStyles.Integer, CultureInfo.InvariantCulture, out obstacles)
+                || obstacles is < 0 or > 32000)) return null;
+        int obsolete = 2 + 40 * count + ObsoleteSafeModeOffset;
+        bool initial = obsolete < fields.Count && ParseViewFlag(fields[obsolete]?.Trim().Trim('"') ?? "") == true;
+        int view = obstacleCountField + 1 + 7 * obstacles + 5 + count;
+        return ReadViewOptions(fields, view, initial, strict: false);
+    }
+
+    private static Db2ViewOptions ReadViewOptions(IReadOnlyList<string> fields, int view, bool current, bool strict)
+    {
+        // Original ReadSettFromFile reuses the previous Boolean at EOF, starting with the obsolete Safe Mode field.
+        bool NextFlag()
+        {
+            if (view >= fields.Count) return current;
+            int index = view++;
+            string raw = fields[index]?.Trim().Trim('"') ?? "";
+            if (ParseViewFlag(raw) is { } flag) current = flag;
+            else if (strict && raw.Length > 0)
+                throw new InvalidDataException($"Legacy settings viewport field {index} is not a Boolean.");
+            return current;
+        }
+
+        return new(NextFlag(), NextFlag(), NextFlag(), NextFlag());
+    }
+
+    private static bool? ParseViewFlag(string raw)
+    {
+        if (bool.TryParse(raw.Trim('#'), out bool flag)) return flag;
+        return double.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out double number)
+            && double.IsFinite(number) ? number != 0 : null;
+    }
 
     internal static DesktopSettings Decode(string[] lines, int count, int global)
     {
@@ -308,6 +358,7 @@ internal static class LegacySettingsAdapter
             MutationSettings = MutationSettingsUpdate.Default with { GlobalMultiplier = Float(27, 1) },
             VegetablePopulationCap = Math.Max(0, Integer(global + 5)), SunlightEnergy = vegetation.MaxEnergyPerTick,
             Gravity = [0, Float(18)], BrownianMotion = Float(20), Species = species,
+            ViewOptions = ReadViewOptions(lines, footer + 5 + count, Flag(global + ObsoleteSafeModeOffset), strict: true),
             FixedBotRadii = Flag(tail + 14), TiesEnabled = !Flag(global + 7),
             AsexualReproductionAllowed = !Flag(tail + 16), RobotFixingAllowed = !Flag(footer + 9 + 3 * count),
             Obstacles = obstacles, ShapesVisible = Flag(shapes + 7),
