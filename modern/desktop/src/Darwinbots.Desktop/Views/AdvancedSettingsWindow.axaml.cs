@@ -14,6 +14,7 @@ public sealed partial class AdvancedSettingsWindow : Window
     private MutationProfileUpdate _mutationProfile = MutationProfileUpdate.Default;
     private readonly HashSet<NumericUpDown> _editedMutationRates = [];
     private readonly GlobalSimulationCostSettings? _initialCosts;
+    private readonly bool _nativeCosts;
     private readonly Db2CostPreset? _initialCostPreset;
     private GlobalSimulationCostSettings? _stagedCosts;
     private Db2CostPreset? _stagedCostPreset;
@@ -73,6 +74,7 @@ public sealed partial class AdvancedSettingsWindow : Window
         bool showFieldSize = false, int? currentFieldSize = null, string? fieldSizeUnavailable = null)
     {
         _initialCosts = _stagedCosts = costs;
+        _nativeCosts = snapshot?.NativeCycle is not null;
         InitializeComponent();
         Opened += (_, _) =>
         {
@@ -324,7 +326,8 @@ public sealed partial class AdvancedSettingsWindow : Window
     private async void LiveCustomSimulationCosts_Click(object? sender, RoutedEventArgs e)
     {
         if (_stagedCosts is not { } current) return;
-        var dialog = new CustomSimulationCostsWindow(current, stageForLiveSettings: true);
+        var dialog = new CustomSimulationCostsWindow(current, stageForLiveSettings: true,
+            nativeCosts: _nativeCosts || Owner is SetupWindow);
         await dialog.ShowDialog(this);
         if (!dialog.Accepted) return;
         _stagedCosts = dialog.Costs;

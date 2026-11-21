@@ -17,10 +17,14 @@ public sealed partial class CustomSimulationCostsWindow : Window
         : this(settings?.Costs ?? throw new ArgumentNullException(nameof(settings)), stageForLiveSettings: false) { }
 
     public CustomSimulationCostsWindow(GlobalSimulationCostSettings costs, bool stageForLiveSettings)
+        : this(costs, stageForLiveSettings, nativeCosts: false) { }
+
+    internal CustomSimulationCostsWindow(GlobalSimulationCostSettings costs, bool stageForLiveSettings, bool nativeCosts)
     {
         Costs = costs ?? throw new ArgumentNullException(nameof(costs));
         _draftCosts = Costs;
         InitializeComponent();
+        if (nativeCosts) GlobalCostMultiplier.Minimum = -GlobalCostMultiplier.Maximum;
         Populate(Costs);
         if (stageForLiveSettings)
         {

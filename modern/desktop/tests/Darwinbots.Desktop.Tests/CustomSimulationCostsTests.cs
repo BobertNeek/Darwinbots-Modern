@@ -327,6 +327,41 @@ public sealed class CustomSimulationCostsTests
         }, CancellationToken.None);
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task LiveCustomCostsExposeTheSignedMultiplierOnlyForNativeWorlds(bool native)
+    {
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var costs = new GlobalSimulationCostSettings { GlobalMultiplier = native ? -0.5 : 1 };
+            var snapshot = EngineSnapshot.Empty with { NativeCycle = native ? 281 : null };
+            var window = new AdvancedSettingsWindow(EnvironmentUpdate.Default, snapshot, selectedTab: 2, costs: costs);
+            window.Show();
+            try
+            {
+                Click(window, "LiveCustomSimulationCostsButton");
+                await WaitFor(() => window.OwnedWindows.OfType<CustomSimulationCostsWindow>().Any());
+                var dialog = Assert.Single(window.OwnedWindows.OfType<CustomSimulationCostsWindow>());
+                var costX = dialog.FindControl<NumericUpDown>("GlobalCostMultiplier")!;
+                Assert.Equal(native ? -100_000m : 0m, costX.Minimum);
+                Assert.Equal(native ? -0.5m : 1m, costX.Value);
+                Assert.False(dialog.FindControl<CheckBox>("DynamicAllowNegative")!.IsChecked);
+
+                costX.Value = native ? -0.625m : 0.625m;
+                Click(dialog, "ApplyButton");
+                await WaitFor(() => window.CostUpdate is not null);
+                Assert.Equal(native ? -0.625 : 0.625, window.CostUpdate!.GlobalMultiplier);
+                Assert.False(window.CostUpdate.DynamicAllowNegative);
+            }
+            finally
+            {
+                foreach (var owned in window.OwnedWindows.ToArray()) owned.Close();
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
     [Fact]
     public async Task PhysicsAndCostsStagesNativeCostsAndKeepsApplicationDefaults()
     {
@@ -668,7 +703,8 @@ public sealed class CustomSimulationCostsTests
         Assert.Throws<InvalidOperationException>(() => engine.UpdateLiveSettings(
             EnvironmentUpdate.Default with { MetabolismCost = 5 },
             MutationSettingsUpdate.Default with { Enabled = false },
-            new GlobalSimulationCostSettings { GlobalMultiplier = -1 }));
+            new GlobalSimulationCostSettings { GlobalMultiplier = 2 },
+            (Db2CostPreset)255));
         Assert.Equal(before, engine.Save());
     }
 
