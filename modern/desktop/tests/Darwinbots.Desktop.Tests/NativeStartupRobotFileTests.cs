@@ -66,12 +66,14 @@ public sealed class NativeStartupRobotFileTests
                     var pair = await session.ExportRobotFileAsync(imported.Slot, imported.Generation);
                     Assert.Equal(FileProfile(), pair.MutationProfile);
                     Assert.Equal(await session.ExportDnaAsync(imported.Slot, imported.Generation), pair.Dna);
+                    var originalFile = await session.ExportOriginalRobotFileAsync(imported.Slot, imported.Generation);
+                    Assert.StartsWith("'#generation: 0\r\n'#mutations: 0\r\n\r\n start\r\n stop\r\n", originalFile.Dna);
                     var viewModel = ViewModel(window);
                     viewModel.Update(session.LatestSnapshot);
                     viewModel.Select(new OrganismKey(imported.Slot, imported.Generation));
                     await (Task)typeof(MainWindow).GetMethod("SaveSelectedDnaCommandAsync", PrivateInstance)!
                         .Invoke(window, null)!;
-                    Assert.Equal(pair.Dna, storage.SavedDna);
+                    Assert.Equal(originalFile.Dna, storage.SavedDna);
                     Assert.Equal(pair.MutationProfile, storage.SavedDnaMutationProfile);
 
                     var saved = await session.SaveAsync();

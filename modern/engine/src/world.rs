@@ -5221,33 +5221,40 @@ impl Engine {
             .then_some(organism.identity.tag.as_str())
             .or_else(|| (!dna.metadata().tag.is_empty()).then_some(dna.metadata().tag.as_str()));
         let mut exported = dna.clone();
-        if self
+        if let Some(gene) = self.temporary_epigenetic_gene(organism) {
+            let temporary = LegacyDna::parse(&gene)?;
+            exported.blocks_mut().splice(
+                0..0,
+                temporary.blocks()[..temporary.blocks().len() - 1]
+                    .iter()
+                    .copied(),
+            );
+        }
+        Ok(exported.to_source_with_runtime_metadata(generation, mutations, tag))
+    }
+
+    fn temporary_epigenetic_gene(&self, robot: &RobotState) -> Option<String> {
+        if !self
             .config
             .advanced_mutation
             .epigenetic
             .save_as_temporary_gene
         {
-            let mut gene = String::from("start\n");
-            let mut any = false;
-            for address in 971..=990 {
-                let value = organism.program.memory.read(address);
-                if value != 0 {
-                    gene.push_str(&format!("{value} {address} store\n"));
-                    any = true;
-                }
-            }
-            if any {
-                gene.push_str("*.thisgene .delgene store\nstop\n");
-                let temporary = LegacyDna::parse(&gene)?;
-                exported.blocks_mut().splice(
-                    0..0,
-                    temporary.blocks()[..temporary.blocks().len() - 1]
-                        .iter()
-                        .copied(),
-                );
+            return None;
+        }
+        let mut stores = String::new();
+        for address in 971..=990 {
+            let value = robot.program.memory.read(address);
+            if value != 0 {
+                stores.push_str(&format!("{value} {address} store\r\n"));
             }
         }
-        Ok(exported.to_source_with_runtime_metadata(generation, mutations, tag))
+        if stores.is_empty() {
+            return None;
+        }
+        Some(format!(
+            "start\r\n{stores}*.thisgene .delgene store\r\nstop"
+        ))
     }
 
     /// Export the retained startup genome even if no living candidate remains.

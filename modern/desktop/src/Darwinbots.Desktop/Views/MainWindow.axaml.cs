@@ -1788,7 +1788,7 @@ public sealed partial class MainWindow : Window
     {
         if (_session is null || _viewModel.SelectedOrganism is not { } organism)
             return LegacyCommandResult.Failure("SELECT A ROBOT FIRST");
-        var file = await _session.ExportRobotFileAsync(organism.Slot, organism.Generation);
+        var file = await _session.ExportOriginalRobotFileAsync(organism.Slot, organism.Generation);
         var species = organism.Species < _session.LatestSnapshot.Species.Count
             ? _session.LatestSnapshot.Species[(int)organism.Species].Name
             : $"Robot-{organism.Slot}-{organism.Generation}";

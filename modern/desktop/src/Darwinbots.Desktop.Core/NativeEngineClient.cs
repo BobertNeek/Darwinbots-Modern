@@ -353,9 +353,17 @@ public sealed partial class NativeEngineClient : IEngineClient
         ExecuteBatch(new { version = 1, commands = new[] { new { type = "replace_dna", slot, generation, dna } } }, "replace DNA");
     }
 
-    public string ExportDna(uint slot, uint generation)
+    public string ExportDna(uint slot, uint generation) => ExportDna(slot, generation, originalFileFormat: false);
+
+    public string ExportOriginalDnaFile(uint slot, uint generation) => ExportDna(slot, generation, originalFileFormat: true);
+
+    private string ExportDna(uint slot, uint generation, bool originalFileFormat)
     {
-        var result = ExecuteBatchForResult(new { version = 1, commands = new[] { new { type = "export_dna", slot, generation } } }, "export DNA");
+        var result = ExecuteBatchForResult(new
+        {
+            version = 1,
+            commands = new[] { new { type = "export_dna", slot, generation, original_file_format = originalFileFormat } },
+        }, "export DNA");
         return result.GetProperty("results")[0].GetProperty("dna").GetString()
             ?? throw new InvalidDataException("Native engine returned empty DNA.");
     }
