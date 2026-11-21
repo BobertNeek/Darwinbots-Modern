@@ -38,6 +38,8 @@ public sealed record GlobalMainSettings
     public bool NewSeed { get; init; }
     public string MainDirectory { get; init; } = string.Empty;
     public bool SafeMode { get; init; } = true;
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? StartChloroplasts { get; init; }
     public bool FindBestEnergyWeighting { get; init; } = true;
     public int? FindBestWeight { get; init; }
     [JsonIgnore]
@@ -188,6 +190,8 @@ public sealed record GlobalSettings
         if (League.DisqualificationRule is < 0 or > 2) throw new InvalidDataException("Disqualification rule must be None, F2 or F3.");
         if (Main.EffectiveFindBestWeight is < 0 or > 200)
             throw new InvalidDataException("Find Best weighting must be between 0 and 200.");
+        if (Main.StartChloroplasts is < 0 or > 32_000)
+            throw new InvalidDataException("Starting chloroplasts must be between 0 and 32000.");
         if (AdvancedMutation.NormalizationEnabled && AdvancedMutation.NormalizationDnaLength <= 0)
             throw new InvalidDataException("Mutation normalization DNA length must be positive.");
         AdvancedMutation.NativeDelta2.Validate();

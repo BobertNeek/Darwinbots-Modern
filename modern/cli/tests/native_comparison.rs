@@ -316,6 +316,70 @@ fn zero_step_replay_preserves_validated_original_bytes_and_create_new_outputs() 
 }
 
 #[test]
+fn native_replay_uses_the_requested_start_chloroplasts_for_new_plants() {
+    use darwinbots_engine::native_binary::NativeRecordFile;
+    use darwinbots_engine::{
+        Engine, EngineConfig, LegacyDna, SpeciesDefinition, VegetationSettings,
+    };
+
+    let mut source = Engine::new_native(EngineConfig {
+        vegetation: VegetationSettings {
+            start_chloroplasts: 0,
+            minimum_chloroplast_equivalents: 10,
+            repopulation_amount: 1,
+            repopulation_cooldown: 1,
+            ..VegetationSettings::default()
+        },
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    let plant = source.register_species(SpeciesDefinition {
+        name: "Plant.txt".into(),
+        vegetable: true,
+        reseed: true,
+        ..SpeciesDefinition::default()
+    });
+    source
+        .spawn_species_batch(
+            LegacyDna::parse("start stop").unwrap(),
+            plant,
+            [[500.0, 500.0]],
+            3000,
+        )
+        .unwrap();
+    let temp = tempfile::tempdir().unwrap();
+    let input = temp.path().join("source.sim");
+    fs::write(&input, source.export_native_sim().unwrap()).unwrap();
+
+    for (value, extra) in [
+        (0, &[][..]),
+        (16_000, &["--start-chloroplasts", "16000"][..]),
+    ] {
+        let target = temp.path().join(format!("replay-{value}.sim"));
+        let mut args = vec![
+            "darwinbots",
+            "native-replay",
+            "--simulation",
+            input.to_str().unwrap(),
+            "--until-cycle",
+            "3",
+            "--output-sim",
+            target.to_str().unwrap(),
+        ];
+        args.extend_from_slice(extra);
+        run_from(args, Vec::new()).unwrap();
+        let file = NativeRecordFile::decode(&fs::read(target).unwrap()).unwrap();
+        assert!(file.robots.len() > 1);
+        let newborn = file
+            .robots
+            .iter()
+            .max_by_key(|robot| robot.long("absolute_id").unwrap())
+            .unwrap();
+        assert_eq!(newborn.single("chloroplasts").unwrap(), value as f32);
+    }
+}
+
+#[test]
 fn positive_replay_exports_actual_runtime_and_matches_the_genuine_first_update() {
     let original_start =
         include_bytes!("../../engine/tests/fixtures/db24832-movement-start-48032.sim");

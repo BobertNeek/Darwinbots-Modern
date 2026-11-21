@@ -1022,7 +1022,8 @@ public sealed partial class MainWindow : Window
             if (openSetup)
             {
                 var setupWindow = new SetupWindow(_storage, spare, sunChange, caches,
-                    allowLastExitResume: _startupArguments.Count == 0);
+                    allowLastExitResume: _startupArguments.Count == 0,
+                    startChloroplasts: _liveEnvironment.Vegetation.StartChloroplasts);
                 setupWindow.WorldCreated += options =>
                 {
                     var replacement = new MainWindow(_startupArguments, options, _engineFactory, _storage);
@@ -1581,6 +1582,7 @@ public sealed partial class MainWindow : Window
     private WorldSetupOptions CreateNextWorldSetup() => _setup with
     {
         GlobalSettings = _globalSettings,
+        Vegetation = _setup.Vegetation with { StartChloroplasts = _liveEnvironment.Vegetation.StartChloroplasts },
         Recording = _liveEnvironment.Recording ?? new(),
         ShapesVisible = _liveEnvironment.ShapesVisible ?? _setup.ShapesVisible,
     };

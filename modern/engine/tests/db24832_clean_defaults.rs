@@ -25,6 +25,8 @@ fn clean_start_defaults_match_db24832() {
     assert_eq!(config.corpse_decay.period, 0);
     assert_eq!(config.recording.sampling_interval, 200);
 
+    // The portable engine preserves its starter vegetation policy. Native
+    // imports instead obtain StartChlr from the application's global profile.
     assert_eq!(config.vegetation.start_chloroplasts, 16_000);
     assert_eq!(config.vegetation.max_energy_per_tick, 100);
     assert_eq!(config.vegetation.minimum_chloroplast_equivalents, 50);

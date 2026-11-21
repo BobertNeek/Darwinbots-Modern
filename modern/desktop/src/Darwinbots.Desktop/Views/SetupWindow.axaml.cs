@@ -36,7 +36,8 @@ public sealed partial class SetupWindow : Window
     }
 
     public SetupWindow(IDesktopStorageService storage, float? nativeGaussianSpare = null, byte? nativeSunChange = null,
-        NativeProcessCachesSnapshot? nativeProcessCaches = null, WorldSetupOptions? speciesEditor = null, bool allowLastExitResume = true)
+        NativeProcessCachesSnapshot? nativeProcessCaches = null, WorldSetupOptions? speciesEditor = null,
+        bool allowLastExitResume = true, int? startChloroplasts = null)
     {
         _speciesEditor = speciesEditor is not null;
         _storage = storage ?? throw new ArgumentNullException(nameof(storage));
@@ -56,6 +57,8 @@ public sealed partial class SetupWindow : Window
             if (error is not null) SetupStatus.Text = $"GLOBAL SETTINGS LOAD FAILED · {error}";
             ApplyGlobalSettings(_profileSettings);
         }
+        if ((startChloroplasts ?? _profileSettings.Main.StartChloroplasts) is { } amount)
+            _environment = _environment with { Vegetation = _environment.Vegetation with { StartChloroplasts = amount } };
         _workflow.Reset(ReadSetupOptions());
         OnboardingPanel.IsVisible = !_speciesEditor && _storage.IsFirstRun;
         ResumeMenuItem.IsVisible = !_speciesEditor && allowLastExitResume && _storage.FindLastExitSimulation() is not null;
@@ -431,7 +434,10 @@ public sealed partial class SetupWindow : Window
 
     private void NewWorld_Click(object? sender, RoutedEventArgs e)
     {
-        _environment = EnvironmentUpdate.Default;
+        _environment = EnvironmentUpdate.Default with
+        {
+            Vegetation = Db2VegetationOptions.Default with { StartChloroplasts = _environment.Vegetation.StartChloroplasts },
+        };
         ApplyGlobalSettings(_profileSettings);
         Backend.SelectedIndex = 0;
         WorldWidth.Value = 16_000;
@@ -457,20 +463,26 @@ public sealed partial class SetupWindow : Window
     private async void OpenSave_Click(object? sender, RoutedEventArgs e)
     {
         if (await _storage.PickSimulationPathAsync(this) is { } path)
-            PublishWorld(new WorldSetupOptions { LoadSavePath = path, GlobalSettings = _profileSettings });
+            OpenSavedWorld(path);
     }
 
     private void Resume_Click(object? sender, RoutedEventArgs e)
     {
         if (!ResumeMenuItem.IsVisible) return;
         if (_storage.FindLastExitSimulation() is { } path)
-            PublishWorld(new WorldSetupOptions { LoadSavePath = path, GlobalSettings = _profileSettings });
+            OpenSavedWorld(path);
         else
         {
             ResumeMenuItem.IsVisible = false;
             SetupStatus.Text = "No last simulation is available.";
         }
     }
+
+    private void OpenSavedWorld(string path, bool recover = false) => PublishWorld(new WorldSetupOptions
+    {
+        LoadSavePath = path, IsAutosaveRecovery = recover, GlobalSettings = _profileSettings,
+        Vegetation = Db2VegetationOptions.Default with { StartChloroplasts = _environment.Vegetation.StartChloroplasts },
+    });
 
     private void Exit_Click(object? sender, RoutedEventArgs e) => Close();
 
@@ -555,7 +567,7 @@ public sealed partial class SetupWindow : Window
     {
         var latest = _storage.FindLatestAutosave();
         if (latest is null) { SetupStatus.Text = "No autosave is available."; return; }
-        PublishWorld(new WorldSetupOptions { LoadSavePath = latest, IsAutosaveRecovery = true, GlobalSettings = _profileSettings });
+        OpenSavedWorld(latest, recover: true);
     }
 
     private async void OnboardingGotIt_Click(object? sender, RoutedEventArgs e)
