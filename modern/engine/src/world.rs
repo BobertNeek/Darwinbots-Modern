@@ -11761,8 +11761,6 @@ impl Engine {
         mut queues: LifecycleQueues,
         trace: &mut CycleRecorder,
     ) -> Result<(), EngineError> {
-        let birth_cycle = self.native_cycle_or_tick();
-        let runtime = SysvarRuntime::new();
         let deferred_deaths = if self.native_random.is_some() && !queues.births.is_empty() {
             std::mem::take(&mut queues.deaths)
         } else {
@@ -11828,9 +11826,98 @@ impl Engine {
             }
         }
         self.commit_native_deaths(native_deaths);
+        self.commit_pending_births(&queues.births, trace)?;
+        if !deferred_deaths.is_empty() {
+            self.commit_lifecycle_queues(
+                LifecycleQueues {
+                    births: Vec::new(),
+                    deaths: deferred_deaths,
+                },
+                trace,
+            )?;
+        }
+        let mut counts = vec![0usize; self.species.len()];
+        for organism in self.slots.iter().filter_map(|slot| slot.organism.as_ref()) {
+            if organism.flags.corpse {
+                continue;
+            }
+            if let Some(count) = counts.get_mut(organism.identity.species.0 as usize) {
+                *count += 1;
+            }
+        }
+        let definitions = self.species.clone();
+        let templates = self.species_templates.clone();
+        let mut vegetable_population = self.vegetable_population();
+        for (species_index, definition) in definitions.iter().enumerate() {
+            if definition.vegetable
+                || !definition.reseed
+                || counts[species_index] >= definition.minimum_population
+            {
+                continue;
+            }
+            let Some(template) = templates.get(species_index).and_then(Option::as_ref) else {
+                continue;
+            };
+            let missing = definition.minimum_population - counts[species_index];
+            let available = self.available_robot_capacity();
+            let vegetable_available = if definition.vegetable {
+                self.config
+                    .vegetable_population_cap
+                    .saturating_sub(vegetable_population)
+            } else {
+                usize::MAX
+            };
+            for ordinal in 0..missing.min(available).min(vegetable_available) {
+                let serial = self
+                    .tick
+                    .wrapping_mul(1_103)
+                    .wrapping_add((species_index * 97 + ordinal) as u64);
+                let position = [
+                    (serial % 10_000) as f32 / 10_000.0 * self.config.world_width,
+                    (serial.wrapping_mul(7_919) % 10_000) as f32 / 10_000.0
+                        * self.config.world_height,
+                ];
+                let id = self.spawn_species_at_unpublished(
+                    template.dna.clone(),
+                    SpeciesId(species_index as u32),
+                    position,
+                )?;
+                let robot = self.slots.get_mut(id)?;
+                robot.materials.energy = template.initial_energy as f32;
+                robot.materials.synchronize_energy();
+                robot.program.memory.write(MEM_NRG, template.initial_energy);
+                self.stats.reseeds = self.stats.reseeds.saturating_add(1);
+                if definition.vegetable {
+                    vegetable_population += 1;
+                }
+            }
+        }
+        let slots = &self.slots;
+        self.ties
+            .retain(|tie| slot_id_valid(slots, tie.first) && slot_id_valid(slots, tie.second));
+        self.rebuild_native_tie_index();
+        if self.native_random.is_some() {
+            // ReproduceAndKill updates topology, not another UpdateTieAngles.
+            // Birth/fire commands after the source angle pass retain their VM
+            // geometry values until the next cycle.
+            self.refresh_tie_projections_impl(false, &HashMap::new(), false);
+        } else {
+            self.refresh_tie_projections();
+        }
+        Ok(())
+    }
+
+    fn commit_pending_births(
+        &mut self,
+        births: &[PendingBirth],
+        trace: &mut CycleRecorder,
+    ) -> Result<Option<OrganismId>, EngineError> {
+        let birth_cycle = self.native_cycle_or_tick();
+        let runtime = SysvarRuntime::new();
         let mut available_births = self.available_robot_capacity();
         let mut vegetable_population = self.vegetable_population();
-        for mut birth in queues.births {
+        let mut last_child = None;
+        for mut birth in births.iter().copied() {
             if let Some(random) = self.native_random.as_mut()
                 && !birth.sexual
                 && birth.asexual_command > 0
@@ -12264,6 +12351,7 @@ impl Engine {
                 });
             }
             self.stats.births = self.stats.births.saturating_add(1);
+            last_child = Some(child);
             trace.queue_change(
                 CyclePhase::CommitBirthsDeaths,
                 child,
@@ -12273,84 +12361,7 @@ impl Engine {
                 self.stats.self_reproductions = self.stats.self_reproductions.saturating_add(1);
             }
         }
-        if !deferred_deaths.is_empty() {
-            self.commit_lifecycle_queues(
-                LifecycleQueues {
-                    births: Vec::new(),
-                    deaths: deferred_deaths,
-                },
-                trace,
-            )?;
-        }
-        let mut counts = vec![0usize; self.species.len()];
-        for organism in self.slots.iter().filter_map(|slot| slot.organism.as_ref()) {
-            if organism.flags.corpse {
-                continue;
-            }
-            if let Some(count) = counts.get_mut(organism.identity.species.0 as usize) {
-                *count += 1;
-            }
-        }
-        let definitions = self.species.clone();
-        let templates = self.species_templates.clone();
-        let mut vegetable_population = self.vegetable_population();
-        for (species_index, definition) in definitions.iter().enumerate() {
-            if definition.vegetable
-                || !definition.reseed
-                || counts[species_index] >= definition.minimum_population
-            {
-                continue;
-            }
-            let Some(template) = templates.get(species_index).and_then(Option::as_ref) else {
-                continue;
-            };
-            let missing = definition.minimum_population - counts[species_index];
-            let available = self.available_robot_capacity();
-            let vegetable_available = if definition.vegetable {
-                self.config
-                    .vegetable_population_cap
-                    .saturating_sub(vegetable_population)
-            } else {
-                usize::MAX
-            };
-            for ordinal in 0..missing.min(available).min(vegetable_available) {
-                let serial = self
-                    .tick
-                    .wrapping_mul(1_103)
-                    .wrapping_add((species_index * 97 + ordinal) as u64);
-                let position = [
-                    (serial % 10_000) as f32 / 10_000.0 * self.config.world_width,
-                    (serial.wrapping_mul(7_919) % 10_000) as f32 / 10_000.0
-                        * self.config.world_height,
-                ];
-                let id = self.spawn_species_at_unpublished(
-                    template.dna.clone(),
-                    SpeciesId(species_index as u32),
-                    position,
-                )?;
-                let robot = self.slots.get_mut(id)?;
-                robot.materials.energy = template.initial_energy as f32;
-                robot.materials.synchronize_energy();
-                robot.program.memory.write(MEM_NRG, template.initial_energy);
-                self.stats.reseeds = self.stats.reseeds.saturating_add(1);
-                if definition.vegetable {
-                    vegetable_population += 1;
-                }
-            }
-        }
-        let slots = &self.slots;
-        self.ties
-            .retain(|tie| slot_id_valid(slots, tie.first) && slot_id_valid(slots, tie.second));
-        self.rebuild_native_tie_index();
-        if self.native_random.is_some() {
-            // ReproduceAndKill updates topology, not another UpdateTieAngles.
-            // Birth/fire commands after the source angle pass retain their VM
-            // geometry values until the next cycle.
-            self.refresh_tie_projections_impl(false, &HashMap::new(), false);
-        } else {
-            self.refresh_tie_projections();
-        }
-        Ok(())
+        Ok(last_child)
     }
 
     fn mutation_phase(&mut self, context: MutationContext) {
