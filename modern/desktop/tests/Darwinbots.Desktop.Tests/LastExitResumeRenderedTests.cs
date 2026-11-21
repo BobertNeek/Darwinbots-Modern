@@ -48,6 +48,14 @@ public sealed class LastExitResumeRenderedTests
                     await session.AddObstacleAsync(new ObstacleSnapshot(0, [100, 200], [500, 800]));
                     var expected = session.LatestSnapshot;
 
+                    ClickRuntimeMenu(runtime, LegacyCommandId.ViewDisplayResourceGuages);
+                    ClickRuntimeMenu(runtime, LegacyCommandId.ViewDisplayShotImpacts);
+                    ClickRuntimeMenu(runtime, LegacyCommandId.ViewShowVisionGrid);
+                    var viewOptions = new Db2ViewOptions(false, true, false, false);
+                    await WaitFor(() => ReadRenderedViewOptions(runtime) == viewOptions);
+                    runtime.FindControl<Button>("ZoomInButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    Assert.True(runtime.FindControl<WorldViewport>("Viewport")!.Zoom > 1);
+
                     ClickRuntimeMenu(runtime, LegacyCommandId.FileQuit);
                     var firstUse = await QuitPromptAsync(runtime);
                     Assert.DoesNotContain(firstUse.GetVisualDescendants().OfType<Button>(), button => Equals(button.Content, "Cancel"));
@@ -68,6 +76,7 @@ public sealed class LastExitResumeRenderedTests
                     Assert.Equal(0.125f, settings.BrownianMotion);
                     Assert.False(settings.TiesEnabled);
                     Assert.True(settings.ShapesVisible);
+                    Assert.Equal(viewOptions, settings.ViewOptions);
                     Assert.Equal(new float[] { 100, 200 }, Assert.Single(settings.Obstacles).Minimum);
                     Assert.Equal("Resume Bot", Assert.Single(settings.Species).Name);
                     Assert.Equal(1000, settings.Species[0].InitialEnergy);
@@ -88,16 +97,21 @@ public sealed class LastExitResumeRenderedTests
                     Assert.Equal(0.125f, fresh.BrownianMotion);
                     Assert.False(fresh.TiesEnabled);
                     Assert.True(fresh.ShapesVisible);
+                    Assert.Equal(viewOptions, fresh.ViewOptions);
                     Assert.Equal(new float[] { 500, 800 }, Assert.Single(fresh.Obstacles).Maximum);
                     ResumeItem(setup).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
                     Assert.NotNull(options);
                     Assert.Equal(checkpoint, options.LoadSavePath);
                     Assert.False(options.IsAutosaveRecovery);
+                    Assert.Equal(viewOptions, options.ViewOptions);
 
                     resumed = new MainWindow([], options, NativeEngineClientFactory.Instance, nextStorage);
                     resumed.Show();
                     setup.Close();
                     await WaitFor(() => Status(resumed) == "LOADED");
+                    Assert.Equal(viewOptions, ReadRenderedViewOptions(resumed));
+                    Assert.False(resumed.FindControl<CheckBox>("ShowVisionToggle")!.IsChecked);
+                    Assert.Equal(1d, resumed.FindControl<WorldViewport>("Viewport")!.Zoom);
                     var restored = Session(resumed).LatestSnapshot;
                     Assert.Equal(expected.Tick, restored.Tick);
                     Assert.Equal(expected.Population, restored.Population);
@@ -123,7 +137,11 @@ public sealed class LastExitResumeRenderedTests
             await DesktopTestApplication.Session.Dispatch(async () =>
             {
                 var storage = new AvaloniaDesktopStorageService(profile.FullName);
-                await storage.SaveLastExitSettingsAsync(DesktopSettings.FromWorldSetup(TestWorld() with { Seed = 111 }));
+                var savedViewOptions = new Db2ViewOptions(MovementVectors: false);
+                await storage.SaveLastExitSettingsAsync(DesktopSettings.FromWorldSetup(TestWorld() with
+                {
+                    Seed = 111, ViewOptions = savedViewOptions,
+                }));
                 var settingsPath = Path.Combine(profile.FullName, "last-exit-settings.json");
                 var original = await File.ReadAllBytesAsync(settingsPath);
                 var runtime = new MainWindow([], TestWorld(), NativeEngineClientFactory.Instance, storage);
@@ -132,6 +150,9 @@ public sealed class LastExitResumeRenderedTests
                 {
                     runtime.Show();
                     await WaitFor(() => Status(runtime).StartsWith("WORLD READY", StringComparison.Ordinal));
+                    ClickRuntimeMenu(runtime, LegacyCommandId.ViewDisplayShotImpacts);
+                    var changedViewOptions = new Db2ViewOptions(ShotImpacts: false);
+                    await WaitFor(() => ReadRenderedViewOptions(runtime) == changedViewOptions);
                     var editor = new Window { Title = "Settings editor" };
                     var editing = editor.ShowDialog(runtime);
                     runtime.Close();
@@ -161,6 +182,7 @@ public sealed class LastExitResumeRenderedTests
                     await ChooseQuitAsync(dialog, "Cancel");
                     Assert.True(runtime.IsVisible);
                     Assert.True(timer.IsEnabled);
+                    Assert.Equal(changedViewOptions, ReadRenderedViewOptions(runtime));
                     Assert.Null(storage.FindLastExitSimulation());
                     Assert.Equal(original, await File.ReadAllBytesAsync(settingsPath));
 
@@ -177,14 +199,18 @@ public sealed class LastExitResumeRenderedTests
                     await WaitFor(() => !runtime.IsVisible);
                     Assert.Equal(original, await File.ReadAllBytesAsync(settingsPath));
                     Assert.NotNull(storage.FindLastExitSimulation());
+                    Assert.Equal(savedViewOptions, storage.LoadLastExitSettings()!.ViewOptions);
 
                     next = new MainWindow([], TestWorld() with { Seed = 222 }, NativeEngineClientFactory.Instance, storage);
                     next.Show();
                     await WaitFor(() => Status(next).StartsWith("WORLD READY", StringComparison.Ordinal));
+                    ClickRuntimeMenu(next, LegacyCommandId.ViewDisplayShotImpacts);
+                    await WaitFor(() => ReadRenderedViewOptions(next) == changedViewOptions);
                     next.Close();
                     await ChooseQuitAsync(await QuitPromptAsync(next), "Yes");
                     await WaitFor(() => !next.IsVisible);
                     Assert.Equal(222UL, storage.LoadLastExitSettings()!.Seed);
+                    Assert.Equal(changedViewOptions, storage.LoadLastExitSettings()!.ViewOptions);
                 }
                 finally
                 {
@@ -291,6 +317,13 @@ public sealed class LastExitResumeRenderedTests
     };
 
     private static MenuItem ResumeItem(SetupWindow window) => window.FindControl<MenuItem>("ResumeMenuItem")!;
+
+    private static Db2ViewOptions ReadRenderedViewOptions(MainWindow window)
+    {
+        var viewport = window.FindControl<WorldViewport>("Viewport")!;
+        return new(viewport.ShowResourceGauges, viewport.ShowMovementVectors, viewport.ShowShotImpacts,
+            viewport.ShowSelectedVision);
+    }
 
     private static string Status(MainWindow window) => Assert.IsType<MainWindowViewModel>(window.DataContext).Status;
 

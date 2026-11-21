@@ -47,6 +47,7 @@ public sealed record WorldSetupOptions
     public Db2WasteOptions Waste { get; init; } = new();
     public Db2VegetationOptions Vegetation { get; init; } = Db2VegetationOptions.Default;
     public Db2RecordingOptions Recording { get; init; } = new();
+    public Db2ViewOptions ViewOptions { get; init; } = new();
     public bool AutoSpeciation { get; init; }
     public float SpeciationGeneticDistancePercent { get; init; } = 20f;
     public bool ToroidalWorld { get; init; } = true;

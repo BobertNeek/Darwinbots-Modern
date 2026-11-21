@@ -7,6 +7,41 @@ namespace Darwinbots.Desktop.Core.Tests;
 
 public sealed class LegacySettingsImportTests
 {
+    [Fact]
+    public void OriginalViewControlsReadAndWriteTheMovableSettingsFooter()
+    {
+        var completeFixture = Path.Combine(RepositoryRoot(), "Installer", "sets", "Chloroplast Ecosystem.set");
+        Assert.Equal(new Db2ViewOptions(), Db2SettingsCodec.Decode(File.ReadAllBytes(completeFixture)).ViewOptions);
+
+        var oldFixture = Path.Combine(RepositoryRoot(), "Installer", "sets", "Walls and Waste.set");
+        var old = Db2SettingsCodec.Decode(File.ReadAllBytes(oldFixture));
+        Assert.Equal(new Db2ViewOptions(), old.ViewOptions);
+        Assert.Equal(18, old.Obstacles.Count);
+
+        var oldFields = File.ReadAllLines(oldFixture);
+        oldFields[2 + 40 * 2 + 88] = "#FALSE#";
+        var allDisabled = Db2SettingsCodec.Decode(Encoding.UTF8.GetBytes(string.Join("\r\n", oldFields)));
+        Assert.Equal(new Db2ViewOptions(false, false, false, false), allDisabled.ViewOptions);
+
+        var expected = new Db2ViewOptions(false, true, true, false);
+        var encoded = Db2SettingsCodec.Encode(old with { ViewOptions = expected });
+        string native = Encoding.UTF8.GetString(encoded).Split("#DARWINBOTS_MODERN_SETTINGS_V1#")[0];
+        var fields = native.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
+        // Two species and eighteen shapes put the View controls on lines 534–537.
+        Assert.Equal(new[] { "#FALSE#", "#TRUE#", "#TRUE#", "#FALSE#" }, fields[533..537]);
+        Assert.Equal(expected, Db2SettingsCodec.Decode(Encoding.UTF8.GetBytes(native)).ToWorldSetup().ViewOptions);
+        Assert.Equal(expected, Db2SettingsCodec.Decode(encoded).ViewOptions);
+
+        var partial = Db2SettingsCodec.Decode(Encoding.UTF8.GetBytes(string.Join("\r\n", fields[..535])));
+        Assert.Equal(expected with { VisionGrid = true }, partial.ViewOptions);
+
+        var oldJson = (old with { ViewOptions = null, LegacySettingsFields = fields }).ToJson();
+        Assert.Equal(expected, DesktopSettings.FromJson(oldJson).ViewOptions);
+        var absent = DesktopSettings.FromJson(new DesktopSettings().ToJson());
+        Assert.Null(absent.ViewOptions);
+        Assert.Equal(new Db2ViewOptions(), absent.ToWorldSetup().ViewOptions);
+    }
+
     [Theory]
     [InlineData(false, false)]
     [InlineData(true, false)]
