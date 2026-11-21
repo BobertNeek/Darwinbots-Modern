@@ -238,6 +238,64 @@ public sealed class HistoricSimulationSaveRenderedTests
         }, CancellationToken.None);
     }
 
+    [Theory]
+    [InlineData("saves")]
+    [InlineData("Saves")]
+    [InlineData(null)]
+    public async Task OriginalFileCommandsStartInTheActiveMainDirectory(string? folderName)
+    {
+        var directory = Directory.CreateTempSubdirectory("darwinbots-saves-picker-");
+        try
+        {
+            var expectedPath = folderName is null ? null : directory.CreateSubdirectory(folderName).FullName;
+            await using var session = new SimulationSession(new RecordingEngineClient());
+            await DesktopTestApplication.Session.Dispatch(async () =>
+            {
+                var lookups = new List<Uri>();
+                var options = new List<PickerOptions>();
+                var folder = StorageProxy.Create<IStorageFolder>((method, _) => method.Name == nameof(IDisposable.Dispose)
+                    ? null
+                    : throw new NotSupportedException(method.Name));
+                var provider = StorageProxy.Create<IStorageProvider>((method, arguments) => method.Name switch
+                {
+                    nameof(IStorageProvider.TryGetFolderFromPathAsync) => FindFolder((Uri)arguments![0]!),
+                    nameof(IStorageProvider.OpenFilePickerAsync) => CancelPicker((PickerOptions)arguments![0]!,
+                        Task.FromResult<IReadOnlyList<IStorageFile>>([])),
+                    nameof(IStorageProvider.SaveFilePickerAsync) => CancelPicker((PickerOptions)arguments![0]!,
+                        Task.FromResult<IStorageFile?>(null)),
+                    _ => throw new NotSupportedException(method.Name),
+                });
+                var window = OpenRunningFilePickerWindow(session, provider, directory.FullName);
+                try
+                {
+                    var commands = WindowField<LegacyCommandRouter>(window, "_legacyCommands");
+                    foreach (var command in new[] { LegacyCommandId.FileLoadSimulation,
+                        LegacyCommandId.FileSaveSimulation, LegacyCommandId.FileSaveWithoutMutations })
+                        Assert.True((await commands.ExecuteAsync(command)).Canceled);
+
+                    Assert.Equal(3, options.Count);
+                    Assert.All(options, picker => Assert.Same(expectedPath is null ? null : folder, picker.SuggestedStartLocation));
+                    Assert.Equal(Enumerable.Repeat(expectedPath, expectedPath is null ? 0 : 3),
+                        lookups.Select(uri => uri.LocalPath));
+                }
+                finally { CloseFilePickerWindow(window); }
+
+                Task<IStorageFolder?> FindFolder(Uri uri)
+                {
+                    lookups.Add(uri);
+                    return Task.FromResult<IStorageFolder?>(folder);
+                }
+
+                Task<T> CancelPicker<T>(PickerOptions picker, Task<T> canceled)
+                {
+                    options.Add(picker);
+                    return canceled;
+                }
+            }, CancellationToken.None);
+        }
+        finally { directory.Delete(recursive: true); }
+    }
+
     private static async Task WaitForStatusAsync(MainWindowViewModel model, string expected)
     {
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
@@ -246,10 +304,15 @@ public sealed class HistoricSimulationSaveRenderedTests
         Assert.Equal(expected, model.Status);
     }
 
-    private static MainWindow OpenRunningFilePickerWindow(SimulationSession session, IStorageProvider provider)
+    private static MainWindow OpenRunningFilePickerWindow(SimulationSession session, IStorageProvider provider,
+        string? mainDirectory = null)
     {
         var profile = Path.Combine(Path.GetTempPath(), $"darwinbots-file-dialog-{Guid.NewGuid():N}");
-        var window = new MainWindow([], new WorldSetupOptions(), new AuditEngineClientFactory(), new AvaloniaDesktopStorageService(profile));
+        var setup = new WorldSetupOptions
+        {
+            GlobalSettings = new GlobalSettings { Main = new GlobalMainSettings { MainDirectory = mainDirectory ?? string.Empty } },
+        };
+        var window = new MainWindow([], setup, new AuditEngineClientFactory(), new AvaloniaDesktopStorageService(profile));
         DesktopTestApplication.UseSession(window, session);
         typeof(TopLevel).GetField("_storageProvider", WindowFields)!.SetValue(window, provider);
         window.Show();

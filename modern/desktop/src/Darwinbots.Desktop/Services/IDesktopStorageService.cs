@@ -23,19 +23,19 @@ public interface IDesktopStorageService
     Task<byte[]?> OpenOrganismAsync(TopLevel owner) => Task.FromResult<byte[]?>(null);
     Task<DesktopSettings?> OpenSettingsAsync(TopLevel owner);
     Task<string?> PickSimulationPathAsync(TopLevel owner);
-    Task<byte[]?> OpenSimulationAsync(TopLevel owner);
+    Task<byte[]?> OpenSimulationAsync(TopLevel owner, string? mainDirectory = null);
     Task<bool> SaveSettingsAsync(TopLevel owner, DesktopSettings settings);
     Task<bool> SaveSimulationAsync(TopLevel owner, ReadOnlyMemory<byte> save);
     Task<bool> SaveLegacySimulationAsync(TopLevel owner, ReadOnlyMemory<byte> save) => Task.FromResult(false);
     async Task<SimulationSaveFormat?> SaveSimulationWithFormatAsync(
-        TopLevel owner, Func<SimulationSaveFormat, Task<byte[]>> createSave)
+        TopLevel owner, Func<SimulationSaveFormat, Task<byte[]>> createSave, string? mainDirectory = null)
     {
         var format = SimulationSaveFormat.Modern;
         return await SaveSimulationAsync(owner, await createSave(format)) ? format : null;
     }
     Task<SimulationSaveFormat?> SaveSimulationWithMutationOptionsAsync(
-        TopLevel owner, Func<SimulationSaveFormat, Task<byte[]>> createSave) =>
-        SaveSimulationWithFormatAsync(owner, createSave);
+        TopLevel owner, Func<SimulationSaveFormat, Task<byte[]>> createSave, string? mainDirectory = null) =>
+        SaveSimulationWithFormatAsync(owner, createSave, mainDirectory);
     Task<bool> SaveDnaAsync(TopLevel owner, string suggestedFileName, string dna, MutationProfileUpdate? mutationProfile);
     Task<string?> PickPopulationSeedDirectoryAsync(TopLevel owner) => Task.FromResult<string?>(null);
     Task<bool> SaveOrganismAsync(TopLevel owner, string suggestedFileName, Func<Stream, Task> writeAsync);
