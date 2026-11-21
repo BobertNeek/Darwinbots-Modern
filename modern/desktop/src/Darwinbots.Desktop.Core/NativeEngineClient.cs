@@ -638,6 +638,14 @@ public sealed partial class NativeEngineClient : IEngineClient
         ExecuteBatch(new { version = 1, commands = new[] { new { type = "make_new_species", slot, generation, name, color } } }, "make new species");
     }
 
+    public bool RenameRobotFounder(uint slot, uint generation, string name)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        return ExecuteBatchForResult(
+            new { version = 1, commands = new[] { new { type = "rename_robot_founder", slot, generation, name } } },
+            "rename saved robot").GetProperty("results")[0].GetBoolean();
+    }
+
     public void UpdateLegacyRestrictions(bool robotFixingAllowed, bool asexualReproductionAllowed) => ExecuteBatch(
         new { version = 1, commands = new[] { new { type = "update_legacy_restrictions", robot_fixing_allowed = robotFixingAllowed, asexual_reproduction_allowed = asexualReproductionAllowed } } },
         "update legacy restrictions");

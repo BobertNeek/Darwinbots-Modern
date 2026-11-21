@@ -84,6 +84,7 @@ public sealed partial class MainWindow : Window
     private bool _navigationInFlight;
     private readonly SemaphoreSlim _advanceGate = new(1, 1);
     private volatile bool _loadingSimulation;
+    private int _worldLoadGeneration;
     private OrganismKey? _moveOrganism;
     private WorldInsertionController? _insertion;
     private bool _turbo;
@@ -1750,16 +1751,48 @@ public sealed partial class MainWindow : Window
 
     private async Task<LegacyCommandResult> SaveSelectedDnaCommandAsync()
     {
-        if (_session is null || _viewModel.SelectedOrganism is not { } organism)
+        if (_session is not { } session || _viewModel.SelectedOrganism is not { } organism)
             return LegacyCommandResult.Failure("SELECT A ROBOT FIRST");
-        var file = await _session.ExportRobotFileAsync(organism.Slot, organism.Generation);
-        var species = organism.Species < _session.LatestSnapshot.Species.Count
-            ? _session.LatestSnapshot.Species[(int)organism.Species].Name
-            : $"Robot-{organism.Slot}-{organism.Generation}";
-        var suggestedName = _automaticTagByName ? $"{species}.txt" : $"Robot-{organism.Slot}-{organism.Generation}.txt";
-        return await _storage.SaveDnaAsync(this, suggestedName, file.Dna, file.MutationProfile)
-            ? LegacyCommandResult.Success("ROBOT DNA SAVED")
-            : LegacyCommandResult.Cancel();
+
+        var key = new OrganismKey(organism.Slot, organism.Generation);
+        var worldGeneration = _worldLoadGeneration;
+        bool IsOriginalActorSelected() => !_windowClosed && !_loadingSimulation && !_navigationInFlight
+            && !_savingLastExit && ReferenceEquals(session, _session) && _worldLoadGeneration == worldGeneration
+            && SelectedRobotKey() == key
+            && session.LatestSnapshot.Organisms.Any(robot => robot.Slot == key.Slot && robot.Generation == key.Generation
+                && robot.UniqueId == organism.UniqueId);
+        bool CanRename() => IsOriginalActorSelected() && session.LatestSnapshot.NativeCycle is not null
+            && !session.LatestSnapshot.LocalMode.HasActiveRestartMode;
+
+        Db2RobotFile file;
+        await _advanceGate.WaitAsync();
+        try
+        {
+            if (!IsOriginalActorSelected()) return LegacyCommandResult.Cancel();
+            file = await session.ExportRobotFileAsync(key.Slot, key.Generation);
+        }
+        finally { _advanceGate.Release(); }
+
+        var suggestedName = $"Robot-{key.Slot}-{key.Generation}.txt";
+        if (_automaticTagByName && organism.Species < session.LatestSnapshot.Species.Count)
+            suggestedName = $"{session.LatestSnapshot.Species[(int)organism.Species].Name}.txt";
+        var saved = await _storage.SaveDnaWithNameAsync(this, suggestedName, file.Dna, file.MutationProfile);
+        if (saved is null) return LegacyCommandResult.Cancel();
+        var name = saved.FileName;
+        if (!string.IsNullOrWhiteSpace(name) && CanRename())
+        {
+            var dialog = new SavedRobotDnaWindow(name);
+            if (await dialog.ShowDialog<bool>(this))
+            {
+                await _advanceGate.WaitAsync();
+                try
+                {
+                    if (CanRename()) await session.RenameRobotFounderAsync(key, name);
+                }
+                finally { _advanceGate.Release(); }
+            }
+        }
+        return LegacyCommandResult.Success("ROBOT DNA SAVED");
     }
 
     private async Task<LegacyCommandResult> FindBestRobotAsync()
@@ -2991,6 +3024,7 @@ public sealed partial class MainWindow : Window
             if (_session is null || _savingLastExit) return;
             _loadingSimulation = true;
             await _session.LoadAsync(save);
+            _worldLoadGeneration++;
             if (resumeRestartMode) await _session.ResumeRestartModeAsync();
             _ownsRestartContinuation = resumeRestartMode;
             // A rejected load publishes no snapshot and must keep user-closed

@@ -153,6 +153,15 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task ReplaceDnaAsync(uint slot, uint generation, string dna, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.ReplaceDna(slot, generation, dna), cancellationToken);
 
+    public async Task<bool> RenameRobotFounderAsync(OrganismKey robot, string name,
+        CancellationToken cancellationToken = default)
+    {
+        var renamed = false;
+        await Enqueue(engine => renamed = engine.RenameRobotFounder(robot.Slot, robot.Generation, name), cancellationToken)
+            .ConfigureAwait(false);
+        return renamed;
+    }
+
     public async Task<string> ExportDnaAsync(uint slot, uint generation, CancellationToken cancellationToken = default)
     {
         string? result = null;
