@@ -399,6 +399,15 @@ public sealed class SimulationSession : IAsyncDisposable
         return result ?? throw new InvalidDataException("Engine returned no child ID.");
     }
 
+    public async Task<OrganismKey?> ReproduceNativeRobotInfoAsync(OrganismKey parent)
+    {
+        OrganismKey? child = null;
+        // The engine command applies the original same-cycle redraw.
+        await Enqueue(engine => child = engine.ReproduceNativeRobotInfo(parent), CancellationToken.None)
+            .ConfigureAwait(false);
+        return child;
+    }
+
     public Task SwitchBackendAsync(string backend, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(backend);

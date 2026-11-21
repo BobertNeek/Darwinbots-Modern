@@ -258,6 +258,9 @@ public sealed class World09CommandsRenderedTests
                 await WaitFor(() => window.OwnedWindows.OfType<RobotDetailsWindow>().Any());
                 var info = Assert.Single(window.OwnedWindows.OfType<RobotDetailsWindow>());
                 Assert.Equal(native, info.Topmost);
+                info.UpdateLayout();
+                Assert.Equal(native, info.GetVisualDescendants().OfType<Button>()
+                    .Any(button => button.Name == "NativeRobotInfoReproduce" && button.IsVisible));
                 info.SelectTab(RobotDetailsTab.Memory);
                 var memory = (TextBox)typeof(RobotDetailsWindow)
                     .GetField("_memory", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(info)!;
@@ -391,6 +394,100 @@ public sealed class World09CommandsRenderedTests
         window.MouseUp(point.Value, MouseButton.Left, RawInputModifiers.None);
         window.MouseDown(point.Value, MouseButton.Left, RawInputModifiers.None);
         window.MouseUp(point.Value, MouseButton.Left, RawInputModifiers.None);
+    }
+
+    [Fact]
+    public async Task NativeRobotInfoReproducesTheDisplayedParentWithoutAdvancingOrChangingFocus()
+    {
+        var first = RecordingEngineClient.Organism with { Position = [300f, 225f], UniqueId = 70 };
+        var second = new OrganismSnapshot(4, 1, [220f, 200f], [0f, 0f], 1_000, 10) { UniqueId = 71 };
+        var firstKey = new OrganismKey(first.Slot, first.Generation);
+        var secondKey = new OrganismKey(second.Slot, second.Generation);
+        var engine = new RecordingEngineClient(RecordingEngineClient.CreateSnapshot() with
+        {
+            NativeCycle = 20,
+            Population = 2,
+            WorldSize = [640f, 480f],
+            Organisms = [first, second],
+        }) { NativeRobotInfoResult = new OrganismKey(41, 1) };
+
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], new WorldSetupOptions(), new World09EngineFactory(engine), new AuditStorageService())
+            {
+                WindowState = WindowState.Normal,
+                Width = 1280,
+                Height = 900,
+            };
+            try
+            {
+                window.Show();
+                var model = ViewModel(window);
+                await WaitFor(() => model.Population == 2 && model.SelectedKey.HasValue);
+                window.FindControl<Button>("PauseButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                var open = menu.FindCommandItem(LegacyCommandId.RobotShowInfo)!;
+                open.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => window.OwnedWindows.OfType<RobotDetailsWindow>().Any());
+                var info = Assert.Single(window.OwnedWindows.OfType<RobotDetailsWindow>());
+                info.UpdateLayout();
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                var button = Assert.Single(info.GetVisualDescendants().OfType<Button>(),
+                    control => control.Name == "NativeRobotInfoReproduce");
+                Assert.True(button.IsVisible);
+                Assert.True(button.IsEnabled);
+                Assert.Equal("Reproduce", button.Content);
+                var session = Session(window)!;
+                var start = session.LatestSnapshot.Tick;
+                Assert.Equal(firstKey, model.SelectedKey);
+
+                var viewport = window.FindControl<WorldViewport>("Viewport")!;
+                ClickWorld(window, viewport, 220, 200);
+                Assert.Equal(secondKey, model.SelectedKey);
+                Assert.Contains("3:2", info.Title);
+                var gate = (SemaphoreSlim)typeof(MainWindow)
+                    .GetField("_advanceGate", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(window)!;
+                await gate.WaitAsync();
+                try
+                {
+                    ClickReproduce();
+                    Assert.False(button.IsEnabled);
+                    Assert.Empty(engine.NativeRobotInfoReproductions);
+                }
+                finally { gate.Release(); }
+
+                await WaitFor(() => engine.NativeRobotInfoReproductions.Count == 1 && button.IsEnabled);
+                Assert.Equal((firstKey, start, (int?)20), Assert.Single(engine.NativeRobotInfoReproductions));
+                Assert.Contains(info.GetVisualDescendants().OfType<TextBlock>(), label => label.Text == "OFFSPRING BORN");
+                Assert.Equal(start, session.LatestSnapshot.Tick);
+                Assert.Equal(secondKey, model.SelectedKey);
+                Assert.Contains("3:2", info.Title);
+                Assert.True(info.IsVisible);
+                Assert.False(info.IsDialog);
+
+                await session.StepAsync();
+                await WaitFor(() => info.Title!.EndsWith("4:1", StringComparison.Ordinal));
+                engine.NativeRobotInfoResult = null;
+                ClickReproduce();
+                await WaitFor(() => engine.NativeRobotInfoReproductions.Count == 2 && button.IsEnabled);
+                Assert.Equal((secondKey, start + 1, (int?)20), engine.NativeRobotInfoReproductions.Last());
+                Assert.Contains(info.GetVisualDescendants().OfType<TextBlock>(), label => label.Text == "NO OFFSPRING");
+                Assert.Equal(start + 1, session.LatestSnapshot.Tick);
+                Assert.Equal(secondKey, model.SelectedKey);
+                Assert.Same(info, Assert.Single(window.OwnedWindows.OfType<RobotDetailsWindow>()));
+                Assert.DoesNotContain(engine.Calls, call => call.StartsWith("Reproduce:", StringComparison.Ordinal));
+
+                void ClickReproduce()
+                {
+                    var center = new Point(button.Bounds.Width / 2, button.Bounds.Height / 2);
+                    var pointer = button.TranslatePoint(center, info);
+                    Assert.True(pointer.HasValue);
+                    info.MouseDown(pointer.Value, MouseButton.Left, RawInputModifiers.None);
+                    info.MouseUp(pointer.Value, MouseButton.Left, RawInputModifiers.None);
+                }
+            }
+            finally { window.Close(); }
+        }, CancellationToken.None);
     }
 
     private static SimulationSession? Session(MainWindow window) =>

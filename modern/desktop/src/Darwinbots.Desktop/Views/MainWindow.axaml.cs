@@ -1976,7 +1976,8 @@ public sealed partial class MainWindow : Window
         {
             var info = _toolWindows.ShowOrActivate(NativeRobotInfoKey, () =>
             {
-                var viewer = new RobotDetailsWindow(session, focus, tab, SelectedRobotKey) { Topmost = true };
+                var viewer = new RobotDetailsWindow(session, focus, tab, SelectedRobotKey,
+                    parent => ReproduceFromNativeRobotInfoAsync(session, parent)) { Topmost = true };
                 _nativeRobotInfoWindow = viewer;
                 void FollowSelection(object? sender, System.ComponentModel.PropertyChangedEventArgs change)
                 {
@@ -2005,6 +2006,26 @@ public sealed partial class MainWindow : Window
         window.SelectTab(tab);
         window.SetSnapshot(session.LatestSnapshot);
         return window;
+    }
+
+    private async Task<OrganismKey?> ReproduceFromNativeRobotInfoAsync(SimulationSession session, OrganismSnapshot displayed)
+    {
+        var generation = _worldLoadGeneration;
+        await _advanceGate.WaitAsync();
+        try
+        {
+            if (!IsVisible || _loadingSimulation || _session != session || _worldLoadGeneration != generation)
+                throw new InvalidOperationException("The simulation changed before reproduction.");
+
+            var snapshot = session.LatestSnapshot;
+            if (!snapshot.NativeCycle.HasValue || !snapshot.Organisms.Any(robot => robot.Slot == displayed.Slot
+                && robot.Generation == displayed.Generation && robot.UniqueId == displayed.UniqueId
+                && robot.SimulationId == displayed.SimulationId))
+                throw new InvalidOperationException("The displayed robot is no longer available.");
+
+            return await session.ReproduceNativeRobotInfoAsync(new(displayed.Slot, displayed.Generation));
+        }
+        finally { _advanceGate.Release(); }
     }
 
     private Task<LegacyCommandResult> ShowSelectedPhylogenyAsync()

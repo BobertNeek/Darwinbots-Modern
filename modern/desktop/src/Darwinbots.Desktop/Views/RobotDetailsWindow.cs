@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
+using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
 using System.Globalization;
@@ -23,6 +24,9 @@ public sealed class RobotDetailsWindow : Window
     private static long _nextPostDnaMemoryRequestId;
     private readonly SimulationSession? _session;
     private readonly Func<OrganismKey?>? _readFocus;
+    private readonly Func<OrganismSnapshot, Task<OrganismKey?>>? _reproduceNative;
+    private OrganismSnapshot? _reproduceParent;
+    private bool _reproduceInFlight;
     private OrganismKey? _focus;
     private ulong _followedTick;
     private OrganismKey? _consoleDnaFacts;
@@ -38,6 +42,14 @@ public sealed class RobotDetailsWindow : Window
     private readonly TextBlock _subtitleSuffix = new() { IsVisible = false };
     private readonly TextBlock _facts = new();
     private readonly TextBlock _factsTab = new();
+    private readonly Button _reproduce = new()
+    {
+        Name = "NativeRobotInfoReproduce",
+        Content = "Reproduce",
+        HorizontalAlignment = HorizontalAlignment.Left,
+        Margin = new Thickness(0, 10, 0, 0),
+        IsVisible = false,
+    };
     private readonly TextBox _dna = new();
     private readonly TextBox _memory = new();
     private readonly CheckBox _postDnaMemory = new()
@@ -64,8 +76,9 @@ public sealed class RobotDetailsWindow : Window
         SimulationSession session,
         OrganismKey focus,
         RobotDetailsTab initialTab = RobotDetailsTab.Facts,
-        Func<OrganismKey?>? readFocus = null)
-        : this(session, focus, initialTab, string.Empty, session.LatestSnapshot.NativeCycle.HasValue, readFocus)
+        Func<OrganismKey?>? readFocus = null,
+        Func<OrganismSnapshot, Task<OrganismKey?>>? reproduceNative = null)
+        : this(session, focus, initialTab, string.Empty, session.LatestSnapshot.NativeCycle.HasValue, readFocus, reproduceNative)
     {
         SetSnapshot(session.LatestSnapshot);
     }
@@ -80,10 +93,12 @@ public sealed class RobotDetailsWindow : Window
         RobotDetailsTab initialTab,
         string dna,
         bool native,
-        Func<OrganismKey?>? readFocus = null)
+        Func<OrganismKey?>? readFocus = null,
+        Func<OrganismSnapshot, Task<OrganismKey?>>? reproduceNative = null)
     {
         _session = session;
         _readFocus = readFocus;
+        _reproduceNative = reproduceNative;
         _focus = focus;
         Title = $"Darwinbots — Robot Details {focus.Slot}:{focus.Generation}";
         Width = 1_080;
@@ -238,6 +253,13 @@ public sealed class RobotDetailsWindow : Window
         });
 
         var body = new Grid { ColumnDefinitions = new ColumnDefinitions("330,*") };
+        Control facts = new ScrollViewer { Content = _facts };
+        if (_reproduceNative is not null)
+        {
+            DockPanel.SetDock(_reproduce, Dock.Bottom);
+            facts = new DockPanel { Children = { _reproduce, facts } };
+            _reproduce.Click += ReproduceNative_Click;
+        }
         body.Children.Add(new Border
         {
             Margin = new Thickness(18, 18, 0, 0),
@@ -245,7 +267,7 @@ public sealed class RobotDetailsWindow : Window
             Background = Brush.Parse("#E5ECD9"),
             BorderBrush = Brush.Parse("#C8C3B6"),
             BorderThickness = new Thickness(1),
-            Child = new ScrollViewer { Content = _facts },
+            Child = facts,
         });
         Grid.SetColumn(_tabs, 1);
         body.Children.Add(_tabs);
@@ -279,6 +301,23 @@ public sealed class RobotDetailsWindow : Window
         _founderFilename.IsVisible = founderFilename is not null;
         _subtitleSuffix.Text = suffix;
         _subtitleSuffix.IsVisible = suffix is not null;
+    }
+
+    private async void ReproduceNative_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_reproduceInFlight || _reproduceNative is not { } reproduce || _reproduceParent is not { } parent) return;
+        _reproduceInFlight = true;
+        _reproduce.IsEnabled = false;
+        try
+        {
+            _status.Text = await reproduce(parent) is null ? "NO OFFSPRING" : "OFFSPRING BORN";
+        }
+        catch (Exception error) { _status.Text = $"REPRODUCTION FAILED · {error.Message}"; }
+        finally
+        {
+            _reproduceInFlight = false;
+            _reproduce.IsEnabled = _reproduceParent is not null;
+        }
     }
 
     private void Window_Opened(object? sender, EventArgs e)
@@ -401,6 +440,9 @@ public sealed class RobotDetailsWindow : Window
         // Console showdna initially displays its actor's facts alongside the selected actor's DNA.
         var consoleActor = snapshot.Tick == _followedTick ? FindActor(_consoleDnaFacts) : null;
         var organism = consoleActor ?? selected;
+        _reproduce.IsVisible = _reproduceNative is not null && snapshot.NativeCycle.HasValue;
+        _reproduceParent = _reproduce.IsVisible ? organism : null;
+        _reproduce.IsEnabled = _reproduceParent is not null && !_reproduceInFlight;
         if (organism is null)
         {
             SetSubtitle(_focus is { } removed ? $"ROBOT {removed.Slot}:{removed.Generation} · REMOVED" : "NO ROBOT SELECTED");
