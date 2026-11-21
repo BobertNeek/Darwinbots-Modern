@@ -30,6 +30,7 @@ public sealed partial class SetupWindow : Window
 
     public ObservableCollection<SetupSpeciesRow> Species { get; } = [];
     public event Action<WorldSetupOptions>? WorldCreated;
+    internal bool InitialNewSeedOnLoad { get; }
 
     public SetupWindow() : this(AvaloniaDesktopStorageService.Instance)
     {
@@ -60,6 +61,7 @@ public sealed partial class SetupWindow : Window
             {
                 SetupStatus.Text = $"GLOBAL SETTINGS LOAD FAILED · {error.Message}";
             }
+            InitialNewSeedOnLoad = _profileSettings.Main.EffectiveNewSeedOnLoad;
             ApplyGlobalSettings(_profileSettings);
         }
         _workflow.Reset(ReadSetupOptions());

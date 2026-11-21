@@ -80,6 +80,7 @@ public sealed partial class MainWindow : Window
     private (LocalModeKind Kind, uint RestartCount)? _automaticEvolutionGraphBoundary;
     private readonly IEngineClientFactory _engineFactory;
     private readonly IDesktopStorageService _storage;
+    private readonly bool _newSeedOnLoad;
     private bool _tickInFlight;
     private bool _navigationInFlight;
     private bool _simulationFileCommandInFlight;
@@ -138,7 +139,8 @@ public sealed partial class MainWindow : Window
         IReadOnlyList<string> arguments,
         WorldSetupOptions setup,
         IEngineClientFactory engineFactory,
-        IDesktopStorageService storage)
+        IDesktopStorageService storage,
+        bool? newSeedOnLoad = null)
     {
         _startupArguments = arguments.ToArray();
         _setup = setup with { NativeGaussianSpare = null, NativeSunChange = null, NativeProcessCaches = null };
@@ -146,6 +148,7 @@ public sealed partial class MainWindow : Window
         _initialNativeSunChange = setup.NativeSunChange;
         _initialNativeProcessCaches = setup.NativeProcessCaches;
         _globalSettings = setup.GlobalSettings;
+        _newSeedOnLoad = newSeedOnLoad ?? setup.GlobalSettings.Main.EffectiveNewSeedOnLoad;
         _safemodeBackup = setup.GlobalSettings.Main.SafeMode || setup.Recording.SafeModeBackup;
         _startupBots = new StartupDnaWorkflow(
             setup.WorldWidth,
@@ -1020,7 +1023,7 @@ public sealed partial class MainWindow : Window
                 var setupWindow = new SetupWindow(_storage, spare, sunChange, caches);
                 setupWindow.WorldCreated += options =>
                 {
-                    var replacement = new MainWindow(_startupArguments, options, _engineFactory, _storage);
+                    var replacement = new MainWindow(_startupArguments, options, _engineFactory, _storage, _newSeedOnLoad);
                     SetApplicationMainWindow(replacement);
                     replacement.Show();
                     setupWindow.Close();
@@ -1031,7 +1034,8 @@ public sealed partial class MainWindow : Window
             else
             {
                 var replacement = new MainWindow(_startupArguments,
-                    (editedSetup ?? CreateNextWorldSetup()) with { NativeGaussianSpare = spare, NativeSunChange = sunChange, NativeProcessCaches = caches }, _engineFactory, _storage);
+                    (editedSetup ?? CreateNextWorldSetup()) with { NativeGaussianSpare = spare, NativeSunChange = sunChange, NativeProcessCaches = caches },
+                    _engineFactory, _storage, _newSeedOnLoad);
                 SetApplicationMainWindow(replacement);
                 replacement.Show();
             }
@@ -1109,10 +1113,12 @@ public sealed partial class MainWindow : Window
     private Task<LegacyCommandResult> LoadSimulationCommandAsync() =>
         WithPausedSimulationFileDialogAsync(async session =>
         {
+            var seed = await session.CaptureNativeLoadSeedAsync(_newSeedOnLoad);
+            if (!OwnsSimulationFileCommand(session)) return LegacyCommandResult.Cancel();
             if (await _storage.OpenSimulationAsync(this, _globalSettings.Main.MainDirectory) is not { } save
                 || !OwnsSimulationFileCommand(session))
                 return LegacyCommandResult.Cancel();
-            await LoadSimulationAsync(save);
+            await LoadSimulationCoreAsync(save, seed);
             return LegacyCommandResult.Success("LOADED");
         });
 
@@ -2976,7 +2982,9 @@ public sealed partial class MainWindow : Window
         finally { _tickInFlight = false; }
     }
 
-    private async Task LoadSimulationAsync(byte[] save)
+    private Task LoadSimulationAsync(byte[] save) => LoadSimulationCoreAsync(save, 0);
+
+    private async Task LoadSimulationCoreAsync(byte[] save, int nativeLoadSeed)
     {
         _runTimer.Stop();
         await _advanceGate.WaitAsync();
@@ -2984,7 +2992,7 @@ public sealed partial class MainWindow : Window
         {
             if (_session is null) return;
             _loadingSimulation = true;
-            await _session.LoadAsync(save);
+            await _session.LoadWithNativeSeedAsync(save, nativeLoadSeed);
             _worldLoadGeneration++;
             // A rejected load publishes no snapshot and must keep user-closed
             // graphs closed. Loading publications defer this until success.

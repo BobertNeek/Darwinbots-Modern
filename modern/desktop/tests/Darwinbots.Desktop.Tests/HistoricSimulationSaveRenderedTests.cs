@@ -90,13 +90,25 @@ public sealed class HistoricSimulationSaveRenderedTests
     }
 
     [Theory]
-    [InlineData("cancel")]
-    [InlineData("reject")]
-    [InlineData("accept")]
-    public async Task OriginalLoadResumesOnlyWhenThePreviousWorldIsKept(string outcome)
+    [InlineData("cancel", true, 1_234)]
+    [InlineData("reject", true, 1_234)]
+    [InlineData("accept", null, 1_234)]
+    [InlineData("accept", false, 6_341_122)]
+    [InlineData("accept", false, 0)]
+    [InlineData("modern", true, 1_234)]
+    public async Task OriginalLoadCapturesTheSeedBeforeChoosingAFileAndResumesOnlyWhenThePreviousWorldIsKept(
+        string outcome, bool? generateSeed, int seed)
     {
-        await using var session = new SimulationSession(new RecordingEngineClient());
+        var engine = new RecordingEngineClient { NativeLoadSeed = seed };
+        await using var session = new SimulationSession(engine);
         await session.StepAsync(12);
+        var accepted = outcome is "accept" or "modern";
+        var payload = outcome switch
+        {
+            "accept" => BitConverter.GetBytes(90ul),
+            "modern" => "DB3S\0\0\0\0"u8.ToArray(),
+            _ => new byte[] { 1 },
+        };
         await DesktopTestApplication.Session.Dispatch(async () =>
         {
             var pickerRequested = new TaskCompletionSource();
@@ -106,15 +118,17 @@ public sealed class HistoricSimulationSaveRenderedTests
             var window = OpenRunningFilePickerWindow(session, StorageProxy.Create<IStorageProvider>((method, _) =>
             {
                 Assert.Equal(nameof(IStorageProvider.OpenFilePickerAsync), method.Name);
+                Assert.Contains($"CaptureNativeLoadSeed:{generateSeed != false}", engine.Calls);
                 pickerRequested.SetResult();
                 return selection.Task;
-            }));
+            }), newSeedOnLoad: generateSeed);
             try
             {
                 var loading = WindowField<LegacyCommandRouter>(window, "_legacyCommands")
                     .ExecuteAsync(LegacyCommandId.FileLoadSimulation);
                 await pickerRequested.Task.WaitAsync(TimeSpan.FromSeconds(5));
                 await AssertOwnerIsPausedAsync(window, session);
+                engine.NativeLoadSeed = 99;
                 if (outcome == "cancel")
                 {
                     selection.SetResult([]);
@@ -129,15 +143,19 @@ public sealed class HistoricSimulationSaveRenderedTests
                     })]);
                     await readRequested.Task.WaitAsync(TimeSpan.FromSeconds(5));
                     await AssertOwnerIsPausedAsync(window, session);
-                    readStream.SetResult(new MemoryStream(outcome == "accept" ? BitConverter.GetBytes(90ul) : [1]));
+                    readStream.SetResult(new MemoryStream(payload));
                 }
 
                 var result = await loading.WaitAsync(TimeSpan.FromSeconds(5));
-                Assert.Equal(outcome == "accept", result.Succeeded);
+                Assert.Equal(accepted, result.Succeeded);
                 Assert.Equal(outcome == "cancel", result.Canceled);
                 if (outcome == "reject") Assert.NotNull(result.Error);
-                Assert.Equal(outcome != "accept", WindowField<DispatcherTimer>(window, "_runTimer").IsEnabled);
-                Assert.Equal(outcome == "accept" ? 90ul : 12ul, session.LatestSnapshot.Tick);
+                Assert.Equal(!accepted, WindowField<DispatcherTimer>(window, "_runTimer").IsEnabled);
+                Assert.Equal(accepted ? BitConverter.ToUInt64(payload) : 12ul, session.LatestSnapshot.Tick);
+                Assert.Single(engine.Calls, call => call.StartsWith("CaptureNativeLoadSeed:", StringComparison.Ordinal));
+                var reseeds = engine.Calls.Where(call => call.StartsWith("LoadWithNativeSeed:", StringComparison.Ordinal));
+                if (outcome == "accept" && seed != 0) Assert.Equal($"LoadWithNativeSeed:{seed}", Assert.Single(reseeds));
+                else Assert.Empty(reseeds);
             }
             finally
             {
@@ -305,12 +323,15 @@ public sealed class HistoricSimulationSaveRenderedTests
     }
 
     private static MainWindow OpenRunningFilePickerWindow(SimulationSession session, IStorageProvider provider,
-        string? mainDirectory = null)
+        string? mainDirectory = null, bool? newSeedOnLoad = null)
     {
         var profile = Path.Combine(Path.GetTempPath(), $"darwinbots-file-dialog-{Guid.NewGuid():N}");
         var setup = new WorldSetupOptions
         {
-            GlobalSettings = new GlobalSettings { Main = new GlobalMainSettings { MainDirectory = mainDirectory ?? string.Empty } },
+            GlobalSettings = new GlobalSettings
+            {
+                Main = new GlobalMainSettings { MainDirectory = mainDirectory ?? string.Empty, NewSeedOnLoad = newSeedOnLoad },
+            },
         };
         var window = new MainWindow([], setup, new AuditEngineClientFactory(), new AvaloniaDesktopStorageService(profile));
         DesktopTestApplication.UseSession(window, session);
