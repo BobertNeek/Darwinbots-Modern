@@ -41,6 +41,23 @@ pub(crate) struct NativeMutationSpareEntries {
 }
 
 impl NativeMutationSpareEntries {
+    pub(crate) fn read(rates: &[u8], shapes: &[u8]) -> Result<Self, EngineError> {
+        let (rates, rate_remainder) = rates.as_chunks::<4>();
+        let (shapes, shape_remainder) = shapes.as_chunks::<8>();
+        let entries = MODELED_MUTATION_ENTRIES + SPARE_MUTATION_ENTRIES;
+        if rates.len() != entries
+            || shapes.len() != entries
+            || !rate_remainder.is_empty()
+            || !shape_remainder.is_empty()
+        {
+            return Err(invalid("mutation arrays have the wrong lengths"));
+        }
+        Ok(Self {
+            rates: rates[MODELED_MUTATION_ENTRIES..].try_into().unwrap(),
+            shapes: shapes[MODELED_MUTATION_ENTRIES..].try_into().unwrap(),
+        })
+    }
+
     pub(crate) fn write(&self, rates: &mut [u8], shapes: &mut [u8]) {
         rates[MODELED_MUTATION_ENTRIES * 4..].copy_from_slice(self.rates.as_flattened());
         shapes[MODELED_MUTATION_ENTRIES * 8..].copy_from_slice(self.shapes.as_flattened());
@@ -172,20 +189,10 @@ impl NativeRobotRecord {
     }
 
     pub(crate) fn mutation_spare_entries(&self) -> Result<NativeMutationSpareEntries, EngineError> {
-        let (rates, rate_remainder) = self.bytes("mutation_rates")?.as_chunks::<4>();
-        let (shapes, shape_remainder) = self.bytes("mutation_shapes")?.as_chunks::<8>();
-        let entries = MODELED_MUTATION_ENTRIES + SPARE_MUTATION_ENTRIES;
-        if rates.len() != entries
-            || shapes.len() != entries
-            || !rate_remainder.is_empty()
-            || !shape_remainder.is_empty()
-        {
-            return Err(invalid("robot mutation arrays have the wrong lengths"));
-        }
-        Ok(NativeMutationSpareEntries {
-            rates: rates[MODELED_MUTATION_ENTRIES..].try_into().unwrap(),
-            shapes: shapes[MODELED_MUTATION_ENTRIES..].try_into().unwrap(),
-        })
+        NativeMutationSpareEntries::read(
+            self.bytes("mutation_rates")?,
+            self.bytes("mutation_shapes")?,
+        )
     }
 
     pub fn set_single(&mut self, name: &str, value: f32) -> Result<(), EngineError> {

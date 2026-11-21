@@ -24,7 +24,8 @@ impl Engine {
             .position(|species| species.name == name)
             .ok_or_else(|| EngineError::Invariant(format!("species '{name}' does not exist")))?;
         let species = SpeciesId(index as u32);
-        let id = self.spawn_native_script_robot(dna, species, position)?;
+        let origin = self.native_script_origin_tail()?;
+        let id = self.spawn_native_script_robot(dna, species, position, origin.as_ref())?;
         let robot = self.slots.get_mut(id)?;
         robot.materials.energy = initial_energy as f32;
         robot.materials.synchronize_energy();
