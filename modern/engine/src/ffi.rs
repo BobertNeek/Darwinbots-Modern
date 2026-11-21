@@ -246,6 +246,10 @@ enum EngineCommand {
     ExportOrganismGroup {
         organisms: Vec<OrganismIdCommand>,
     },
+    ReproduceNativeRobotInfo {
+        slot: u32,
+        generation: u32,
+    },
     ManualReproduce {
         first_slot: u32,
         first_generation: u32,
@@ -1283,6 +1287,12 @@ fn db_engine_command_batch_impl(
                     .export_original_organism_file(&members)
                     .map(|bytes| serde_json::json!({ "payload": bytes }))
             }
+            EngineCommand::ReproduceNativeRobotInfo { slot, generation } => engine
+                .reproduce_native_robot_info(OrganismId::new(slot, generation))
+                .map(|child| {
+                    child.map_or(serde_json::Value::Null, |id|
+                    serde_json::json!({ "slot": id.slot(), "generation": id.generation() }))
+                }),
             EngineCommand::ManualReproduce {
                 first_slot,
                 first_generation,
@@ -2493,6 +2503,52 @@ mod tests {
         let engine: Engine = serde_json::from_value(state).unwrap();
         assert!(!engine.has_native_random());
         engine
+    }
+
+    #[test]
+    fn native_robot_info_reproduction_command_returns_child_or_null() {
+        for blocked in [false, true] {
+            let mut world = Engine::new_native(EngineConfig {
+                world_width: 8_000.0,
+                world_height: 6_000.0,
+                fixed_bot_radii: true,
+                ..EngineConfig::testing()
+            })
+            .unwrap();
+            let dna = LegacyDna::parse("start stop").unwrap();
+            let parent = world.spawn_at(dna.clone(), [1_000.0; 2]).unwrap();
+            world.set_organism_aim(parent, 0).unwrap();
+            if blocked {
+                world.spawn_at(dna, [1_120.0, 1_000.0]).unwrap();
+            }
+            let (status, response) = classic_test_batch(
+                &mut world,
+                serde_json::json!([{
+                    "type": "reproduce_native_robot_info",
+                    "slot": parent.slot(),
+                    "generation": parent.generation(),
+                }]),
+            );
+            assert_eq!(status, DbStatus::Ok);
+            let reply: serde_json::Value = serde_json::from_slice(&response).unwrap();
+            if blocked {
+                assert!(reply["results"][0].is_null());
+                assert_eq!(world.snapshot().organisms.len(), 2);
+                assert!(world.snapshot().ties.is_empty());
+            } else {
+                let child = &world.snapshot().organisms[1];
+                assert_eq!(
+                    reply["results"][0],
+                    serde_json::json!({
+                        "slot": child.id.slot(),
+                        "generation": child.id.generation(),
+                    })
+                );
+                assert_eq!(child.position, [1_120.0, 1_000.0]);
+                assert_eq!(world.snapshot().ties[0].last, 100);
+            }
+            assert_eq!(world.snapshot().tick, 0);
+        }
     }
 
     fn classic_test_batch(engine: &mut Engine, commands: serde_json::Value) -> (DbStatus, Vec<u8>) {
