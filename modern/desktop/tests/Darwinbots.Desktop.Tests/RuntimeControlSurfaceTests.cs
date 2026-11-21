@@ -1328,6 +1328,40 @@ public sealed class RuntimeControlSurfaceTests
     }
 
     [Fact]
+    public async Task CancelingInsertOrganismClosesThePickerWithoutOpeningDnaImport()
+    {
+        var setup = new WorldSetupOptions { Backend = "Cpu", PopulationCapacity = 64 };
+        var (storage, storageState) = OrganismRouteStorage.Create(null);
+        await using var simulation = new SimulationSession(NativeEngineClientFactory.Instance.Create(setup));
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], setup, NativeEngineClientFactory.Instance, storage);
+            DesktopTestApplication.UseSession(window, simulation);
+            try
+            {
+                window.Show();
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                var command = menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.EditInsertOrganism)!;
+                var model = Field<MainWindowViewModel>(window, "_viewModel");
+                Assert.True(command.IsEnabled);
+                var before = simulation.LatestSnapshot;
+
+                command.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => model.Status == "CANCELED");
+
+                Assert.Equal(0, storageState.DnaPickerRequests);
+                Assert.Equal(before.Tick, simulation.LatestSnapshot.Tick);
+                Assert.Equal(before.Population, simulation.LatestSnapshot.Population);
+            }
+            finally
+            {
+                SetField(window, "_session", null);
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
     public async Task RenderedWholeOrganismRoundTripPreservesSelectedLiveNativeMember()
     {
         var fixture = new Db2OrganismFile(
@@ -1886,11 +1920,12 @@ public sealed class RuntimeControlSurfaceTests
 
     private class OrganismRouteStorage : DispatchProxy
     {
-        private byte[] _fixture = [];
+        private byte[]? _fixture;
 
         public byte[]? SavedOrganism { get; private set; }
+        public int DnaPickerRequests { get; private set; }
 
-        public static (IDesktopStorageService Storage, OrganismRouteStorage State) Create(byte[] fixture)
+        public static (IDesktopStorageService Storage, OrganismRouteStorage State) Create(byte[]? fixture)
         {
             var storage = DispatchProxy.Create<IDesktopStorageService, OrganismRouteStorage>();
             var state = (OrganismRouteStorage)(object)storage;
@@ -1905,6 +1940,11 @@ public sealed class RuntimeControlSurfaceTests
             if (targetMethod is null) throw new MissingMethodException();
             if (targetMethod.Name == nameof(IDesktopStorageService.OpenOrganismAsync))
                 return Task.FromResult<byte[]?>(_fixture);
+            if (targetMethod.Name == nameof(IDesktopStorageService.OpenDnaFilesAsync))
+            {
+                DnaPickerRequests++;
+                return Task.FromResult<IReadOnlyList<DesktopTextFile>>([]);
+            }
             if (targetMethod.Name == nameof(IDesktopStorageService.SaveOrganismAsync))
                 return SaveAsync((Func<Stream, Task>)args![2]!);
             if (targetMethod.ReturnType == typeof(Task)) return Task.CompletedTask;
