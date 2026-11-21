@@ -1,6 +1,9 @@
 use crate::persistence::SaveFile;
 use crate::world::NativeProcessCaches;
-use crate::{Engine, EngineConfig, EngineError, LegacyOrganismFile, OrganismId, SpeciesDefinition};
+use crate::{
+    Engine, EngineConfig, EngineError, LegacyOrganismFile, NativeRedrawCadence, OrganismId,
+    SpeciesDefinition,
+};
 use serde::Deserialize;
 use std::{cell::RefCell, ptr, slice};
 
@@ -57,7 +60,10 @@ enum EngineCommand {
         count: u32,
         #[serde(default)]
         capture_deaths: bool,
+        #[serde(default)]
+        native_redraw: NativeRedrawCadence,
     },
+    NativeRedraw,
     SetNativeRestartSeed {
         seed: u64,
         #[serde(default)]
@@ -679,16 +685,27 @@ fn db_engine_command_batch_impl(
             EngineCommand::SetNativeProcessCaches { caches } => engine
                 .set_native_process_caches(caches)
                 .map(|_| serde_json::Value::Null),
-            EngineCommand::Tick { count, capture_deaths } => {
+            EngineCommand::Tick {
+                count,
+                capture_deaths,
+                native_redraw,
+            } => {
                 if count > 1_000_000 {
                     return fail(DbStatus::InvalidCommand, "tick count exceeds batch limit");
                 }
                 if capture_deaths {
-                    engine.tick_many_with_death_records(count)
+                    engine
+                        .tick_many_recording_deaths_with_redraw(count, native_redraw)
                         .map(|records| serde_json::json!({ "death_records": records }))
                 } else {
-                    engine.tick_many(count).map(|_| serde_json::Value::Null)
+                    engine
+                        .tick_many_with_native_redraw(count, native_redraw)
+                        .map(|_| serde_json::Value::Null)
                 }
+            }
+            EngineCommand::NativeRedraw => {
+                engine.native_redraw();
+                Ok(serde_json::Value::Null)
             }
             EngineCommand::ConfigureLocalMode { config } => engine
                 .configure_local_mode(config)
@@ -1915,6 +1932,60 @@ mod tests {
         let engine: Engine = serde_json::from_value(state).unwrap();
         assert!(!engine.has_native_random());
         engine
+    }
+
+    #[test]
+    fn native_redraw_dispatches_each_tick_and_can_follow_a_pre_redraw_save() {
+        let source = include_bytes!("../tests/fixtures/db24832-original-user.sim");
+        let original = || Engine::from_native_sim(source).unwrap();
+        let mut batched = original();
+        let (status, _) = classic_test_batch(
+            &mut batched,
+            serde_json::json!([
+                {"type":"tick", "count":2, "native_redraw":"every_cycle"}
+            ]),
+        );
+        assert_eq!(status, DbStatus::Ok);
+
+        let mut separate = original();
+        let (status, _) = classic_test_batch(
+            &mut separate,
+            serde_json::json!([
+                {"type":"tick", "count":1}
+            ]),
+        );
+        assert_eq!(status, DbStatus::Ok);
+        let before_redraw = separate.export_native_sim().unwrap();
+        let (status, _) = classic_test_batch(
+            &mut separate,
+            serde_json::json!([
+                {"type":"native_redraw"}
+            ]),
+        );
+        assert_eq!(status, DbStatus::Ok);
+        assert_eq!(separate.snapshot().native_cycle, Some(282));
+        assert_ne!(separate.export_native_sim().unwrap(), before_redraw);
+        let checkpoint = SaveFile::encode(&separate).unwrap();
+        let mut resumed = SaveFile::decode(&checkpoint).unwrap();
+        let (status, _) = classic_test_batch(
+            &mut resumed,
+            serde_json::json!([
+                {"type":"tick", "count":1, "native_redraw":"every_cycle", "capture_deaths":true}
+            ]),
+        );
+        assert_eq!(status, DbStatus::Ok);
+        assert_eq!(resumed.snapshot().native_cycle, Some(283));
+        let expected = batched.export_native_sim().unwrap();
+        assert_eq!(resumed.export_native_sim().unwrap(), expected);
+
+        let (status, _) = classic_test_batch(
+            &mut batched,
+            serde_json::json!([
+                {"type":"tick", "count":1, "native_redraw":"invalid"}
+            ]),
+        );
+        assert_eq!(status, DbStatus::InvalidCommand);
+        assert_eq!(batched.export_native_sim().unwrap(), expected);
     }
 
     fn classic_test_batch(engine: &mut Engine, commands: serde_json::Value) -> (DbStatus, Vec<u8>) {

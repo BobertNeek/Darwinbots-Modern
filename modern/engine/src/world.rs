@@ -12,7 +12,7 @@ use crate::robot_state::{
 };
 use crate::robot_tools::{PlayerBotBinding, PlayerBotState, RestrictionColumn, RestrictionOptions};
 use crate::senses::{LegacyDirection, classify_legacy_direction, legacy_relative_angle};
-use crate::simulation_cycle::CycleRecorder;
+use crate::simulation_cycle::{CycleRecorder, NativeRedrawCadence};
 use crate::tie::{MAX_TIE_SURFACE_GAP, MAX_TIES_PER_ROBOT, TIE_ANGLE_SLACK, TIE_DEADBAND};
 use crate::{
     ActivationFrame, AdvancedMutationSettings, BackendCapabilities, BackendKind, BackendPreference,
@@ -5466,18 +5466,54 @@ impl Engine {
         Ok(child)
     }
 
+    /// Apply the native display writeback without advancing the simulation.
+    pub(crate) fn native_redraw(&mut self) {
+        if self.native_cycle.is_some() && self.native_random.is_some() {
+            self.write_native_redraw_positions();
+            self.publish_snapshot();
+        }
+    }
+
+    fn write_native_redraw_positions(&mut self) {
+        for robot in self
+            .slots
+            .iter_mut()
+            .filter_map(|slot| slot.organism.as_mut())
+            .filter(|robot| robot.flags.exists && !robot.flags.hidden)
+        {
+            let kinematics = &mut robot.kinematics;
+            for (axis, position) in kinematics.position.iter_mut().enumerate() {
+                // main.frm Redraw stores the temporary display position in
+                // Single and then adds the same offset back in a second store.
+                let offset = f64::from(kinematics.velocity[axis])
+                    - f64::from(kinematics.actual_velocity[axis]);
+                let display = (f64::from(*position) - offset) as f32;
+                *position = (f64::from(display) + offset) as f32;
+            }
+        }
+    }
+
     pub fn tick(&mut self) -> Result<(), EngineError> {
-        self.tick_transactional(true, false).map(|_| ())
+        self.tick_transactional(true, false, NativeRedrawCadence::Off)
+            .map(|_| ())
     }
 
     pub fn tick_with_trace(&mut self) -> Result<crate::CycleTrace, EngineError> {
-        self.tick_transactional(true, true)?
+        self.tick_transactional(true, true, NativeRedrawCadence::Off)?
             .ok_or_else(|| EngineError::Invariant("cycle tracing was not enabled".to_owned()))
     }
 
     pub fn tick_many(&mut self, count: u32) -> Result<(), EngineError> {
+        self.tick_many_with_native_redraw(count, NativeRedrawCadence::Off)
+    }
+
+    pub fn tick_many_with_native_redraw(
+        &mut self,
+        count: u32,
+        native_redraw: NativeRedrawCadence,
+    ) -> Result<(), EngineError> {
         for index in 0..count {
-            self.tick_transactional(index + 1 == count, false)?;
+            self.tick_transactional(index + 1 == count, false, native_redraw)?;
         }
         Ok(())
     }
@@ -5486,6 +5522,7 @@ impl Engine {
         &mut self,
         publish: bool,
         trace_enabled: bool,
+        native_redraw: NativeRedrawCadence,
     ) -> Result<Option<crate::CycleTrace>, EngineError> {
         if self
             .local_mode
@@ -5510,7 +5547,13 @@ impl Engine {
         self.update_native_mutation_oscillation();
         self.update_dynamic_cost_state();
         match self
-            .tick_internal(publish, trace_enabled, &mut transfers, next_native_cycle)
+            .tick_internal(
+                publish,
+                trace_enabled,
+                &mut transfers,
+                next_native_cycle,
+                native_redraw,
+            )
             .and_then(|trace| {
                 transfers.commit()?;
                 Ok(trace)
@@ -5668,6 +5711,7 @@ impl Engine {
         trace_enabled: bool,
         transfers: &mut FileTransferTransaction,
         next_native_cycle: Option<i32>,
+        native_redraw: NativeRedrawCadence,
     ) -> Result<Option<crate::CycleTrace>, EngineError> {
         let cycle_started = Instant::now();
         self.phase_timings = PhaseTimings::default();
@@ -5869,6 +5913,13 @@ impl Engine {
             self.advance_population_seeding()?;
         }
         self.refresh_occurrence_census_readbacks();
+        if self
+            .native_cycle
+            .is_some_and(|cycle| native_redraw.applies(cycle))
+            && self.native_random.is_some()
+        {
+            self.write_native_redraw_positions();
+        }
         self.sensing_gpu_publication_phase()?;
         self.native_tie_index = None;
         trace.phase(CyclePhase::Publication);
@@ -13978,6 +14029,63 @@ const fn default_snapshot_schema_version() -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn native_redraw_reproduces_original_wall_and_newborn_position_words() {
+        let mut world = Engine::new_native(EngineConfig {
+            world_width: 16_000.0,
+            world_height: 12_000.0,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        // Y position, velocity, actual velocity, and original saved Y from
+        // robot 321 at cycle 328 and newborn 374 at cycle 330.
+        let samples = [
+            (0x410b_aab8, 0xc252_44b9, 0x4090_e220, 0x410b_aabc),
+            (0x4412_3a39, 0x4225_ab20, 0x41b7_4190, 0x4412_3a3a),
+        ];
+        let ids: Vec<_> = samples
+            .iter()
+            .enumerate()
+            .map(|(index, &(position, velocity, actual, _))| {
+                let id = world
+                    .spawn_at(
+                        LegacyDna::parse("stop").unwrap(),
+                        [500.0 + index as f32 * 5_000.0, f32::from_bits(position)],
+                    )
+                    .unwrap();
+                let kinematics = &mut world.slots.get_mut(id).unwrap().kinematics;
+                kinematics.velocity[1] = f32::from_bits(velocity);
+                kinematics.actual_velocity[1] = f32::from_bits(actual);
+                id
+            })
+            .collect();
+
+        world.native_redraw();
+
+        for (id, &(_, velocity, actual, expected)) in ids.iter().zip(&samples) {
+            let kinematics = &world.slots.get(*id).unwrap().kinematics;
+            assert_eq!(kinematics.position[1].to_bits(), expected);
+            assert_eq!(kinematics.velocity[1].to_bits(), velocity);
+            assert_eq!(kinematics.actual_velocity[1].to_bits(), actual);
+        }
+        assert_eq!(world.snapshot.tick, 0);
+        assert_eq!(world.snapshot.native_cycle, Some(-1));
+        assert_eq!(
+            world.snapshot.organisms[0].position[1].to_bits(),
+            samples[0].3
+        );
+
+        // The same command on a world without the native clock is inert.
+        world.native_cycle = None;
+        let kinematics = &mut world.slots.get_mut(ids[0]).unwrap().kinematics;
+        kinematics.position[1] = f32::from_bits(samples[0].0);
+        world.native_redraw();
+        assert_eq!(
+            world.slots.get(ids[0]).unwrap().kinematics.position[1].to_bits(),
+            samples[0].0
+        );
+    }
 
     #[test]
     fn render_readout_publication_preserves_native_edge_positions() {

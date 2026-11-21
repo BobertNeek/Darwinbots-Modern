@@ -26,12 +26,20 @@ impl Engine {
         &mut self,
         count: u32,
     ) -> Result<Vec<DeathRecord>, EngineError> {
+        self.tick_many_recording_deaths_with_redraw(count, NativeRedrawCadence::Off)
+    }
+
+    pub(crate) fn tick_many_recording_deaths_with_redraw(
+        &mut self,
+        count: u32,
+        native_redraw: NativeRedrawCadence,
+    ) -> Result<Vec<DeathRecord>, EngineError> {
         if !self.config.recording.dead_snapshot_enabled {
-            self.tick_many(count)?;
+            self.tick_many_with_native_redraw(count, native_redraw)?;
             return Ok(Vec::new());
         }
         self.recorded_deaths = Some(Vec::new());
-        let result = self.tick_many(count);
+        let result = self.tick_many_with_native_redraw(count, native_redraw);
         let records = self.recorded_deaths.take().unwrap_or_default();
         result.map(|()| records)
     }
