@@ -537,7 +537,11 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
     {
         try
         {
-            return GlobalSettings.FromJson(File.ReadAllText(GlobalSettingsPath()));
+            var settings = GlobalSettings.FromJson(File.ReadAllText(GlobalSettingsPath()));
+            if (settings.Main.StartChloroplasts is null
+                && SetupStorageService.ReadNativeStartingChloroplasts(settings.Main.MainDirectory) is { } amount)
+                settings = settings with { Main = settings.Main with { StartChloroplasts = amount } };
+            return settings;
         }
         catch (FileNotFoundException) { return null; }
         catch (DirectoryNotFoundException) { return null; }

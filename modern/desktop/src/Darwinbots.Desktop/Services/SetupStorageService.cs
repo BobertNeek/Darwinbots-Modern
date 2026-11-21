@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using System.Security.Cryptography;
 using Darwinbots.Desktop.Core;
@@ -170,6 +171,22 @@ public static class SetupStorageService
         var colon = path.IndexOf(':');
         return colon < 0 || (OperatingSystem.IsWindows() && colon == 1 && char.IsAsciiLetter(path[0])
             && Path.IsPathFullyQualified(path) && path.LastIndexOf(':') == colon);
+    }
+
+    internal static int? ReadNativeStartingChloroplasts(string? mainDirectory)
+    {
+        if (string.IsNullOrWhiteSpace(mainDirectory)) return null;
+        var directory = mainDirectory.Replace('\', '/');
+        if (!IsLocalPath(directory) || !Path.IsPathFullyQualified(directory)) return null;
+        try
+        {
+            // frmGset writes one record per line. HDRoutines reads StartChlr as a VB Integer.
+            var entry = File.ReadLines(Path.Combine(directory, "Global.gset")).Skip(29).FirstOrDefault();
+            if (double.TryParse(entry, NumberStyles.Float, CultureInfo.InvariantCulture, out var amount) && double.IsFinite(amount))
+                return (int)Math.Clamp(Math.Round(amount, MidpointRounding.ToEven), 0, 32_000);
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { }
+        return null;
     }
 
     private static bool IsModernJson(string path) =>
