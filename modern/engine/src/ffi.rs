@@ -288,6 +288,8 @@ enum EngineCommand {
     ExportDna {
         slot: u32,
         generation: u32,
+        #[serde(default)]
+        original_file_format: bool,
     },
     ReadRobotDna {
         slot: u32,
@@ -1508,9 +1510,19 @@ fn db_engine_command_batch_impl(
             } => engine
                 .set_robot_tag(OrganismId::new(slot, generation), &tag)
                 .map(serde_json::Value::String),
-            EngineCommand::ExportDna { slot, generation } => engine
-                .export_dna(OrganismId::new(slot, generation))
-                .map(|dna| serde_json::json!({ "dna": dna })),
+            EngineCommand::ExportDna {
+                slot,
+                generation,
+                original_file_format,
+            } => {
+                let id = OrganismId::new(slot, generation);
+                if original_file_format {
+                    engine.export_original_robot_dna_file(id)
+                } else {
+                    engine.export_dna(id)
+                }
+                .map(|dna| serde_json::json!({ "dna": dna }))
+            }
             EngineCommand::ReadRobotDna {
                 slot,
                 generation,

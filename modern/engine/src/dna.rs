@@ -809,6 +809,33 @@ impl LegacyDna {
         source
     }
 
+    pub(crate) fn to_original_file_source(
+        &self,
+        generation: u32,
+        mutations: u64,
+        temporary_gene: Option<&str>,
+        tag: Option<&str>,
+    ) -> String {
+        // HDRoutines.salvarob hashes the header, optional epigene, and
+        // DetokenizeDNA body, then writes the hash above the independent tag.
+        let mutations = mutations.min(2_000_000_000);
+        let gene = temporary_gene.unwrap_or_default();
+        let body = self.to_snapshot_source();
+        let prefix =
+            format!("'#generation: {generation}\r\n'#mutations: {mutations}\r\n{gene}{body}");
+        let hash = legacy_hash(&prefix);
+        let mut source = format!(
+            "{}\r\n\r\n'#hash: {hash}\r\n",
+            prefix.trim_end_matches("\r\n")
+        );
+        if let Some(tag) = tag {
+            source.push_str("'#tag:");
+            source.push_str(tag);
+            source.push_str("\r\n\r\n");
+        }
+        source
+    }
+
     pub fn to_source(&self) -> String {
         let mut lines = vec![
             format!("'#generation: {}", self.metadata.generation),

@@ -115,6 +115,54 @@ pub(super) enum NativeSlotNumbering {
 }
 
 impl Engine {
+    pub(crate) fn export_original_robot_dna_file(
+        &self,
+        id: OrganismId,
+    ) -> Result<String, EngineError> {
+        if self.native_cycle.is_none() {
+            return self.export_dna(id);
+        }
+        let robot = self.slots.get(id)?;
+        let dna = &robot.program.dna;
+        let original = self.native_robot_source_record(robot)?;
+        let generation = if original.is_none() && robot.counters.generation == 0 {
+            dna.metadata().generation
+        } else {
+            robot.counters.generation
+        };
+        let old_mutations = if original.is_none() && robot.counters.old_mutations == 0 {
+            dna.metadata().mutations
+        } else {
+            robot.counters.old_mutations
+        };
+        let mutations =
+            old_mutations.saturating_add(robot.program.mutation_metadata.total_mutations);
+
+        // Keep unedited fixed-width ANSI tags, including the original
+        // distinction between an all-NUL default and a space-filled tag.
+        let live_tag = if robot.identity.tag.is_empty() {
+            &dna.metadata().tag
+        } else {
+            &robot.identity.tag
+        };
+        let retained_tag = original
+            .map(|record| record.bytes("tag").map(|tag| native_io::text(&tag[..45])))
+            .transpose()?;
+        let tag = match retained_tag {
+            Some(raw) if raw.trim_end_matches(['\0', ' ']) == live_tag.as_str() => {
+                (!raw.chars().all(|ch| ch == '\0')).then_some(raw)
+            }
+            _ if live_tag.is_empty() && original.is_none() => None,
+            _ => Some(format!("{live_tag:<45.45}")),
+        };
+        Ok(dna.to_original_file_source(
+            generation,
+            mutations,
+            self.temporary_epigenetic_gene(robot).as_deref(),
+            tag.as_deref(),
+        ))
+    }
+
     /// Export a specified robot group as a genuine native `.dbo` record stream.
     pub fn export_native_organisms(&self, members: &[OrganismId]) -> Result<Vec<u8>, EngineError> {
         self.export_organism_file(members, NativeSlotNumbering::Packed)
@@ -736,6 +784,55 @@ mod tests {
             NativeRecordFile::decode(&standalone.export_native_organisms(&[child]).unwrap())
                 .unwrap();
         assert_arrays(&record.robots[0]);
+    }
+
+    #[test]
+    fn native_save_robot_dna_matches_the_original_robot_file() {
+        let mut world = Engine::from_native_sim(include_bytes!(
+            "../../tests/fixtures/db24832-genuine-movement-cycle1-20261016.sim"
+        ))
+        .unwrap();
+        let id = world.slots.ids_in_slot_order()[0];
+        let original_dna = world.slots.get(id).unwrap().program.dna.clone();
+        let file = world.export_original_robot_dna_file(id).unwrap();
+        // Darwinbots 2.48.32 exported this DNA for the same unchanged robot.
+        let expected = format!(
+            concat!(
+                "'#generation: 0\r\n'#mutations: 0\r\n\r\n start\r\n",
+                " 10 .up store\r\n stop\r\n",
+                "''''''''''''''''''''''''  Gene:  1 Ends at position  5  '''''''''''''''''''''''\r\n",
+                "\r\n'#hash: l@Xpw!Lf!7w^UDK9P8?(\r\n'#tag:{}\r\n\r\n"
+            ),
+            " ".repeat(45)
+        );
+        assert_eq!(file, expected);
+        let loaded = world.load_dna_source(&file).unwrap();
+        assert!(loaded.metadata().hash_valid);
+        assert_eq!(loaded.blocks(), original_dna.blocks());
+        assert!(world.export_dna(id).unwrap().contains("NewMove"));
+
+        let robot = world.slots.get_mut(id).unwrap();
+        robot.counters.generation = 9;
+        robot.counters.old_mutations = 17;
+        robot.program.mutation_metadata.total_mutations = 40;
+        robot.program.memory.write(971, -25);
+        robot.identity.tag = "Café".to_owned();
+        world
+            .config
+            .advanced_mutation
+            .epigenetic
+            .save_as_temporary_gene = true;
+        let file = world.export_original_robot_dna_file(id).unwrap();
+        assert!(file.starts_with(concat!(
+            "'#generation: 9\r\n'#mutations: 57\r\n",
+            "start\r\n-25 971 store\r\n*.thisgene .delgene store\r\nstop\r\n start\r\n"
+        )));
+        assert!(file.ends_with(&format!("'#tag:{:<45}\r\n\r\n", "Café")));
+        let loaded = world.load_dna_source(&file).unwrap();
+        assert!(loaded.metadata().hash_valid);
+        assert_eq!(loaded.metadata().generation, 9);
+        assert_eq!(loaded.metadata().mutations, 57);
+        assert_eq!(world.slots.get(id).unwrap().program.dna, original_dna);
     }
 
     #[test]

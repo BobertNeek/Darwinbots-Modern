@@ -2472,7 +2472,7 @@ public sealed partial class MainWindow : Window
         try
         {
             if (!IsOriginalActorSelected()) return LegacyCommandResult.Cancel();
-            file = await session.ExportRobotFileAsync(key.Slot, key.Generation);
+            file = await session.ExportOriginalRobotFileAsync(key.Slot, key.Generation);
         }
         finally { _advanceGate.Release(); }
 
