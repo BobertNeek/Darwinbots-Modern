@@ -14350,10 +14350,10 @@ fn native_cached_voluntary_movement(
         (i64::from(input.left) - i64::from(input.right)) as f32,
     ];
     let direction = scalar(&mut direction, if input.new_move { 1.0 } else { mass });
-    let mut acceleration = [
-        aim[0] * direction[0] + aim[1] * direction[1],
-        aim[0] * direction[1] - aim[1] * direction[0],
-    ];
+    // Common.Dot and Common.Cross each store Single after combining both products.
+    let cross =
+        f64::from(aim[0]) * f64::from(direction[1]) - f64::from(aim[1]) * f64::from(direction[0]);
+    let mut acceleration = [crate::physics::native_dot(aim, direction), cross as f32];
     let speed = magnitude(acceleration);
     if speed > settings.max_velocity {
         acceleration = scalar(&mut acceleration, settings.max_velocity / speed);
@@ -17138,6 +17138,35 @@ mod native_publication55_tests {
             native_cached_voluntary_movement(input, zero_cache, 1.0, &settings).1,
             0.0
         );
+    }
+
+    #[test]
+    fn native_cached_dot_and_cross_round_after_combining_signed_products() {
+        let settings = PhysicsSettings {
+            max_velocity: 60.0,
+            movement_efficiency: 0.66,
+            ..PhysicsSettings::default()
+        };
+        // The first row is robot 222's native movement input at cycle 287.
+        let aim = [f32::from_bits(0xbf3e_7a94), f32::from_bits(0x3f2b_0998)];
+        let mass = f32::from_bits(0x3f9f_e660);
+        let cases = [
+            ((39, 0, 1, 0), [0xc1ba_fe70, 0xc1b0_c5e2]),
+            ((39, 0, 0, 1), [0xc1c3_ceb8, 0xc1a6_f522]),
+            ((0, 39, 0, 1), [0x41ba_fe70, 0x41b0_c5e2]),
+            ((38, 0, 4, 0), [0xc1a8_dda3, 0xc1bb_16dc]),
+        ];
+        for ((up, down, left, right), expected) in cases {
+            let input = MovementInput {
+                up,
+                down,
+                left,
+                right,
+                ..MovementInput::default()
+            };
+            let (impulse, _) = native_cached_voluntary_movement(input, aim, mass, &settings);
+            assert_eq!(impulse.map(f32::to_bits), expected);
+        }
     }
 
     #[test]
