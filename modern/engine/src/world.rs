@@ -4902,6 +4902,7 @@ impl Engine {
             self.slots.get(id)?,
             &self.species,
             &self.config,
+            true,
         ))
     }
 
@@ -12896,6 +12897,7 @@ impl Engine {
                         organism,
                         &self.species,
                         &self.config,
+                        true,
                     )
                 })
             })
@@ -13630,6 +13632,7 @@ fn snapshot_organism(
     organism: &RobotState,
     _species: &[SpeciesDefinition],
     config: &EngineConfig,
+    include_memory: bool,
 ) -> OrganismSnapshot {
     OrganismSnapshot {
         id,
@@ -13649,12 +13652,16 @@ fn snapshot_organism(
         private_variable_count: organism.program.private_variable_count,
         used_variables: organism.program.used_variables.clone(),
         occurrence_counts: organism.senses.occurrence_counts.clone(),
-        memory: organism
-            .program
-            .memory
-            .entries()
-            .map(|(address, value)| MemoryCellSnapshot { address, value })
-            .collect(),
+        memory: if include_memory {
+            organism
+                .program
+                .memory
+                .entries()
+                .map(|(address, value)| MemoryCellSnapshot { address, value })
+                .collect()
+        } else {
+            Vec::new()
+        },
         species: organism.identity.species,
         vegetable: organism.flags.vegetable,
         parents: organism.identity.parents,

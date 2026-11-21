@@ -25,6 +25,8 @@ public sealed class RobotDetailsWindow : Window
     private long _dnaReadVersion;
     private ulong _postDnaMemoryRequestId;
     private OrganismKey? _postDnaMemoryFocus;
+    private bool _capturePostDnaMemory;
+    private ulong _readPostDnaMemoryAfterTick;
     private bool _closed;
     private readonly RobotDiagnosticModel _diagnostic = new();
     private readonly TextBlock _subtitle = new();
@@ -288,22 +290,29 @@ public sealed class RobotDetailsWindow : Window
         _postDnaMemory.IsVisible = snapshot.NativeCycle.HasValue
             && string.Equals(snapshot.Backend, "CPU", StringComparison.OrdinalIgnoreCase);
         var focus = !_closed && IsVisible && _postDnaMemory.IsVisible && _postDnaMemory.IsChecked == true
-            && _tabs.SelectedIndex == (int)RobotDetailsTab.Memory ? _readFocus() : null;
-        if (focus == _postDnaMemoryFocus && (!reset || focus is null)) return;
+            ? _readFocus() : null;
+        var captureMemory = focus.HasValue && _tabs.SelectedIndex == (int)RobotDetailsTab.Memory;
+        if (focus == _postDnaMemoryFocus && captureMemory == _capturePostDnaMemory && (!reset || focus is null))
+            return;
+
+        if (focus != _postDnaMemoryFocus || reset)
+            _postDnaMemoryRequestId = (ulong)Interlocked.Increment(ref _nextPostDnaMemoryRequestId);
         _postDnaMemoryFocus = focus;
-        var requestId = (ulong)Interlocked.Increment(ref _nextPostDnaMemoryRequestId);
-        _postDnaMemoryRequestId = requestId;
-        _ = ConfigurePostDnaMemoryWatchAsync(_session, requestId, focus);
+        _capturePostDnaMemory = captureMemory;
+        if (captureMemory) _readPostDnaMemoryAfterTick = snapshot.Tick;
+        _ = ConfigurePostDnaMemoryWatchAsync(_session, _postDnaMemoryRequestId, focus, captureMemory);
         if (!_closed) SetSnapshot(snapshot);
     }
 
-    private async Task ConfigurePostDnaMemoryWatchAsync(SimulationSession session, ulong requestId, OrganismKey? focus)
+    private async Task ConfigurePostDnaMemoryWatchAsync(
+        SimulationSession session, ulong requestId, OrganismKey? focus, bool captureMemory)
     {
-        try { await session.ConfigureNativePostDnaMemoryWatchAsync(requestId, focus); }
+        try { await session.ConfigureNativePostDnaMemoryWatchAsync(requestId, focus, captureMemory); }
         catch (Exception error)
         {
-            if (IsVisible && requestId == _postDnaMemoryRequestId && focus.HasValue)
-                _memory.Text = $"POST-DNA MEMORY UNAVAILABLE · {error.Message}";
+            if (IsVisible && requestId == _postDnaMemoryRequestId && focus.HasValue
+                && captureMemory == _capturePostDnaMemory)
+                _status.Text = $"POST-DNA ROBOT INFO UNAVAILABLE · {error.Message}";
         }
     }
 
@@ -338,13 +347,22 @@ public sealed class RobotDetailsWindow : Window
             return;
         }
 
+        var final = organism;
+        var early = _postDnaMemory.IsVisible && _postDnaMemory.IsChecked == true
+            && snapshot.NativePostDnaMemory is { } sample && sample.RequestId == _postDnaMemoryRequestId
+            && sample.Tick == snapshot.Tick && sample.Focus == _focus ? sample : null;
+        var earlyMemory = _capturePostDnaMemory && early is { Memory: { } cells }
+            && early.Tick > _readPostDnaMemoryAfterTick ? cells : null;
+        var memory = earlyMemory ?? final.Memory;
+        organism = early?.Facts ?? final;
+
         var species = snapshot.Species.ElementAtOrDefault((int)organism.Species)?.Name ?? "UNASSIGNED";
         var dnaSummary = string.IsNullOrWhiteSpace(_dna.Text)
             ? "UNAVAILABLE"
             : _dna.Text.Replace("\r\n", " / ", StringComparison.Ordinal).Replace('\n', ' ');
-        var memorySummary = organism.Memory.Count == 0
+        var memorySummary = memory.Count == 0
             ? "NONE"
-            : string.Join(", ", organism.Memory.Select(cell => cell.Address.ToString(CultureInfo.InvariantCulture)));
+            : string.Join(", ", memory.Select(cell => cell.Address.ToString(CultureInfo.InvariantCulture)));
         _subtitle.Text = $"LIVE ROBOT {organism.Slot}:{organism.Generation} · {species.ToUpperInvariant()} · TICK {snapshot.Tick:N0}";
         _facts.Text = string.Join(Environment.NewLine,
             $"ARRAY ID       {organism.Slot:N0}",
@@ -380,18 +398,9 @@ public sealed class RobotDetailsWindow : Window
             $"DNA VIEW       {dnaSummary}",
             $"MEMORY VIEW    {memorySummary}");
         _factsTab.Text = _facts.Text;
-        if (_postDnaMemory.IsVisible && _postDnaMemory.IsChecked == true
-            && snapshot.NativePostDnaMemory is { } sample && sample.RequestId == _postDnaMemoryRequestId
-            && sample.Tick == snapshot.Tick && sample.Focus == _focus)
-        {
-            _memory.Text = FormatMemory(sample.Memory);
-        }
-        else
-        {
-            _memory.Text = FormatMemory(organism.Memory);
-            if (!string.IsNullOrWhiteSpace(organism.DebugText))
-                _memory.Text += $"{Environment.NewLine}{Environment.NewLine}DEBUG{Environment.NewLine}{organism.DebugText}";
-        }
+        _memory.Text = FormatMemory(memory);
+        if (earlyMemory is null && !string.IsNullOrWhiteSpace(final.DebugText))
+            _memory.Text += $"{Environment.NewLine}{Environment.NewLine}DEBUG{Environment.NewLine}{final.DebugText}";
 
         _activationSummary.Text = _diagnostic.ActivationSummary;
         _activationTimeline.Children.Clear();

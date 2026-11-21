@@ -82,6 +82,7 @@ enum EngineCommand {
     ConfigureNativePostDnaMemoryWatch {
         request_id: u64,
         focus: Option<OrganismIdCommand>,
+        capture_memory: Option<bool>,
     },
     UpdateCostSettings {
         costs: crate::DnaCosts,
@@ -584,8 +585,13 @@ fn db_engine_command_batch_impl(
             format!("unsupported command batch version {}", batch.version),
         );
     }
-    if let [EngineCommand::ConfigureNativePostDnaMemoryWatch { request_id, focus }] =
-        batch.commands.as_slice()
+    if let [
+        EngineCommand::ConfigureNativePostDnaMemoryWatch {
+            request_id,
+            focus,
+            capture_memory,
+        },
+    ] = batch.commands.as_slice()
     {
         let response = serde_json::json!({
             "version": ABI_VERSION,
@@ -601,6 +607,7 @@ fn db_engine_command_batch_impl(
                     focus
                         .as_ref()
                         .map(|id| OrganismId::new(id.slot, id.generation)),
+                    capture_memory.unwrap_or(true),
                 );
                 write_buffer(out_buffer, bytes)
             }
@@ -692,10 +699,15 @@ fn db_engine_command_batch_impl(
 
     for command in batch.commands {
         let result = match command {
-            EngineCommand::ConfigureNativePostDnaMemoryWatch { request_id, focus } => {
+            EngineCommand::ConfigureNativePostDnaMemoryWatch {
+                request_id,
+                focus,
+                capture_memory,
+            } => {
                 engine.configure_native_post_dna_memory_watch(
                     request_id,
                     focus.map(|id| OrganismId::new(id.slot, id.generation)),
+                    capture_memory.unwrap_or(true),
                 );
                 Ok(serde_json::Value::Null)
             }

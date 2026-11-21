@@ -25,7 +25,7 @@ public sealed class NativeRobotFileIntegrationTests
                 MutationSettings = MutationSettingsUpdate.Default with { Enabled = false },
             };
             using var engine = new NativeEngineClient(setup);
-            engine.ImportDna($"start 12345 {address} store stop", [500f, 500f]);
+            engine.ImportDna($"start 12345 {address} store 100 .strbody store stop", [500f, 500f]);
             engine.ImportDna($"start 23456 {address} store stop", [900f, 500f]);
             await using var session = new SimulationSession(engine);
             var window = new MainWindow([], setup, new FixedFactory(engine), new AuditStorageService());
@@ -46,6 +46,7 @@ public sealed class NativeRobotFileIntegrationTests
                 var info = Assert.Single(window.OwnedWindows.OfType<RobotDetailsWindow>());
                 info.SelectTab(RobotDetailsTab.Memory);
                 var memory = Field<TextBox>(info, "_memory");
+                var facts = Field<TextBlock>(info, "_facts");
                 var watch = Field<CheckBox>(info, "_postDnaMemory");
                 Assert.True(watch.IsVisible);
                 Assert.False(watch.IsChecked);
@@ -64,10 +65,20 @@ public sealed class NativeRobotFileIntegrationTests
 
                 info.SelectTab(RobotDetailsTab.Dna);
                 await session.StepAsync();
-                Assert.Null(session.LatestSnapshot.NativePostDnaMemory);
+                var final = session.LatestSnapshot.Organisms[0];
+                var sample = Assert.IsType<NativePostDnaMemorySnapshot>(session.LatestSnapshot.NativePostDnaMemory);
+                var early = Assert.IsType<OrganismSnapshot>(sample.Facts);
+                Assert.Equal(first, sample.Focus);
+                Assert.Null(sample.Memory);
+                Assert.Equal(final.Age - 1, early.Age);
+                Assert.Equal(final.Body - 10, early.Body);
+                Assert.True(final.Energy <= early.Energy - 100);
+                await WaitFor(() => facts.Text?.Contains($"AGE / GENER.   {early.Age:N0} /", StringComparison.Ordinal) == true);
+                Assert.Contains($"ENERGY         {early.Energy:N0}", facts.Text);
                 info.SelectTab(RobotDetailsTab.Memory);
                 Assert.True(watch.IsChecked);
                 Assert.Contains("-3000", memory.Text);
+                Assert.Contains($"AGE / GENER.   {early.Age:N0} /", facts.Text);
                 await session.StepAsync();
                 await WaitFor(() => memory.Text?.Contains("12345", StringComparison.Ordinal) == true);
 
