@@ -128,8 +128,8 @@ public sealed class RobotConsoleRenderedTests
     [Fact]
     public async Task NativeConsoleDnaDistinguishesTheTypedCommandFromTheDnaButton()
     {
-        const string firstDna = "def FirstAlias 1\ndef LastFirstAlias 1\nstart\n1101 .up store\nstop";
-        const string secondDna = "def SecondAlias 1\ndef LastSecondAlias 1\nstart\n2202 .up store\nstop";
+        const string firstDna = "def FirstAlias 501\ndef LastFirstAlias 501\nstart\n1101 501 store\nstop";
+        const string secondDna = "def SecondAlias 502\ndef LastSecondAlias 502\nstart\n2202 502 store\nstop";
         var setup = new WorldSetupOptions
         {
             Backend = "Cpu",
