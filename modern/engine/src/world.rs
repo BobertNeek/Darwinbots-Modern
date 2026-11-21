@@ -5205,6 +5205,21 @@ impl Engine {
         Ok(())
     }
 
+    pub(crate) fn read_robot_dna(
+        &self,
+        id: OrganismId,
+        marker_position: Option<u32>,
+    ) -> Result<String, EngineError> {
+        if self.native_cycle.is_none() {
+            return self.export_dna(id);
+        }
+        let organism = self.slots.get(id)?;
+        Ok(organism
+            .program
+            .dna
+            .to_robot_display_source(marker_position))
+    }
+
     pub fn export_dna(&self, id: OrganismId) -> Result<String, EngineError> {
         let organism = self.slots.get(id)?;
         let dna = &organism.program.dna;
