@@ -345,28 +345,30 @@ impl RobotMaterials {
 
     pub(crate) fn publish_for_profile(&self, memory: &mut VmMemory, native: bool) {
         let runtime = SysvarRuntime::new();
+        let mut values = Vec::with_capacity(11);
+        values.extend([
+            (310, resource_readback(self.energy)),
+            (MEM_BODY as u16, resource_readback(self.body)),
+            (MEM_WASTE as u16, resource_readback(self.waste)),
+            (
+                MEM_PERMANENT_WASTE as u16,
+                resource_readback(self.permanent_waste),
+            ),
+            (MEM_SHELL as u16, resource_readback(self.shell)),
+            (MEM_SLIME as u16, resource_readback(self.slime)),
+            (MEM_POISON as u16, resource_readback(self.poison)),
+            (
+                MEM_CHLOROPLASTS as u16,
+                resource_readback(self.chloroplasts),
+            ),
+            (MEM_PARALYZED as u16, self.paralyzed),
+            (MEM_POISONED as u16, self.poisoned),
+        ]);
+        if !native {
+            values.push((MEM_VENOM as u16, resource_readback(self.venom)));
+        }
         runtime.publish(
-            PhaseReadbacks::Materials(MaterialReadbacks {
-                values: vec![
-                    (310, resource_readback(self.energy)),
-                    (MEM_BODY as u16, resource_readback(self.body)),
-                    (MEM_WASTE as u16, resource_readback(self.waste)),
-                    (
-                        MEM_PERMANENT_WASTE as u16,
-                        resource_readback(self.permanent_waste),
-                    ),
-                    (MEM_SHELL as u16, resource_readback(self.shell)),
-                    (MEM_SLIME as u16, resource_readback(self.slime)),
-                    (MEM_VENOM as u16, resource_readback(self.venom)),
-                    (MEM_POISON as u16, resource_readback(self.poison)),
-                    (
-                        MEM_CHLOROPLASTS as u16,
-                        resource_readback(self.chloroplasts),
-                    ),
-                    (MEM_PARALYZED as u16, self.paralyzed),
-                    (MEM_POISONED as u16, self.poisoned),
-                ],
-            }),
+            PhaseReadbacks::Materials(MaterialReadbacks { values }),
             memory,
         );
         runtime.publish(
