@@ -541,7 +541,7 @@ impl Engine {
         robot.identity.absolute_id = r.long("absolute_id")? as u32 as u64;
         robot.identity.parent_absolute_id = r.long("parent")? as u32 as u64;
         robot.identity.simulation_id = r.long("simulation_id")? as u32 as u64;
-        robot.set_heading(r.single("aim")?);
+        robot.set_heading_for_profile(r.single("aim")?, true);
         // The saved angle is restored, but LoadRobotBody leaves its unsaved
         // aimvector at the freshly allocated zero value until SetAimFunc.
         robot.kinematics.aim_vector = [0.0; 2];
