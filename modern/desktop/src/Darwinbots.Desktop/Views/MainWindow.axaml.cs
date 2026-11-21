@@ -80,6 +80,7 @@ public sealed partial class MainWindow : Window
     private (LocalModeKind Kind, uint RestartCount)? _automaticEvolutionGraphBoundary;
     private readonly IEngineClientFactory _engineFactory;
     private readonly IDesktopStorageService _storage;
+    private readonly Action? _launchSafeModeBackup;
     private bool _tickInFlight;
     private bool _navigationInFlight;
     private readonly SemaphoreSlim _advanceGate = new(1, 1);
@@ -136,7 +137,16 @@ public sealed partial class MainWindow : Window
         IReadOnlyList<string> arguments,
         WorldSetupOptions setup,
         IEngineClientFactory engineFactory,
-        IDesktopStorageService storage)
+        IDesktopStorageService storage) : this(arguments, setup, engineFactory, storage, null)
+    {
+    }
+
+    public MainWindow(
+        IReadOnlyList<string> arguments,
+        WorldSetupOptions setup,
+        IEngineClientFactory engineFactory,
+        IDesktopStorageService storage,
+        Action? launchSafeModeBackup)
     {
         _startupArguments = arguments.ToArray();
         _setup = setup with { NativeGaussianSpare = null, NativeSunChange = null, NativeProcessCaches = null };
@@ -151,6 +161,9 @@ public sealed partial class MainWindow : Window
             setup.GlobalSettings.Main.MainDirectory).Resolve(_startupArguments);
         _engineFactory = engineFactory ?? throw new ArgumentNullException(nameof(engineFactory));
         _storage = storage ?? throw new ArgumentNullException(nameof(storage));
+        _launchSafeModeBackup = launchSafeModeBackup ?? (storage is AvaloniaDesktopStorageService files
+            ? () => SafeModeBackupProcess.Start(files.AutosaveDirectory())
+            : null);
         _zerobotProgression = null;
         InitializeComponent();
         Viewport.FixedRatio = _globalSettings.Main.FixedRatio;
@@ -1018,7 +1031,7 @@ public sealed partial class MainWindow : Window
                 var setupWindow = new SetupWindow(_storage, spare, sunChange, caches);
                 setupWindow.WorldCreated += options =>
                 {
-                    var replacement = new MainWindow(_startupArguments, options, _engineFactory, _storage);
+                    var replacement = new MainWindow(_startupArguments, options, _engineFactory, _storage, _launchSafeModeBackup);
                     SetApplicationMainWindow(replacement);
                     replacement.Show();
                     setupWindow.Close();
@@ -1029,7 +1042,8 @@ public sealed partial class MainWindow : Window
             else
             {
                 var replacement = new MainWindow(_startupArguments,
-                    (editedSetup ?? CreateNextWorldSetup()) with { NativeGaussianSpare = spare, NativeSunChange = sunChange, NativeProcessCaches = caches }, _engineFactory, _storage);
+                    (editedSetup ?? CreateNextWorldSetup()) with { NativeGaussianSpare = spare, NativeSunChange = sunChange, NativeProcessCaches = caches },
+                    _engineFactory, _storage, _launchSafeModeBackup);
                 SetApplicationMainWindow(replacement);
                 replacement.Show();
             }
@@ -1872,7 +1886,9 @@ public sealed partial class MainWindow : Window
 
     private LegacyCommandResult OpenSafeModeBackup()
     {
-        _toolWindows.ShowOrActivate("safemode-backup", () => new SafeModeBackupWindow(_storage));
+        if (_launchSafeModeBackup is null)
+            return LegacyCommandResult.Failure("SAFEMODE BACKUP REQUIRES AN AUTOSAVE DIRECTORY");
+        _launchSafeModeBackup();
         return LegacyCommandResult.Success("SAFEMODE BACKUP OPEN");
     }
 
