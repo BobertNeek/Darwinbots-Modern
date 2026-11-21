@@ -16,17 +16,20 @@ public sealed class RobotConsoleController
     private readonly OrganismKey _focus;
     private readonly Func<Task>? _play;
     private readonly Func<Task>? _pause;
+    private readonly Func<uint, CancellationToken, Task<(ulong Tick, ulong Advanced)>>? _advance;
 
     public RobotConsoleController(
         SimulationSession session,
         OrganismKey focus,
         Func<Task>? play = null,
-        Func<Task>? pause = null)
+        Func<Task>? pause = null,
+        Func<uint, CancellationToken, Task<(ulong Tick, ulong Advanced)>>? advance = null)
     {
         _session = session;
         _focus = focus;
         _play = play;
         _pause = pause;
+        _advance = advance;
     }
 
     public async Task<string> ExecuteAsync(string input, CancellationToken cancellationToken = default)
@@ -39,6 +42,11 @@ public sealed class RobotConsoleController
             case "cycle":
             case "step":
                 var count = command.Name == "step" ? 1u : ParseCount(command.Arguments, 1);
+                if (_advance is { } advance)
+                {
+                    var result = await advance(count, cancellationToken).ConfigureAwait(false);
+                    return $"cycle {result.Tick} (+{result.Advanced})";
+                }
                 await _session.StepAsync(count, cancellationToken).ConfigureAwait(false);
                 return $"cycle {_session.LatestSnapshot.Tick} (+{count})";
             case "play":
