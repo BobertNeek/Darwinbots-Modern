@@ -1,7 +1,9 @@
+using System.Diagnostics;
 using System.Reflection;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Interactivity;
+using Avalonia.Threading;
 using Darwinbots.Desktop.Controls;
 using Darwinbots.Desktop.Core;
 using Darwinbots.Desktop.Core.LegacyMenus;
@@ -13,6 +15,117 @@ namespace Darwinbots.Desktop.Tests;
 
 public sealed class SafeModeAutosaveRenderedTests
 {
+    [Fact]
+    public async Task FifteenCycleLimitWaitsAfterCheckpointAndCapsFastAndTurbo()
+    {
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var timeout = TimeSpan.FromSeconds(8);
+            var checkpointStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var releaseCheckpoint = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var storage = new AuditStorageService
+            {
+                BeforeAutosaveWrite = async () =>
+                {
+                    checkpointStarted.TrySetResult();
+                    await releaseCheckpoint.Task.WaitAsync(timeout);
+                },
+            };
+            var factory = new AuditEngineClientFactory(encodeTickInSave: true);
+            var window = new MainWindow([], Setup(true), factory, storage);
+            var secondCycle = new TaskCompletionSource<(uint Count, long Started)>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var turboCycle = new TaskCompletionSource<uint>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var uncheckedCycle = new TaskCompletionSource<uint>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var releaseSecond = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var releaseTurbo = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            try
+            {
+                Show(window);
+                await Ready(window);
+                var engine = Assert.Single(factory.Clients);
+                var session = Field<SimulationSession>(window, "_session");
+                var timer = Field<DispatcherTimer>(window, "_runTimer");
+                var speed = Named<ComboBox>(window, "RuntimeSpeed");
+                void Click(string name) => Named<Button>(window, name).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+                engine.NativeCycle = 1999;
+                await session.RefreshSnapshotAsync();
+                engine.AdvanceNativeCycle = (count, cycle) =>
+                {
+                    switch (cycle)
+                    {
+                        case 2000:
+                            secondCycle.TrySetResult((count, Stopwatch.GetTimestamp()));
+                            releaseSecond.Task.WaitAsync(timeout).GetAwaiter().GetResult();
+                            break;
+                        case 2001:
+                            turboCycle.TrySetResult(count);
+                            releaseTurbo.Task.WaitAsync(timeout).GetAwaiter().GetResult();
+                            break;
+                        case 2002:
+                            uncheckedCycle.TrySetResult(count);
+                            break;
+                    }
+                    return cycle + checked((int)count);
+                };
+
+                speed.SelectedIndex = 1;
+                Click("ToolbarSlot10");
+                Assert.Equal(3, speed.SelectedIndex);
+                var maximumBatch = Field<uint>(window, "_maximumBatch");
+                Click("ToolbarSlot09");
+                Assert.False(timer.IsEnabled);
+                Assert.Equal("15 CPS ON", Named<Button>(window, "ToolbarSlot09").Content);
+                Assert.Equal(TimeSpan.FromMilliseconds(67), timer.Interval);
+                Click("RunButton");
+                await checkpointStarted.Task.WaitAsync(timeout);
+                Assert.Equal(2000, session.LatestSnapshot.NativeCycle);
+                Assert.Empty(storage.AutosaveWrites);
+                await Task.Delay(25);
+                var checkpointReleased = Stopwatch.GetTimestamp();
+                releaseCheckpoint.SetResult();
+
+                var second = await secondCycle.Task.WaitAsync(timeout);
+                Assert.Equal(1u, second.Count);
+                Assert.True(Stopwatch.GetElapsedTime(checkpointReleased, second.Started) >= TimeSpan.FromMilliseconds(60));
+                Assert.Equal(1ul, BitConverter.ToUInt64(Assert.Single(storage.AutosaveWrites)));
+                Click("PauseButton");
+                releaseSecond.SetResult();
+                await WaitFor(() => !Field<bool>(window, "_tickInFlight"));
+                Assert.False(timer.IsEnabled);
+                Assert.Equal(2001, session.LatestSnapshot.NativeCycle);
+
+                Click("ToolbarSlot09");
+                Assert.Equal("15 CPS OFF", Named<Button>(window, "ToolbarSlot09").Content);
+                Assert.Equal(TimeSpan.FromMilliseconds(1), timer.Interval);
+                Click("ToolbarSlot09");
+                Assert.False(timer.IsEnabled);
+                Click("TurboButton");
+                Assert.Equal(1u, await turboCycle.Task.WaitAsync(timeout));
+                Click("PauseButton");
+                releaseTurbo.SetResult();
+                await WaitFor(() => !Field<bool>(window, "_tickInFlight"));
+                Assert.False(timer.IsEnabled);
+                Assert.Equal(3, speed.SelectedIndex);
+                Assert.Equal(maximumBatch, Field<uint>(window, "_maximumBatch"));
+                Assert.Equal("FAST ON", Named<Button>(window, "ToolbarSlot10").Content);
+
+                Click("ToolbarSlot09");
+                Click("RunButton");
+                Assert.Equal(maximumBatch, await uncheckedCycle.Task.WaitAsync(timeout));
+                Click("PauseButton");
+                await WaitFor(() => !Field<bool>(window, "_tickInFlight"));
+            }
+            finally
+            {
+                releaseCheckpoint.TrySetResult();
+                releaseSecond.TrySetResult();
+                releaseTurbo.TrySetResult();
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
     [Fact]
     public async Task NativeBoundaryWritesActualRecoveryStateWithoutUsingTheMonotonicTickAsOriginalCycle()
     {
