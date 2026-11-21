@@ -103,7 +103,12 @@ impl Engine {
                         generation = id.generation(),
                     );
                     let path = settings.outbound_path.join(filename);
-                    let Ok(bytes) = self.export_native_organisms(&members) else {
+                    let export = if native_index.is_some() {
+                        self.export_original_organism_file(&members)
+                    } else {
+                        self.export_native_organisms(&members)
+                    };
+                    let Ok(bytes) = export else {
                         continue;
                     };
                     if transfers.stage_export(&path, &bytes).is_err() {
@@ -371,11 +376,15 @@ mod tests {
         let group = source
             .export_native_organisms(&[tie.first, tie.second])
             .unwrap();
-        source = Engine::new(EngineConfig::testing()).unwrap();
+        source = Engine::new_native(EngineConfig::testing()).unwrap();
+        source
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [200.0, 850.0])
+            .unwrap();
         source
             .import_native_organisms(&group, Some([500.0; 2]))
             .unwrap();
-        let members = source.slots.ids_in_slot_order();
+        let members = &source.slots.ids_in_slot_order()[1..];
+        assert_eq!(members[0].slot(), 1);
         source.ties[0].hardened = true;
         if let Some(ends) = source.ties[0].native_ends.as_mut() {
             for end in ends {
@@ -384,7 +393,7 @@ mod tests {
             }
         }
         source.refresh_tie_projections();
-        for &id in &members {
+        for &id in members {
             let robot = source.slots.get_mut(id).unwrap();
             // regang publishes the independent Multibot latch as it hardens
             // the endpoint. A projection refresh must not synthesize it.
@@ -402,7 +411,7 @@ mod tests {
             )
             .unwrap();
         source.apply_file_teleporters().unwrap();
-        assert_eq!(source.population(), 0);
+        assert_eq!(source.population(), 1);
         assert_eq!(source.file_teleporters[0].sent, 1);
         let files = fs::read_dir(root.path())
             .unwrap()
@@ -411,6 +420,8 @@ mod tests {
         assert_eq!(files.len(), 1);
         let native = NativeRecordFile::decode(&fs::read(&files[0]).unwrap()).unwrap();
         assert_eq!(native.robots.len(), 2);
+        assert_eq!(native.robots[0].word("old_slot").unwrap(), 1);
+        assert_eq!(native.robots[1].word("old_slot").unwrap(), 2);
         assert!(native.tail.is_empty());
         assert_eq!(
             native.robots[0].single("energy").unwrap().to_bits(),
@@ -446,9 +457,13 @@ mod tests {
             ..EngineConfig::testing()
         })
         .unwrap();
+        source
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [200.0, 850.0])
+            .unwrap();
         let id = source
             .spawn_at(LegacyDna::parse("stop").unwrap(), [500.0; 2])
             .unwrap();
+        assert_eq!(id.slot(), 1);
         let mut tele = Teleporter::new(4, [500.0; 2], 100.0, [1000.0; 2]);
         tele.local = false;
         tele.inbound = false;
@@ -459,7 +474,7 @@ mod tests {
         let mut resumed = Engine::from_native_sim(&native).unwrap();
         assert_eq!(resumed.teleporters[0].center, [500.0; 2]);
         resumed.apply_file_teleporters().unwrap();
-        assert_eq!(resumed.population(), 0);
+        assert_eq!(resumed.population(), 1);
         assert_eq!(resumed.teleporters[0].sent, 1);
         let path = fs::read_dir(root.path())
             .unwrap()
@@ -468,6 +483,8 @@ mod tests {
             .unwrap()
             .path();
         let file = NativeRecordFile::decode(&fs::read(&path).unwrap()).unwrap();
+        assert_eq!(file.robots.len(), 1);
+        assert_eq!(file.robots[0].word("old_slot").unwrap(), 2);
         assert_eq!(
             file.robots[0].long("absolute_id").unwrap() as u64,
             source.slots.get(id).unwrap().identity.absolute_id
@@ -477,11 +494,11 @@ mod tests {
         resumed.teleporters[0].poll_countdown = 0;
         resumed.teleporters[0].file_backflow_guard = None;
         resumed.apply_file_teleporters().unwrap();
-        assert_eq!(resumed.population(), 1);
+        assert_eq!(resumed.population(), 2);
         assert_eq!(resumed.teleporters[0].received, 1);
         let robot = resumed
             .slots
-            .get(resumed.slots.ids_in_slot_order()[0])
+            .get(resumed.slots.ids_in_slot_order()[1])
             .unwrap();
         assert_eq!(robot.kinematics.position, [500.0, 500.0 - 200.0 / 6.0]);
     }
