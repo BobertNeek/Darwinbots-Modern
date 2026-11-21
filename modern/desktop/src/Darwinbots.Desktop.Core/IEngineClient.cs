@@ -49,6 +49,8 @@ public interface IEngineClient : IDisposable
     void UpdateMutationSettings(MutationSettingsUpdate update);
     void UpdateOrganismMutationProfile(uint slot, uint generation, MutationProfileUpdate profile) =>
         throw new NotSupportedException("This engine client does not support per-organism mutation profiles.");
+    void SetShotDecay(bool energy, bool doNotDecay) =>
+        throw new NotSupportedException("This engine client does not support changing shot decay.");
     void SetTiesEnabled(bool enabled);
     void UpdateSpeciesSettings(IReadOnlyList<SpeciesImport> species) =>
         throw new NotSupportedException("Species settings are unavailable in this engine client.");

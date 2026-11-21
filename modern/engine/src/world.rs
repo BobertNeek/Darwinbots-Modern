@@ -3106,6 +3106,15 @@ impl Engine {
         Ok(())
     }
 
+    pub(crate) fn set_shot_decay(&mut self, energy: bool, do_not_decay: bool) {
+        if energy {
+            self.config.shots.energy_shots_do_not_decay = do_not_decay;
+        } else {
+            self.config.shots.waste_shots_do_not_decay = do_not_decay;
+        }
+        self.publish_snapshot();
+    }
+
     pub fn set_ties_enabled(&mut self, enabled: bool) {
         self.ties_enabled = enabled;
         // VB6 DisableTies gates DNA requests; existing bonds keep working.
