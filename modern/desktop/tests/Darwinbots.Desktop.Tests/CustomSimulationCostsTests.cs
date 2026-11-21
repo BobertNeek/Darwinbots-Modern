@@ -164,6 +164,78 @@ public sealed class CustomSimulationCostsTests
         }
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CustomF1DefaultsStageTheOriginalChargesAndKeepOtherDraftValues(bool apply)
+    {
+        var initial = new GlobalSimulationCostSettings
+        {
+            GlobalMultiplier = 3,
+            DnaCopy = 9,
+            ChloroplastConstruction = 8,
+            AgeStart = 12,
+            AgeLinear = 0.25,
+            AgeLinearEnabled = true,
+            AgeLogarithmic = 1,
+            DynamicMultiplier = 1,
+            DynamicTargetPopulation = 777,
+            DynamicLowerRangePercent = 18.5,
+            DynamicLowerZeroThreshold = 5,
+            DynamicLowerReinstateThreshold = 10,
+            Virus = 3.5,
+        };
+        await DesktopTestApplication.Session.Dispatch(() =>
+        {
+            var dialog = new CustomSimulationCostsWindow(initial, stageForLiveSettings: true);
+            dialog.Show();
+            try
+            {
+                dialog.FindControl<NumericUpDown>("DynamicSensitivity")!.Value = 333m;
+                Click(dialog, "F1DefaultsButton");
+                Assert.Equal(initial, dialog.Costs);
+                Assert.False(dialog.Accepted);
+                Assert.False(dialog.FindControl<NumericUpDown>("DynamicMultiplier")!.IsEnabled);
+                Assert.False(dialog.FindControl<NumericUpDown>("DynamicTargetPopulation")!.IsEnabled);
+                Assert.Equal(0m, dialog.FindControl<NumericUpDown>("DnaCopy")!.Value);
+                Assert.Equal(333m, dialog.FindControl<NumericUpDown>("DynamicSensitivity")!.Value);
+
+                Click(dialog, apply ? "ApplyButton" : "CancelButton");
+                Assert.Equal(apply, dialog.Accepted);
+                if (!apply)
+                {
+                    Assert.Equal(initial, dialog.Costs);
+                    return;
+                }
+
+                var costs = dialog.Costs;
+                // CostsForm.Default_Click applies 0.2 to chloroplasts while
+                // OptionsForm's outer F1 radio keeps that charge zero.
+                Assert.Equal((double)0.2f, costs.ChloroplastConstruction);
+                Assert.Equal((double)0.004f, costs.DnaCondition);
+                Assert.Equal((double)0.05f, costs.Movement);
+                Assert.Equal((double)0.01f, costs.AgeBase);
+                Assert.Equal(0, costs.DnaCopy);
+                Assert.Equal(1, costs.GlobalMultiplier);
+                Assert.Equal(0, costs.AgeStart);
+                Assert.Equal(0, costs.AgeLogarithmic);
+                Assert.Equal(0, costs.DynamicLowerZeroThreshold);
+                Assert.Equal(0, costs.DynamicLowerReinstateThreshold);
+                Assert.Equal(initial.AgeLinear, costs.AgeLinear);
+                Assert.Equal(initial.AgeLinearEnabled, costs.AgeLinearEnabled);
+                Assert.Equal(initial.DynamicMultiplier, costs.DynamicMultiplier);
+                Assert.Equal(initial.DynamicTargetPopulation, costs.DynamicTargetPopulation);
+                Assert.Equal(initial.DynamicLowerRangePercent, costs.DynamicLowerRangePercent);
+                Assert.Equal(333, costs.DynamicSensitivity);
+                Assert.Equal(initial.Virus, costs.Virus);
+            }
+            finally
+            {
+                dialog.Close();
+            }
+        }, CancellationToken.None);
+    }
+
     [Fact]
     public async Task CustomCostEditReachesTheRustEngineConfigPayload()
     {
@@ -395,6 +467,7 @@ public sealed class CustomSimulationCostsTests
                 Assert.Equal(GlobalSimulationCostSettings.F1Default, result.Costs);
                 Assert.Equal(Db2CostPreset.F1, result.NativeCostPreset);
                 Assert.Equal((double)0.004f, result.Costs.DnaCondition);
+                Assert.Equal(0.0, result.Costs.ChloroplastConstruction);
                 Assert.Equal(225f, result.Environment.Physics.MaxVelocity);
                 Assert.Equal(tick, session.LatestSnapshot.Tick);
 

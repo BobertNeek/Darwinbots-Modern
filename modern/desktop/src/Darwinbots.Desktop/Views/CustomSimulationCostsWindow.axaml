@@ -37,6 +37,15 @@
           <Grid ColumnDefinitions="*,150"><TextBlock Text="Sensitivity"/><NumericUpDown Grid.Column="1" x:Name="DynamicSensitivity" Minimum="-100000" Maximum="100000" Increment="0.01"/></Grid><CheckBox x:Name="DynamicAllowNegative" Content="Allow negative dynamic costs"/><Grid ColumnDefinitions="*,150"><TextBlock Text="Lower zero threshold"/><NumericUpDown Grid.Column="1" x:Name="DynamicLowerZeroThreshold" Minimum="0" Maximum="100000000" Increment="0.01"/></Grid><Grid ColumnDefinitions="*,150"><TextBlock Text="Lower reinstate threshold"/><NumericUpDown Grid.Column="1" x:Name="DynamicLowerReinstateThreshold" Minimum="0" Maximum="100000000" Increment="0.01"/></Grid></StackPanel></Border>
       </StackPanel>
     </ScrollViewer>
-    <Border Grid.Row="2" Background="#E5E0D4" BorderBrush="#C8C3B6" BorderThickness="0,1,0,0" Padding="18,10"><Grid ColumnDefinitions="*,Auto"><TextBlock x:Name="CostApplyNotice" Text="Changes apply to the next world setup." Classes="muted" VerticalAlignment="Center"/><StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8"><Button x:Name="CancelButton" Content="CANCEL" Click="Cancel_Click"/><Button x:Name="ApplyButton" Classes="primary" Content="SAVE COSTS" Click="Apply_Click"/></StackPanel></Grid></Border>
+    <Border Grid.Row="2" Background="#E5E0D4" BorderBrush="#C8C3B6" BorderThickness="0,1,0,0" Padding="18,10">
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBlock x:Name="CostApplyNotice" Text="Changes apply to the next world setup." Classes="muted" VerticalAlignment="Center"/>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+          <Button x:Name="F1DefaultsButton" Content="F1 DEFAULT" Click="F1Defaults_Click"/>
+          <Button x:Name="CancelButton" Content="CANCEL" Click="Cancel_Click"/>
+          <Button x:Name="ApplyButton" Classes="primary" Content="SAVE COSTS" Click="Apply_Click"/>
+        </StackPanel>
+      </Grid>
+    </Border>
   </Grid>
 </Window>
