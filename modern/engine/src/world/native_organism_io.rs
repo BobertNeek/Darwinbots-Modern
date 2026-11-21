@@ -88,6 +88,7 @@ impl Engine {
         if file.robots.len() > self.available_robot_capacity() {
             return Err(EngineError::CapacityReached);
         }
+        let native = self.native_cycle.is_some();
         let mut old_slots = HashMap::new();
         let mut parents: HashMap<_, _> = self
             .slots
@@ -144,7 +145,14 @@ impl Engine {
                     return Err(invalid("translated position is not finite"));
                 }
             }
-            if robot.identity.absolute_id == 0 {
+            if native {
+                // posto clears the slot and allocates before LoadRobotBody
+                // overwrites AbsNum. LoadRobot allocates again for a live zero.
+                self.allocate_absolute_identity();
+                if robot.flags.exists && robot.identity.absolute_id == 0 {
+                    robot.identity.absolute_id = self.allocate_absolute_identity();
+                }
+            } else if robot.identity.absolute_id == 0 {
                 robot.identity.absolute_id = self.next_absolute_id;
                 self.next_absolute_id = self.next_absolute_id.saturating_add(1);
             }
@@ -315,6 +323,76 @@ mod tests {
                 .other,
             Some(first)
         );
+    }
+
+    #[test]
+    fn native_dbo_allocates_provisional_ids_and_resumes_the_saved_cursor() {
+        use crate::native_binary::NativeSimulationTail;
+
+        let mut file = tied_file();
+        file.robots[1]
+            .set_value("absolute_id", NativeValue::Long(294))
+            .unwrap();
+        let dna = LegacyDna::parse("stop").unwrap();
+
+        for (wire_id, imported_id, following_id) in [(250, 250, 4), (0, 3, 5)] {
+            file.robots[0]
+                .set_value("absolute_id", NativeValue::Long(wire_id))
+                .unwrap();
+            let bytes = file.encode().unwrap();
+            let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+            let incumbent = world.spawn(dna.clone()).unwrap();
+            assert_eq!(world.slots.get(incumbent).unwrap().identity.absolute_id, 1);
+            assert_eq!(world.next_absolute_id, 2);
+
+            world.import_native_organisms(&bytes, None).unwrap();
+            let ids = world.slots.ids_in_slot_order();
+            let alive_ids: Vec<_> = ids
+                .into_iter()
+                .map(|id| world.slots.get(id).unwrap().identity.absolute_id)
+                .collect();
+            assert_eq!(alive_ids, [1, imported_id, 294]);
+            assert_eq!(world.next_absolute_id, following_id);
+
+            let modern = SaveFile::encode(&world).unwrap();
+            let mut modern_resume = SaveFile::decode(&modern).unwrap();
+            let native = world.export_native_sim().unwrap();
+            let file = NativeRecordFile::decode(&native).unwrap();
+            let tail = NativeSimulationTail::decode(&file.tail).unwrap();
+            assert_eq!(
+                tail.integer("max_absolute_id").unwrap(),
+                following_id as i32 - 1
+            );
+            let mut native_resume = Engine::from_native_sim(&native).unwrap();
+            for resumed in [&mut world, &mut modern_resume, &mut native_resume] {
+                assert_eq!(resumed.next_absolute_id, following_id);
+                let born = resumed.spawn(dna.clone()).unwrap();
+                assert_eq!(
+                    resumed.slots.get(born).unwrap().identity.absolute_id,
+                    following_id
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn older_native_missing_cursor_and_portable_restore_infer_from_observed_ids() {
+        let dna = LegacyDna::parse("stop").unwrap();
+        for native in [false, true] {
+            let mut world = if native {
+                Engine::new_native(EngineConfig::testing()).unwrap()
+            } else {
+                Engine::new(EngineConfig::testing()).unwrap()
+            };
+            let actor = world.spawn(dna.clone()).unwrap();
+            world.slots.get_mut(actor).unwrap().identity.absolute_id = 294;
+            let mut payload = world.db3s_v3_payload().unwrap();
+            if native {
+                payload.as_object_mut().unwrap().remove("next_absolute_id");
+            }
+            let restored = Engine::restore(Engine::from_db3s_v3_payload(payload).unwrap()).unwrap();
+            assert_eq!(restored.next_absolute_id, 295);
+        }
     }
 
     #[test]
