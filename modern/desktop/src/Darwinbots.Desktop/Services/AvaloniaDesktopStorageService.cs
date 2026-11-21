@@ -285,19 +285,23 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
     }
 
     public async Task<bool> SaveDnaAsync(TopLevel owner, string suggestedFileName, string dna, MutationProfileUpdate? mutationProfile,
-        string? mainDirectory = null)
+        string? mainDirectory = null) =>
+        await SaveDnaWithNameAsync(owner, suggestedFileName, dna, mutationProfile, mainDirectory) is not null;
+
+    public async Task<SavedRobotDna?> SaveDnaWithNameAsync(TopLevel owner, string suggestedFileName, string dna,
+        MutationProfileUpdate? mutationProfile, string? mainDirectory = null)
     {
         using var folder = mainDirectory is null ? null : await NativeRobotFolderAsync(owner.StorageProvider, mainDirectory);
-        var file = await owner.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        using var file = await owner.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
             Title = "Export Darwinbots robot DNA",
             SuggestedStartLocation = folder,
             SuggestedFileName = suggestedFileName,
             FileTypeChoices = [RobotFileType()],
         });
-        if (file is null) return false;
+        if (file is null) return null;
         await WriteDnaFileAsync(file, dna, mutationProfile);
-        return true;
+        return new(Path.GetFileName(LocalPath(file)) ?? file.Name);
     }
 
     public static async Task WriteDnaFileAsync(

@@ -6,6 +6,7 @@ using Avalonia.Input;
 using Avalonia.Input.Raw;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using Avalonia.Platform.Storage;
 using Avalonia.VisualTree;
 using Darwinbots.Desktop.Controls;
 using Darwinbots.Desktop.Core;
@@ -484,6 +485,132 @@ public sealed class NativeRobotFileIntegrationTests
     }
 
     [Fact]
+    public async Task SavingOriginalRobotDnaAsANewNameRenamesOnlyAfterWritingBothFilesAndConfirming()
+    {
+        const string fixture = "modern/engine/tests/fixtures/db24832-genuine-movement-cycle1-20261016.sim";
+        var root = new DirectoryInfo(AppContext.BaseDirectory);
+        while (root is not null && !File.Exists(Path.Combine(root.FullName, fixture))) root = root.Parent;
+        Assert.NotNull(root);
+        var directory = Directory.CreateTempSubdirectory("darwinbots-saved-robot-rename-");
+        try
+        {
+            await DesktopTestApplication.Session.Dispatch(async () =>
+            {
+                var options = new WorldSetupOptions { Backend = "Cpu", LoadSavePath = Path.Combine(root.FullName, fixture) };
+                var storage = new AvaloniaDesktopStorageService(directory.FullName);
+                var window = new MainWindow([], options, NativeEngineClientFactory.Instance, storage);
+                try
+                {
+                    window.Show();
+                    var model = Field<MainWindowViewModel>(window, "_viewModel");
+                    await WaitFor(() => model.Status == "LOADED" && Field<bool>(window, "_startupComplete"));
+                    var session = Field<SimulationSession>(window, "_session");
+                    Assert.Equal(1, session.LatestSnapshot.NativeCycle);
+                    await session.StepAsync(2);
+                    await WaitFor(() => model.NativeCycle == 3);
+                    var original = Assert.Single(session.LatestSnapshot.Organisms);
+                    Assert.Equal(1ul, original.UniqueId);
+                    Assert.Equal("Oracle-movement.txt", original.FounderName);
+                    model.Select(new OrganismKey(original.Slot, original.Generation));
+                    var checkpoint = await session.SaveAsync();
+                    var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+
+                    string? destination = null;
+                    var picker = SaveDnaPickerProxy.Create<IStorageProvider>(method =>
+                    {
+                        Assert.Equal(nameof(IStorageProvider.SaveFilePickerAsync), method.Name);
+                        var path = destination;
+                        return Task.FromResult(path is null ? null : SaveDnaPickerProxy.Create<IStorageFile>(fileMethod =>
+                            fileMethod.Name == "get_Path" ? new Uri(path) : throw new NotSupportedException(fileMethod.Name)));
+                    });
+                    typeof(TopLevel).GetField("_storageProvider", BindingFlags.Instance | BindingFlags.NonPublic)!
+                        .SetValue(window, picker);
+
+                    void ChooseSave(string? path)
+                    {
+                        destination = path;
+                        model.Status = "WAITING FOR DNA SAVE";
+                        menu.FindCommandItem(LegacyCommandId.RobotSaveDna)!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    }
+
+                    Window? Prompt() => window.OwnedWindows.SingleOrDefault(child =>
+                        child.IsVisible && child.Title == "Robot DNA saved");
+
+                    async Task ChooseRename(string answer)
+                    {
+                        await WaitFor(() => Prompt() is not null);
+                        var button = Assert.Single(Prompt()!.GetVisualDescendants().OfType<Button>(),
+                            choice => Equals(choice.Content, answer));
+                        button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                        await WaitFor(() => Prompt() is null && model.Status == "ROBOT DNA SAVED");
+                    }
+
+                    ChooseSave(null);
+                    await WaitFor(() => model.Status == "CANCELED");
+                    Assert.Null(Prompt());
+
+                    var failed = Path.Combine(directory.FullName, "failed.txt");
+                    Directory.CreateDirectory(Path.ChangeExtension(failed, ".mrate"));
+                    ChooseSave(failed);
+                    await WaitFor(() => model.Status.StartsWith("RobotSaveDna failed", StringComparison.Ordinal));
+                    Assert.False(File.Exists(failed));
+                    Assert.Null(Prompt());
+                    Assert.Equal(original.FounderName, Assert.Single(session.LatestSnapshot.Organisms).FounderName);
+
+                    var output = Path.Combine(directory.FullName, "Oracle,movement.txt");
+                    ChooseSave(output);
+                    await WaitFor(() => Prompt() is not null);
+                    Assert.Contains(Prompt()!.GetVisualDescendants().OfType<TextBlock>(),
+                        text => text.Text == "Do you want to change robot's name to Oracle,movement.txt ?");
+                    Assert.Equal(await session.ExportDnaAsync(original.Slot, original.Generation),
+                        LegacyDnaText.Decode(File.ReadAllBytes(output)));
+                    Assert.Equal(Db2MutationRateCodec.Encode(original.MutationProfile),
+                        File.ReadAllBytes(Path.ChangeExtension(output, ".mrate")));
+                    await ChooseRename("No");
+                    Assert.Equal(original.FounderName, Assert.Single(session.LatestSnapshot.Organisms).FounderName);
+
+                    ChooseSave(Path.Combine(directory.FullName, "Discarded.txt"));
+                    await WaitFor(() => Prompt() is not null);
+                    var restore = typeof(MainWindow).GetMethod("LoadSimulationAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
+                    await Assert.IsAssignableFrom<Task>(restore.Invoke(window, [checkpoint]));
+                    await ChooseRename("Yes");
+                    Assert.Equal(original.FounderName, Assert.Single(session.LatestSnapshot.Organisms).FounderName);
+
+                    model.Select(new OrganismKey(original.Slot, original.Generation));
+                    ChooseSave(output);
+                    await ChooseRename("Yes");
+                    var renamed = Assert.Single(session.LatestSnapshot.Organisms);
+                    Assert.Equal("Oracle,movement.txt", renamed.FounderName);
+                    Assert.Equal(original.UniqueId, renamed.UniqueId);
+                    Assert.Equal(original.Species, renamed.Species);
+                    Assert.Equal(original.Phenotype.Color, renamed.Phenotype.Color);
+                    Assert.Equal(original.MutationProfile, renamed.MutationProfile);
+                    Assert.Equal(3, session.LatestSnapshot.NativeCycle);
+                    menu.FindCommandItem(LegacyCommandId.RobotShowInfo)!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    await WaitFor(() => window.OwnedWindows.OfType<RobotDetailsWindow>().Any());
+                    var details = Assert.Single(window.OwnedWindows.OfType<RobotDetailsWindow>());
+                    Assert.Contains(details.GetVisualDescendants().OfType<TextBlock>(),
+                        text => text.Text?.Contains("Oracle,movement.txt", StringComparison.Ordinal) == true);
+
+                    await session.StepAsync(1);
+                    Assert.Equal(4, session.LatestSnapshot.NativeCycle);
+                    var observed = Assert.Single(session.LatestSnapshot.Organisms);
+                    Assert.Equal("Oracle,movement.txt", observed.FounderName);
+                    Assert.Equal(1ul, observed.UniqueId);
+                    Assert.Equal(4ul, observed.Age);
+                }
+                finally
+                {
+                    foreach (var owned in window.OwnedWindows.ToArray()) owned.Close();
+                    SetField(window, "_skipLastExitCheckpoint", true);
+                    window.Close();
+                }
+            }, CancellationToken.None);
+        }
+        finally { directory.Delete(recursive: true); }
+    }
+
+    [Fact]
     public async Task PickedSidecarProfileReachesOnlyItsActualNativeSpeciesAndSelectedExport()
     {
         await DesktopTestApplication.Session.Dispatch(async () =>
@@ -654,6 +781,21 @@ public sealed class NativeRobotFileIntegrationTests
             }
             finally { SetField(window, "_session", null); if (window.IsVisible) window.Close(); }
         }, CancellationToken.None);
+    }
+
+    private class SaveDnaPickerProxy : DispatchProxy
+    {
+        private Func<MethodInfo, object?> _invoke = null!;
+
+        public static T Create<T>(Func<MethodInfo, object?> invoke) where T : class
+        {
+            var proxy = DispatchProxy.Create<T, SaveDnaPickerProxy>();
+            ((SaveDnaPickerProxy)(object)proxy)._invoke = invoke;
+            return proxy;
+        }
+
+        protected override object? Invoke(MethodInfo? method, object?[]? arguments) =>
+            _invoke(method ?? throw new MissingMethodException());
     }
 
     private static MutationProfileUpdate FileProfile() => MutationProfileUpdate.Default with

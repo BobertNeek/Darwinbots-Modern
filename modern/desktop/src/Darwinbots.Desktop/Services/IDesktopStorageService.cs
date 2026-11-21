@@ -16,6 +16,8 @@ public sealed record DesktopSimulationFile(byte[] Data, string? LocalPath = null
 
 public sealed record DesktopBackgroundPicture(string Name, byte[] Data, string? LocalPath = null);
 
+public sealed record SavedRobotDna(string? FileName);
+
 public interface IDesktopStorageService
 {
     Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner, string? mainDirectory = null, bool allowMultiple = true);
@@ -53,6 +55,9 @@ public interface IDesktopStorageService
         SaveSimulationWithFormatAsync(owner, createSave, mainDirectory);
     Task<bool> SaveDnaAsync(TopLevel owner, string suggestedFileName, string dna, MutationProfileUpdate? mutationProfile,
         string? mainDirectory = null);
+    async Task<SavedRobotDna?> SaveDnaWithNameAsync(TopLevel owner, string suggestedFileName, string dna,
+        MutationProfileUpdate? mutationProfile, string? mainDirectory = null) =>
+        await SaveDnaAsync(owner, suggestedFileName, dna, mutationProfile, mainDirectory) ? new(null) : null;
     Task<string?> PickPopulationSeedDirectoryAsync(TopLevel owner) => Task.FromResult<string?>(null);
     Task<bool> SaveOrganismAsync(TopLevel owner, string suggestedFileName, Func<Stream, Task> writeAsync,
         string? mainDirectory = null);

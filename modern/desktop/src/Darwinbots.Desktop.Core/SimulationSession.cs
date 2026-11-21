@@ -459,6 +459,15 @@ public sealed class SimulationSession : IAsyncDisposable
         return description ?? throw new InvalidDataException("Engine returned no robot description.");
     }
 
+    public async Task<bool> RenameRobotFounderAsync(OrganismKey robot, string name,
+        CancellationToken cancellationToken = default)
+    {
+        var renamed = false;
+        await Enqueue(engine => renamed = engine.RenameRobotFounder(robot.Slot, robot.Generation, name), cancellationToken)
+            .ConfigureAwait(false);
+        return renamed;
+    }
+
     public async Task<string> ExportDnaAsync(uint slot, uint generation, CancellationToken cancellationToken = default)
     {
         string? result = null;

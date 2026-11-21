@@ -177,6 +177,7 @@ public interface IEngineClient : IDisposable
     void MakeNewSpecies(uint slot, uint generation, string name, uint color);
     string ForkRobotAndDescendants(uint slot, uint generation) =>
         throw new NotSupportedException("Forking robot descendants is unavailable in this engine client.");
+    bool RenameRobotFounder(uint slot, uint generation, string name) => false;
     void UpdateLegacyRestrictions(bool robotFixingAllowed, bool asexualReproductionAllowed);
     void ConfigurePlayerBot(PlayerBotConfig config);
     void ConfigureNativePostDnaMemoryWatch(ulong requestId, OrganismKey? focus, bool captureMemory) { }

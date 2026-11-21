@@ -1069,6 +1069,13 @@ public sealed partial class NativeEngineClient : IEngineClient
         new { version = 1, commands = new[] { new { type = "fork_robot_and_descendants", slot, generation } } },
         "fork robot and descendants").GetProperty("results")[0].GetProperty("name").GetString()
         ?? throw new InvalidDataException("Native engine returned an empty founder name.");
+    public bool RenameRobotFounder(uint slot, uint generation, string name)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        return ExecuteBatchForResult(
+            new { version = 1, commands = new[] { new { type = "rename_robot_founder", slot, generation, name } } },
+            "rename saved robot").GetProperty("results")[0].GetBoolean();
+    }
 
     public void UpdateLegacyRestrictions(bool robotFixingAllowed, bool asexualReproductionAllowed) => ExecuteBatch(
         new { version = 1, commands = new[] { new { type = "update_legacy_restrictions", robot_fixing_allowed = robotFixingAllowed, asexual_reproduction_allowed = asexualReproductionAllowed } } },
