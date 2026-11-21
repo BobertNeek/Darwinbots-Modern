@@ -30,6 +30,7 @@ public sealed class GlobalSettingsProfileTests
                     Click(setup, "GlobalSettingsButton");
                     var globals = await GlobalDialog(setup);
                     Assert.True(Named<CheckBox>(globals, "NewSeedOnLoad").IsChecked);
+                    Assert.True(Named<CheckBox>(globals, "OldColors").IsChecked);
                     Named<CheckBox>(globals, "NewSeedOnLoad").IsChecked = false;
                     Named<CheckBox>(globals, "FixedRatio").IsChecked = true;
                     Named<CheckBox>(globals, "SafeMode").IsChecked = false;
@@ -39,6 +40,7 @@ public sealed class GlobalSettingsProfileTests
                     Assert.NotNull(created);
                     Assert.True(created.GlobalSettings.Main.FixedRatio);
                     Assert.False(created.GlobalSettings.Main.NewSeedOnLoad);
+                    Assert.Null(created.GlobalSettings.Main.OldColors);
                     Assert.False(created.ToEnvironmentUpdate().Recording!.SafeModeBackup);
                 }
                 finally { Close(setup); }
@@ -49,16 +51,19 @@ public sealed class GlobalSettingsProfileTests
                     runtime.Show();
                     var model = Assert.IsType<MainWindowViewModel>(runtime.DataContext);
                     await WaitFor(() => model.Status.StartsWith("WORLD READY", StringComparison.Ordinal));
-                    Assert.True(Named<WorldViewport>(runtime, "Viewport").IsVisible);
+                    var viewport = Named<WorldViewport>(runtime, "Viewport");
+                    Assert.True(viewport.IsVisible);
+                    Assert.True(viewport.OldColors);
                     Named<LegacyMenuBar>(runtime, "HistoricMenuBar")
                         .FindCommandItem(LegacyCommandId.EditGlobalSettings)!
                         .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
                     var globals = await GlobalDialog(runtime);
-                    Named<CheckBox>(globals, "OldColors").IsChecked = true;
+                    Named<CheckBox>(globals, "OldColors").IsChecked = false;
                     Named<CheckBox>(globals, "VideoOff").IsChecked = true;
                     Click(globals, "ApplyButton");
                     await WaitFor(() => model.Status == "GLOBAL SETTINGS SAVED");
-                    Assert.True(Named<WorldViewport>(runtime, "Viewport").IsVisible);
+                    Assert.True(viewport.IsVisible);
+                    Assert.False(viewport.OldColors);
                 }
                 finally { Close(runtime); }
 
@@ -73,11 +78,11 @@ public sealed class GlobalSettingsProfileTests
                     var globals = await GlobalDialog(reopened);
                     Assert.True(Named<CheckBox>(globals, "FixedRatio").IsChecked);
                     Assert.False(Named<CheckBox>(globals, "NewSeedOnLoad").IsChecked);
-                    Assert.True(Named<CheckBox>(globals, "OldColors").IsChecked);
+                    Assert.False(Named<CheckBox>(globals, "OldColors").IsChecked);
                     Assert.True(Named<CheckBox>(globals, "VideoOff").IsChecked);
                     Assert.False(Named<CheckBox>(globals, "SafeMode").IsChecked);
                     var beforeCancel = File.ReadAllText(Path.Combine(profile.FullName, "global-settings.json"));
-                    Named<CheckBox>(globals, "OldColors").IsChecked = false;
+                    Named<CheckBox>(globals, "OldColors").IsChecked = true;
                     Click(globals, "CancelButton");
                     await WaitFor(() => reopened.OwnedWindows.Count() == 0);
                     Assert.Equal(beforeCancel, File.ReadAllText(Path.Combine(profile.FullName, "global-settings.json")));
@@ -123,6 +128,38 @@ public sealed class GlobalSettingsProfileTests
 
             await storage.SaveGlobalSettingsAsync(settings with { Main = settings.Main with { NewSeedOnLoad = true } });
             Assert.True(storage.LoadGlobalSettings()!.Main.EffectiveNewSeedOnLoad);
+            Assert.Equal(original, await File.ReadAllTextAsync(legacyPath));
+        }
+        finally { profile.Delete(recursive: true); }
+    }
+
+    [Theory]
+    [InlineData(null, null, true)]
+    [InlineData("#FALSE#", false, false)]
+    [InlineData("#TRUE#", true, true)]
+    public async Task ConfiguredLegacyDirectorySuppliesOldColorsUntilExplicitOverride(
+        string? eighthRecord, bool? legacyPreference, bool effectiveOldColors)
+    {
+        var profile = Directory.CreateTempSubdirectory("darwinbots-global-colors-");
+        try
+        {
+            var legacy = profile.CreateSubdirectory("Original install");
+            var legacyPath = Path.Combine(legacy.FullName, "Global.gset");
+            var original = string.Join("\r\n", Enumerable.Repeat("#FALSE#", 7)) + "\r\n";
+            if (eighthRecord is not null)
+                original += eighthRecord + "\r\n";
+            await File.WriteAllTextAsync(legacyPath, original);
+            var storage = new AvaloniaDesktopStorageService(profile.FullName);
+            var settings = new GlobalSettings { Main = new GlobalMainSettings { MainDirectory = legacy.FullName } };
+
+            await storage.SaveGlobalSettingsAsync(settings);
+            var imported = Assert.IsType<GlobalSettings>(storage.LoadGlobalSettings());
+            Assert.Equal(legacyPreference, imported.Main.OldColors);
+            Assert.Equal(effectiveOldColors, imported.Main.EffectiveOldColors);
+
+            var overridden = settings with { Main = settings.Main with { OldColors = !effectiveOldColors } };
+            await storage.SaveGlobalSettingsAsync(overridden);
+            Assert.Equal(!effectiveOldColors, storage.LoadGlobalSettings()!.Main.EffectiveOldColors);
             Assert.Equal(original, await File.ReadAllTextAsync(legacyPath));
         }
         finally { profile.Delete(recursive: true); }
