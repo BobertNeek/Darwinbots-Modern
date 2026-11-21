@@ -55,6 +55,7 @@ impl Engine {
         let file = Self::decode_native_organisms(bytes, position)?;
         // The public method is atomic too, not only its command-batch caller.
         let mut candidate = SaveFile::decode(&SaveFile::encode(self)?)?;
+        candidate.inherit_native_post_dna_memory_watch(self);
         let count = candidate.apply_native_organisms(file, position, true)?;
         std::mem::swap(&mut candidate.player_bot_input, &mut self.player_bot_input);
         candidate.publish_snapshot();

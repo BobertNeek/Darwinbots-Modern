@@ -622,6 +622,9 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task ConfigureGraphSamplingAsync(GraphSamplingSettings settings, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.ConfigureGraphSampling(settings), cancellationToken);
 
+    public Task ConfigureNativePostDnaMemoryWatchAsync(ulong requestId, OrganismKey? focus) =>
+        Enqueue(engine => engine.ConfigureNativePostDnaMemoryWatch(requestId, focus), CancellationToken.None);
+
     public Task UpdateEnvironmentAsync(EnvironmentUpdate update, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.UpdateEnvironment(update), cancellationToken);
 

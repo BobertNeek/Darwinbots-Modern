@@ -113,6 +113,9 @@ public sealed record GenomeRecordCapture(ulong Tick, IReadOnlyList<DeathRecordSn
 
 public sealed record MemoryCellSnapshot(ushort Address, int Value);
 
+public sealed record NativePostDnaMemorySnapshot(
+    ulong RequestId, ulong Tick, OrganismKey Focus, IReadOnlyList<MemoryCellSnapshot> Memory);
+
 public sealed record SpeciesSnapshot(
     string Name,
     bool Vegetable,
@@ -382,6 +385,7 @@ public sealed record EngineSnapshot(
     public bool RobotFixingAllowed { get; init; } = true;
     public bool AsexualReproductionAllowed { get; init; } = true;
     public PlayerBotSnapshot PlayerBot { get; init; } = PlayerBotSnapshot.Default;
+    public NativePostDnaMemorySnapshot? NativePostDnaMemory { get; init; }
     public RestrictionOptions RestrictionOptions { get; init; } = RestrictionOptions.Default;
     public SimulationStatsSnapshot Stats { get; init; } = SimulationStatsSnapshot.Empty;
     public float[] WorldSize { get; init; } = [16_000f, 12_000f];

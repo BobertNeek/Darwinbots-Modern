@@ -1,5 +1,5 @@
 use crate::persistence::SaveFile;
-use crate::world::NativeProcessCaches;
+use crate::world::{NativePostDnaMemorySample, NativeProcessCaches};
 use crate::{Engine, EngineConfig, EngineError, LegacyOrganismFile, OrganismId, SpeciesDefinition};
 use serde::Deserialize;
 use std::{cell::RefCell, ptr, slice};
@@ -116,6 +116,10 @@ enum EngineCommand {
     },
     ConfigureGraphSampling {
         settings: crate::GraphSamplingSettings,
+    },
+    ConfigureNativePostDnaMemoryWatch {
+        request_id: u64,
+        focus: Option<OrganismIdCommand>,
     },
     UpdateCostSettings {
         costs: Option<crate::DnaCosts>,
@@ -628,7 +632,20 @@ pub extern "C" fn db_engine_snapshot_json(
     if !out_buffer.data.is_null() {
         return fail(DbStatus::EngineError, "output buffer must be empty");
     }
-    match serde_json::to_vec(engine.snapshot()) {
+    #[derive(serde::Serialize)]
+    struct SnapshotWithDiagnostic<'a> {
+        #[serde(flatten)]
+        snapshot: &'a crate::Snapshot,
+        native_post_dna_memory: &'a NativePostDnaMemorySample,
+    }
+    let snapshot = match engine.native_post_dna_memory_sample() {
+        Some(sample) => serde_json::to_vec(&SnapshotWithDiagnostic {
+            snapshot: engine.snapshot(),
+            native_post_dna_memory: sample,
+        }),
+        None => serde_json::to_vec(engine.snapshot()),
+    };
+    match snapshot {
         Ok(mut bytes) => {
             out_buffer.data = bytes.as_mut_ptr();
             out_buffer.len = bytes.len();
@@ -741,6 +758,29 @@ fn db_engine_command_batch_impl(
             "requiring original repopulation DNA needs a single tick with an optional restart seed",
         );
     }
+    if let [EngineCommand::ConfigureNativePostDnaMemoryWatch { request_id, focus }] =
+        batch.commands.as_slice()
+    {
+        let response = serde_json::json!({
+            "version": ABI_VERSION,
+            "tick": engine.snapshot().tick,
+            "population": engine.population(),
+            "backend": format!("{:?}", engine.backend()),
+            "results": [null],
+        });
+        return match serde_json::to_vec(&response) {
+            Ok(bytes) => {
+                engine.configure_native_post_dna_memory_watch(
+                    *request_id,
+                    focus
+                        .as_ref()
+                        .map(|id| OrganismId::new(id.slot, id.generation)),
+                );
+                write_buffer(out_buffer, bytes)
+            }
+            Err(error) => fail(DbStatus::EngineError, error),
+        };
+    }
     // Pure queries must not reconstruct the world or its GPU backend.
     if !batch.commands.is_empty()
         && batch.commands.iter().all(|command| {
@@ -839,6 +879,7 @@ fn db_engine_command_batch_impl(
             Ok(bytes) => match SaveFile::decode(&bytes) {
                 Ok(mut candidate) => {
                     candidate.player_bot_input = committed_engine.player_bot_input.clone();
+                    candidate.inherit_native_post_dna_memory_watch(committed_engine);
                     candidate
                 }
                 Err(error) => return fail(DbStatus::EngineError, error.to_string()),
@@ -869,6 +910,13 @@ fn db_engine_command_batch_impl(
             } => engine
                 .bind_native_restart_sources(sources, preserve_existing)
                 .map(|bound| serde_json::json!(bound)),
+            EngineCommand::ConfigureNativePostDnaMemoryWatch { request_id, focus } => {
+                engine.configure_native_post_dna_memory_watch(
+                    request_id,
+                    focus.map(|id| OrganismId::new(id.slot, id.generation)),
+                );
+                Ok(serde_json::Value::Null)
+            }
             EngineCommand::SetNativeRestartSeed {
                 seed,
                 skin_timer_seconds,
