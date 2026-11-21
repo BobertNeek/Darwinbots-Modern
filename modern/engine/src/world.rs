@@ -9378,30 +9378,33 @@ impl Engine {
         for (source, target, location, value) in resource_channels {
             let source_id = OrganismId::new(source as u32, self.slots[source].generation);
             let target_id = OrganismId::new(target as u32, self.slots[target].generation);
+            let (Ok(source_robot), Ok(target_robot)) =
+                (self.slots.get(source_id), self.slots.get(target_id))
+            else {
+                continue;
+            };
+            let (opponent, may_defend_with_poison) = if native && self.native_cycle.is_some() {
+                // Update_Ties compares FName for both opponent rules. Old Modern
+                // checkpoints with blank founder names use the roster fallback.
+                let different_founders = native_census_filename(source_robot, &self.species)
+                    != native_census_filename(target_robot, &self.species);
+                (different_founders, different_founders)
+            } else {
+                (
+                    source_robot.identity.species_file != target_robot.identity.species_file,
+                    source_robot.identity.species != target_robot.identity.species,
+                )
+            };
             if let Some(kind) = apply_tie_resource(
                 &mut self.slots,
-                source,
-                target,
+                (source, target),
                 location,
                 value,
+                may_defend_with_poison,
                 fixed_bot_radii,
                 &mut self.native_random,
             ) {
                 trace.effect(CyclePhase::Tie, Some(source_id), target_id, kind);
-                let opponent = self
-                    .slots
-                    .get(source_id)
-                    .ok()
-                    .zip(self.slots.get(target_id).ok())
-                    .is_some_and(|(a, b)| {
-                        if self.native_cycle.is_some() && self.native_random.is_some() {
-                            // Earlier DB3S versions left a fresh founder's filename empty.
-                            native_census_filename(a, &self.species)
-                                != native_census_filename(b, &self.species)
-                        } else {
-                            a.identity.species_file != b.identity.species_file
-                        }
-                    });
                 if opponent {
                     let action = match location {
                         -1 => Some(DisqualificationAction::OpponentEnergy(value > 0)),
@@ -14407,13 +14410,14 @@ fn apply_restriction_column(robot: &mut RobotState, column: &RestrictionColumn) 
 
 fn apply_tie_resource(
     slots: &mut [RobotSlot],
-    source_slot: usize,
-    target_slot: usize,
+    participants: (usize, usize),
     location: i32,
     requested: i32,
+    may_defend_with_poison: bool,
     fixed_bot_radii: bool,
     native: &mut Option<crate::native_random::NativeRandom>,
 ) -> Option<&'static str> {
+    let (source_slot, target_slot) = participants;
     if source_slot == target_slot || source_slot >= slots.len() || target_slot >= slots.len() {
         return None;
     }
@@ -14435,10 +14439,10 @@ fn apply_tie_resource(
     }
 
     let result = match location {
-        -1 => apply_tie_energy(source, target, requested, native),
+        -1 => apply_tie_energy(source, target, requested, may_defend_with_poison, native),
         -3 => apply_tie_venom(source, target, requested, native),
         -4 => apply_tie_waste(source, target, requested),
-        -6 => apply_tie_body(source, target, requested, native),
+        -6 => apply_tie_body(source, target, requested, may_defend_with_poison, native),
         _ => None,
     };
     if result.is_some() {
@@ -14486,6 +14490,7 @@ fn apply_tie_energy(
     source: &mut RobotState,
     target: &mut RobotState,
     requested: i32,
+    may_defend_with_poison: bool,
     native: &mut Option<crate::native_random::NativeRandom>,
 ) -> Option<&'static str> {
     if source.materials.body < 0.0 || source.materials.energy < 0.0 {
@@ -14505,7 +14510,7 @@ fn apply_tie_energy(
     let amount = (-requested).min(target.materials.energy.max(0.0));
     let result = if amount == 0.0 {
         None
-    } else if apply_tie_poison_defense(source, target, amount, native) {
+    } else if may_defend_with_poison && apply_tie_poison_defense(source, target, amount, native) {
         Some("tie_resource_poison_defense")
     } else {
         target.materials.energy -= amount;
@@ -14640,6 +14645,7 @@ fn apply_tie_body(
     source: &mut RobotState,
     target: &mut RobotState,
     requested: i32,
+    may_defend_with_poison: bool,
     native: &mut Option<crate::native_random::NativeRandom>,
 ) -> Option<&'static str> {
     if source.materials.body < 0.0 || source.materials.energy < 0.0 {
@@ -14674,7 +14680,7 @@ fn apply_tie_body(
     if amount == 0.0 {
         return None;
     }
-    if apply_tie_poison_defense(source, target, amount, native) {
+    if may_defend_with_poison && apply_tie_poison_defense(source, target, amount, native) {
         return Some("tie_resource_poison_defense");
     }
     target.materials.body -= amount;
@@ -14703,7 +14709,7 @@ fn apply_tie_poison_defense(
     native: &mut Option<crate::native_random::NativeRandom>,
 ) -> bool {
     let poison_tag = scale_tie_amount(amount, 0.25).max(1.0);
-    if source.identity.species == target.identity.species || target.materials.poison <= poison_tag {
+    if target.materials.poison <= poison_tag {
         return false;
     }
     target.materials.poison -= poison_tag;
