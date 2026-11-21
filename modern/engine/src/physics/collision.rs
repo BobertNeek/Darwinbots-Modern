@@ -95,13 +95,23 @@ pub(crate) fn native_dot(first: [f32; 2], second: [f32; 2]) -> f32 {
 }
 
 pub(crate) fn native_magnitude(vector: [f32; 2]) -> f32 {
+    vector_magnitude(vector, false)
+}
+
+fn vector_magnitude(vector: [f32; 2], native_contact: bool) -> f32 {
     let maximum = vector[0].abs().max(vector[1].abs());
     let minimum = vector[0].abs().min(vector[1].abs());
     if maximum < 0.00001 {
         0.0
     } else {
-        let ratio = minimum / maximum;
-        (f64::from(maximum) * (1.0 + f64::from(ratio).powi(2)).sqrt()) as f32
+        // Repel3's VectorMagnitude keeps the quotient through the Double power
+        // expression before narrowing the completed result to Single.
+        let ratio = if native_contact {
+            f64::from(minimum) / f64::from(maximum)
+        } else {
+            f64::from(minimum / maximum)
+        };
+        (f64::from(maximum) * (1.0 + ratio.powi(2)).sqrt()) as f32
     }
 }
 
@@ -170,6 +180,7 @@ fn resolve_contacts(
     // Physics.Repel3, including its gradual separation, projection damping and
     // finite fixed-bot mass. VectorScalar's native Single clamp is intentional.
     let elasticity = elasticity.clamp(0.0, 1.0);
+    let magnitude = |vector| vector_magnitude(vector, native_precision);
     for &(first, second) in pairs {
         if first == second || first >= positions.len() || second >= positions.len() {
             continue;
@@ -181,7 +192,7 @@ fn resolve_contacts(
             positions[second][0] - positions[first][0],
             positions[second][1] - positions[first][1],
         ];
-        let distance = native_magnitude(delta);
+        let distance = magnitude(delta);
         if distance >= minimum_distance {
             continue;
         }
@@ -209,8 +220,8 @@ fn resolve_contacts(
         } else {
             f64::from(minimum_distance - distance)
         };
-        let stationary = native_magnitude(velocities[first]) < 0.0001
-            && native_magnitude(velocities[second]) < 0.0001;
+        let stationary =
+            magnitude(velocities[first]) < 0.0001 && magnitude(velocities[second]) < 0.0001;
         let (first_separation, second_separation) = if first_fixed && second_fixed || stationary {
             let half = native_scalar(normal, (overlap / 2.0) as f32);
             (half, half)
@@ -297,6 +308,52 @@ fn resolve_contacts(
 #[cfg(test)]
 mod native_contact_tests {
     use super::{resolve_collisions, resolve_native_collisions};
+
+    #[test]
+    fn native_contact_rounds_the_full_magnitude_to_single() {
+        // Original 2.48.32, robots 222 and 114 at the start of cycle 287.
+        let positions = [
+            [f32::from_bits(0x4498_0af2), f32::from_bits(0x4630_d28c)],
+            [f32::from_bits(0x447d_ff47), f32::from_bits(0x462d_f21d)],
+        ];
+        let velocities = [
+            [f32::from_bits(0xc183_8740), f32::from_bits(0xc15a_e8e2)],
+            [f32::from_bits(0xbd33_1785), f32::from_bits(0xbd8c_5362)],
+        ];
+        let radii = [66.599_07, 296.481_57];
+        let masses = [1.249_218, 18_528.59];
+        let mut native_positions = positions;
+        let mut native_velocities = velocities;
+        resolve_native_collisions(
+            &mut native_positions,
+            &mut native_velocities,
+            &radii,
+            &masses,
+            &[false; 2],
+            &[(0, 1)],
+            0.0,
+        );
+        assert_eq!(
+            native_velocities[0].map(f32::to_bits),
+            [0xbf5e_6e92, 0x3f20_b0b1]
+        );
+
+        let mut portable_positions = positions;
+        let mut portable_velocities = velocities;
+        resolve_collisions(
+            &mut portable_positions,
+            &mut portable_velocities,
+            &radii,
+            &masses,
+            &[false; 2],
+            &[(0, 1)],
+            0.0,
+        );
+        assert_eq!(
+            portable_velocities[0].map(f32::to_bits),
+            [0xbf5e_6e52, 0x3f20_b0e1]
+        );
+    }
 
     #[test]
     fn native_contact_rounds_projection_at_the_dot_return() {
