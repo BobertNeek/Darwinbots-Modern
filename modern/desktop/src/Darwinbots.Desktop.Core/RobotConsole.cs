@@ -57,6 +57,18 @@ public sealed class RobotConsoleController
                     .ConfigureAwait(false);
                 return $"mem[{address}] = {value}";
             case "energy":
+                if (_session.LatestSnapshot.NativeCycle.HasValue)
+                {
+                    // The original console preserves empty fields between literal spaces.
+                    var words = input.Split(' ', 3);
+                    if (words[0] != "energy") return string.Empty;
+                    var nativeEnergy = (float)Microsoft.VisualBasic.Conversion.Val(words.Length > 1 ? words[1] : "");
+                    if (!float.IsFinite(nativeEnergy))
+                        throw new FormatException("Energy is outside the original Single range.");
+                    await _session.SetNativeConsoleEnergyAsync(_focus, nativeEnergy, cancellationToken)
+                        .ConfigureAwait(false);
+                    return string.Empty;
+                }
                 RequireArguments(command, 1);
                 var energy = ParseInt(command.Arguments[0], "energy");
                 await _session.SetOrganismEnergyAsync(_focus.Slot, _focus.Generation, energy, cancellationToken)
