@@ -152,7 +152,7 @@ public sealed class Db2PersistenceTests
     public void NativeDeadRowsAndEarlierQuotedModernFounderRowsCanShareOneArchive()
     {
         var death = new DeathRecordSnapshot(4, 1, 0, "Oracle,movement.txt", 0, 0, 4,
-            0, 0, 6, 0, 0, 30000, 0, "start\n'quoted \" DNA comment\nstop", []);
+            0, 0, 6, 0, 0, 30000, 0, "start\n'quoted \" DNA comment\n1,DNA,\" payload\nstop", []);
         var text = Db2GenomeRecordFile.EncodeDead([death], includeHeader: true);
         Assert.Contains("\r\n\r\n\r\n1,0,Oracle,movement.txt,0,0,4,0,0,6,0,0,30000,30000,0\r\n", text);
 

@@ -264,41 +264,46 @@ public static class Db2GenomeRecordFile
         return records;
     }
 
-    private static Db2GenomeRecord ParseMetadata(string line)
+    private static Db2GenomeRecord ParseMetadata(string line) => ParseRecord(ReadMetadataFields(line)
+        ?? throw new InvalidDataException("DB2 genome record metadata is invalid."));
+
+    private static (IReadOnlyList<string> Fields, string Founder, int Suffix)? ReadMetadataFields(string line)
     {
         if (line.Contains('"'))
         {
             // Earlier Modern archives used CSV quoting for names containing commas or quotes.
             var quoted = CsvFields(line);
-            if (quoted.Count != MetadataColumns)
-                throw new InvalidDataException("DB2 genome record metadata is invalid.");
-            return ParseRecord(quoted, quoted[FounderColumn], FounderColumn + 1);
+            if (quoted.Count != MetadataColumns) return null;
+            return (quoted, quoted[FounderColumn], FounderColumn + 1);
         }
 
         var fields = line.Split(',');
-        if (fields.Length < MetadataColumns)
-            throw new InvalidDataException("DB2 genome record metadata is invalid.");
+        if (fields.Length < MetadataColumns) return null;
         int suffix = fields.Length - NumericSuffixColumns;
         var founder = string.Join(",", fields, FounderColumn, suffix - FounderColumn);
-        return ParseRecord(fields, founder, suffix);
+        return (fields, founder, suffix);
     }
 
-    private static Db2GenomeRecord ParseRecord(IReadOnlyList<string> fields, string founder, int suffix) => new(
-        ParseUInt64(fields[0], "robot id"),
-        ParseUInt64(fields[1], "parent id"),
-        founder,
-        ParseUInt32(fields[suffix], "generation"),
-        ParseUInt64(fields[suffix + 1], "birth cycle"),
-        ParseUInt64(fields[suffix + 2], "age"),
-        ParseUInt64(fields[suffix + 3], "mutations"),
-        ParseUInt64(fields[suffix + 4], "new mutations"),
-        ParseUInt32(fields[suffix + 5], "DNA length"),
-        ParseUInt64(fields[suffix + 6], "offspring number"),
-        ParseUInt64(fields[suffix + 7], "kills"),
-        ParseFitness(fields[suffix + 8]),
-        ParseResource(fields[suffix + 9], "energy"),
-        ParseResource(fields[suffix + 10], "chloroplasts"),
-        string.Empty);
+    private static Db2GenomeRecord ParseRecord((IReadOnlyList<string> Fields, string Founder, int Suffix) metadata)
+    {
+        var (fields, founder, suffix) = metadata;
+        return new(
+            ParseUInt64(fields[0], "robot id"),
+            ParseUInt64(fields[1], "parent id"),
+            founder,
+            ParseUInt32(fields[suffix], "generation"),
+            ParseUInt64(fields[suffix + 1], "birth cycle"),
+            ParseUInt64(fields[suffix + 2], "age"),
+            ParseUInt64(fields[suffix + 3], "mutations"),
+            ParseUInt64(fields[suffix + 4], "new mutations"),
+            ParseUInt32(fields[suffix + 5], "DNA length"),
+            ParseUInt64(fields[suffix + 6], "offspring number"),
+            ParseUInt64(fields[suffix + 7], "kills"),
+            ParseFitness(fields[suffix + 8]),
+            ParseResource(fields[suffix + 9], "energy"),
+            ParseResource(fields[suffix + 10], "chloroplasts"),
+            string.Empty);
+    }
 
     private static Db2GenomeRecord Record(
         ulong id,
@@ -323,17 +328,24 @@ public static class Db2GenomeRecordFile
         // Detokenized DNA comments can contain quotes, including in the hash.
         if (line.TrimStart().StartsWith('\'')) return false;
         int firstComma = line.IndexOf(',');
-        if (firstComma < 0 || !ulong.TryParse(line[..firstComma].Trim().Trim('"'),
-                NumberStyles.Integer, CultureInfo.InvariantCulture, out _)) return false;
+        if (firstComma < 0) return false;
+        int secondComma = line.IndexOf(',', firstComma + 1);
+        if (secondComma < 0 || !IsId(line[..firstComma]) || !IsId(line[(firstComma + 1)..secondComma]))
+            return false;
+        // Unclosed quotes in a record-shaped row are a CSV error, independent of the numeric suffix.
+        if (ReadMetadataFields(line) is not { } fields) return false;
         try
         {
-            _ = ParseMetadata(line);
+            _ = ParseRecord(fields);
             return true;
         }
         catch (InvalidDataException)
         {
             return false;
         }
+
+        static bool IsId(string value) => ulong.TryParse(value.Trim().Trim('"'),
+            NumberStyles.Integer, CultureInfo.InvariantCulture, out _);
     }
 
     private static List<string> CsvFields(string line)
