@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
@@ -16,6 +17,9 @@ public sealed partial class GraphSeriesWindow : Window
     private bool _closePromptPending;
     private bool _keepUpdating;
     private bool _closed;
+    private int _positioningVersion;
+    private bool _placingFromLayout;
+    private PixelPoint? _restoredPosition;
 
     public GraphSeriesWindow() : this(new GraphSeriesViewModel("empty", GraphMetric.Population, "Population", []))
     {
@@ -52,6 +56,47 @@ public sealed partial class GraphSeriesWindow : Window
     internal GraphSeriesViewModel Graph => _graph;
     internal bool IsCollecting => IsVisible || _keepUpdating;
     internal bool NeedsCleanupOnLoad => _keepUpdating || _closePromptPending;
+    internal event Action? DiscardedByUser;
+
+    internal void PlaceFromNativeLayout(Window owner, NativeGraphLayoutRow layout)
+    {
+        if (layout.Left is null && layout.Top is null) return;
+        var screen = owner.Screens.ScreenFromWindow(owner) ?? owner.Screens.Primary;
+        if (screen is null) return;
+
+        var workingArea = screen.WorkingArea;
+        var scale = screen.Scaling;
+        var left = layout.Left is { } x ? Math.Round(x * scale / 15) : workingArea.X;
+        var top = layout.Top is { } y ? Math.Round(y * scale / 15) : workingArea.Y;
+        var rightmost = workingArea.X + Math.Max(0, workingArea.Width - Math.Round(Width * scale));
+        var bottommost = workingArea.Y + Math.Max(0, workingArea.Height - Math.Round(Height * scale));
+        var version = ++_positioningVersion;
+        _placingFromLayout = true;
+        WindowStartupLocation = WindowStartupLocation.Manual;
+        var position = new PixelPoint((int)Math.Clamp(left, workingArea.X, rightmost),
+            (int)Math.Clamp(top, workingArea.Y, bottommost));
+        _restoredPosition = position;
+        Position = position;
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (_positioningVersion == version) _placingFromLayout = false;
+        }, DispatcherPriority.Background);
+    }
+
+    internal (int Left, int Top)? ReadOnscreenNativePosition()
+    {
+        if (_placingFromLayout || !IsVisible || WindowState != WindowState.Normal) return null;
+        var point = Position;
+        if (point == _restoredPosition) return null;
+        var screen = Screens.ScreenFromPoint(point);
+        if (screen is null || !screen.WorkingArea.Contains(point)) return null;
+
+        _restoredPosition = null;
+        return (ToTwips(point.X, screen.Scaling), ToTwips(point.Y, screen.Scaling));
+
+        static int ToTwips(int pixel, double scale) => (int)Math.Clamp(Math.Round(pixel * 15d / scale),
+            int.MinValue, int.MaxValue);
+    }
 
     internal void Reopen(Window owner)
     {
@@ -97,7 +142,11 @@ public sealed partial class GraphSeriesWindow : Window
             _keepUpdating = true;
             Hide();
         }
-        else Close();
+        else
+        {
+            DiscardedByUser?.Invoke();
+            Close();
+        }
     }
 
     private void CancelClosePrompt()
