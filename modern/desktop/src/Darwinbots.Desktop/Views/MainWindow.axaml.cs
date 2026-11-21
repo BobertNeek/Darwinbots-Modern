@@ -1594,7 +1594,11 @@ public sealed partial class MainWindow : Window
         {
             var info = _toolWindows.ShowOrActivate(NativeRobotInfoKey,
                 () => new RobotDetailsWindow(session, focus, tab, SelectedRobotKey,
-                    parent => ReproduceFromNativeRobotInfoAsync(session, parent)) { Topmost = true });
+                    parent => ReproduceFromNativeRobotInfoAsync(session, parent),
+                    openNativeConsole: () => _session == session && !_loadingSimulation && session.LatestSnapshot.NativeCycle.HasValue
+                        ? ShowSelectedRobotConsoleAsync()
+                        : Task.FromResult(LegacyCommandResult.Failure("SIMULATION IS UNAVAILABLE")))
+                { Topmost = true });
             if (tab == RobotDetailsTab.Dna) info.SelectTab(tab);
             info.SetFollowedSnapshot(session.LatestSnapshot, tab == RobotDetailsTab.Dna ? focus : null);
             return info;
@@ -1668,8 +1672,8 @@ public sealed partial class MainWindow : Window
 
     private async Task<LegacyCommandResult> ShowSelectedRobotConsoleAsync()
     {
-        var organism = _viewModel.SelectedOrganism!;
         if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        if (_viewModel.SelectedOrganism is not { } organism) return LegacyCommandResult.Failure("NO ROBOT SELECTED");
         var focus = new OrganismKey(organism.Slot, organism.Generation);
         var native = session.LatestSnapshot.NativeCycle.HasValue;
         _toolWindows.ShowOrActivate(
