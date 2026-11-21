@@ -19,7 +19,7 @@ impl SaveFile {
         // A normal last-exit save preserves SimOpts.F1 but carries no external restart marker.
         object.insert(
             "native_f1".into(),
-            serde_json::json!(engine.snapshot().native_f1_enabled),
+            serde_json::json!(engine.native_f1_enabled()),
         );
         object.insert(
             "local_mode".into(),
