@@ -29,6 +29,9 @@ enum Command {
         ticks: Option<u64>,
         #[arg(long, conflicts_with = "ticks", allow_hyphen_values = true)]
         until_cycle: Option<i32>,
+        /// Starting chloroplasts for repopulation from the original Global.gset profile.
+        #[arg(long, default_value_t = 0, value_parser = clap::value_parser!(i32).range(0..=32_000))]
+        start_chloroplasts: i32,
         #[arg(long)]
         output_sim: PathBuf,
     },
@@ -128,10 +131,12 @@ where
             simulation,
             ticks,
             until_cycle,
+            start_chloroplasts,
             output_sim,
         } => {
             let input_bytes = fs::read(&simulation)?;
-            let mut engine = Engine::from_native_sim(&input_bytes)?;
+            let mut engine =
+                Engine::from_native_sim_with_start_chloroplasts(&input_bytes, start_chloroplasts)?;
             let start = engine
                 .snapshot()
                 .native_cycle
@@ -166,7 +171,7 @@ where
                 &mut output,
                 &json!({ "start_cycle": start,
                 "end_cycle": end, "ticks": ticks, "processed_tick": engine.snapshot().tick,
-                "backend": "Cpu",
+                "backend": "Cpu", "start_chloroplasts": start_chloroplasts,
                 "output_sim": output_sim, "population": engine.population(),
                 "output_image": if ticks == 0 { "unchanged_input" } else { "engine_native_export" },
                 "rng_boundary": native_comparison::RNG_BOUNDARY }),
