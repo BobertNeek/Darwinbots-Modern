@@ -2337,6 +2337,12 @@ internal sealed class AuditEngineClient : IEngineClient
         config.Restrictions);
     public void SetOrganismAim(uint slot, uint generation, int aim) => Calls.Enqueue($"Aim:{slot}:{generation}:{aim}");
     public byte[] Save() { Calls.Enqueue("Save"); return EncodeTickInSave ? BitConverter.GetBytes(_tick) : [1, 2, 3, 4]; }
+    public byte[] SaveLegacy()
+    {
+        Calls.Enqueue("SaveLegacy");
+        return EncodeTickInSave ? BitConverter.GetBytes(_tick)
+            : throw new NotSupportedException("This engine client does not support legacy simulation export.");
+    }
     public byte[] SaveWithoutMutations() { Calls.Enqueue("SaveWithoutMutations"); return [4, 3, 2, 1]; }
     public void Load(byte[] save)
     {
