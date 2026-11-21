@@ -74,7 +74,12 @@ public partial class LegacyMenuBar : UserControl
             item.Name = $"Command{command}";
             AutomationProperties.SetAutomationId(item, item.Name);
             item.Icon = BuildIcon(model.IconKey ?? string.Empty);
-            if (model.Shortcut is not null) item.HotKey = KeyGesture.Parse(model.Shortcut);
+            if (model.Shortcut is not null)
+            {
+                var gesture = KeyGesture.Parse(model.Shortcut);
+                item.InputGesture = gesture;
+                item.HotKey = gesture;
+            }
             item.ToggleType = model.CheckKind switch
             {
                 LegacyMenuCheckKind.Check => MenuItemToggleType.CheckBox,
