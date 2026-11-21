@@ -895,15 +895,28 @@ public sealed class GraphContestRenderedTests
                 await WaitFor(
                     () => graphWindow.OwnedWindows.OfType<GraphSeriesWindow>().Count() == 2,
                     () => "Graph Suite did not open two live graph windows.");
-                Assert.All(graphWindow.ViewModel.RunningGraphs, graph => Assert.NotEmpty(graph.Samples));
-
-                var preUpdateTick = graphWindow.ViewModel.RunningGraphs
-                    .SelectMany(graph => graph.Samples)
-                    .Max(sample => sample.Tick);
-                await session.StepAsync(100);
+                var liveGraphWindows = graphWindow.OwnedWindows.OfType<GraphSeriesWindow>().ToArray();
+                var liveSeries = graphWindow.ViewModel.RunningGraphs;
                 await WaitFor(
-                    () => graphWindow.ViewModel.RunningGraphs.All(graph => graph.Samples.Any(sample => sample.Tick > preUpdateTick)),
-                    () => "Live graph windows did not receive the next Rust history sample.");
+                    () => liveSeries.Count == 2 * setup.Species.Count && liveSeries.All(graph => graph.Samples.Count == 1),
+                    () => "The live graph windows did not receive their opening samples.");
+
+                void UpdateLiveGraphs()
+                {
+                    foreach (var liveGraphWindow in liveGraphWindows)
+                        liveGraphWindow.FindControl<Button>("UpdateGraphNowButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                }
+
+                var preUpdateTick = session.LatestSnapshot.Tick;
+                await session.StepAsync(100);
+                await FlushGraphPresentationAsync();
+                Assert.All(liveSeries, graph => Assert.Equal(preUpdateTick, Assert.Single(graph.Samples).Tick));
+                var updateTick = session.LatestSnapshot.Tick;
+                Assert.True(updateTick > preUpdateTick);
+                UpdateLiveGraphs();
+                await WaitFor(
+                    () => liveSeries.All(graph => graph.Samples.Count == 2 && graph.Samples[^1].Tick == updateTick),
+                    () => "Update Now did not feed the stepped world into both live graphs.");
 
                 var export = graphWindow.ViewModel.ExportCsv();
                 Assert.StartsWith("series_id,metric,title,expression,tick,value\r\n", export, StringComparison.Ordinal);
@@ -918,15 +931,17 @@ public sealed class GraphContestRenderedTests
                 graphView.FindControl<Button>("JoinCompareButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 Assert.Contains("JOINED", graphWindow.ViewModel.Status, StringComparison.Ordinal);
 
-                var resetTick = graphWindow.ViewModel.RunningGraphs
-                    .SelectMany(graph => graph.Samples)
-                    .Max(sample => sample.Tick);
                 graphView.FindControl<Button>("ResetGraphsButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                Assert.All(graphWindow.ViewModel.RunningGraphs, graph => Assert.Empty(graph.Samples));
+                Assert.All(liveSeries, graph => Assert.Empty(graph.Samples));
                 await session.StepAsync(100);
+                await FlushGraphPresentationAsync();
+                Assert.All(liveSeries, graph => Assert.Empty(graph.Samples));
+                var postResetTick = session.LatestSnapshot.Tick;
+                Assert.True(postResetTick > updateTick);
+                UpdateLiveGraphs();
                 await WaitFor(
-                    () => graphWindow.ViewModel.RunningGraphs.All(graph => graph.Samples.Count > 0 && graph.Samples.Min(sample => sample.Tick) > resetTick),
-                    () => "Reset graphs did not resume from a new live history segment.");
+                    () => liveSeries.All(graph => graph.Samples.Count == 1 && graph.Samples[0].Tick == postResetTick),
+                    () => "Update Now did not start a fresh point series after Reset All.");
 
                 var contestButton = window.FindControl<Button>("ContestResultsButton")!;
                 contestButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
