@@ -283,6 +283,9 @@ internal static class LegacySettingsAdapter
             DynamicUpperRangePercent = Cost(57), DynamicLowerRangePercent = Cost(58),
             DynamicLowerReinstateThreshold = Cost(59), DynamicUpperReinstateThreshold = Cost(60),
         };
+        // ReadSettFromFile supplies 50 when the native Single is zero.
+        if (costSettings.DynamicSensitivity == 0)
+            costSettings = costSettings with { DynamicSensitivity = 50 };
         var vegetation = Db2VegetationOptions.Default with
         {
             MaxEnergyPerTick = Integer(global + 10, 100), MinimumChloroplastEquivalents = Integer(global + 11),
