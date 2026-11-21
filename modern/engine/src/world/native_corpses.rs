@@ -12,6 +12,7 @@ pub(super) struct NativeCorpseTransfer {
 
 impl Engine {
     pub(super) fn decay_native_corpses(&mut self) -> Result<(), EngineError> {
+        let native = self.native_random.is_some();
         for id in self.slots.ids_in_slot_order() {
             if !self
                 .slots
@@ -62,6 +63,11 @@ impl Engine {
                     20,
                 );
                 angle = (f64::from(angle) + f64::from(scatter) / 200.0) as f32;
+                let source_name = if native {
+                    native_census_filename(robot, &self.species)
+                } else {
+                    "Corpse"
+                };
                 let slot = self.projectiles.try_spawn(
                     ProjectileSpawn {
                         owner: id,
@@ -76,7 +82,7 @@ impl Engine {
                         kind,
                         value: value.floor(),
                         payload: None,
-                        source_species_name: Some("Corpse".into()),
+                        source_species_name: Some(source_name.to_owned()),
                         toxin_memory_location: robot.program.memory.read(835),
                         toxin_memory_value: robot.program.memory.read(836),
                         color: robot.phenotype.color,

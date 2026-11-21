@@ -48,6 +48,7 @@ fn native_waste_meal(
 impl Engine {
     pub(super) fn waste_phase(&mut self) -> Result<(), EngineError> {
         let settings = self.config.waste;
+        let native = self.native_random.is_some();
         let mut packets = Vec::new();
         for id in self.phase_robot_ids() {
             let robot = self.slots.get_mut(id).unwrap();
@@ -150,7 +151,8 @@ impl Engine {
                 20,
             );
             angle = (f64::from(angle) + f64::from(scatter) / 200.0) as f32;
-            let name = self.species[robot.identity.species.0 as usize].name.clone();
+            let source_species_name =
+                shot_species_name(robot, &self.species, native).map(str::to_owned);
             self.projectiles.try_spawn(
                 ProjectileSpawn {
                     owner,
@@ -165,7 +167,7 @@ impl Engine {
                     kind: -4,
                     value: amount,
                     payload: None,
-                    source_species_name: Some(name),
+                    source_species_name,
                     toxin_memory_location: robot.program.memory.read(835),
                     toxin_memory_value: robot.program.memory.read(836),
                     color: robot.phenotype.color,
