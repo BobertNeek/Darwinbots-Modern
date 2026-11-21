@@ -63,7 +63,10 @@ enum EngineCommand {
         #[serde(default)]
         native_redraw: NativeRedrawCadence,
     },
-    NativeRedraw,
+    NativeRedraw {
+        #[serde(default)]
+        after_continuous_cycle: bool,
+    },
     SetNativeRestartSeed {
         seed: u64,
         #[serde(default)]
@@ -649,7 +652,11 @@ fn db_engine_command_batch_impl(
         Ok(Some(candidate)) => candidate,
         Ok(None) => match SaveFile::encode(committed_engine) {
             Ok(bytes) => match SaveFile::decode(&bytes) {
-                Ok(candidate) => candidate,
+                Ok(mut candidate) => {
+                    candidate.native_restarted_this_cycle =
+                        committed_engine.native_restarted_this_cycle;
+                    candidate
+                }
                 Err(error) => return fail(DbStatus::EngineError, error.to_string()),
             },
             Err(error) => return fail(DbStatus::EngineError, error.to_string()),
@@ -703,8 +710,14 @@ fn db_engine_command_batch_impl(
                         .map(|_| serde_json::Value::Null)
                 }
             }
-            EngineCommand::NativeRedraw => {
-                engine.native_redraw();
+            EngineCommand::NativeRedraw {
+                after_continuous_cycle,
+            } => {
+                if after_continuous_cycle {
+                    engine.native_redraw_after_continuous_cycle();
+                } else {
+                    engine.native_redraw();
+                }
                 Ok(serde_json::Value::Null)
             }
             EngineCommand::ConfigureLocalMode { config } => engine

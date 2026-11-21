@@ -326,6 +326,8 @@ public sealed record EngineSnapshot(
 {
     // Original VB6 cycle; Tick remains the unsigned scheduling clock.
     public int? NativeCycle { get; init; }
+    // Set by the desktop session for scheduled or explicit viewport frames.
+    public bool? ViewportFrame { get; init; }
     public IReadOnlyList<RenderInstanceSnapshot> RenderInstances { get; init; } = [];
     public IReadOnlyList<SpeciesSnapshot> Species { get; init; } = [];
     public MutationSettingsSnapshot MutationSettings { get; init; } = MutationSettingsSnapshot.Default;

@@ -2322,6 +2322,7 @@ struct EngineCycleCheckpoint {
     dynamic_cost_state: DynamicCostRuntimeState,
     native_sim_guid: Option<i32>,
     native_cycle: Option<i32>,
+    native_restarted_this_cycle: bool,
     native_population_census: Option<[usize; 2]>,
     native_senses_census: Option<NativeSensesCensus>,
     native_loaded_census_stage: Option<native_reproduction::NativeLoadedCensusStage>,
@@ -2355,6 +2356,8 @@ pub struct Engine {
     native_sim_guid: Option<i32>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     native_cycle: Option<i32>,
+    #[serde(skip)]
+    pub(crate) native_restarted_this_cycle: bool,
     /// Original mode1 UpdateCounters census and its one-cycle delayed display.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     native_population_census: Option<[usize; 2]>,
@@ -2661,6 +2664,7 @@ impl Engine {
             native_f1: None,
             native_sim_guid: None,
             native_cycle: None,
+            native_restarted_this_cycle: false,
             native_population_census: None,
             native_senses_census: None,
             native_loaded_census_stage: None,
@@ -2875,6 +2879,7 @@ impl Engine {
             native_f1: None,
             native_sim_guid: None,
             native_cycle: None,
+            native_restarted_this_cycle: false,
             native_population_census: None,
             native_senses_census: None,
             native_loaded_census_stage: None,
@@ -5474,6 +5479,14 @@ impl Engine {
         }
     }
 
+    pub(crate) fn native_redraw_after_continuous_cycle(&mut self) {
+        // The active loop exits on StartAnotherRound before Redraw.
+        // Explicit Single Cycle redraw keeps its own timing.
+        if !self.native_restarted_this_cycle {
+            self.native_redraw();
+        }
+    }
+
     fn write_native_redraw_positions(&mut self) {
         for robot in self
             .slots
@@ -5624,6 +5637,7 @@ impl Engine {
             native_buckets: self.native_buckets.clone(),
             native_sim_guid: self.native_sim_guid,
             native_cycle: self.native_cycle,
+            native_restarted_this_cycle: self.native_restarted_this_cycle,
             native_population_census: self.native_population_census,
             native_senses_census: self.native_senses_census.clone(),
             native_loaded_census_stage: self.native_loaded_census_stage,
@@ -5642,6 +5656,7 @@ impl Engine {
         self.native_buckets = checkpoint.native_buckets;
         self.native_sim_guid = checkpoint.native_sim_guid;
         self.native_cycle = checkpoint.native_cycle;
+        self.native_restarted_this_cycle = checkpoint.native_restarted_this_cycle;
         self.native_population_census = checkpoint.native_population_census;
         self.native_senses_census = checkpoint.native_senses_census;
         self.native_loaded_census_stage = checkpoint.native_loaded_census_stage;
@@ -5726,6 +5741,7 @@ impl Engine {
         trace.phase(CyclePhase::CycleIncrement);
         self.tick = next_tick;
         self.native_cycle = next_native_cycle;
+        self.native_restarted_this_cycle = false;
         trace.phase(CyclePhase::ModeLogic);
         let (staged_restart, staged_energy_before) = self.staged_evolution_before_cycle()?;
         if staged_restart {
@@ -5913,10 +5929,11 @@ impl Engine {
             self.advance_population_seeding()?;
         }
         self.refresh_occurrence_census_readbacks();
-        if self
-            .native_cycle
-            .is_some_and(|cycle| native_redraw.applies(cycle))
+        if !self.native_restarted_this_cycle
             && self.native_random.is_some()
+            && self
+                .native_cycle
+                .is_some_and(|cycle| native_redraw.applies(cycle))
         {
             self.write_native_redraw_positions();
         }
@@ -5985,6 +6002,7 @@ impl Engine {
             native_f1: self.native_f1,
             native_sim_guid: self.native_sim_guid,
             native_cycle: self.native_cycle,
+            native_restarted_this_cycle: self.native_restarted_this_cycle,
             native_population_census: self.native_population_census,
             native_senses_census: self.native_senses_census.clone(),
             native_loaded_census_stage: self.native_loaded_census_stage,
