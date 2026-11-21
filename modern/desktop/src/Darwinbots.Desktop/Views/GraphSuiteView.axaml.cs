@@ -26,6 +26,7 @@ public sealed partial class GraphSuiteView : UserControl
 
     public GraphSuiteViewModel ViewModel => _viewModel;
     public event Action<GraphSeriesViewModel>? GraphWindowRequested;
+    internal Func<GraphMetric, GraphSeriesViewModel?>? ReopenGraphRequested { get; set; }
 
     public void SetSnapshot(EngineSnapshot snapshot)
     {
@@ -36,6 +37,12 @@ public sealed partial class GraphSuiteView : UserControl
 
     private void OpenGraph_Click(object? sender, RoutedEventArgs e)
     {
+        if (_viewModel.SelectedChoice.Metric is { } metric && ReopenGraphRequested?.Invoke(metric) is { } existing)
+        {
+            _displayedSeries = existing;
+            RefreshChart();
+            return;
+        }
         var opened = _viewModel.OpenSelectedGraph();
         if (opened is not null)
         {
@@ -119,7 +126,8 @@ public sealed partial class GraphSuiteView : UserControl
         {
             _displayedSeries = graph;
             RefreshChart();
-            GraphWindowRequested?.Invoke(graph);
+            if (graph.Id.StartsWith("legacy-", StringComparison.Ordinal) || ReopenGraphRequested?.Invoke(graph.Metric) is null)
+                GraphWindowRequested?.Invoke(graph);
         }
     }
 

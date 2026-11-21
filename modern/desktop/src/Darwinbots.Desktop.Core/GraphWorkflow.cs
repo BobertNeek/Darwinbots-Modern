@@ -193,6 +193,7 @@ public sealed class GraphSuiteViewModel : INotifyPropertyChanged
     private string _comparisonText = "NO COMPARISON";
     private ulong? _historyCutoffTick;
     private readonly Dictionary<GraphMetric, ulong> _metricCutoffTicks = [];
+    private readonly Dictionary<GraphMetric, List<GraphMetricSample>> _immediatePoints = [];
     private static readonly string[] DynamicCostLabels =
         ["Cost Multiplier", "Population / Target", "Upper Range", "Lower Range", "Zero Level", "Reinstatement Level"];
     private static readonly uint[] DynamicCostColors =
@@ -324,6 +325,7 @@ public sealed class GraphSuiteViewModel : INotifyPropertyChanged
     {
         _historyCutoffTick = _samples.LastOrDefault()?.Tick;
         _metricCutoffTicks.Clear();
+        _immediatePoints.Clear();
         foreach (var graph in RunningGraphs) graph.Reset();
         ComparisonText = "NO COMPARISON";
         Status = "ALL GRAPHS RESET";
@@ -332,8 +334,35 @@ public sealed class GraphSuiteViewModel : INotifyPropertyChanged
 
     public void ResetGraph(GraphMetric metric)
     {
+        _immediatePoints.Remove(metric);
         if (_samples.LastOrDefault() is { } latest) _metricCutoffTicks[metric] = latest.Tick;
         foreach (var graph in RunningGraphs.Where(graph => graph.Metric == metric)) graph.Reset();
+    }
+
+    public void CloseGraph(GraphMetric metric)
+    {
+        _immediatePoints.Remove(metric);
+        _metricCutoffTicks.Remove(metric);
+    }
+
+    public void ClearPreviousGraphWorld()
+    {
+        _historyCutoffTick = null;
+        _metricCutoffTicks.Clear();
+        _immediatePoints.Clear();
+    }
+
+    public void AppendImmediatePoint(GraphMetric metric, GraphMetricSample sample)
+    {
+        if (!_immediatePoints.TryGetValue(metric, out var points))
+        {
+            points = [];
+            _immediatePoints.Add(metric, points);
+        }
+        if (points.Count == 1_001) points.RemoveAt(0);
+        points.Add(sample);
+        foreach (var graph in RunningGraphs.Where(graph => graph.Metric == metric))
+            graph.Update(ProjectGraph(graph));
     }
 
     public string ListAllRunningGraphs()
@@ -370,8 +399,8 @@ public sealed class GraphSuiteViewModel : INotifyPropertyChanged
 
         var left = graphs[0];
         var right = graphs[1];
-        var leftValues = left.Samples.ToDictionary(value => value.Tick, value => value.Value);
-        var rightValues = right.Samples.ToDictionary(value => value.Tick, value => value.Value);
+        var leftValues = left.Samples.GroupBy(value => value.Tick).ToDictionary(group => group.Key, group => group.Last().Value);
+        var rightValues = right.Samples.GroupBy(value => value.Tick).ToDictionary(group => group.Key, group => group.Last().Value);
         var differences = leftValues.Keys.Intersect(rightValues.Keys).Order()
             .Select(tick => new GraphDifference(
                 tick,
@@ -409,6 +438,8 @@ public sealed class GraphSuiteViewModel : INotifyPropertyChanged
         if (_metricCutoffTicks.TryGetValue(metric, out var metricCutoff))
             cutoff = Math.Max(cutoff ?? 0, metricCutoff);
         var samples = cutoff is { } tick ? _samples.Where(sample => sample.Tick > tick).ToArray() : _samples;
+        if (_immediatePoints.TryGetValue(metric, out var points))
+            samples = samples.Concat(points).OrderBy(sample => sample.Tick).ToArray();
         return GraphMetricSampleProjector.Project(samples, metric, custom, speciesName, dynamicCostIndex);
     }
 

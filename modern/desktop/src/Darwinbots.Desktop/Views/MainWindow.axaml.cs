@@ -2984,7 +2984,7 @@ public sealed partial class MainWindow : Window
             _worldLoadGeneration++;
             _graphRecording.RestoreNativeState(await _session.ReadNativeGraphRecordingAsync());
             _graphRecording.IsSuspended = false;
-            _toolWindows.PublishGraphSnapshot(_session.LatestSnapshot);
+            _toolWindows.LoadGraphWorld(_session.LatestSnapshot);
             // A rejected load publishes no snapshot and must keep user-closed
             // graphs closed. Loading publications defer this until success.
             _automaticEvolutionGraphBoundary = null;
@@ -3171,7 +3171,7 @@ public sealed partial class MainWindow : Window
             () =>
             {
                 var window = new GraphSuiteWindow(_session?.LatestSnapshot ?? EngineSnapshot.Empty, _graphRecording,
-                    () => _liveEnvironment.AutoSpeciation, ReadCurrentGraphSampleAsync);
+                    () => _liveEnvironment.AutoSpeciation, consumeNativeSample: ReadCurrentGraphSampleAsync);
                 window.SamplingChanged += ConfigureGraphSampling;
                 return window;
             });
@@ -3198,23 +3198,29 @@ public sealed partial class MainWindow : Window
         suite.OpenEvolutionGraphs();
     }
 
-    private async Task<NativeGraphRecordingSample?> ReadCurrentGraphSampleAsync()
+    private async Task ReadCurrentGraphSampleAsync(Action<NativeGraphRecordingSample?> consume)
     {
-        if (_session is not { } session) return null;
+        if (_session is not { } session)
+        {
+            consume(null);
+            return;
+        }
         var recordingGeneration = _graphRecording.Generation;
         await _advanceGate.WaitAsync();
         try
         {
-            if (_windowClosed || _loadingSimulation || _session != session
-                || _graphRecording.Generation != recordingGeneration || !session.LatestSnapshot.NativeCycle.HasValue)
-                return null;
-            return await session.ReadNativeGraphSampleAsync();
-        }
-        catch (Exception error)
-        {
-            if (!_windowClosed && _session == session && _graphRecording.Generation == recordingGeneration)
-                _viewModel.Status = $"GRAPH SAMPLE ERROR · {error.Message}";
-            return null;
+            NativeGraphRecordingSample? sample = null;
+            if (!_windowClosed && !_loadingSimulation && _session == session
+                && _graphRecording.Generation == recordingGeneration && session.LatestSnapshot.NativeCycle.HasValue)
+            {
+                try { sample = await session.ReadNativeGraphSampleAsync(); }
+                catch (Exception error)
+                {
+                    if (!_windowClosed && _session == session && _graphRecording.Generation == recordingGeneration)
+                        _viewModel.Status = $"GRAPH SAMPLE ERROR · {error.Message}";
+                }
+            }
+            consume(sample);
         }
         finally { _advanceGate.Release(); }
     }
