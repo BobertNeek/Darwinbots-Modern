@@ -18,7 +18,8 @@ public sealed class RobotConsoleWindow : Window
         SimulationSession session,
         OrganismKey focus,
         Func<Task>? play = null,
-        Func<Task>? pause = null)
+        Func<Task>? pause = null,
+        Func<uint, CancellationToken, Task<(ulong Tick, ulong Advanced)>>? advance = null)
     {
         Title = $"Darwinbots — Robot Console {focus.Slot}:{focus.Generation}";
         Width = 760;
@@ -27,7 +28,7 @@ public sealed class RobotConsoleWindow : Window
         MinHeight = 420;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         Background = Brush.Parse("#F4F0E6");
-        _controller = new RobotConsoleController(session, focus, play, pause);
+        _controller = new RobotConsoleController(session, focus, play, pause, advance);
 
         var root = new Grid { RowDefinitions = new RowDefinitions("66,*,Auto") };
         root.Children.Add(new Border
