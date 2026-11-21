@@ -438,9 +438,19 @@ impl RobotState {
     }
 
     pub(crate) fn set_heading(&mut self, heading: f32) {
+        self.set_heading_for_profile(heading, false);
+    }
+
+    pub(crate) fn set_heading_for_profile(&mut self, heading: f32, native: bool) {
         self.kinematics.aim_radians = Some(heading);
         self.materials.aim = crate::biology::resource_readback(heading * 200.0);
-        self.kinematics.aim_vector = [heading.cos(), heading.sin()];
+        self.kinematics.aim_vector = if native {
+            // VB6 Cos and Sin return Double before VectorSet takes Singles.
+            let heading = f64::from(heading);
+            [heading.cos() as f32, heading.sin() as f32]
+        } else {
+            [heading.cos(), heading.sin()]
+        };
     }
 
     pub(crate) fn refresh_occurrence_census(&mut self) {

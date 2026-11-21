@@ -229,12 +229,7 @@ impl Engine {
         let id =
             self.spawn_species_at_unpublished(dna, species, position_override.unwrap_or(position))?;
         let robot = self.slots.get_mut(id)?;
-        robot.set_heading(heading);
-        // VB6 Cos/Sin return Double before VectorSet narrows to Single.
-        robot.kinematics.aim_vector = [
-            f64::from(heading).cos() as f32,
-            f64::from(heading).sin() as f32,
-        ];
+        robot.set_heading_for_profile(heading, true);
         robot.program.memory.write(19, robot.materials.aim);
         robot.program.memory.write(12, timer);
         robot.program.rng_state = state;
