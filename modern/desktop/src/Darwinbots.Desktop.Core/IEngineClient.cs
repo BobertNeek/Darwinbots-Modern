@@ -30,6 +30,7 @@ public interface IEngineClient : IDisposable
     OrganismKey CloneOrganism(uint slot, uint generation, float[] position);
     void ReplaceDna(uint slot, uint generation, string dna);
     string ExportDna(uint slot, uint generation);
+    string ExportOriginalDnaFile(uint slot, uint generation) => ExportDna(slot, generation);
     string ExportSpeciesTemplateDna(uint species) =>
         throw new NotSupportedException("This engine client does not support startup species DNA export.");
     byte[] ExportOrganismGroup(IReadOnlyList<OrganismKey> organisms) =>
