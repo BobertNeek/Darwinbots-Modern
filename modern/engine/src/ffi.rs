@@ -98,6 +98,13 @@ enum EngineCommand {
     },
     ReadNativeGraphRecording,
     ReadNativeGraphSample,
+    ReadNativeGraphLayout,
+    UpdateNativeGraphLayout {
+        #[serde(default)]
+        graphs: Vec<crate::world::native_graph_layout::NativeGraphLayoutRow>,
+        #[serde(default)]
+        custom_queries: Vec<crate::world::native_graph_layout::NativeGraphCustomQuery>,
+    },
     UpdateNativeGraphRecording {
         run_stamp: Option<String>,
         #[serde(default)]
@@ -653,6 +660,7 @@ fn db_engine_command_batch_impl(
                     | EngineCommand::ReadNativeRestartSources
                     | EngineCommand::ReadNativeGraphRecording
                     | EngineCommand::ReadNativeGraphSample
+                    | EngineCommand::ReadNativeGraphLayout
                     | EngineCommand::HasUnresolvedNativeRepopulationSources
                     | EngineCommand::ExportSpeciesTemplateDna { .. }
                     | EngineCommand::FindBestRobot { .. }
@@ -691,6 +699,9 @@ fn db_engine_command_batch_impl(
                 EngineCommand::ReadNativeGraphSample => {
                     Ok(serde_json::json!(engine.read_native_graph_sample()))
                 }
+                EngineCommand::ReadNativeGraphLayout => engine
+                    .read_native_graph_layout()
+                    .map(|state| serde_json::json!(state)),
                 EngineCommand::HasUnresolvedNativeRepopulationSources => engine
                     .has_unresolved_native_repopulation_sources()
                     .map(serde_json::Value::Bool),
@@ -829,6 +840,15 @@ fn db_engine_command_batch_impl(
             EngineCommand::ReadNativeGraphSample => {
                 Ok(serde_json::json!(engine.read_native_graph_sample()))
             }
+            EngineCommand::ReadNativeGraphLayout => engine
+                .read_native_graph_layout()
+                .map(|state| serde_json::json!(state)),
+            EngineCommand::UpdateNativeGraphLayout {
+                graphs,
+                custom_queries,
+            } => engine
+                .update_native_graph_layout(graphs, custom_queries)
+                .map(|_| serde_json::Value::Null),
             EngineCommand::UpdateNativeGraphRecording { run_stamp, graphs } => engine
                 .update_native_graph_recording(run_stamp, graphs)
                 .map(|_| serde_json::Value::Null),
@@ -2121,6 +2141,58 @@ mod tests {
         frame.extend_from_slice(&(payload.len() as u32).to_le_bytes());
         frame.extend_from_slice(&payload);
         SaveFile::decode(&frame).unwrap()
+    }
+
+    #[test]
+    fn native_graph_layout_commands_merge_partial_rows_and_reject_invalid_queries_atomically() {
+        let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+        let initial = SaveFile::encode(&world).unwrap();
+        let read = serde_json::json!({"type": "read_native_graph_layout"});
+        let (status, response) = classic_test_batch(&mut world, serde_json::json!([read]));
+        assert_eq!(status, DbStatus::Ok);
+        assert_eq!(SaveFile::encode(&world).unwrap(), initial);
+        let state: serde_json::Value = serde_json::from_slice(&response).unwrap();
+        assert_eq!(state["results"][0]["graphs"].as_array().unwrap().len(), 18);
+        assert_eq!(
+            state["results"][0]["graphs"][0],
+            serde_json::json!({"graph_index": 0, "visible": false})
+        );
+        assert_eq!(
+            state["results"][0]["custom_queries"],
+            serde_json::json!(["", "", ""])
+        );
+
+        let position = serde_json::json!({
+            "type": "update_native_graph_layout",
+            "graphs": [{"graph_index": 0, "left": 0, "top": -320}],
+            "custom_queries": [{"slot": 2, "expression": "1 2 +"}],
+        });
+        let visibility = serde_json::json!({
+            "type": "update_native_graph_layout", "graphs": [{"graph_index": 0, "visible": true}],
+        });
+        let (status, _) = classic_test_batch(
+            &mut world,
+            serde_json::json!([position, {
+                "type": "update_native_graph_layout", "custom_queries": [{"slot": 4, "expression": "invalid"}],
+            }]),
+        );
+        assert_eq!(status, DbStatus::EngineError);
+        assert_eq!(SaveFile::encode(&world).unwrap(), initial);
+
+        let (status, response) =
+            classic_test_batch(&mut world, serde_json::json!([position, visibility, read]));
+        assert_eq!(status, DbStatus::Ok);
+        let state: serde_json::Value = serde_json::from_slice(&response).unwrap();
+        assert_eq!(
+            state["results"][2]["graphs"][0],
+            serde_json::json!({
+                "graph_index": 0, "visible": true, "left": 0, "top": -320,
+            })
+        );
+        assert_eq!(
+            state["results"][2]["custom_queries"],
+            serde_json::json!(["", "1 2 +", ""])
+        );
     }
 
     #[test]

@@ -87,6 +87,8 @@ use file_transfer_transaction::FileTransferTransaction;
 #[path = "world/native_corpses.rs"]
 mod native_corpses;
 
+#[path = "world/native_graph_layout.rs"]
+pub(crate) mod native_graph_layout;
 #[path = "world/native_graph_recording.rs"]
 pub(crate) mod native_graph_recording;
 #[path = "world/native_graphs.rs"]
@@ -2372,6 +2374,8 @@ pub struct Engine {
     /// Authored graph-save values layered over untouched native archive metadata.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     native_graph_recording: Option<native_graph_recording::NativeGraphRecordingState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    native_graph_layout: Option<native_graph_layout::NativeGraphLayoutOverlay>,
     #[serde(default)]
     dynamic_cost_state: DynamicCostRuntimeState,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -2688,6 +2692,7 @@ impl Engine {
             native_random: None,
             graph_sampling: crate::GraphSamplingSettings::default(),
             native_graph_recording: None,
+            native_graph_layout: None,
             native_origin: None,
             native_f1: None,
             native_sim_guid: None,
@@ -2908,6 +2913,7 @@ impl Engine {
             native_random: Some(native_random),
             graph_sampling: crate::GraphSamplingSettings::default(),
             native_graph_recording: None,
+            native_graph_layout: None,
             native_origin: None,
             native_f1: None,
             native_sim_guid: None,
@@ -6025,6 +6031,7 @@ impl Engine {
             native_random: self.native_random.clone(),
             graph_sampling: self.graph_sampling.clone(),
             native_graph_recording: self.native_graph_recording.clone(),
+            native_graph_layout: self.native_graph_layout.clone(),
             dynamic_cost_state: self.dynamic_cost_state.clone(),
             native_origin: self.native_origin.clone(),
             native_f1: self.native_f1,
@@ -13142,6 +13149,9 @@ impl Engine {
     pub(crate) fn restore(mut engine: Self) -> Result<Self, EngineError> {
         if let Some(recording) = &engine.native_graph_recording {
             recording.validate()?;
+        }
+        if let Some(layout) = &engine.native_graph_layout {
+            layout.validate()?;
         }
         // Reject process caches before migration or snapshot-derived ring indexing.
         engine.native_energy.validate().map_err(|error| {
