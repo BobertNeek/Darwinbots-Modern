@@ -29,11 +29,6 @@ pub(super) fn receive_energy(materials: &mut BiologyState, partial: f32) -> f32 
     (partial * 0.95) as f32
 }
 
-fn native_shot_dot(first: [f32; 2], second: [f32; 2]) -> f32 {
-    // Common.bas Dot and VectorMagnitudeSquare narrow once at return.
-    (f64::from(first[0]) * f64::from(second[0]) + f64::from(first[1]) * f64::from(second[1])) as f32
-}
-
 impl Engine {
     pub(super) fn current_native_shot_owner(&self, owner: OrganismId) -> Option<OrganismId> {
         // Source rob(parent) addresses the current occupant, irrespective of old generation.
@@ -109,12 +104,12 @@ impl Engine {
             ];
             // Common.bas VectorMagnitudeSquare stores the sum of both
             // products as Single before NewShotCollision uses it.
-            let p2 = native_shot_dot(p, p);
-            let d2 = native_shot_dot(d, d);
+            let p2 = crate::physics::native_dot(p, p);
+            let d2 = crate::physics::native_dot(d, d);
             if d2 == 0.0 {
                 continue;
             }
-            let dot = native_shot_dot(d, p);
+            let dot = crate::physics::native_dot(d, p);
             let discriminant = (f64::from(dot).powi(2)
                 - f64::from(d2) * (f64::from(p2) - f64::from(radius).powi(2)))
                 as f32;

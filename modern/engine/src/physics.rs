@@ -8,7 +8,7 @@ mod environment;
 mod movement;
 
 pub(crate) use collision::{
-    moving_circle_fraction, native_magnitude, native_scalar, resolve_collisions,
+    moving_circle_fraction, native_dot, native_magnitude, native_scalar, resolve_collisions,
     resolve_native_collisions, segment_aabb_fraction, segment_circle_fraction,
 };
 pub(crate) use environment::{

@@ -89,6 +89,11 @@ pub(crate) fn segment_aabb_fraction(
     (0.0..=1.0).contains(&entry).then_some(entry)
 }
 
+pub(crate) fn native_dot(first: [f32; 2], second: [f32; 2]) -> f32 {
+    // Common.bas Dot rounds to Single at the function return.
+    (f64::from(first[0]) * f64::from(second[0]) + f64::from(first[1]) * f64::from(second[1])) as f32
+}
+
 pub(crate) fn native_magnitude(vector: [f32; 2]) -> f32 {
     let maximum = vector[0].abs().max(vector[1].abs());
     let minimum = vector[0].abs().min(vector[1].abs());
@@ -228,7 +233,12 @@ fn resolve_contacts(
             continue;
         }
         let projection = |velocity: [f32; 2]| {
-            (f64::from(velocity[0] * normal[0] + velocity[1] * normal[1]) * 0.99) as f32
+            let dot = if native_precision {
+                native_dot(velocity, normal)
+            } else {
+                velocity[0] * normal[0] + velocity[1] * normal[1]
+            };
+            (f64::from(dot) * 0.99) as f32
         };
         let first_projection = projection(velocities[first]);
         let second_projection = projection(velocities[second]);
@@ -287,6 +297,49 @@ fn resolve_contacts(
 #[cfg(test)]
 mod native_contact_tests {
     use super::{resolve_collisions, resolve_native_collisions};
+
+    #[test]
+    fn native_contact_rounds_projection_at_the_dot_return() {
+        let positions = [[100.0, 100.0], [107.0, 103.0]];
+        let velocities = [[1.0, 1.0], [-3.0, -4.0]];
+        let radii = [10.0, 11.0];
+        let masses = [1.0, 2.0];
+        let fixed = [false; 2];
+        let pairs = [(0, 1)];
+
+        let mut native_positions = positions;
+        let mut native_velocities = velocities;
+        resolve_native_collisions(
+            &mut native_positions,
+            &mut native_velocities,
+            &radii,
+            &masses,
+            &fixed,
+            &pairs,
+            0.5,
+        );
+        assert_eq!(
+            native_velocities.map(|vector| vector.map(f32::to_bits)),
+            [[0xc0846884, 0xbf99d7c0], [0xbedcbbe8, 0xc0398a11]]
+        );
+
+        let mut portable_positions = positions;
+        let mut portable_velocities = velocities;
+        resolve_collisions(
+            &mut portable_positions,
+            &mut portable_velocities,
+            &radii,
+            &masses,
+            &fixed,
+            &pairs,
+            0.5,
+        );
+        assert_eq!(native_positions, portable_positions);
+        assert_eq!(
+            portable_velocities.map(|vector| vector.map(f32::to_bits)),
+            [[0xc0846884, 0xbf99d7bc], [0xbedcbbe4, 0xc0398a10]]
+        );
+    }
 
     #[test]
     fn native_contact_rounds_after_subtracting_distance_from_both_radii() {
