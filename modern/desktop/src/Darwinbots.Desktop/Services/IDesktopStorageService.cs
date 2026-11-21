@@ -12,6 +12,8 @@ public enum SimulationSaveFormat
     Legacy,
 }
 
+public sealed record DesktopSimulationFile(byte[] Data, string? LocalPath = null);
+
 public interface IDesktopStorageService
 {
     Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner, string? mainDirectory = null, bool allowMultiple = true);
@@ -29,6 +31,8 @@ public interface IDesktopStorageService
     Task<DesktopSettings?> OpenSettingsAsync(TopLevel owner, string? mainDirectory = null);
     Task<string?> PickSimulationPathAsync(TopLevel owner);
     Task<byte[]?> OpenSimulationAsync(TopLevel owner);
+    async Task<DesktopSimulationFile?> OpenSimulationWithSourceAsync(TopLevel owner) =>
+        await OpenSimulationAsync(owner) is { } data ? new(data) : null;
     Task<bool> SaveSettingsAsync(TopLevel owner, DesktopSettings settings, string? mainDirectory = null);
     Task<bool> SaveSimulationAsync(TopLevel owner, ReadOnlyMemory<byte> save);
     Task<bool> SaveLegacySimulationAsync(TopLevel owner, ReadOnlyMemory<byte> save) => Task.FromResult(false);

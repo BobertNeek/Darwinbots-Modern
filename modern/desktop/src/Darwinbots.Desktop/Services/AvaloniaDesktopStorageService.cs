@@ -121,7 +121,10 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         return files.FirstOrDefault() is { } file ? LocalPath(file) : null;
     }
 
-    public async Task<byte[]?> OpenSimulationAsync(TopLevel owner)
+    public async Task<byte[]?> OpenSimulationAsync(TopLevel owner) =>
+        (await OpenSimulationWithSourceAsync(owner))?.Data;
+
+    public async Task<DesktopSimulationFile?> OpenSimulationWithSourceAsync(TopLevel owner)
     {
         var files = await owner.StorageProvider.OpenFilePickerAsync(SimulationOpenOptions(
             "Load Darwinbots simulation", LegacySimulationFileType(), SimulationFileType()));
@@ -129,7 +132,7 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         await using var stream = await file.OpenReadAsync();
         using var memory = new MemoryStream();
         await stream.CopyToAsync(memory);
-        return memory.ToArray();
+        return new(memory.ToArray(), LocalPath(file));
     }
 
     public async Task<bool> SaveSimulationAsync(TopLevel owner, ReadOnlyMemory<byte> save)

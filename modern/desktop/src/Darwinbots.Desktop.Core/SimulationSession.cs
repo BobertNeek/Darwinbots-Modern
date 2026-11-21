@@ -692,7 +692,11 @@ public sealed class SimulationSession : IAsyncDisposable
         return save ?? throw new InvalidDataException("Engine returned no legacy save data.");
     }
 
-    public Task LoadAsync(byte[] save, CancellationToken cancellationToken = default)
+    public Task LoadAsync(byte[] save, CancellationToken cancellationToken = default) =>
+        LoadWithNativeRestartSourcesAsync(save, null, cancellationToken);
+
+    public Task LoadWithNativeRestartSourcesAsync(byte[] save, Func<NativeRestartSource, string?>? resolveSource,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(save);
         return Enqueue(engine =>
@@ -700,6 +704,19 @@ public sealed class SimulationSession : IAsyncDisposable
             engine.Load(save);
             _appliedPlayerBotPointer = null;
             SetPlayerBotPointer(null);
+            // Modern checkpoints already contain their original source bindings.
+            if (resolveSource is not null && !save.AsSpan().StartsWith("DB3S"u8))
+            {
+                var restart = engine.ReadNativeRestartSources();
+                if (restart.Requested || restart.Sources.Count > 0)
+                {
+                    var bindings = new List<NativeRestartBinding>();
+                    foreach (var source in restart.Sources)
+                        if (resolveSource(source) is { } dna)
+                            bindings.Add(new(source.LineageId, dna));
+                    engine.BindNativeRestartSources(bindings);
+                }
+            }
         }, cancellationToken);
     }
 
