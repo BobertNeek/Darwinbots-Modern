@@ -1641,6 +1641,8 @@ public sealed partial class MainWindow : Window
         if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
         var focus = new OrganismKey(organism.Slot, organism.Generation);
         var generation = _worldLoadGeneration;
+        var native = session.LatestSnapshot.NativeCycle.HasValue;
+        if (native && _loadingSimulation) return LegacyCommandResult.Failure("SIMULATION IS LOADING");
         _toolWindows.ShowOrActivate(
             $"robot-console:{generation}:{focus.Slot}:{focus.Generation}",
             () => new RobotConsoleWindow(
@@ -1656,8 +1658,18 @@ public sealed partial class MainWindow : Window
                     Pause_Click(this, new RoutedEventArgs());
                     return Task.CompletedTask;
                 },
-                (count, cancellationToken) => AdvanceSimulationCoreAsync(count, session, generation, cancellationToken)));
+                (count, cancellationToken) => AdvanceSimulationCoreAsync(count, session, generation, cancellationToken),
+                validateCommand: native ? ValidateNativeConsole : null));
         return LegacyCommandResult.Success("ROBOT CONSOLE OPEN");
+
+        void ValidateNativeConsole()
+        {
+            // Memory writes recheck on the worker after resolving the address.
+            if (_loadingSimulation) throw new InvalidOperationException("The simulation is loading.");
+            if (Volatile.Read(ref _windowClosed) || Volatile.Read(ref _session) != session
+                || Volatile.Read(ref _worldLoadGeneration) != generation)
+                throw new InvalidOperationException("This console belongs to a previous simulation.");
+        }
     }
 
     private async Task<LegacyCommandResult> ShowSelectedGeneActivationsAsync()

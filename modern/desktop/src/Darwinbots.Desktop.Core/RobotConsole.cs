@@ -17,23 +17,27 @@ public sealed class RobotConsoleController
     private readonly Func<Task>? _play;
     private readonly Func<Task>? _pause;
     private readonly Func<uint, CancellationToken, Task<(ulong Tick, ulong Advanced)>>? _advance;
+    private readonly Action? _validateCommand;
 
     public RobotConsoleController(
         SimulationSession session,
         OrganismKey focus,
         Func<Task>? play = null,
         Func<Task>? pause = null,
-        Func<uint, CancellationToken, Task<(ulong Tick, ulong Advanced)>>? advance = null)
+        Func<uint, CancellationToken, Task<(ulong Tick, ulong Advanced)>>? advance = null,
+        Action? validateCommand = null)
     {
         _session = session;
         _focus = focus;
         _play = play;
         _pause = pause;
         _advance = advance;
+        _validateCommand = validateCommand;
     }
 
     public async Task<string> ExecuteAsync(string input, CancellationToken cancellationToken = default)
     {
+        _validateCommand?.Invoke();
         var command = RobotConsoleCommand.Parse(input);
         switch (command.Name)
         {
@@ -61,7 +65,7 @@ public sealed class RobotConsoleController
                 RequireArguments(command, 2);
                 var address = await _session.ResolveMemoryAddressAsync(command.Arguments[0], cancellationToken).ConfigureAwait(false);
                 var value = ParseInt(command.Arguments[1], "value");
-                await _session.SetOrganismMemoryAsync(_focus.Slot, _focus.Generation, address, value, cancellationToken)
+                await _session.SetOrganismMemoryAsync(_focus.Slot, _focus.Generation, address, value, cancellationToken, _validateCommand)
                     .ConfigureAwait(false);
                 return $"mem[{address}] = {value}";
             case "energy":
@@ -74,7 +78,9 @@ public sealed class RobotConsoleController
             case "?":
                 if (command.Arguments.Count == 0) return PrintMemory(command.Arguments);
                 var resolved = await _session.ResolveMemoryAddressAsync(command.Arguments[0], cancellationToken).ConfigureAwait(false);
-                return PrintMemory([resolved.ToString()]);
+                var memory = PrintMemory([resolved.ToString()]);
+                _validateCommand?.Invoke();
+                return memory;
             case "execrob":
                 await _session.ExecuteRobotsAsync(cancellationToken).ConfigureAwait(false);
                 return $"DNA executed at cycle {_session.LatestSnapshot.Tick}";
