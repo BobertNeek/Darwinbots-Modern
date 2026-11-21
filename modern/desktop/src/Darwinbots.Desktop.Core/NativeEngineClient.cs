@@ -106,15 +106,24 @@ public sealed partial class NativeEngineClient : IEngineClient
         _ => "UNKNOWN",
     };
 
-    public void Tick(uint count = 1) => Advance(count, null);
+    public void Tick(uint count = 1) => Tick(count, NativeRedrawCadence.Off);
 
-    public void RedrawNative() =>
-        ExecuteBatch(new { version = 1, commands = new[] { new { type = "native_redraw" } } }, "redraw native simulation");
+    public void Tick(uint count, NativeRedrawCadence nativeRedraw) => Advance(count, null, nativeRedraw);
+
+    public void RedrawNative() => RedrawNative(afterContinuousCycle: false);
+
+    public void RedrawNative(bool afterContinuousCycle) =>
+        ExecuteBatch(new { version = 1, commands = new[] { new { type = "native_redraw", after_continuous_cycle = afterContinuousCycle } } },
+            "redraw native simulation");
 
     public void TickRecordingDeaths(uint count, Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted) =>
-        Advance(count, onCommitted);
+        TickRecordingDeaths(count, onCommitted, NativeRedrawCadence.Off);
 
-    private void Advance(uint count, Action<IReadOnlyList<DeathRecordSnapshot>>? onDeathsCommitted)
+    public void TickRecordingDeaths(uint count, Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted,
+        NativeRedrawCadence nativeRedraw) => Advance(count, onCommitted, nativeRedraw);
+
+    private void Advance(uint count, Action<IReadOnlyList<DeathRecordSnapshot>>? onDeathsCommitted,
+        NativeRedrawCadence nativeRedraw)
     {
         EnsureAlive();
         if (count == 0) return;
@@ -122,17 +131,24 @@ public sealed partial class NativeEngineClient : IEngineClient
         {
             // External league/staged restarts take a new Timer sample for each
             // original cycle. Each successful cycle commits before the next begins.
-            for (uint cycle = 0; cycle < count; cycle++) Advance(1, onDeathsCommitted);
+            for (uint cycle = 0; cycle < count; cycle++) Advance(1, onDeathsCommitted, nativeRedraw);
             return;
         }
+        var cadence = nativeRedraw switch
+        {
+            NativeRedrawCadence.Off => "off",
+            NativeRedrawCadence.EveryCycle => "every_cycle",
+            NativeRedrawCadence.EveryTenthCycle => "every_tenth_cycle",
+            _ => throw new ArgumentOutOfRangeException(nameof(nativeRedraw)),
+        };
         var restart = NativeRestartSeedCommand();
         if (onDeathsCommitted is null)
         {
-            ExecuteBatch(new { version = 1, commands = new object[] { restart, new { type = "tick", count } } }, "advance simulation");
+            ExecuteBatch(new { version = 1, commands = new object[] { restart, new { type = "tick", count, native_redraw = cadence } } }, "advance simulation");
             return;
         }
         var result = ExecuteBatchForResult(
-            new { version = 1, commands = new object[] { restart, new { type = "tick", count, capture_deaths = true } } },
+            new { version = 1, commands = new object[] { restart, new { type = "tick", count, capture_deaths = true, native_redraw = cadence } } },
             "advance simulation with death records");
         var records = result.GetProperty("results")[1].GetProperty("death_records").Deserialize<DeathRecordSnapshot[]>(DeathRecordJson);
         if (records is { Length: > 0 }) onDeathsCommitted(records);

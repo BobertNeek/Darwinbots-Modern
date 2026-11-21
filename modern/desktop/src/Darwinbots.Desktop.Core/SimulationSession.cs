@@ -34,17 +34,30 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task StepAsync(uint count = 1, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.Tick(count), cancellationToken, measureTicks: true);
 
+    public Task StepAsync(uint count, NativeRedrawCadence nativeRedraw, CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.Tick(count, nativeRedraw), cancellationToken, measureTicks: true,
+            viewportFrame: snapshot => DesktopControlRules.IsViewportFrameDue(nativeRedraw, snapshot));
+
     // The caller holds its advance gate across the tick, checkpoint and redraw.
     // Checkpoint logic can read LatestSnapshot before the rendered state is published.
-    public async Task AdvanceWithNativeRedrawAsync(Func<Task> advance)
+    public async Task AdvanceWithNativeRedrawAsync(Func<Task> advance, Func<EngineSnapshot, bool>? frameIsDue = null,
+        bool afterContinuousCycle = false)
     {
         ArgumentNullException.ThrowIfNull(advance);
         _deferSnapshotPublication = true;
+        var previousTick = LatestSnapshot.Tick;
         try
         {
             await advance().ConfigureAwait(false);
-            await Enqueue(engine => engine.RedrawNative(), CancellationToken.None, completesNativeStep: true)
-                .ConfigureAwait(false);
+            var snapshot = LatestSnapshot;
+            var presentFrame = (!afterContinuousCycle || snapshot.Tick != previousTick)
+                && (frameIsDue?.Invoke(snapshot) ?? true);
+            var redrawNative = presentFrame && snapshot.NativeCycle.HasValue;
+            await Enqueue(engine =>
+            {
+                if (redrawNative)
+                    engine.RedrawNative(afterContinuousCycle);
+            }, CancellationToken.None, completesNativeStep: true, viewportFrame: _ => presentFrame).ConfigureAwait(false);
         }
         finally { _deferSnapshotPublication = false; }
     }
@@ -52,6 +65,12 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task StepRecordingDeathsAsync(
         uint count, Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.TickRecordingDeaths(count, onCommitted), cancellationToken, measureTicks: true);
+
+    public Task StepRecordingDeathsAsync(uint count,
+        Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted, NativeRedrawCadence nativeRedraw,
+        CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.TickRecordingDeaths(count, onCommitted, nativeRedraw), cancellationToken, measureTicks: true,
+            viewportFrame: snapshot => DesktopControlRules.IsViewportFrameDue(nativeRedraw, snapshot));
 
     public async Task<OrganismKey?> FindBestRobotAsync(bool energyWeighting, CancellationToken cancellationToken = default)
         => await FindBestRobotAsync(energyWeighting ? 100 : 0, cancellationToken).ConfigureAwait(false);
@@ -457,12 +476,12 @@ public sealed class SimulationSession : IAsyncDisposable
     }
 
     private Task Enqueue(Action<IEngineClient> action, CancellationToken cancellationToken,
-        bool measureTicks = false, bool completesNativeStep = false)
+        bool measureTicks = false, bool completesNativeStep = false, Func<EngineSnapshot, bool>? viewportFrame = null)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         cancellationToken.ThrowIfCancellationRequested();
         var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var command = new SessionCommand(action, completion, cancellationToken, measureTicks, completesNativeStep);
+        var command = new SessionCommand(action, completion, cancellationToken, measureTicks, completesNativeStep, viewportFrame);
         _commands.Add(command, cancellationToken);
         return completion.Task;
     }
@@ -501,6 +520,8 @@ public sealed class SimulationSession : IAsyncDisposable
                     };
                 _lastPublishedTick = snapshot.Tick;
                 _performanceClock.Restart();
+                if (command.ViewportFrame is { } viewportFrame)
+                    snapshot = snapshot with { ViewportFrame = viewportFrame(snapshot) };
                 LatestSnapshot = snapshot;
                 if (command.CompletesNativeStep) _deferSnapshotPublication = false;
                 if (!_deferSnapshotPublication) SnapshotPublished?.Invoke(snapshot);
@@ -533,5 +554,6 @@ public sealed class SimulationSession : IAsyncDisposable
         TaskCompletionSource Completion,
         CancellationToken CancellationToken,
         bool MeasureTicks,
-        bool CompletesNativeStep);
+        bool CompletesNativeStep,
+        Func<EngineSnapshot, bool>? ViewportFrame);
 }

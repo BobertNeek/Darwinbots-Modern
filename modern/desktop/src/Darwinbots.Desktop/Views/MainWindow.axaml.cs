@@ -89,6 +89,8 @@ public sealed partial class MainWindow : Window
     private OrganismKey? _moveOrganism;
     private WorldInsertionController? _insertion;
     private bool _turbo;
+    private bool _legacyVideoOff;
+    private bool _awaitingVideoFrame;
     private bool _limitMode;
     private bool _fastMode;
     private bool _flickerMode;
@@ -312,7 +314,7 @@ public sealed partial class MainWindow : Window
         _runTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(_maximumSpeed ? 1 : 16) };
         _runTimer.Tick += RunTimer_Tick;
         if (setup.LoadSavePath is null && _globalSettings.Main.VideoOff)
-            SetTurboMode(true);
+            SetLegacyVideoOff(true);
         Opened += Window_Opened;
         Closed += Window_Closed;
         _controlsReady = true;
@@ -516,7 +518,7 @@ public sealed partial class MainWindow : Window
     private void ToolbarFast_Click(object? sender, RoutedEventArgs e)
     {
         _fastMode = !_fastMode;
-        RuntimeSpeed.SelectedIndex = _fastMode ? 3 : 0;
+        _awaitingVideoFrame = true;
         ToolbarSlot10.Content = _fastMode ? "FAST ON" : "FAST OFF";
         AutomationProperties.SetName(ToolbarSlot10, _fastMode ? "FAST MODE ON" : "FAST MODE OFF");
         _viewModel.Status = _fastMode ? "FAST MODE ON" : "FAST MODE OFF";
@@ -567,7 +569,19 @@ public sealed partial class MainWindow : Window
         AutomationProperties.SetName(ToolbarSlot13, enabled ? "DEATH EFFECTS ON" : "DEATH EFFECTS OFF");
     }
 
-    private void ToolbarNoGraphics_Click(object? sender, RoutedEventArgs e) => Turbo_Click(sender, e);
+    private void ToolbarNoGraphics_Click(object? sender, RoutedEventArgs e)
+    {
+        SetLegacyVideoOff(!_legacyVideoOff);
+        _viewModel.Status = _legacyVideoOff ? "WORLD GRAPHICS OFF" : "WORLD GRAPHICS ON";
+    }
+
+    private void SetLegacyVideoOff(bool off)
+    {
+        _legacyVideoOff = off;
+        _awaitingVideoFrame = true;
+        ToolbarSlot14.Content = off ? "GRAPHICS OFF" : "GRAPHICS ON";
+        AutomationProperties.SetName(ToolbarSlot14, off ? "WORLD GRAPHICS OFF" : "WORLD GRAPHICS ON");
+    }
 
     private async void ToolbarFindBest_Click(object? sender, RoutedEventArgs e)
     {
@@ -2037,6 +2051,7 @@ public sealed partial class MainWindow : Window
 
     private async void Window_Opened(object? sender, EventArgs e)
     {
+        var presentingStartup = true;
         try
         {
             await _storage.SaveLastStartAsync(
@@ -2068,8 +2083,13 @@ public sealed partial class MainWindow : Window
                         _runTimer.Stop();
                         _viewModel.Status = "ZEROBOT EVOLUTION COMPLETE";
                     }
-                    Viewport.SetSnapshot(snapshot);
-                    Viewport.SelectKey(_viewModel.SelectedKey);
+                    if (snapshot.ViewportFrame == true || loading || presentingStartup
+                        || (snapshot.ViewportFrame is null && !_legacyVideoOff && !_fastMode && !_awaitingVideoFrame))
+                    {
+                        Viewport.SetSnapshot(snapshot);
+                        Viewport.SelectKey(_viewModel.SelectedKey);
+                        if (snapshot.ViewportFrame == true) _awaitingVideoFrame = false;
+                    }
                     var graphInterval = (ulong)Math.Max(1, _globalSettings.Main.GraphUpdatesPerTick);
                     var updateGraphs = _lastGraphRefreshTick is not { } lastTick
                         || snapshot.Tick < lastTick || snapshot.Tick - lastTick >= graphInterval;
@@ -2135,6 +2155,7 @@ public sealed partial class MainWindow : Window
         {
             await HandleEngineErrorAsync(error, attemptRecovery: true);
         }
+        finally { presentingStartup = false; }
     }
 
     private async Task ConfigureZerobotModeAsync()
@@ -2251,7 +2272,7 @@ public sealed partial class MainWindow : Window
         if (_session is null) return;
         try
         {
-            await AdvanceSimulationCoreAsync(1, redrawNative: true);
+            await AdvanceSimulationCoreAsync(1, manualStep: true);
         }
         catch (Exception error)
         {
@@ -2432,8 +2453,6 @@ public sealed partial class MainWindow : Window
         UpdateRunTimerInterval();
         Viewport.IsVisible = !_turbo;
         TurboButton.Content = _turbo ? "SHOW WORLD" : "TURBO";
-        ToolbarSlot14.Content = _turbo ? "GRAPHICS OFF" : "GRAPHICS ON";
-        AutomationProperties.SetName(ToolbarSlot14, _turbo ? "WORLD GRAPHICS OFF" : "WORLD GRAPHICS ON");
     }
 
     private async void SwitchBackend_Click(object? sender, RoutedEventArgs e)
@@ -2995,6 +3014,8 @@ public sealed partial class MainWindow : Window
             if (_session is null) return;
             _loadingSimulation = true;
             await _session.LoadAsync(save);
+            SetLegacyVideoOff(false);
+            _awaitingVideoFrame = false;
             // A rejected load publishes no snapshot and must keep user-closed
             // graphs closed. Loading publications defer this until success.
             _automaticEvolutionGraphBoundary = null;
@@ -3008,23 +3029,23 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private Task AdvanceSimulationAsync(uint count) => AdvanceSimulationCoreAsync(count, redrawNative: false);
+    private Task AdvanceSimulationAsync(uint count) => AdvanceSimulationCoreAsync(count, manualStep: false);
 
-    private async Task AdvanceSimulationCoreAsync(uint count, bool redrawNative)
+    private async Task AdvanceSimulationCoreAsync(uint count, bool manualStep)
     {
         await _advanceGate.WaitAsync();
         try
         {
             if (_session is not { } session || count == 0) return;
-            if (redrawNative && session.LatestSnapshot.NativeCycle.HasValue)
-                await session.AdvanceWithNativeRedrawAsync(() => AdvanceCyclesAsync(session, count));
+            if (manualStep)
+                await session.AdvanceWithNativeRedrawAsync(() => AdvanceCyclesAsync(session, count, continuous: false));
             else
-                await AdvanceCyclesAsync(session, count);
+                await AdvanceCyclesAsync(session, count, continuous: true);
         }
         finally { _advanceGate.Release(); }
     }
 
-    private async Task AdvanceCyclesAsync(SimulationSession session, uint count)
+    private async Task AdvanceCyclesAsync(SimulationSession session, uint count, bool continuous)
     {
         while (count > 0)
         {
@@ -3032,20 +3053,60 @@ public sealed partial class MainWindow : Window
             if (_lastAutomaticSaveTick is { } savedTick && before.Tick < savedTick)
                 _lastAutomaticSaveTick = null;
             var interval = _liveEnvironment.Recording?.AutosaveInterval ?? 0;
-            var batch = CycleAutosavePolicy.LimitBatch(before.Tick, count, _safemodeBackup, interval, before.LocalMode, before.NativeCycle);
-            if (_deadRecordingEnabled)
+            var saveBoundary = CycleAutosavePolicy.LimitBatch(before.Tick, uint.MaxValue,
+                _safemodeBackup, interval, before.LocalMode, before.NativeCycle);
+            NativeRedrawCadence? cadence = continuous
+                ? (_legacyVideoOff || _turbo ? NativeRedrawCadence.Off
+                    : _fastMode ? NativeRedrawCadence.EveryTenthCycle : NativeRedrawCadence.EveryCycle)
+                : null;
+            var batch = Math.Min(count, saveBoundary);
+            if (cadence == NativeRedrawCadence.EveryTenthCycle)
+                batch = Math.Min(batch, DesktopControlRules.TicksUntilFastFrame(before));
+            if (cadence is { } scheduled && scheduled != NativeRedrawCadence.Off && before.NativeCycle.HasValue
+                && batch == saveBoundary)
             {
-                var deaths = new List<DeathRecordSnapshot>();
-                try { await session.StepRecordingDeathsAsync(batch, deaths.AddRange); }
-                finally { await RecordSimulationDeathsAsync(deaths); }
+                // Original UpdateSim saves before the active loop's Redraw.
+                // Keep the interior cycles batched and hold only the boundary.
+                if (batch > 1) await StepBatchAsync(session, batch - 1, scheduled);
+                await session.AdvanceWithNativeRedrawAsync(async () =>
+                {
+                    await StepBatchAsync(session, 1, NativeRedrawCadence.Off);
+                    await SaveScheduledCheckpointAsync(session, interval);
+                }, after => DesktopControlRules.IsViewportFrameDue(scheduled, after), afterContinuousCycle: true);
             }
-            else await session.StepAsync(batch);
+            else
+            {
+                await StepBatchAsync(session, batch, cadence);
+                await SaveScheduledCheckpointAsync(session, interval);
+            }
             count -= batch;
-            var after = session.LatestSnapshot;
-            if (_lastAutomaticSaveTick != after.Tick
-                && CycleAutosavePolicy.IsDue(after.Tick, _safemodeBackup, interval, after.LocalMode, after.NativeCycle))
-                await SaveAutomaticCheckpointAsync();
         }
+    }
+
+    private async Task StepBatchAsync(SimulationSession session, uint batch, NativeRedrawCadence? cadence)
+    {
+        if (!_deadRecordingEnabled)
+        {
+            if (cadence is { } scheduled) await session.StepAsync(batch, scheduled);
+            else await session.StepAsync(batch);
+            return;
+        }
+
+        var deaths = new List<DeathRecordSnapshot>();
+        try
+        {
+            if (cadence is { } scheduled) await session.StepRecordingDeathsAsync(batch, deaths.AddRange, scheduled);
+            else await session.StepRecordingDeathsAsync(batch, deaths.AddRange);
+        }
+        finally { await RecordSimulationDeathsAsync(deaths); }
+    }
+
+    private async Task SaveScheduledCheckpointAsync(SimulationSession session, ulong interval)
+    {
+        var after = session.LatestSnapshot;
+        if (_lastAutomaticSaveTick != after.Tick
+            && CycleAutosavePolicy.IsDue(after.Tick, _safemodeBackup, interval, after.LocalMode, after.NativeCycle))
+            await SaveAutomaticCheckpointAsync();
     }
 
     private async Task SaveAutomaticCheckpointAsync()
