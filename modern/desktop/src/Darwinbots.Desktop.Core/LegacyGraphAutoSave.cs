@@ -13,7 +13,7 @@ public sealed class LegacyGraphRecordingRun
         GraphMetric.AverageDescendents, GraphMetric.AverageEnergy, GraphMetric.AverageDnaLength,
         GraphMetric.AverageDnaConditions, GraphMetric.AverageMutationsPerDnaLength, GraphMetric.TotalEnergy,
         GraphMetric.DynamicCostStats, GraphMetric.SpeciesDiversity, GraphMetric.AverageChloroplasts,
-        GraphMetric.SlowGeneticDistance, GraphMetric.GenerationalDistance, GraphMetric.SelectiveGeneticDistance,
+        GraphMetric.SelectiveGeneticDistance, GraphMetric.GenerationalDistance, GraphMetric.SlowGeneticDistance,
         GraphMetric.CustomizableGraph1, GraphMetric.CustomizableGraph2, GraphMetric.CustomizableGraph3,
     ];
 
@@ -87,9 +87,9 @@ public sealed class LegacyGraphRecordingRun
         GraphMetric.DynamicCostStats => "Dynamic_Costs",
         GraphMetric.SpeciesDiversity => "Species_Diversity",
         GraphMetric.AverageChloroplasts => "Average_Chloroplasts",
-        GraphMetric.SlowGeneticDistance => "Genetic_Distance_x1000-",
+        GraphMetric.SelectiveGeneticDistance => "Genetic_Distance_x1000-",
         GraphMetric.GenerationalDistance => "Max_Generational_Distance",
-        GraphMetric.SelectiveGeneticDistance => "Simple_Genetic_Distance_x1000-",
+        GraphMetric.SlowGeneticDistance => "Simple_Genetic_Distance_x1000-",
         GraphMetric.CustomizableGraph1 => "Customizable_Graph_1-",
         GraphMetric.CustomizableGraph2 => "Customizable_Graph_2-",
         GraphMetric.CustomizableGraph3 => "Customizable_Graph_3-",
