@@ -77,6 +77,7 @@ public sealed partial class MainWindow : Window
     private readonly LegacyGraphRecordingRun _graphRecording;
     private readonly bool _keepGraphsUpdatingOnClose;
     private NativeGraphLayoutState? _nativeGraphLayout;
+    private bool _graphResetModalInFlight;
     private bool _tickInFlight;
     private bool _navigationInFlight;
     private bool _windowClosed;
@@ -2977,7 +2978,7 @@ public sealed partial class MainWindow : Window
 
     private async void RunTimer_Tick(object? sender, EventArgs e)
     {
-        if (_session is null || _tickInFlight) return;
+        if (_session is null || _tickInFlight || _graphResetModalInFlight) return;
         _tickInFlight = true;
         var adaptive = _turbo || _maximumSpeed;
         var batch = adaptive ? _maximumBatch : _ticksPerUpdate;
@@ -3220,12 +3221,47 @@ public sealed partial class MainWindow : Window
             {
                 var window = new GraphSuiteWindow(_session?.LatestSnapshot ?? EngineSnapshot.Empty, _graphRecording,
                     () => _liveEnvironment.AutoSpeciation, consumeNativeSample: CaptureCurrentGraphSampleAsync,
-                    keepUpdatingOnClose: _keepGraphsUpdatingOnClose, consumeNativeResetSample: CaptureGraphResetSampleAsync);
+                    keepUpdatingOnClose: _keepGraphsUpdatingOnClose, consumeNativeResetSample: CaptureGraphResetSampleAsync,
+                    runNativeResetModal: RunNativeGraphResetModalAsync);
                 window.SetNativeLayout(_nativeGraphLayout);
                 window.NativeLayoutEdited += PersistGraphLayout;
                 window.SamplingChanged += ConfigureGraphSampling;
                 return window;
             });
+
+    private async Task RunNativeGraphResetModalAsync(Func<Task<bool>> confirm, Func<Task> resetAndFeed)
+    {
+        if (_session is not { } session || !session.LatestSnapshot.NativeCycle.HasValue || _graphResetModalInFlight)
+            return;
+        var loadGeneration = _worldLoadGeneration;
+        if (!OwnsWorld()) return;
+
+        _graphResetModalInFlight = true;
+        var wasRunning = _runTimer.IsEnabled;
+        var wasEnabled = IsEnabled;
+        _runTimer.Stop();
+        IsEnabled = false;
+        try
+        {
+            bool accepted;
+            await _advanceGate.WaitAsync();
+            try { accepted = OwnsWorld() && await confirm(); }
+            finally { _advanceGate.Release(); }
+
+            // The original feeds the accepted Reset All before returning to
+            // its loop. The feed itself takes this gate, with the timer stopped.
+            if (accepted && OwnsWorld()) await resetAndFeed();
+        }
+        finally
+        {
+            _graphResetModalInFlight = false;
+            if (!_windowClosed) IsEnabled = wasEnabled;
+            if (wasRunning && OwnsWorld()) _runTimer.Start();
+        }
+
+        bool OwnsWorld() => _session == session && _worldLoadGeneration == loadGeneration
+            && !_windowClosed && IsVisible && !_loadingSimulation && !_navigationInFlight;
+    }
 
     private void SynchronizeAutomaticEvolutionGraphs(EngineSnapshot snapshot)
     {

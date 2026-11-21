@@ -6,6 +6,7 @@ using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media.Imaging;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Darwinbots.Desktop.Controls;
 using Darwinbots.Desktop.Core;
@@ -17,6 +18,78 @@ namespace Darwinbots.Desktop.Tests;
 
 public sealed class GraphContestRenderedTests
 {
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task NativeResetAllHoldsTheCycleAndRestoresThePreviousRunState(bool accept, bool running)
+    {
+        var setup = new WorldSetupOptions
+        {
+            Backend = "Cpu", Seed = 1729, PopulationCapacity = 32,
+            WorldWidth = 2_000, WorldHeight = 1_500, MetabolismCost = 0,
+            Recording = new Db2RecordingOptions(SamplingInterval: 2_000),
+            Species = [new SpeciesImport("Reset probe", "start\nstop", false, 0xff324fbdu, 1, 1_000, 0, false, 0f)],
+        };
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var main = new MainWindow([], setup);
+            try
+            {
+                main.Show();
+                await WaitFor(
+                    () => TryField<SimulationSession>(main, "_session")?.LatestSnapshot is { NativeCycle: not null, Population: 1 },
+                    () => "MainWindow did not initialize the native Reset All fixture.");
+                var session = TryField<SimulationSession>(main, "_session")!;
+                var timer = TryField<DispatcherTimer>(main, "_runTimer")!;
+                main.FindControl<Button>("GraphsButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                var suite = Assert.Single(main.OwnedWindows.OfType<GraphSuiteWindow>());
+                suite.ViewModel.SelectedChoice = GraphCatalog.For(GraphMetric.Population);
+                var view = suite.FindControl<GraphSuiteView>("GraphView")!;
+                view.FindControl<Button>("OpenGraphButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                var chart = Assert.Single(suite.OwnedWindows.OfType<GraphSeriesWindow>());
+                var population = Assert.Single(suite.ViewModel.RunningGraphs);
+                await WaitFor(() => population.Samples.Count == 1, () => "Population did not receive its first point.");
+                chart.FindControl<Button>("UpdateGraphNowButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => population.Samples.Count == 2, () => "Population did not receive the second point.");
+
+                if (running)
+                {
+                    var startTick = session.LatestSnapshot.Tick;
+                    main.FindControl<Button>("RunButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    await WaitFor(() => session.LatestSnapshot.Tick > startTick, () => "Native simulation did not start running.");
+                }
+                Assert.Equal(running, timer.IsEnabled);
+
+                view.FindControl<Button>("ResetGraphsButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => suite.OwnedWindows.OfType<LegacyConfirmationWindow>().Any(),
+                    () => "Reset All did not show its confirmation after draining the current batch.");
+                var prompt = Assert.Single(suite.OwnedWindows.OfType<LegacyConfirmationWindow>());
+                Assert.True(prompt.IsVisible);
+                Assert.False(timer.IsEnabled);
+                Assert.False(main.IsEnabled);
+                var heldTick = session.LatestSnapshot.Tick;
+                var oldSamples = population.Samples.ToArray();
+                await Task.Delay(160);
+                Assert.Equal(heldTick, session.LatestSnapshot.Tick);
+                Assert.Equal(oldSamples, population.Samples);
+
+                Assert.Single(prompt.GetVisualDescendants().OfType<Button>(), button => Equals(button.Content, accept ? "OK" : "CANCEL"))
+                    .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => !prompt.IsVisible && main.IsEnabled && timer.IsEnabled == running,
+                    () => "Reset All did not restore the previous run state.");
+                if (accept) Assert.Equal(heldTick, population.Samples[0].Tick);
+                else Assert.Equal(oldSamples, population.Samples.Take(oldSamples.Length));
+                if (running)
+                    await WaitFor(() => session.LatestSnapshot.Tick > heldTick, () => "Native cycles did not resume.");
+                else
+                    Assert.Equal(heldTick, session.LatestSnapshot.Tick);
+            }
+            finally { main.Close(); }
+        }, CancellationToken.None);
+    }
+
     [Fact]
     public async Task PopulationGraphSavesOnlyAtTheOriginalDiskSegmentBoundaries()
     {
