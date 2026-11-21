@@ -123,6 +123,78 @@ public sealed class RobotConsoleRenderedTests
     }
 
     [Fact]
+    public async Task NativeConsoleCycleAndPlayReportEachCommittedGenePassInOrder()
+    {
+        const string dna = "cond\n*.robage 1 =\nstart\n1 501 store\nstop\ncond\n*.robage 0 =\nstart\n1 502 store\nstop";
+        var setup = new WorldSetupOptions
+        {
+            Backend = "Cpu",
+            TicksPerUpdate = 1,
+            Species = [new SpeciesImport("Console Oracle", dna, false, 0xff239ac0, 1, 1_000, 0, false, 1)],
+        };
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], setup, NativeEngineClientFactory.Instance, new AuditStorageService())
+            {
+                WindowState = WindowState.Normal, Width = 1_280, Height = 900,
+            };
+            try
+            {
+                window.Show();
+                var model = Assert.IsType<MainWindowViewModel>(window.DataContext);
+                await WaitForAsync(() => model.SelectedKey.HasValue && model.NativeCycle.HasValue);
+                var session = (SimulationSession)typeof(MainWindow)
+                    .GetField("_session", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(window)!;
+                var focus = model.SelectedKey!.Value;
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                menu.FindCommandItem(LegacyCommandId.RobotOpenConsole)!
+                    .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitForAsync(() => window.OwnedWindows.OfType<RobotConsoleWindow>().Any());
+                var console = Assert.Single(window.OwnedWindows.OfType<RobotConsoleWindow>());
+                console.UpdateLayout();
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                var transcript = Assert.Single(console.GetVisualDescendants().OfType<TextBox>(), box => box.IsReadOnly);
+                var command = Assert.Single(console.GetVisualDescendants().OfType<TextBox>(), box => !box.IsReadOnly);
+                var buttons = console.GetVisualDescendants().OfType<Button>().ToDictionary(button => button.Content?.ToString() ?? "");
+                const string header = "***ROBOT GENES EXECUTION***";
+                var start = session.LatestSnapshot.Tick;
+
+                await RunAndWaitAsync(command, buttons["RUN"], transcript, "cycle 2", $"cycle {start + 2} (+2)");
+                var output = (transcript.Text ?? "").Replace("\r", "");
+                Assert.Equal(2, PassCount());
+                Assert.True(output.Contains($"{header}\n1 not executed\n2 executed\n\n{header}\n1 executed\n2 not executed\n",
+                    StringComparison.Ordinal), output);
+                Assert.Equal(start + 2, session.LatestSnapshot.Tick);
+
+                buttons["PLAY"].RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitForAsync(() => PassCount() > 2);
+                buttons["PAUSE"].RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitForAsync(() => model.Status == "PAUSED");
+                // Let an already committed timer cycle settle before checking the ordinary toolbar step.
+                await Task.Delay(150);
+                var passesAfterPause = PassCount();
+                var pausedTick = session.LatestSnapshot.Tick;
+                window.FindControl<Button>("StepButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitForAsync(() => session.LatestSnapshot.Tick == pausedTick + 1);
+                Assert.Equal(passesAfterPause, PassCount());
+
+                await session.RemoveAsync(focus.Slot, focus.Generation);
+                var beforeLoss = session.LatestSnapshot.Tick;
+                await RunAndWaitAsync(command, buttons["RUN"], transcript, "cycle 2", $"cycle {beforeLoss + 2} (+2)");
+                Assert.Single((transcript.Text ?? "").Split("Robot has died.", StringSplitOptions.None).Skip(1));
+                Assert.Equal(passesAfterPause, PassCount());
+
+                int PassCount() => (transcript.Text ?? "").Split(header, StringSplitOptions.None).Length - 1;
+            }
+            finally
+            {
+                foreach (var ownedWindow in window.OwnedWindows.ToArray()) ownedWindow.Close();
+                if (window.IsVisible) window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
     public async Task ConsoleCycleUsesTheOwnerForSourceRecoveryAndSafeModeCheckpoint()
     {
         await DesktopTestApplication.Session.Dispatch(async () =>
