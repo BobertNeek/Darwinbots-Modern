@@ -41,8 +41,21 @@ impl Engine {
     }
 
     pub(super) fn sample_native_graphs(&mut self) -> Vec<SpeciesGraphSample> {
+        if self.native_cycle.is_some() {
+            // History is collected before the cycle's DNA runs. Only an actual
+            // original chart feed can advance the selective graph cache.
+            self.project_native_graphs(self.graph_sampling, None)
+        } else {
+            self.sample_native_graphs_with_cache(self.graph_sampling)
+        }
+    }
+
+    fn sample_native_graphs_with_cache(
+        &mut self,
+        settings: GraphSamplingSettings,
+    ) -> Vec<SpeciesGraphSample> {
         let mut cache_updates = Vec::new();
-        let samples = self.project_native_graphs(Some(&mut cache_updates));
+        let samples = self.project_native_graphs(settings, Some(&mut cache_updates));
         for (index, cache) in cache_updates {
             self.slots[index]
                 .organism
@@ -55,16 +68,49 @@ impl Engine {
     }
 
     pub(crate) fn read_native_graph_sample(&self) -> Option<NativeGraphRecordingSample> {
-        Some(NativeGraphRecordingSample {
+        let native_cycle = self.native_cycle?;
+        let species_graphs = self.project_native_graphs(self.graph_sampling, None);
+        Some(self.native_graph_sample(native_cycle, species_graphs))
+    }
+
+    pub(crate) fn feed_native_graph_sample(
+        &mut self,
+        settings: GraphSamplingSettings,
+        due_only: bool,
+    ) -> Option<NativeGraphRecordingSample> {
+        let native_cycle = self.native_cycle?;
+        if due_only
+            && (self.native_restarted_this_cycle
+                || self.ordinary_restart.pending
+                || !u64::from(native_cycle.unsigned_abs())
+                    .is_multiple_of(self.config.recording.sampling_interval.max(1)))
+        {
+            return None;
+        }
+        let species_graphs = if settings.selective {
+            self.sample_native_graphs_with_cache(settings)
+        } else {
+            self.project_native_graphs(settings, None)
+        };
+        Some(self.native_graph_sample(native_cycle, species_graphs))
+    }
+
+    fn native_graph_sample(
+        &self,
+        native_cycle: i32,
+        species_graphs: Vec<SpeciesGraphSample>,
+    ) -> NativeGraphRecordingSample {
+        NativeGraphRecordingSample {
             tick: self.tick,
-            native_cycle: self.native_cycle?,
-            species_graphs: self.project_native_graphs(None),
+            native_cycle,
+            species_graphs,
             dynamic_cost_series: self.native_dynamic_cost_series(),
-        })
+        }
     }
 
     fn project_native_graphs(
         &self,
+        settings: GraphSamplingSettings,
         mut cache_updates: Option<&mut Vec<(usize, GeneticGraphState)>>,
     ) -> Vec<SpeciesGraphSample> {
         let mut groups: BTreeMap<String, Vec<usize>> = BTreeMap::new();
@@ -76,7 +122,7 @@ impl Engine {
                     .push(index);
             }
         }
-        let depths = if self.graph_sampling.generational {
+        let depths = if settings.generational {
             self.extant_descendant_depths()
         } else {
             vec![0; self.slots.len()]
@@ -96,7 +142,7 @@ impl Engine {
                     .program
                     .genetic_graph
                     .unwrap_or_else(|| GeneticGraphState::for_dna(&robot.program.dna));
-                if !self.graph_sampling.selective || state.mutations_remaining > 0.0 {
+                if !settings.selective || state.mutations_remaining > 0.0 {
                     selective = selective.max(state.previous_distance);
                 } else {
                     state.mutations_remaining =
@@ -121,10 +167,10 @@ impl Engine {
                     && robot.program.genetic_graph != Some(state)
                 {
                     // Selective comparisons only look ahead to actors this pass
-                    // has yet to sample. Commit the history cache after projection.
+                    // has yet to sample. Commit the feed cache after projection.
                     updates.push((index, state));
                 }
-                if self.graph_sampling.slow {
+                if settings.slow {
                     let dna = &self.slots[index].organism.as_ref().unwrap().program.dna;
                     for &other in &live[position + 1..] {
                         slow = slow.max(
@@ -298,10 +344,11 @@ mod tests {
     fn native_graph_recording_sample_projects_exhausted_caches_without_consuming_them() {
         let (mut engine, ids) = scene();
         engine.native_cycle = Some(7);
-        engine.configure_graph_sampling(GraphSamplingSettings {
+        let selective = GraphSamplingSettings {
             selective: true,
             ..Default::default()
-        });
+        };
+        engine.configure_graph_sampling(selective);
         for id in ids {
             engine.slots.get_mut(id).unwrap().program.genetic_graph =
                 Some(GeneticGraphState::default());
@@ -309,8 +356,84 @@ mod tests {
         let before = crate::SaveFile::encode(&engine).unwrap();
         let observed = engine.read_native_graph_sample().unwrap();
         assert_eq!(crate::SaveFile::encode(&engine).unwrap(), before);
-        assert_eq!(observed.species_graphs, engine.sample_native_graphs());
+        engine.feed_native_graph_sample(
+            GraphSamplingSettings {
+                slow: true,
+                ..Default::default()
+            },
+            false,
+        );
+        assert_eq!(crate::SaveFile::encode(&engine).unwrap(), before);
+        assert_eq!(
+            engine.feed_native_graph_sample(selective, false).unwrap(),
+            observed
+        );
         assert_ne!(crate::SaveFile::encode(&engine).unwrap(), before);
+    }
+
+    #[test]
+    fn native_history_leaves_selective_cache_until_a_due_chart_feed() {
+        let mut config = EngineConfig::testing();
+        config.recording.sampling_interval = 5;
+        let mut engine = Engine::new_native(config).unwrap();
+        let id = engine
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [500.0, 500.0])
+            .unwrap();
+        let exhausted = GeneticGraphState {
+            mutations_remaining: 0.0,
+            previous_distance: 123.5,
+        };
+        let robot = engine.slots.get_mut(id).unwrap();
+        let reset = GeneticGraphState::for_dna(&robot.program.dna);
+        robot.program.genetic_graph = Some(exhausted);
+        engine.configure_graph_sampling(GraphSamplingSettings {
+            selective: true,
+            ..Default::default()
+        });
+
+        engine.tick_many(5).unwrap();
+        assert_eq!(engine.native_cycle, Some(4));
+        assert_eq!(engine.history.last().unwrap().tick, 5);
+        assert!(
+            engine
+                .feed_native_graph_sample(engine.graph_sampling, true)
+                .is_none()
+        );
+        assert_eq!(
+            engine.slots.get(id).unwrap().program.genetic_graph,
+            Some(exhausted)
+        );
+        let before_feed =
+            crate::native_binary::NativeRecordFile::decode(&engine.export_native_sim().unwrap())
+                .unwrap();
+        assert_eq!(
+            before_feed.robots[0]
+                .single("old_genetic_distance")
+                .unwrap(),
+            123.5
+        );
+
+        let mut samples = Vec::new();
+        engine
+            .tick_many_with_native_source_requirement(1, None, Some(&mut samples))
+            .unwrap();
+        assert_eq!(samples.len(), 1);
+        assert_eq!(samples[0].native_cycle, 5);
+        assert_eq!(
+            samples[0].species_graphs[0].values["selective_genetic_distance"],
+            0.0
+        );
+        assert_eq!(
+            engine.slots.get(id).unwrap().program.genetic_graph,
+            Some(reset)
+        );
+        let after_feed =
+            crate::native_binary::NativeRecordFile::decode(&engine.export_native_sim().unwrap())
+                .unwrap();
+        assert_eq!(
+            after_feed.robots[0].single("old_genetic_distance").unwrap(),
+            0.0
+        );
     }
     #[test]
     fn species_forks_change_the_native_filename_used_for_graph_grouping() {

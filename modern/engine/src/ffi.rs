@@ -121,6 +121,16 @@ enum EngineCommand {
     },
     ReadNativeGraphRecording,
     ReadNativeGraphSample,
+    FeedNativeGraphSample {
+        #[serde(default)]
+        selective: bool,
+        #[serde(default)]
+        generational: bool,
+        #[serde(default)]
+        slow: bool,
+        #[serde(default)]
+        due_only: bool,
+    },
     ReadNativeGraphLayout,
     UpdateNativeGraphLayout {
         #[serde(default)]
@@ -983,6 +993,19 @@ fn db_engine_command_batch_impl(
             EngineCommand::ReadNativeGraphSample => {
                 Ok(serde_json::json!(engine.read_native_graph_sample()))
             }
+            EngineCommand::FeedNativeGraphSample {
+                selective,
+                generational,
+                slow,
+                due_only,
+            } => Ok(serde_json::json!(engine.feed_native_graph_sample(
+                crate::GraphSamplingSettings {
+                    selective,
+                    generational,
+                    slow
+                },
+                due_only
+            ))),
             EngineCommand::ReadNativeGraphLayout => engine
                 .read_native_graph_layout()
                 .map(|state| serde_json::json!(state)),
@@ -2757,6 +2780,20 @@ mod tests {
         assert_eq!(status, DbStatus::Ok);
         let output: serde_json::Value = serde_json::from_slice(&output).unwrap();
         assert_eq!(output["results"][0]["native_cycle"], -1);
+        assert_eq!(SaveFile::encode(&world).unwrap(), original);
+
+        let (status, before_first_due) = classic_test_batch(
+            &mut world,
+            serde_json::json!([
+                {"type": "feed_native_graph_sample", "selective": true, "due_only": true},
+                {"type": "feed_native_graph_sample"},
+            ]),
+        );
+        assert_eq!(status, DbStatus::Ok);
+        let before_first_due: serde_json::Value =
+            serde_json::from_slice(&before_first_due).unwrap();
+        assert!(before_first_due["results"][0].is_null());
+        assert_eq!(before_first_due["results"][1], output["results"][0]);
         assert_eq!(SaveFile::encode(&world).unwrap(), original);
 
         let (status, output) = classic_test_batch(
