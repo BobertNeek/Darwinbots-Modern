@@ -105,6 +105,7 @@ public sealed partial class MainWindow : Window
     private readonly bool _keepGraphsUpdatingOnClose;
     private NativeGraphLayoutState? _nativeGraphLayout;
     private readonly bool _newSeedOnLoad;
+    private int _nativeMenuLoadSeed;
     private bool _tickInFlight;
     private bool _navigationInFlight;
     private bool _editingLiveSettings;
@@ -1221,6 +1222,7 @@ public sealed partial class MainWindow : Window
                     var replacement = new MainWindow(_startupArguments, options, _engineFactory, _storage, _launchSafeModeBackup, _keepGraphsUpdatingOnClose, _newSeedOnLoad)
                     {
                         _mazeDimensions = mazeDimensions,
+                        _nativeMenuLoadSeed = this._nativeMenuLoadSeed,
                     };
                     SetApplicationMainWindow(replacement);
                     replacement.Show();
@@ -1235,6 +1237,7 @@ public sealed partial class MainWindow : Window
                     (editedSetup ?? CreateNextWorldSetup()) with { NativeGaussianSpare = spare, NativeSunChange = sunChange, NativeProcessCaches = caches }, _engineFactory, _storage, _launchSafeModeBackup, _keepGraphsUpdatingOnClose, _newSeedOnLoad)
                 {
                     _mazeDimensions = mazeDimensions,
+                    _nativeMenuLoadSeed = this._nativeMenuLoadSeed,
                 };
                 SetApplicationMainWindow(replacement);
                 replacement.Show();
@@ -1311,15 +1314,21 @@ public sealed partial class MainWindow : Window
             : LegacyCommandResult.Cancel();
     }
 
-    private Task<LegacyCommandResult> LoadSimulationCommandAsync() =>
+    private Task<LegacyCommandResult> LoadSimulationCommandAsync(bool fromFileMenu = true) =>
         WithPausedSimulationFileDialogAsync(async session =>
         {
-            var seed = await session.CaptureNativeLoadSeedAsync(_newSeedOnLoad);
-            if (!OwnsSimulationFileCommand(session)) return LegacyCommandResult.Cancel();
+            if (fromFileMenu)
+            {
+                var seed = await session.BeginNativeMenuLoadAsync(_newSeedOnLoad);
+                if (!OwnsSimulationFileCommand(session)) return LegacyCommandResult.Cancel();
+                // Original tmpseed is process-wide and is also read by the
+                // toolbar loader. Zero explicitly restores archive seeding.
+                _nativeMenuLoadSeed = seed;
+            }
             if (await _storage.OpenSimulationWithSourceAsync(this, _globalSettings.Main.MainDirectory) is not { } save
                 || !OwnsSimulationFileCommand(session))
                 return LegacyCommandResult.Cancel();
-            await LoadSimulationWithSourceAsync(save.Data, save.LocalPath, nativeLoadSeed: seed);
+            await LoadSimulationWithSourceAsync(save.Data, save.LocalPath, nativeLoadSeed: _nativeMenuLoadSeed);
             return LegacyCommandResult.Success("LOADED");
         });
 
@@ -3842,8 +3851,13 @@ public sealed partial class MainWindow : Window
 
     private async void Load_Click(object? sender, RoutedEventArgs e)
     {
-        var result = await _legacyCommands.ExecuteAsync(LegacyCommandId.FileLoadSimulation);
-        if (!string.IsNullOrWhiteSpace(result.Status)) _viewModel.Status = result.Status;
+        if (_session is null) return;
+        try
+        {
+            var result = await LoadSimulationCommandAsync(fromFileMenu: false);
+            if (!result.Canceled) _viewModel.Status = result.Status;
+        }
+        catch (Exception error) { _viewModel.Status = $"LOAD FAILED · {error.Message}"; }
     }
 
     private async void RunTimer_Tick(object? sender, EventArgs e)
