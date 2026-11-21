@@ -601,8 +601,14 @@ public sealed partial class NativeEngineClient : IEngineClient
     } }, "update global main rules");
 
     public void UpdateCostSettings(GlobalSimulationCostSettings settings) =>
-        ExecuteBatch(new { version = 1, commands = new[] { NativeCommandSerializer.CostSettingsCommand(settings) } },
+        UpdateCostSettings(settings, null);
+
+    public void UpdateCostSettings(GlobalSimulationCostSettings? settings, Db2CostPreset? preset)
+    {
+        if (settings is null && preset is null) return;
+        ExecuteBatch(new { version = 1, commands = new[] { NativeCommandSerializer.CostSettingsCommand(settings, preset) } },
             "update simulation costs");
+    }
 
     public void UpdateMutationSettings(MutationSettingsUpdate update) =>
         ApplyMutationSettings(update, null, null);
@@ -817,12 +823,16 @@ public sealed partial class NativeEngineClient : IEngineClient
         ExecuteBatch(NativeCommandSerializer.CreateEnvironmentBatch(update), "update environment");
     }
 
-    public void UpdateLiveSettings(EnvironmentUpdate environment, MutationSettingsUpdate mutation, GlobalSimulationCostSettings? costs)
+    public void UpdateLiveSettings(EnvironmentUpdate environment, MutationSettingsUpdate mutation, GlobalSimulationCostSettings? costs) =>
+        UpdateLiveSettings(environment, mutation, costs, null);
+
+    public void UpdateLiveSettings(EnvironmentUpdate environment, MutationSettingsUpdate mutation,
+        GlobalSimulationCostSettings? costs, Db2CostPreset? preset)
     {
         ArgumentNullException.ThrowIfNull(environment);
         ValidatePosition(environment.Gravity);
         ValidateMutationSettings(mutation);
-        ExecuteBatch(NativeCommandSerializer.CreateLiveSettingsBatch(environment, mutation, costs), "update live settings");
+        ExecuteBatch(NativeCommandSerializer.CreateLiveSettingsBatch(environment, mutation, costs, preset), "update live settings");
     }
 
     private static OrganismKey ReadKey(JsonElement value) => new(
