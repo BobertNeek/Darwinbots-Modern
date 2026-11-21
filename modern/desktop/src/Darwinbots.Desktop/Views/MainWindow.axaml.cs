@@ -1610,6 +1610,7 @@ public sealed partial class MainWindow : Window
                 };
                 return viewer;
             });
+            info.SynchronizePostDnaMemoryWatch(reset: true);
             info.SetFollowedSnapshot(session.LatestSnapshot);
             return info;
         }
