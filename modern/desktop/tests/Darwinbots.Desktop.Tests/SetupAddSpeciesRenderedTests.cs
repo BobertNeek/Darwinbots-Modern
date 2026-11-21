@@ -109,7 +109,8 @@ public sealed class SetupAddSpeciesRenderedTests
             var clock = new AppearanceClock();
             await DesktopTestApplication.Session.Dispatch(async () =>
             {
-                var window = new SetupWindow(storage, stageNativeAppearance: SetupWindow.CreateNativeAppearanceProvider(0x08_d82a, clock));
+                var window = new SetupWindow(storage, stageNativeAppearance: (name, dna, oldColors) =>
+                    Task.FromResult(NativeEngineClient.StageNativeSetupAppearance(name, dna, oldColors, 0x08_d82a, clock)));
                 try
                 {
                     _ = new DnaPicker(window, path);
