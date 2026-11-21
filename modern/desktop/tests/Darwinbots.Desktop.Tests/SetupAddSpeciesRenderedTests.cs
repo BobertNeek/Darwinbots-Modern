@@ -302,6 +302,11 @@ public sealed class SetupAddSpeciesRenderedTests
                         control => control.Watermark == "Species comment");
                     Assert.Equal(native ? LeadingComment : string.Empty, comment.Text);
                     Assert.Equal(Dna, added.Dna);
+                    var skinControls = SkinControlsFor(editor, added);
+                    Assert.Equal(native ? 0m : 0.15m, skinControls[0].Minimum);
+                    Assert.Equal(native ? 1m : 0.82m, skinControls[0].Maximum);
+                    Assert.Equal(native ? -65_220m : 0m, skinControls[1].Minimum);
+                    Assert.Equal(native ? 65_850m : 1256m, skinControls[1].Maximum);
                     var prior = Assert.Single(editor.Species, row => row.Name == existing.Name);
                     Assert.Equal(existing.InitialCount, prior.InitialCount);
                     Assert.Equal(existing.InitialEnergy, prior.InitialEnergy);
@@ -371,8 +376,7 @@ public sealed class SetupAddSpeciesRenderedTests
                     Assert.InRange(expander.Bounds.Height, compactHeight - 1, compactHeight + 1);
 
                     var coordinate = details.GetVisualDescendants().OfType<NumericUpDown>().Last(control => control.Maximum == 1_000_000);
-                    var skinPoints = details.GetVisualDescendants().OfType<NumericUpDown>()
-                        .Where(control => control.Maximum is 0.82m or 1256m).ToArray();
+                    var skinPoints = SkinControlsFor(window, added);
                     Assert.Equal(8, skinPoints.Length);
                     Assert.All(skinPoints, control => Assert.True(control.Bounds.Width >= 100));
                     var restriction = Assert.Single(details.GetVisualDescendants().OfType<CheckBox>(),
@@ -401,6 +405,19 @@ public sealed class SetupAddSpeciesRenderedTests
 
     private static Border DetailsFor(SetupWindow window, SetupSpeciesRow row) =>
         Assert.Single(window.GetVisualDescendants().OfType<Border>(), detail => detail.Name == "SpeciesDetails" && detail.DataContext == row);
+
+    private static NumericUpDown[] ExpandSkinControls(SetupWindow window, SetupSpeciesRow row)
+    {
+        window.UpdateLayout();
+        var expander = Assert.Single(window.GetVisualDescendants().OfType<Expander>(), control => control.DataContext == row);
+        expander.IsExpanded = true;
+        window.UpdateLayout();
+        return SkinControlsFor(window, row);
+    }
+
+    private static NumericUpDown[] SkinControlsFor(SetupWindow window, SetupSpeciesRow row) =>
+        DetailsFor(window, row).GetVisualDescendants().OfType<NumericUpDown>()
+            .Where(control => control.Classes.Contains("skin-coordinate")).ToArray();
 
     private static GlobalSettings Settings(string mainDirectory) => new()
     {

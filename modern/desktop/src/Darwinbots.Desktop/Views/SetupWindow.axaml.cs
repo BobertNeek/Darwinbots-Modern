@@ -114,14 +114,18 @@ public sealed partial class SetupWindow : Window
         {
             if (mode == StartingMode.StarterBotsAndVegetables)
             {
-                Species.Add(new("Alga Minimalis", ReadBundled("Alga_Minimalis_Chloroplastus.txt"), true, 0xff4c963b, 300, 1_000, 0.5, true));
-                Species.Add(new("Animal Minimalis", ReadBundled("Animal_Minimalis.txt"), false, 0xff239ac0, 100, 1_000, 1.0, true));
+                Species.Add(new("Alga Minimalis", ReadBundled("Alga_Minimalis_Chloroplastus.txt"), true, 0xff4c963b, 300, 1_000, 0.5, true,
+                    nativeSkin: _nativeSpeciesImport));
+                Species.Add(new("Animal Minimalis", ReadBundled("Animal_Minimalis.txt"), false, 0xff239ac0, 100, 1_000, 1.0, true,
+                    nativeSkin: _nativeSpeciesImport));
             }
             else
             {
-                Species.Add(new("Zerobot", ZerobotDna, false, 0xff59636b, 100, 1_000, 10.0, false));
+                Species.Add(new("Zerobot", ZerobotDna, false, 0xff59636b, 100, 1_000, 10.0, false,
+                    nativeSkin: _nativeSpeciesImport));
                 if (mode == StartingMode.ZerobotsAndVegetables)
-                    Species.Add(new("Energy Feeder", FeederDna, true, 0xff4c963b, 60, 2_000, 0.5, true));
+                    Species.Add(new("Energy Feeder", FeederDna, true, 0xff4c963b, 60, 2_000, 0.5, true,
+                        nativeSkin: _nativeSpeciesImport));
             }
             SetupStatus.Text = string.Empty;
         }
@@ -489,7 +493,7 @@ public sealed partial class SetupWindow : Window
                 Species.Add(new(species.Name, species.Dna, species.Vegetable, species.Color,
                     species.InitialCount, species.InitialEnergy, species.MutationRate, species.Reseed,
                     species.MinimumPopulation, species.Comment, species.Placement, species.Skin, species.Restrictions,
-                    species.MutationProfile, species.DnaPath, species.SpeciesId));
+                    species.MutationProfile, species.DnaPath, species.SpeciesId, nativeSkin: _nativeSpeciesImport));
         }
         _controlsReady = true;
     }
