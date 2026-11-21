@@ -57,7 +57,12 @@ public sealed class WorldViewport : Control
 
     public bool RenderWaste { get => _renderWaste; set { _renderWaste = value; InvalidateVisual(); } }
     public bool FixedRatio { get => _fixedRatio; set { _fixedRatio = value; InvalidateVisual(); } }
-    public bool OldColors { get => _oldColors; set { _oldColors = value; InvalidateVisual(); } }
+    internal bool? NativeOldColors { get; set; }
+    public bool OldColors
+    {
+        get => _snapshot.NativeCycle.HasValue ? NativeOldColors ?? _oldColors : _oldColors;
+        set { _oldColors = value; InvalidateVisual(); }
+    }
     private double ScaleX => FixedRatio ? Math.Min(RawScaleX, RawScaleY) : RawScaleX;
     private double ScaleY => FixedRatio ? Math.Min(RawScaleX, RawScaleY) : RawScaleY;
     private double RawScaleX => Bounds.Width / Math.Max(1.0, _snapshot.WorldSize[0]);

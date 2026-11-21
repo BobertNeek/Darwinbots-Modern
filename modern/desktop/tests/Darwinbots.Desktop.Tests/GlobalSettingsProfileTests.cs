@@ -109,6 +109,78 @@ public sealed class GlobalSettingsProfileTests
     }
 
     [Fact]
+    public async Task NativeOldColorsKeepsItsLaunchValueThroughSaveAndReplacement()
+    {
+        var profile = Directory.CreateTempSubdirectory("darwinbots-native-colors-launch-");
+        try
+        {
+            var storage = new AvaloniaDesktopStorageService(profile.FullName);
+            var world = new WorldSetupOptions
+            {
+                Backend = "Cpu", Seed = 44, PopulationCapacity = 64,
+                WorldWidth = 1_600, WorldHeight = 1_200,
+                Species = [new SpeciesImport("Color probe", "start\nstop", false, 0xff239ac0, 1, 1_000, 0, false, 0)],
+            };
+            await DesktopTestApplication.Session.Dispatch(async () =>
+            {
+                var windows = new List<Window>();
+                using var opened = Window.WindowOpenedEvent.AddClassHandler<Window>((window, _) => windows.Add(window));
+                var initial = new MainWindow([], world, NativeEngineClientFactory.Instance, storage);
+                try
+                {
+                    initial.Show();
+                    await WaitFor(() => Ready(initial));
+                    Assert.True(Named<WorldViewport>(initial, "Viewport").OldColors);
+
+                    Named<LegacyMenuBar>(initial, "HistoricMenuBar")
+                        .FindCommandItem(LegacyCommandId.EditGlobalSettings)!
+                        .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    var dialog = await GlobalDialog(initial);
+                    Named<CheckBox>(dialog, "OldColors").IsChecked = false;
+                    Named<CheckBox>(dialog, "FixedRatio").IsChecked = true;
+                    Click(dialog, "ApplyButton");
+                    await WaitFor(() => ((MainWindowViewModel)initial.DataContext!).Status == "GLOBAL SETTINGS SAVED");
+                    Assert.False(storage.LoadGlobalSettings()!.Main.OldColors);
+                    Assert.True(Named<WorldViewport>(initial, "Viewport").OldColors);
+                    Assert.True(Named<WorldViewport>(initial, "Viewport").FixedRatio);
+
+                    Click(initial, "ResetButton");
+                    await WaitFor(() => windows.OfType<MainWindow>().Count() == 2);
+                    var replacement = Assert.Single(windows.OfType<MainWindow>(), window => window != initial);
+                    await WaitFor(() => Ready(replacement));
+                    Assert.True(Named<WorldViewport>(replacement, "Viewport").OldColors);
+
+                    var reopenedStorage = new AvaloniaDesktopStorageService(profile.FullName);
+                    var reopenedSetup = new SetupWindow(reopenedStorage);
+                    try
+                    {
+                        WorldSetupOptions? reopened = null;
+                        reopenedSetup.WorldCreated += options => reopened = options;
+                        Click(reopenedSetup, "CreateWorldButton");
+                        var reopenedWorld = Assert.IsType<WorldSetupOptions>(reopened);
+                        Assert.False(reopenedWorld.GlobalSettings.Main.EffectiveOldColors);
+                        var relaunched = new MainWindow([], world with { GlobalSettings = reopenedWorld.GlobalSettings },
+                            NativeEngineClientFactory.Instance, reopenedStorage);
+                        relaunched.Show();
+                        await WaitFor(() => Ready(relaunched));
+                        Assert.False(Named<WorldViewport>(relaunched, "Viewport").OldColors);
+                        Assert.True(Named<WorldViewport>(relaunched, "Viewport").FixedRatio);
+                    }
+                    finally { Close(reopenedSetup); }
+                }
+                finally
+                {
+                    foreach (var window in windows.Where(window => window.IsVisible).Reverse().ToArray()) Close(window);
+                }
+            }, CancellationToken.None);
+        }
+        finally { profile.Delete(recursive: true); }
+
+        static bool Ready(MainWindow window) => ((MainWindowViewModel)window.DataContext!).NativeCycle.HasValue
+            && ((MainWindowViewModel)window.DataContext!).Population == 1;
+    }
+
+    [Fact]
     public async Task ConfiguredLegacyDirectorySuppliesTheSeparateLoadSeedPreference()
     {
         var profile = Directory.CreateTempSubdirectory("darwinbots-global-seed-");

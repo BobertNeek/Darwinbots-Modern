@@ -81,6 +81,7 @@ public sealed partial class MainWindow : Window
     private readonly IEngineClientFactory _engineFactory;
     private readonly IDesktopStorageService _storage;
     private readonly bool _newSeedOnLoad;
+    private readonly bool _nativeOldColors;
     private bool _tickInFlight;
     private bool _navigationInFlight;
     private bool _simulationFileCommandInFlight;
@@ -140,7 +141,8 @@ public sealed partial class MainWindow : Window
         WorldSetupOptions setup,
         IEngineClientFactory engineFactory,
         IDesktopStorageService storage,
-        bool? newSeedOnLoad = null)
+        bool? newSeedOnLoad = null,
+        bool? nativeOldColors = null)
     {
         _startupArguments = arguments.ToArray();
         _setup = setup with { NativeGaussianSpare = null, NativeSunChange = null, NativeProcessCaches = null };
@@ -149,6 +151,7 @@ public sealed partial class MainWindow : Window
         _initialNativeProcessCaches = setup.NativeProcessCaches;
         _globalSettings = setup.GlobalSettings;
         _newSeedOnLoad = newSeedOnLoad ?? setup.GlobalSettings.Main.EffectiveNewSeedOnLoad;
+        _nativeOldColors = nativeOldColors ?? setup.GlobalSettings.Main.EffectiveOldColors;
         _safemodeBackup = setup.GlobalSettings.Main.SafeMode || setup.Recording.SafeModeBackup;
         _startupBots = new StartupDnaWorkflow(
             setup.WorldWidth,
@@ -159,6 +162,7 @@ public sealed partial class MainWindow : Window
         _zerobotProgression = null;
         InitializeComponent();
         Viewport.FixedRatio = _globalSettings.Main.FixedRatio;
+        Viewport.NativeOldColors = _nativeOldColors;
         Viewport.OldColors = _globalSettings.Main.EffectiveOldColors;
         if (_globalSettings.Evolution.Enabled) {
             var kind = _globalSettings.Evolution.Mode switch {
@@ -1020,10 +1024,10 @@ public sealed partial class MainWindow : Window
             }
             if (openSetup)
             {
-                var setupWindow = new SetupWindow(_storage, spare, sunChange, caches);
+                var setupWindow = new SetupWindow(_storage, spare, sunChange, caches, nativeOldColors: _nativeOldColors);
                 setupWindow.WorldCreated += options =>
                 {
-                    var replacement = new MainWindow(_startupArguments, options, _engineFactory, _storage, _newSeedOnLoad);
+                    var replacement = new MainWindow(_startupArguments, options, _engineFactory, _storage, _newSeedOnLoad, _nativeOldColors);
                     SetApplicationMainWindow(replacement);
                     replacement.Show();
                     setupWindow.Close();
@@ -1035,7 +1039,7 @@ public sealed partial class MainWindow : Window
             {
                 var replacement = new MainWindow(_startupArguments,
                     (editedSetup ?? CreateNextWorldSetup()) with { NativeGaussianSpare = spare, NativeSunChange = sunChange, NativeProcessCaches = caches },
-                    _engineFactory, _storage, _newSeedOnLoad);
+                    _engineFactory, _storage, _newSeedOnLoad, _nativeOldColors);
                 SetApplicationMainWindow(replacement);
                 replacement.Show();
             }
@@ -1506,7 +1510,8 @@ public sealed partial class MainWindow : Window
         {
             var configuration = await _session.ReadConfigurationAsync();
             if (configuration is null) return LegacyCommandResult.Failure("SPECIES SETTINGS UNAVAILABLE");
-            var dialog = new SetupWindow(_storage, speciesEditor: CreateNextWorldSetup() with { Species = configuration.Species });
+            var dialog = new SetupWindow(_storage, speciesEditor: CreateNextWorldSetup() with { Species = configuration.Species },
+                nativeOldColors: _nativeOldColors);
             await dialog.ShowDialog(this);
             if (dialog.EditedOptions is not { } edited) return LegacyCommandResult.Cancel();
             if (dialog.StartNewRequested) startNew = edited;
