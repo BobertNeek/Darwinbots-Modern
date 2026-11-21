@@ -1,3 +1,4 @@
+use crate::biology::resource_readback;
 use crate::dna::LEGACY_OCCURRENCE_CENSUS_SLOTS;
 use crate::environment::TeleporterBackflow;
 use crate::vm::ActivationFrame;
@@ -8,6 +9,16 @@ use crate::{
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::BTreeMap;
 use std::ops::{Deref, DerefMut};
+
+fn aim_readback(heading: f32, native: bool) -> i32 {
+    let units = if native {
+        // SetAimFunc passes the x87 product directly to CInt.
+        (f64::from(heading) * 200.0).round_ties_even() as f32
+    } else {
+        heading * 200.0
+    };
+    resource_readback(units)
+}
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RobotIdentity {
@@ -432,7 +443,10 @@ impl RobotState {
         self.kinematics
             .aim_radians
             .filter(|heading| {
-                crate::biology::resource_readback(*heading * 200.0) == self.materials.aim
+                // Older saves use the Single product. Keep either representation
+                // when it was derived from the exact cached heading.
+                aim_readback(*heading, false) == self.materials.aim
+                    || aim_readback(*heading, true) == self.materials.aim
             })
             .unwrap_or(self.materials.aim as f32 / 200.0)
     }
@@ -443,7 +457,7 @@ impl RobotState {
 
     pub(crate) fn set_heading_for_profile(&mut self, heading: f32, native: bool) {
         self.kinematics.aim_radians = Some(heading);
-        self.materials.aim = crate::biology::resource_readback(heading * 200.0);
+        self.materials.aim = aim_readback(heading, native);
         self.kinematics.aim_vector = if native {
             // VB6 Cos and Sin return Double before VectorSet takes Singles.
             let heading = f64::from(heading);

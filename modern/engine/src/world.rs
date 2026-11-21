@@ -4426,6 +4426,11 @@ impl Engine {
         self.valid_slot(id)?;
         let normalized = aim.rem_euclid(1257);
         let organism = self.slots.get_mut(id)?;
+        if organism.materials.aim != normalized {
+            // A manual override replaces the cached physical heading even
+            // when the new word is the other valid rounding of that heading.
+            organism.kinematics.aim_radians = None;
+        }
         organism.materials.aim = normalized;
         organism
             .materials
