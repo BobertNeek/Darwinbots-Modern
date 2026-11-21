@@ -1,7 +1,7 @@
 use super::*;
 use crate::native_binary::{MAX_TEXT_BYTES, NativeSimulationTail};
 
-const GRAPH_COUNT: u8 = 18;
+pub(super) const GRAPH_COUNT: u8 = 18;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct NativeGraphRecordingState {

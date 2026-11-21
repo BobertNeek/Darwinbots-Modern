@@ -69,10 +69,10 @@ public sealed class PersistentToolWindowRegistry
             window.RecordNativeSamples(samples, generation);
     }
 
-    internal void LoadGraphWorld(EngineSnapshot snapshot)
+    internal void LoadGraphWorld(EngineSnapshot snapshot, NativeGraphLayoutState? layout)
     {
         foreach (var window in _windows.Values.OfType<GraphSuiteWindow>().ToArray())
-            window.LoadGraphWorld(snapshot);
+            window.LoadGraphWorld(snapshot, layout);
     }
 
     public bool Close(string key)

@@ -13,6 +13,7 @@ public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWi
     private static readonly IReadOnlyDictionary<GraphMetric, double> EmptyMetrics = new Dictionary<GraphMetric, double>();
     private readonly Dictionary<GraphMetric, RecordingChart> _recordingCharts = [];
     private EngineSnapshot _snapshot = EngineSnapshot.Empty;
+    private NativeGraphLayoutState? _nativeLayout;
 
     public GraphSuiteWindow() : this(EngineSnapshot.Empty)
     {
@@ -36,6 +37,7 @@ public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWi
 
     public GraphSuiteViewModel ViewModel => GraphView.ViewModel;
     public event Action<GraphSamplingSettings>? SamplingChanged;
+    internal event Action<NativeGraphLayoutState, NativeGraphLayoutRow, NativeGraphCustomQuery?>? NativeLayoutEdited;
     public GraphSamplingSettings SamplingSettings => new(
         ViewModel.RunningGraphs.Any(graph => graph.Metric is GraphMetric.SelectiveGeneticDistance or GraphMetric.CustomizableGraph1 or GraphMetric.CustomizableGraph2 or GraphMetric.CustomizableGraph3),
         ViewModel.RunningGraphs.Any(graph => graph.Metric is GraphMetric.GenerationalDistance or GraphMetric.CustomizableGraph1 or GraphMetric.CustomizableGraph2 or GraphMetric.CustomizableGraph3),
@@ -140,12 +142,48 @@ public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWi
         chart.Save.AddPoint(ViewModel.LegacyPoint(metric, sample), ViewModel.LegacyHeader(metric),
             _autoFork?.Invoke() == true);
 
-    internal void LoadGraphWorld(EngineSnapshot snapshot)
+    internal void SetNativeLayout(NativeGraphLayoutState? layout)
+    {
+        _nativeLayout = layout;
+        if (layout is null) return;
+        var firstCustom = LegacyGraphRecordingRun.NativeIndexOf(GraphMetric.CustomizableGraph1);
+        foreach (var slot in ViewModel.CustomMetrics)
+        {
+            var expression = layout.CustomQueries[slot.Slot - 1];
+            var row = layout.Graphs.FirstOrDefault(candidate => candidate.GraphIndex == firstCustom + slot.Slot - 1);
+            if (expression.Length > 0 || row is { Visible: true } or { Left: not null } or { Top: not null })
+                slot.Expression = expression;
+        }
+    }
+
+    internal void LoadGraphWorld(EngineSnapshot snapshot, NativeGraphLayoutState? layout)
     {
         foreach (var window in _graphWindows.Where(window => window.NeedsCleanupOnLoad).ToArray())
             window.CloseForCleanup();
         ViewModel.ClearPreviousGraphWorld();
+        SetNativeLayout(layout);
         SetSnapshot(snapshot);
+        if (layout is null) return;
+
+        var selected = ViewModel.SelectedChoice;
+        try
+        {
+            foreach (var row in layout.Graphs.Where(row => row.Visible == true))
+            {
+                if (LegacyGraphRecordingRun.NativeMetricAt(row.GraphIndex) is not { } metric) continue;
+                if (_recordingCharts.TryGetValue(metric, out var existing)
+                    && existing.Windows.FirstOrDefault(window => window.IsVisible) is { } visible)
+                {
+                    // NewGraph repositions already-visible charts at the display origin.
+                    visible.PlaceFromNativeLayout(this, row with { Left = 0, Top = 0 });
+                    continue;
+                }
+
+                ViewModel.SelectedChoice = GraphCatalog.For(metric);
+                if (ViewModel.OpenSelectedGraph() is { } graph) OpenGraphWindow(graph, restoring: true);
+            }
+        }
+        finally { ViewModel.SelectedChoice = selected; }
     }
 
     private void UpdateGraphNow(GraphMetric metric, RecordingChart chart)
@@ -177,6 +215,7 @@ public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWi
         if (!_recordingCharts.TryGetValue(metric, out var chart) || chart.Windows.FirstOrDefault() is not { } window)
             return null;
         window.Reopen(this);
+        RememberOpenedLayout(window);
         UpdateGraphNow(metric, chart); // Original NewGraph feeds once when shown again.
         return window.Graph;
     }
@@ -202,7 +241,9 @@ public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWi
         finally { ViewModel.SelectedChoice = selected; }
     }
 
-    private void OpenGraphWindow(GraphSeriesViewModel graph)
+    private void OpenGraphWindow(GraphSeriesViewModel graph) => OpenGraphWindow(graph, restoring: false);
+
+    private void OpenGraphWindow(GraphSeriesViewModel graph, bool restoring)
     {
         var series = ViewModel.RunningGraphs.Where(value => value.Metric == graph.Metric).ToArray();
         RecordingChart? recordingChart = null;
@@ -222,6 +263,18 @@ public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWi
         }, recordingChart is null ? null : () => UpdateGraphNow(graph.Metric, recordingChart));
         recordingChart?.Windows.Add(window);
         _graphWindows.Add(window);
+        if (recordingChart is not null)
+        {
+            var graphIndex = LegacyGraphRecordingRun.NativeIndexOf(graph.Metric);
+            if (_nativeLayout?.Graphs.FirstOrDefault(row => row.GraphIndex == graphIndex) is { } layout)
+                window.PlaceFromNativeLayout(this, layout);
+            window.PositionChanged += (_, _) =>
+            {
+                if (window.ReadOnscreenNativePosition() is { } position)
+                    RememberNativeLayout(new(graphIndex, Left: position.Left, Top: position.Top));
+            };
+            window.DiscardedByUser += () => RememberNativeLayout(new(graphIndex, Visible: false));
+        }
         window.Closed += (_, _) =>
         {
             _graphWindows.Remove(window);
@@ -238,6 +291,40 @@ public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWi
             foreach (var item in series) ViewModel.RunningGraphs.Remove(item);
         };
         window.Show(this);
+        if (!restoring && recordingChart is not null) RememberOpenedLayout(window);
+    }
+
+    private void RememberOpenedLayout(GraphSeriesWindow window)
+    {
+        var index = LegacyGraphRecordingRun.NativeIndexOf(window.Graph.Metric);
+        var slot = index - LegacyGraphRecordingRun.NativeIndexOf(GraphMetric.CustomizableGraph1) + 1;
+        var expression = window.Graph.CustomExpression;
+        var position = window.ReadOnscreenNativePosition();
+        RememberNativeLayout(new(index, true, position?.Left, position?.Top),
+            slot is >= 1 and <= 3 && expression is not null ? new(slot, expression) : null);
+    }
+
+    private void RememberNativeLayout(NativeGraphLayoutRow change, NativeGraphCustomQuery? query = null)
+    {
+        if (_nativeLayout is not { } layout || _recording?.IsSuspended != false) return;
+        var prior = layout.Graphs.FirstOrDefault(row => row.GraphIndex == change.GraphIndex);
+        if (prior is null) return;
+        var updated = new NativeGraphLayoutRow(prior.GraphIndex, change.Visible ?? prior.Visible,
+            change.Left ?? prior.Left, change.Top ?? prior.Top);
+        var queries = layout.CustomQueries;
+        if (query is not null)
+        {
+            if (queries[query.Slot - 1] == query.Expression) query = null;
+            else
+            {
+                var nextQueries = queries.ToArray();
+                nextQueries[query.Slot - 1] = query.Expression;
+                queries = nextQueries;
+            }
+        }
+        if (updated == prior && query is null) return;
+        _nativeLayout = new(layout.Graphs.Select(row => row == prior ? updated : row).ToArray(), queries);
+        NativeLayoutEdited?.Invoke(_nativeLayout, change, query);
     }
 
     private sealed class RecordingChart(LegacyGraphAutoSave save)
