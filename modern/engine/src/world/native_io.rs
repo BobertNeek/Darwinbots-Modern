@@ -395,13 +395,28 @@ impl Engine {
     /// Load a genuine 2.48.32 `.sim`, retaining all source records and metadata.
     pub fn from_native_sim(bytes: &[u8]) -> Result<Self, EngineError> {
         // StartChlr belongs to Global.gset. Without a profile, VB6 leaves it at zero.
-        Self::from_native_sim_with_start_chloroplasts(bytes, 0)
+        Self::from_native_sim_with_options(bytes, 0, 0)
     }
 
     /// Load a genuine 2.48.32 `.sim` using the original process's StartChlr setting.
     pub fn from_native_sim_with_start_chloroplasts(
         bytes: &[u8],
         start_chloroplasts: i32,
+    ) -> Result<Self, EngineError> {
+        Self::from_native_sim_with_options(bytes, start_chloroplasts, 0)
+    }
+
+    pub(crate) fn from_native_sim_with_seed(
+        bytes: &[u8],
+        native_seed: i32,
+    ) -> Result<Self, EngineError> {
+        Self::from_native_sim_with_options(bytes, 0, native_seed)
+    }
+
+    fn from_native_sim_with_options(
+        bytes: &[u8],
+        start_chloroplasts: i32,
+        native_seed: i32,
     ) -> Result<Self, EngineError> {
         let file = NativeRecordFile::decode(bytes)?;
         let tail = NativeSimulationTail::decode(&file.tail)?;
@@ -423,6 +438,9 @@ impl Engine {
         }
         let mut config = configuration(&tail)?;
         config.vegetation.start_chloroplasts = start_chloroplasts;
+        if native_seed != 0 {
+            config.seed = u64::from(native_seed as u32);
+        }
         let mut engine = Self::new(config)?;
         // SimOpts.F1 is part of the .sim stream. Global x_restartmode and
         // x_fudge live in separate .gset files and cannot be inferred here.

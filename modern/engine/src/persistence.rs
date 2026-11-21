@@ -91,12 +91,19 @@ impl SaveFile {
     }
 
     pub fn decode(bytes: &[u8]) -> Result<Engine, EngineError> {
+        Self::decode_with_native_seed(bytes, 0)
+    }
+
+    pub(crate) fn decode_with_native_seed(
+        bytes: &[u8],
+        native_seed: i32,
+    ) -> Result<Engine, EngineError> {
         if !bytes.starts_with(Self::MAGIC) && bytes.len() >= 2 {
             let count = i16::from_le_bytes([bytes[0], bytes[1]]);
             if (0..=crate::MAX_ROBOTS as i16).contains(&count)
                 && bytes.len() >= 2 + count as usize * 9_321
             {
-                return Engine::from_native_sim(bytes);
+                return Engine::from_native_sim_with_seed(bytes, native_seed);
             }
         }
         if bytes.len() < 10 || &bytes[..4] != Self::MAGIC {

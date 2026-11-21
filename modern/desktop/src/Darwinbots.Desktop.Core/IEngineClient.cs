@@ -222,7 +222,9 @@ public interface IEngineClient : IDisposable
     byte[] SaveLegacy() => throw new NotSupportedException("This engine client does not support legacy simulation export.");
     byte[] SaveLegacyWithoutMutationDetails() => throw new NotSupportedException("This engine client does not support legacy simulation export without mutation details.");
     byte[] SaveWithoutMutations();
+    int CaptureNativeLoadSeed(bool generateSeed) => 0;
     void Load(byte[] save);
+    void LoadWithNativeSeed(byte[] save, int seed) => Load(save);
     EngineSnapshot Snapshot();
     WorldConfiguration? ReadConfiguration() => null;
     uint? ReadNativeSetupUniformState() => null;
