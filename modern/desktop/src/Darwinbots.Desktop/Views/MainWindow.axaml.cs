@@ -237,7 +237,7 @@ public sealed partial class MainWindow : Window
         InitializeComponent();
         Viewport.FixedRatio = _globalSettings.Main.FixedRatio;
         Viewport.NativeOldColors = _nativeOldColors;
-        Viewport.OldColors = _globalSettings.Main.EffectiveOldColors;
+        Viewport.OldColors = _globalSettings.Main.OldColors == true;
         if (_globalSettings.Evolution.Enabled) {
             var kind = _globalSettings.Evolution.Mode switch {
                 EvolutionMode.Zerobot => LocalModeKind.Zerobot,
@@ -2024,13 +2024,13 @@ public sealed partial class MainWindow : Window
         if (_session?.LatestSnapshot.LocalMode is { Status: LocalModeStatus.Running, Kind: LocalModeKind.Zerobot,
             Evolution: { Phase: "evolving", FitnessWeight: { } weight } })
             settings = settings with { Main = settings.Main with { FindBestWeight = weight } };
-        var dialog = new GlobalSettingsWindow(settings);
+        var dialog = new GlobalSettingsWindow(settings, nativeWorld: _session?.LatestSnapshot is not { NativeCycle: null });
         await dialog.ShowDialog(this);
         if (!dialog.Accepted) return LegacyCommandResult.Cancel();
         _globalSettings = dialog.Settings;
         SynchronizeSafemodePreference(_globalSettings.Main.SafeMode);
         Viewport.FixedRatio = _globalSettings.Main.FixedRatio;
-        Viewport.OldColors = _globalSettings.Main.EffectiveOldColors;
+        Viewport.OldColors = _globalSettings.Main.OldColors == true;
         if (_globalSettings.Evolution.Enabled) {
             var kind = _globalSettings.Evolution.Mode switch {
                 EvolutionMode.Zerobot => LocalModeKind.Zerobot,
