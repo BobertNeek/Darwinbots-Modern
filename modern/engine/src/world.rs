@@ -13299,7 +13299,7 @@ fn credit_tied_energy(receiver: &mut BiologyState, amount: f32, native: bool) {
             native_tie_sharing::store_scaled_credit(receiver.energy, amount, 0.7).min(32_000.0);
         receiver.body =
             native_tie_sharing::store_scaled_credit(receiver.body, amount, 0.029).min(32_000.0);
-        receiver.waste = (f64::from(receiver.waste) + amount * 0.01) as f32;
+        receiver.waste = native_tie_sharing::store_scaled_credit(receiver.waste, amount, 0.01);
         return;
     }
     add_tie_store(&mut receiver.energy, scale_tie_amount(amount, 0.70), true);
