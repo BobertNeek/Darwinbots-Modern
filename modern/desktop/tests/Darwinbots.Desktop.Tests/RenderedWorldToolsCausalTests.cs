@@ -15,6 +15,74 @@ namespace Darwinbots.Desktop.Tests;
 public sealed class RenderedWorldToolsCausalTests
 {
     [Fact]
+    public async Task GeneActivationsFollowsSelectionAndLabelsTheFirstNativeGene()
+    {
+        var setup = new WorldSetupOptions
+        {
+            Backend = "Cpu",
+            Seed = 95,
+            PopulationCapacity = 16,
+            Species =
+            [
+                new SpeciesImport("First", "start 11 100 store stop\ncond 0 1 > start 12 101 store stop",
+                    false, 0xff3f8e34u, 1, 1_000, 0, false, 0f)
+                {
+                    Placement = new(SpeciesPlacementMode.Fixed, 500, 500),
+                },
+                new SpeciesImport("Second", "cond *100 0 > start 33 101 store stop\nstart 22 100 store stop",
+                    false, 0xff704394u, 1, 1_000, 0, false, 0f)
+                {
+                    Placement = new(SpeciesPlacementMode.Fixed, 900, 900),
+                },
+            ],
+        };
+
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], setup, NativeEngineClientFactory.Instance, new AuditStorageService());
+            try
+            {
+                window.Show();
+                var viewModel = Assert.IsType<MainWindowViewModel>(window.DataContext);
+                await WaitFor(() => viewModel.Population == 2, () => viewModel.Status);
+
+                var session = TryField<SimulationSession>(window, "_session")!;
+                await session.StepAsync();
+                var snapshot = session.LatestSnapshot;
+                var first = Assert.Single(snapshot.Organisms, robot => robot.ActivationBitmap.SequenceEqual([false, true, false]));
+                var second = Assert.Single(snapshot.Organisms, robot => robot.ActivationBitmap.SequenceEqual([false, false, true]));
+
+                viewModel.Select(new OrganismKey(first.Slot, first.Generation));
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                var command = menu.FindCommandItem(LegacyCommandId.RobotViewGeneActivations)!;
+                command.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => window.OwnedWindows.OfType<GeneActivationsWindow>().Any(), () => viewModel.Status);
+
+                var viewer = Assert.Single(window.OwnedWindows.OfType<GeneActivationsWindow>());
+                string?[] Text() => viewer.GetVisualDescendants().OfType<TextBlock>().Select(block => block.Text).ToArray();
+                Assert.Contains("G1:ON  G2:off", Text());
+
+                viewModel.Select(new OrganismKey(second.Slot, second.Generation));
+                Assert.Contains("G1:off  G2:ON", Text());
+                command.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                Assert.Same(viewer, Assert.Single(window.OwnedWindows.OfType<GeneActivationsWindow>()));
+
+                await session.StepAsync();
+                await WaitFor(() => Text().Contains("G1:ON  G2:ON"), () => string.Join(", ", Text()));
+
+                viewModel.ClearSelection();
+                Assert.Contains("No robot focused", Text());
+                Assert.DoesNotContain(Text(), line => line?.Contains("G1:", StringComparison.Ordinal) == true);
+                Assert.True(viewer.IsVisible);
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
     public async Task MainWindowRoutesWorldObjectsMutationAndGraphToolsWithOfflineRenderedReceipt()
     {
         var setup = new WorldSetupOptions
