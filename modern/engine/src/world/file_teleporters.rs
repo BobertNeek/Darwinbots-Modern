@@ -227,12 +227,17 @@ impl Engine {
                     .flatten()
                     .filter_map(Result::ok)
                     .map(|entry| entry.path())
+                    .filter(|path| path.is_file())
                     .filter(|path| {
-                        path.is_file()
-                            && path
-                                .extension()
+                        if late {
+                            // TeleportInBots compares the final three characters with "dbo".
+                            path.file_name()
+                                .is_some_and(|name| name.as_encoded_bytes().ends_with(b"dbo"))
+                        } else {
+                            path.extension()
                                 .and_then(|extension| extension.to_str())
                                 .is_some_and(|extension| extension.eq_ignore_ascii_case("dbo"))
+                        }
                     })
                     .collect::<Vec<_>>();
                 paths.sort_by(|left, right| left.to_string_lossy().cmp(&right.to_string_lossy()));
@@ -390,6 +395,73 @@ mod tests {
     use super::*;
     use crate::native_binary::NativeRecordFile;
     use tempfile::tempdir;
+
+    #[test]
+    fn native_inbound_filename_matches_the_original_case_sensitive_suffix() {
+        let source = Engine::from_native_sim(include_bytes!(
+            "../../tests/fixtures/db24832-genuine-reproduction-cycle1-20261017.sim"
+        ))
+        .unwrap();
+        let payload = source
+            .export_native_organisms(&[source.snapshot().organisms[0].id])
+            .unwrap();
+
+        for (native, legacy, accepted, ignored) in [
+            (true, true, "incomingdbo", "incoming.DBO"),
+            (true, false, "incoming.DBO", "incomingdbo"),
+            (false, true, "incoming.DBO", "incomingdbo"),
+        ] {
+            let root = tempdir().unwrap();
+            let accepted = root.path().join(accepted);
+            let ignored = root.path().join(ignored);
+            let corrupt = root.path().join("broken.dbo");
+            let foreign = root.path().join("foreign.txt");
+            for path in [&accepted, &ignored, &foreign] {
+                fs::write(path, &payload).unwrap();
+            }
+            fs::write(&corrupt, b"not an organism").unwrap();
+
+            let config = EngineConfig::testing();
+            let mut world = if native {
+                Engine::new_native(config).unwrap()
+            } else {
+                Engine::new(config).unwrap()
+            };
+            if legacy {
+                let mut portal = Teleporter::new(1, [500.0; 2], 100.0, [500.0; 2]);
+                portal.local = false;
+                portal.inbound = true;
+                portal.path = root.path().to_path_buf();
+                portal.capacity = 3;
+                world.add_teleporter(portal).unwrap();
+            } else {
+                world
+                    .add_file_teleporter(
+                        FileTeleporter::new(1, [500.0; 2], 100.0)
+                            .with_paths(root.path(), "")
+                            .with_polling(1, 3),
+                    )
+                    .unwrap();
+            }
+
+            world.apply_file_teleporters().unwrap();
+            assert!(
+                !accepted.exists(),
+                "{} should be consumed",
+                accepted.display()
+            );
+            assert_eq!(fs::read(ignored).unwrap(), payload);
+            assert_eq!(fs::read(foreign).unwrap(), payload);
+            assert_eq!(fs::read(corrupt).unwrap(), b"not an organism");
+            assert_eq!(world.population(), 1);
+            let received = if legacy {
+                world.teleporters[0].received
+            } else {
+                world.file_teleporters[0].received
+            };
+            assert_eq!(received, 1);
+        }
+    }
 
     #[test]
     fn legacy_internet_metadata_roundtrips_without_local_relocation_or_file_exchange() {
