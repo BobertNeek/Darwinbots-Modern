@@ -13085,16 +13085,20 @@ impl Engine {
             }
         }
         engine.next_lineage_id = next_lineage_id;
-        let next_observed_absolute_id = engine
-            .slots
-            .iter()
-            .filter_map(|slot| slot.organism.as_ref())
-            .map(|organism| organism.identity.absolute_id)
-            .max()
-            .unwrap_or(0)
-            .saturating_add(1)
-            .max(1);
-        engine.next_absolute_id = engine.next_absolute_id.max(next_observed_absolute_id);
+        // The original allocator advances from its saved counter, even if
+        // a foreign .dbo supplies an absolute ID above that counter.
+        if engine.native_cycle.is_none() || engine.next_absolute_id == 0 {
+            let next_observed_absolute_id = engine
+                .slots
+                .iter()
+                .filter_map(|slot| slot.organism.as_ref())
+                .map(|organism| organism.identity.absolute_id)
+                .max()
+                .unwrap_or(0)
+                .saturating_add(1)
+                .max(1);
+            engine.next_absolute_id = engine.next_absolute_id.max(next_observed_absolute_id);
+        }
         let (capabilities, physics) = select_backend(&engine.config)?;
         engine.capabilities = capabilities;
         engine.physics = physics;
