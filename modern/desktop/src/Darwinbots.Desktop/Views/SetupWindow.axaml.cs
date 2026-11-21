@@ -40,6 +40,7 @@ public sealed partial class SetupWindow : Window
 
     public ObservableCollection<SetupSpeciesRow> Species { get; } = [];
     public event Action<WorldSetupOptions>? WorldCreated;
+    internal bool InitialKeepGraphsUpdatingOnClose { get; }
 
     public SetupWindow() : this(AvaloniaDesktopStorageService.Instance)
     {
@@ -71,6 +72,7 @@ public sealed partial class SetupWindow : Window
             _profileSettings = ReadProfileSettings(_storage, out var error);
             if (error is not null) SetupStatus.Text = $"GLOBAL SETTINGS LOAD FAILED · {error}";
             ApplyGlobalSettings(_profileSettings);
+            InitialKeepGraphsUpdatingOnClose = _profileSettings.Main.KeepGraphsUpdatingOnClose is true;
         }
         if ((startChloroplasts ?? _profileSettings.Main.StartChloroplasts) is { } amount)
         {
@@ -101,7 +103,13 @@ public sealed partial class SetupWindow : Window
     internal static GlobalSettings ReadProfileSettings(IDesktopStorageService storage, out string? error)
     {
         error = null;
-        try { return storage.LoadGlobalSettings() ?? new(); }
+        try
+        {
+            var settings = storage.LoadGlobalSettings() ?? new();
+            if (settings.Main.KeepGraphsUpdatingOnClose is null && storage.LoadGraphClosePreference() is { } keepUpdating)
+                settings = settings with { Main = settings.Main with { KeepGraphsUpdatingOnClose = keepUpdating } };
+            return settings;
+        }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException
             or JsonException or ArgumentException or InvalidDataException)
         {
@@ -298,7 +306,18 @@ public sealed partial class SetupWindow : Window
     }
 
     private void PublishWorld(WorldSetupOptions options) =>
-        WorldCreated?.Invoke(options with { NativeGaussianSpare = _nativeGaussianSpare, NativeSunChange = _nativeSunChange, NativeProcessCaches = _nativeProcessCaches });
+        WorldCreated?.Invoke(options with
+        {
+            GlobalSettings = WithGraphClosePreference(options.GlobalSettings),
+            NativeGaussianSpare = _nativeGaussianSpare,
+            NativeSunChange = _nativeSunChange,
+            NativeProcessCaches = _nativeProcessCaches,
+        });
+
+    private GlobalSettings WithGraphClosePreference(GlobalSettings settings) => settings with
+    {
+        Main = settings.Main with { KeepGraphsUpdatingOnClose = _globalSettings.Main.KeepGraphsUpdatingOnClose },
+    };
 
     private bool ValidateSpeciesRoster()
     {
@@ -569,7 +588,7 @@ public sealed partial class SetupWindow : Window
         AutomaticProgression.IsChecked = setup.AutomaticZerobotProgression;
         OrdinaryRestartToggle.IsChecked = setup.OrdinaryRestartOnExtinction;
         _environment = setup.ToEnvironmentUpdate();
-        _globalSettings = setup.GlobalSettings;
+        _globalSettings = _speciesEditor ? setup.GlobalSettings : WithGraphClosePreference(setup.GlobalSettings);
         _globalSettings = _globalSettings with
         {
             Main = _globalSettings.Main with { SafeMode = _environment.Recording?.SafeModeBackup ?? false },

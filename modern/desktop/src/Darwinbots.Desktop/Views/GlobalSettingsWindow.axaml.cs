@@ -35,6 +35,7 @@ public sealed partial class GlobalSettingsWindow : Window
         VideoOff.IsChecked = main.VideoOff;
         HideTray.IsChecked = main.HideTray;
         GraphUpdates.Value = main.GraphUpdatesPerTick;
+        KeepGraphsUpdatingOnClose.IsChecked = main.KeepGraphsUpdatingOnClose == true;
         BodyCutoff.Value = main.BodyCutoff;
         GreedyEnforcement.IsChecked = main.GreedyEnforcement;
         NewSeed.IsChecked = main.NewSeed;
@@ -135,6 +136,8 @@ public sealed partial class GlobalSettingsWindow : Window
             SuppressBuoyancy = SuppressBuoyancy.IsChecked == true,
             VideoOff = VideoOff.IsChecked == true,
             GraphUpdatesPerTick = (int)(GraphUpdates.Value ?? 1),
+            KeepGraphsUpdatingOnClose = KeepGraphsUpdatingOnClose.IsChecked == true
+                ? true : Settings.Main.KeepGraphsUpdatingOnClose is not null ? false : null,
             HideTray = HideTray.IsChecked == true,
             BodyCutoff = (int)(BodyCutoff.Value ?? 0),
             GreedyEnforcement = GreedyEnforcement.IsChecked == true,

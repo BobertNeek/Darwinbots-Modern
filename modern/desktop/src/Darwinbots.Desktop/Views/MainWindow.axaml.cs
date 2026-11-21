@@ -19,6 +19,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
+using System.Text.Json;
 
 namespace Darwinbots.Desktop.Views;
 
@@ -100,6 +101,7 @@ public sealed partial class MainWindow : Window
     private readonly IDesktopStorageService _storage;
     private readonly Action? _launchSafeModeBackup;
     private readonly LegacyGraphRecordingRun _graphRecording;
+    private readonly bool _keepGraphsUpdatingOnClose;
     private NativeGraphLayoutState? _nativeGraphLayout;
     private bool _tickInFlight;
     private bool _navigationInFlight;
@@ -186,7 +188,7 @@ public sealed partial class MainWindow : Window
         WorldSetupOptions setup,
         IEngineClientFactory engineFactory,
         IDesktopStorageService storage,
-        Action? launchSafeModeBackup)
+        Action? launchSafeModeBackup, bool? keepGraphsUpdatingOnClose = null)
     {
         _startupArguments = arguments.ToArray();
         _setup = setup with { NativeGaussianSpare = null, NativeSunChange = null, NativeProcessCaches = null };
@@ -196,6 +198,8 @@ public sealed partial class MainWindow : Window
         _initialNativeSunChange = setup.NativeSunChange;
         _initialNativeProcessCaches = setup.NativeProcessCaches;
         _globalSettings = setup.GlobalSettings;
+        // The original reads GraphUp at process startup, before opening Setup.
+        _keepGraphsUpdatingOnClose = keepGraphsUpdatingOnClose ?? (setup.GlobalSettings.Main.KeepGraphsUpdatingOnClose == true);
         _safemodeBackup = setup.GlobalSettings.Main.SafeMode || setup.Recording.SafeModeBackup;
         _startupBots = new StartupDnaWorkflow(
             setup.WorldWidth,
@@ -1180,7 +1184,7 @@ public sealed partial class MainWindow : Window
                     startChloroplasts: _liveEnvironment.Vegetation.StartChloroplasts);
                 setupWindow.WorldCreated += options =>
                 {
-                    var replacement = new MainWindow(_startupArguments, options, _engineFactory, _storage, _launchSafeModeBackup)
+                    var replacement = new MainWindow(_startupArguments, options, _engineFactory, _storage, _launchSafeModeBackup, _keepGraphsUpdatingOnClose)
                     {
                         _mazeDimensions = mazeDimensions,
                     };
@@ -1194,7 +1198,7 @@ public sealed partial class MainWindow : Window
             else
             {
                 var replacement = new MainWindow(_startupArguments,
-                    (editedSetup ?? CreateNextWorldSetup()) with { NativeGaussianSpare = spare, NativeSunChange = sunChange, NativeProcessCaches = caches }, _engineFactory, _storage, _launchSafeModeBackup)
+                    (editedSetup ?? CreateNextWorldSetup()) with { NativeGaussianSpare = spare, NativeSunChange = sunChange, NativeProcessCaches = caches }, _engineFactory, _storage, _launchSafeModeBackup, _keepGraphsUpdatingOnClose)
                 {
                     _mazeDimensions = mazeDimensions,
                 };
@@ -1876,6 +1880,7 @@ public sealed partial class MainWindow : Window
         var dialog = new GlobalSettingsWindow(settings);
         await dialog.ShowDialog(this);
         if (!dialog.Accepted) return LegacyCommandResult.Cancel();
+        }
         _globalSettings = dialog.Settings;
         SynchronizeSafemodePreference(_globalSettings.Main.SafeMode);
         Viewport.FixedRatio = _globalSettings.Main.FixedRatio;
@@ -4042,7 +4047,8 @@ public sealed partial class MainWindow : Window
             () =>
             {
                 var window = new GraphSuiteWindow(_session?.LatestSnapshot ?? EngineSnapshot.Empty, _graphRecording,
-                    () => _liveEnvironment.AutoSpeciation, consumeNativeSample: ReadCurrentGraphSampleAsync);
+                    () => _liveEnvironment.AutoSpeciation, consumeNativeSample: ReadCurrentGraphSampleAsync,
+                    keepUpdatingOnClose: _keepGraphsUpdatingOnClose);
                 window.SetNativeLayout(_nativeGraphLayout);
                 window.NativeLayoutEdited += PersistGraphLayout;
                 window.SamplingChanged += ConfigureGraphSampling;

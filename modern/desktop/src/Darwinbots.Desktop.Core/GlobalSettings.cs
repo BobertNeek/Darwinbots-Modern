@@ -32,6 +32,8 @@ public sealed record GlobalMainSettings
     public bool SuppressBuoyancy { get; init; }
     public bool VideoOff { get; init; }
     public int GraphUpdatesPerTick { get; init; } = 1;
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? KeepGraphsUpdatingOnClose { get; init; }
     public bool HideTray { get; init; }
     public int BodyCutoff { get; init; }
     public bool GreedyEnforcement { get; init; }
