@@ -73,6 +73,7 @@ mod player_insertion;
 
 #[path = "world/file_teleporters.rs"]
 mod file_teleporters;
+use file_teleporters::FileTransferPhase;
 #[path = "world/native_teleporters.rs"]
 mod native_teleporters;
 mod species_settings;
@@ -5714,7 +5715,12 @@ impl Engine {
             census[1] = census[0];
         }
         self.trace_robot_phase(&mut trace, CyclePhase::TeleporterTest);
-        self.apply_file_teleporters_staged(transfers)?;
+        let mut shared_path_exports = HashMap::new();
+        self.apply_file_teleporters_staged(
+            transfers,
+            FileTransferPhase::BeforeRobots,
+            &mut shared_path_exports,
+        )?;
         self.apply_environment_features(false, true);
         self.trace_robot_phase(&mut trace, CyclePhase::FluidMass);
         if self.native_random.is_some() {
@@ -5846,6 +5852,11 @@ impl Engine {
         trace.phase(CyclePhase::ObjectsTeleporters);
         self.move_obstacles();
         self.move_native_teleporters();
+        self.apply_file_teleporters_staged(
+            transfers,
+            FileTransferPhase::AfterPortalMovement,
+            &mut shared_path_exports,
+        )?;
         trace.phase(CyclePhase::Repopulation);
         let started = Instant::now();
         self.vegetation_repopulation_phase()?;
@@ -10574,6 +10585,14 @@ impl Engine {
         &mut self,
         file: &LegacyOrganismFile,
     ) -> Result<usize, EngineError> {
+        self.apply_legacy_organism_file(file, true)
+    }
+
+    fn apply_legacy_organism_file(
+        &mut self,
+        file: &LegacyOrganismFile,
+        publish: bool,
+    ) -> Result<usize, EngineError> {
         if file.members.is_empty() {
             return Err(EngineError::InvalidSave(
                 "DB2 organism file has no members".to_owned(),
@@ -10587,7 +10606,7 @@ impl Engine {
                     "DB2 organism file contains duplicate member identities".to_owned(),
                 ));
             }
-            if let Some(imported) = self.import_legacy_organism(&member.organism)? {
+            if let Some(imported) = self.import_legacy_organism(&member.organism, publish)? {
                 remap.insert(source, imported);
             }
         }
@@ -10601,7 +10620,9 @@ impl Engine {
             self.restore_imported_tie(first, second, tie.rest_length)?;
         }
         self.refresh_tie_projections();
-        self.publish_snapshot();
+        if publish {
+            self.publish_snapshot();
+        }
         Ok(remap.len())
     }
 
@@ -10643,6 +10664,7 @@ impl Engine {
     fn import_legacy_organism(
         &mut self,
         organism: &LegacyOrganism,
+        publish: bool,
     ) -> Result<Option<OrganismId>, EngineError> {
         if organism.corpse {
             self.corpses.push(CorpseSnapshot {
@@ -10657,7 +10679,9 @@ impl Engine {
                 birth_cycle: organism.birth_cycle,
                 ..CorpseSnapshot::default()
             });
-            self.publish_snapshot();
+            if publish {
+                self.publish_snapshot();
+            }
             return Ok(None);
         }
         let dna = LegacyDna::parse(&organism.dna)?;
@@ -10701,7 +10725,9 @@ impl Engine {
                 self.native_random.is_some(),
             ),
         );
-        self.publish_snapshot();
+        if publish {
+            self.publish_snapshot();
+        }
         Ok(Some(id))
     }
 
