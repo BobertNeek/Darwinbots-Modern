@@ -15,6 +15,7 @@ mod legacy;
 mod modes;
 mod mutation;
 pub mod native_binary;
+mod native_precision;
 mod native_random;
 pub(crate) mod native_skin;
 mod persistence;
