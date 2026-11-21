@@ -193,6 +193,63 @@ public sealed class SetupControlSurfaceTests
         }, CancellationToken.None);
     }
 
+    [Theory]
+    [InlineData(null, 16_000)]
+    [InlineData(0, 0)]
+    [InlineData(3150, 3150)]
+    public async Task PhotosyntheticZerobotsUseStartingChloroplastsUnlessProfileOverridesThem(int? configured, int expected)
+    {
+        var profile = Directory.CreateTempSubdirectory("darwinbots-photosynthetic-");
+        try
+        {
+            var storage = new AvaloniaDesktopStorageService(profile.FullName);
+            if (configured is { } amount)
+                await storage.SaveGlobalSettingsAsync(new GlobalSettings
+                {
+                    Main = new GlobalMainSettings { StartChloroplasts = amount },
+                });
+            await DesktopTestApplication.Session.Dispatch(async () =>
+            {
+                var window = new SetupWindow(storage);
+                var created = new List<WorldSetupOptions>();
+                window.WorldCreated += created.Add;
+                try
+                {
+                    window.Show();
+                    Select(window, window.FindControl<RadioButton>("ZerobotMode")!, "Zerobots");
+                    window.FindControl<ComboBox>("Sustenance")!.SelectedIndex = (int)ZerobotSustenance.PhotosyntheticZerobots;
+                    Invoke(window, "StartNew_Click");
+                    var photosynthetic = Assert.Single(created);
+                    Assert.True(Assert.Single(photosynthetic.Species).Vegetable);
+                    Assert.Equal(expected, photosynthetic.Vegetation.StartChloroplasts);
+
+                    Select(window, window.FindControl<RadioButton>("StarterMode")!, "StarterBotsAndVegetables");
+                    Invoke(window, "StartNew_Click");
+                    Assert.Equal(configured ?? 0, created[1].Vegetation.StartChloroplasts);
+
+                    if (configured is not null) return;
+                    Select(window, window.FindControl<RadioButton>("ZerobotMode")!, "Zerobots");
+                    Invoke(window, "Advanced_Click");
+                    await WaitFor(() => window.OwnedWindows.OfType<AdvancedSettingsWindow>().Any());
+                    var dialog = Assert.Single(window.OwnedWindows.OfType<AdvancedSettingsWindow>());
+                    var chloroplasts = dialog.FindControl<NumericUpDown>("StartChloroplasts")!;
+                    Assert.Equal(16_000m, chloroplasts.Value);
+                    chloroplasts.Value = 0;
+                    dialog.FindControl<Button>("ApplyButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    await WaitFor(() => window.FindControl<TextBlock>("SetupStatus")!.Text == "ADVANCED SETTINGS APPLIED");
+                    Invoke(window, "StartNew_Click");
+                    Assert.Equal(0, created[2].Vegetation.StartChloroplasts);
+                }
+                finally
+                {
+                    foreach (var dialog in window.OwnedWindows.ToArray()) dialog.Close();
+                    window.Close();
+                }
+            }, CancellationToken.None);
+        }
+        finally { profile.Delete(recursive: true); }
+    }
+
     [Fact]
     public async Task SetupSettingsButtonsRoundTripTheDesktopSettingsAuthority()
     {

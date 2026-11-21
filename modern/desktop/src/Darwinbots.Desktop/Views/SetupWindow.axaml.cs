@@ -23,6 +23,8 @@ public sealed partial class SetupWindow : Window
     private readonly NativeProcessCachesSnapshot? _nativeProcessCaches;
     private readonly SimulationSettingsWorkflow _workflow;
     private EnvironmentUpdate _environment = EnvironmentUpdate.Default;
+    private bool _startingChloroplastsConfigured;
+    private bool _liveStartingChloroplastsConfigured;
     private GlobalSettings _profileSettings = new();
     private GlobalSettings _globalSettings = new();
     private MutationSettingsUpdate _mutationSettings = MutationSettingsUpdate.Default;
@@ -71,7 +73,10 @@ public sealed partial class SetupWindow : Window
             ApplyGlobalSettings(_profileSettings);
         }
         if ((startChloroplasts ?? _profileSettings.Main.StartChloroplasts) is { } amount)
+        {
             _environment = _environment with { Vegetation = _environment.Vegetation with { StartChloroplasts = amount } };
+            _startingChloroplastsConfigured = _liveStartingChloroplastsConfigured = true;
+        }
         _workflow.Reset(ReadSetupOptions());
         if (!_speciesEditor && loadLastExitSettings) RestoreLastExitSettings();
         OnboardingPanel.IsVisible = !_speciesEditor && _storage.IsFirstRun;
@@ -268,6 +273,7 @@ public sealed partial class SetupWindow : Window
         if (!ValidateSpeciesRoster()) return;
         _workflow.UpdateWorkingCopy(_ => ReadSetupOptions());
         var options = _workflow.StartNew();
+        _liveStartingChloroplastsConfigured = true;
         if (_speciesEditor) { EditedOptions = options; StartNewRequested = true; Close(); }
         else PublishWorld(options);
     }
@@ -277,6 +283,7 @@ public sealed partial class SetupWindow : Window
         if (!ValidateSpeciesRoster()) return;
         _workflow.UpdateWorkingCopy(_ => ReadSetupOptions());
         var options = _workflow.Change();
+        _liveStartingChloroplastsConfigured = true;
         if (_speciesEditor) { EditedOptions = options; Close(); }
         else PublishWorld(options);
     }
@@ -286,6 +293,7 @@ public sealed partial class SetupWindow : Window
         if (_speciesEditor) { Close(); return; }
         _workflow.Cancel();
         ApplySetupOptions(_workflow.WorkingCopy);
+        _startingChloroplastsConfigured = _liveStartingChloroplastsConfigured;
         SetupStatus.Text = "WORKING COPY CANCELLED";
     }
 
@@ -304,9 +312,10 @@ public sealed partial class SetupWindow : Window
     private WorldSetupOptions ReadSetupOptions(WorldSetupOptions? staged = null)
     {
         staged ??= _workflow.WorkingCopy;
+        var mode = CurrentMode();
         var sustenance = (ZerobotSustenance)Math.Max(0, Sustenance.SelectedIndex);
         var species = Species.Select((row, index) => row.ToImport(index)).ToList();
-        if (!_speciesEditor && species.Count > 0 && CurrentMode() != StartingMode.StarterBotsAndVegetables)
+        if (!_speciesEditor && species.Count > 0 && mode != StartingMode.StarterBotsAndVegetables)
         {
             if (sustenance == ZerobotSustenance.PhotosyntheticZerobots)
                 species[0] = species[0] with { Vegetable = true };
@@ -321,7 +330,7 @@ public sealed partial class SetupWindow : Window
         float fieldHeight = (float)(WorldHeight.Value ?? 12_000);
         return new WorldSetupOptions
         {
-            StartingMode = CurrentMode(),
+            StartingMode = mode,
             ZerobotSustenance = sustenance,
             AutomaticZerobotProgression = AutomaticProgression.IsChecked == true,
             OrdinaryRestartOnExtinction = OrdinaryRestartToggle.IsChecked == true,
@@ -342,7 +351,7 @@ public sealed partial class SetupWindow : Window
             Shots = _environment.Shots,
             CorpseDecay = _environment.CorpseDecay ?? new Db2CorpseDecayOptions(),
             Waste = _environment.Waste ?? new Db2WasteOptions(),
-            Vegetation = _environment.Vegetation,
+            Vegetation = ReadSetupVegetation(mode, sustenance),
             Recording = _environment.Recording ?? new Db2RecordingOptions(),
             AutoSpeciation = _environment.AutoSpeciation,
             SpeciationGeneticDistancePercent = _environment.SpeciationGeneticDistancePercent,
@@ -364,6 +373,12 @@ public sealed partial class SetupWindow : Window
             LegacySettingsFields = _legacySettingsFields,
         };
     }
+
+    private Db2VegetationOptions ReadSetupVegetation(StartingMode mode, ZerobotSustenance sustenance) =>
+        !_speciesEditor && !_startingChloroplastsConfigured && _environment.Vegetation.StartChloroplasts == 0
+            && mode != StartingMode.StarterBotsAndVegetables && sustenance == ZerobotSustenance.PhotosyntheticZerobots
+            ? _environment.Vegetation with { StartChloroplasts = 16_000 }
+            : _environment.Vegetation;
 
     private async void SimulationSettingsTab_SelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
@@ -395,10 +410,19 @@ public sealed partial class SetupWindow : Window
                     .Concat(Species.Select(row => new SpeciesSnapshot(row.Name, row.Vegetable,
                         row.Color, row.MinimumPopulation, row.Reseed, (float)row.MutationRate))).ToArray(),
             };
-            var dialog = new AdvancedSettingsWindow(_environment, snapshot, selectedTab);
+            var initial = _environment.Vegetation.StartChloroplasts;
+            var presented = ReadSetupVegetation(CurrentMode(), (ZerobotSustenance)Math.Max(0, Sustenance.SelectedIndex));
+            var dialog = new AdvancedSettingsWindow(_environment with { Vegetation = presented }, snapshot, selectedTab);
             await dialog.ShowDialog(this);
             if (!dialog.Accepted) return;
             _environment = dialog.Update;
+            if (_environment.Vegetation.StartChloroplasts != presented.StartChloroplasts)
+                _startingChloroplastsConfigured = true;
+            else if (initial != presented.StartChloroplasts)
+                _environment = _environment with
+                {
+                    Vegetation = _environment.Vegetation with { StartChloroplasts = initial },
+                };
             _globalSettings = _globalSettings with
             {
                 Main = _globalSettings.Main with { SafeMode = _environment.Recording?.SafeModeBackup ?? false },
@@ -498,6 +522,7 @@ public sealed partial class SetupWindow : Window
     {
         var setup = settings.ToWorldSetup(_workflow.Live);
         ApplySetupOptions(setup);
+        _startingChloroplastsConfigured = true;
         _workflow.LoadWorkingCopy(setup);
     }
 
@@ -582,6 +607,7 @@ public sealed partial class SetupWindow : Window
         StarterMode.IsChecked = true;
         Mode_Checked(StarterMode, e);
         _workflow.Reset(ReadSetupOptions(new WorldSetupOptions()));
+        _liveStartingChloroplastsConfigured = _startingChloroplastsConfigured;
         SetupStatus.Text = "New world defaults restored.";
     }
 
