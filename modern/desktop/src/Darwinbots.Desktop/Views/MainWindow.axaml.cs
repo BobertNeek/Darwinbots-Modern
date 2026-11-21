@@ -21,6 +21,7 @@ namespace Darwinbots.Desktop.Views;
 public sealed partial class MainWindow : Window
 {
     private const string TrayPngBase64 = "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAlSURBVDhPY1BQV/1PCQYb4FNrQBYeNWDUABAeNYCaBpCPVf8DAN1j1wSVGu34AAAAAElFTkSuQmCC";
+    private const string NativeRobotInfoKey = "native-robot-info";
 
     private void MainWindow_KeyDown(object? sender, KeyEventArgs e)
     {
@@ -222,6 +223,7 @@ public sealed partial class MainWindow : Window
             _viewModel.Status = result.Status;
             RefreshLegacyMenuStates();
         };
+        Viewport.EmptyWorldDoubleClicked += () => _toolWindows.Hide(NativeRobotInfoKey);
         Viewport.WorldClicked += async position =>
         {
             if (_session is null) return;
@@ -248,8 +250,9 @@ public sealed partial class MainWindow : Window
             }
             if (_environmentPlacement == EnvironmentPlacement.None)
             {
-                if (_loadingSimulation || _safeModeRecoveryWorld || RecoveryPanel.IsVisible
-                    || (_playerBotEnabled && _viewModel.SelectedKey is not null)) return;
+                if (_loadingSimulation || _safeModeRecoveryWorld || RecoveryPanel.IsVisible) return;
+                if (_runTimer?.IsEnabled == false) _toolWindows.Hide(NativeRobotInfoKey);
+                if (_playerBotEnabled && _viewModel.SelectedKey is not null) return;
 
                 _viewModel.ClearSelection();
                 Viewport.SetRobotFocus(null);
@@ -1585,13 +1588,19 @@ public sealed partial class MainWindow : Window
         OrganismSnapshot organism,
         RobotDetailsTab tab)
     {
+        var focus = new OrganismKey(organism.Slot, organism.Generation);
+        if (tab == RobotDetailsTab.Facts && session.LatestSnapshot.NativeCycle.HasValue)
+        {
+            var info = _toolWindows.ShowOrActivate(NativeRobotInfoKey,
+                () => new RobotDetailsWindow(session, focus, tab, SelectedRobotKey) { Topmost = true });
+            info.SetFollowedSnapshot(session.LatestSnapshot);
+            return info;
+        }
+
         var key = $"robot-details:{organism.Slot}:{organism.Generation}";
         var window = _toolWindows.ShowOrActivate(
             key,
-            () => new RobotDetailsWindow(
-                session,
-                new OrganismKey(organism.Slot, organism.Generation),
-                tab));
+            () => new RobotDetailsWindow(session, focus, tab));
         window.SelectTab(tab);
         window.SetSnapshot(session.LatestSnapshot);
         return window;

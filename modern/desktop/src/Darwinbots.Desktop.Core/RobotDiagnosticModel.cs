@@ -10,11 +10,11 @@ public sealed class RobotDiagnosticModel
         ? "NO ROBOT FOCUSED"
         : $"LIVE · TICK {Tick:N0} · {ActivationTimeline.Count:N0} GENE FRAMES";
 
-    public void Update(EngineSnapshot snapshot, OrganismKey focus)
+    public void Update(EngineSnapshot snapshot, OrganismKey? focus)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
-        var organism = snapshot.Organisms.FirstOrDefault(value =>
-            value.Slot == focus.Slot && value.Generation == focus.Generation);
+        var organism = focus is { } key ? snapshot.Organisms.FirstOrDefault(value =>
+            value.Slot == key.Slot && value.Generation == key.Generation) : null;
         Focus = organism is null ? null : focus;
         Tick = snapshot.Tick;
         ActivationTimeline = organism?.ActivationHistory ?? [];

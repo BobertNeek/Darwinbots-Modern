@@ -51,6 +51,7 @@ public sealed class WorldViewport : Control
     public event Action<OrganismKey, Point>? OrganismContextRequested;
     public event Action<OrganismKey>? OrganismDoubleClicked;
     public event Action<float[]>? WorldClicked;
+    public event Action? EmptyWorldDoubleClicked;
     public event Action<WorldFeatureSelection>? WorldFeatureSelected;
     public event Action<uint, float[]>? OrganismDragCompleted;
     public event Action<OrganismKey, float[]>? OrganismKeyDragCompleted;
@@ -485,6 +486,7 @@ public sealed class WorldViewport : Control
                 (float)Math.Clamp((point.Position.X - _pan.X) / (scaleX * _zoom), 0, _snapshot.WorldSize[0]),
                 (float)Math.Clamp((point.Position.Y - _pan.Y) / (scaleY * _zoom), 0, _snapshot.WorldSize[1]),
             ]);
+            if (e.ClickCount >= 2) EmptyWorldDoubleClicked?.Invoke();
             return;
         }
         SelectKey(selected);
