@@ -75,6 +75,7 @@ public sealed partial class MainWindow : Window
     private readonly IDesktopStorageService _storage;
     private bool _tickInFlight;
     private bool _navigationInFlight;
+    private bool _windowClosed;
     private readonly SemaphoreSlim _advanceGate = new(1, 1);
     private volatile bool _loadingSimulation;
     private OrganismKey? _moveOrganism;
@@ -2987,10 +2988,12 @@ public sealed partial class MainWindow : Window
         await _advanceGate.WaitAsync();
         try
         {
-            if (_session is not { } session || count == 0) return;
+            if (_windowClosed || _session is not { } session || count == 0) return;
             // A recovered pending checkpoint already contains the completed cycle.
             if (session.LatestSnapshot.OrdinaryRestartPending)
                 await session.FinishOrdinaryRestartAsync();
+            var requiresOriginalSource = session.LatestSnapshot.NativeCycle.HasValue
+                && await session.HasUnresolvedNativeRepopulationSourcesAsync();
             while (count > 0)
             {
                 var before = session.LatestSnapshot;
@@ -2999,10 +3002,12 @@ public sealed partial class MainWindow : Window
                 var interval = _liveEnvironment.Recording?.AutosaveInterval ?? 0;
                 // With restart enabled, let the host retain the completed cycle
                 // before another engine tick can consume the pending restart.
-                var batch = before.OrdinaryRestartAvailable && before.OrdinaryRestartOnExtinction
+                var observesOrdinaryRestart = before.OrdinaryRestartAvailable && before.OrdinaryRestartOnExtinction;
+                var batch = observesOrdinaryRestart || requiresOriginalSource
                     ? 1u
                     : CycleAutosavePolicy.LimitBatch(before.Tick, count, _safemodeBackup, interval, before.LocalMode, before.NativeCycle);
-                await session.StepAsync(batch);
+                if (requiresOriginalSource) await StepResolvingNativeRepopulationSourcesAsync(session);
+                else await session.StepAsync(batch);
                 count -= batch;
                 var after = session.LatestSnapshot;
                 if (after.OrdinaryRestartPending)
@@ -3012,9 +3017,78 @@ public sealed partial class MainWindow : Window
                     await SaveAutomaticCheckpointAsync();
                 if (after.OrdinaryRestartPending)
                     await session.FinishOrdinaryRestartAsync();
+                if (count > 0 && requiresOriginalSource)
+                    requiresOriginalSource = await session.HasUnresolvedNativeRepopulationSourcesAsync();
             }
         }
+        catch (MissingNativeRepopulationSourceException)
+        {
+            _runTimer.Stop();
+        }
         finally { _advanceGate.Release(); }
+    }
+
+    private async Task StepResolvingNativeRepopulationSourcesAsync(SimulationSession session)
+    {
+        List<ulong> cancelledLineages = [];
+        while (true)
+        {
+            try
+            {
+                await session.StepRequiringNativeRepopulationSourceAsync(cancelledLineages);
+                return;
+            }
+            catch (MissingNativeRepopulationSourceException error)
+            {
+                var source = error.RequiredSource;
+                if (cancelledLineages.Contains(source.LineageId))
+                {
+                    _viewModel.Status = $"PAUSED · COULD NOT SKIP ORIGINAL DNA · {source.Filename}";
+                    throw;
+                }
+
+                var resolution = await ResolveNativeRepopulationSourceAsync(session, source);
+                if (resolution == RepopulationSourceResolution.Unavailable) throw;
+                if (resolution == RepopulationSourceResolution.Cancelled)
+                    cancelledLineages.Add(source.LineageId);
+            }
+        }
+    }
+
+    private enum RepopulationSourceResolution { Bound, Cancelled, Unavailable }
+
+    private async Task<RepopulationSourceResolution> ResolveNativeRepopulationSourceAsync(
+        SimulationSession session, NativeRestartSource source)
+    {
+        try
+        {
+            var local = SetupStorageService.ResolveNativeRestartSource(source, null, _globalSettings.Main.MainDirectory);
+            if (local is not null && await session.BindNativeRepopulationSourceAsync(new(source.LineageId, local)))
+                return RepopulationSourceResolution.Bound;
+
+            var previousStatus = _viewModel.Status;
+            var locatingStatus = $"ORIGINAL DNA REQUIRED · {source.Filename}";
+            _viewModel.Status = locatingStatus;
+            var selected = await _storage.OpenNativeRepopulationSourceAsync(this, source);
+            if (_windowClosed) return RepopulationSourceResolution.Unavailable;
+            if (selected is null)
+            {
+                if (_viewModel.Status == locatingStatus) _viewModel.Status = previousStatus;
+                return RepopulationSourceResolution.Cancelled;
+            }
+            var selectedDirectory = SetupStorageService.SelectedDnaDirectory(selected.LocalPath);
+            if (await session.BindNativeRepopulationSourceAsync(new(source.LineageId, selected.Content, selectedDirectory)))
+            {
+                if (_viewModel.Status == locatingStatus) _viewModel.Status = previousStatus;
+                return RepopulationSourceResolution.Bound;
+            }
+            _viewModel.Status = $"PAUSED · DNA COULD NOT BE LOADED · {selected.Name}";
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or System.Text.DecoderFallbackException)
+        {
+            _viewModel.Status = $"PAUSED · DNA COULD NOT BE READ · {error.Message}";
+        }
+        return RepopulationSourceResolution.Unavailable;
     }
 
     private async Task SaveAutomaticCheckpointAsync()
@@ -3032,6 +3106,7 @@ public sealed partial class MainWindow : Window
 
     private async void Window_Closed(object? sender, EventArgs e)
     {
+        _windowClosed = true;
         _runTimer.Stop();
         _runtimeClock.Stop();
         _toolWindows.CloseAll();
