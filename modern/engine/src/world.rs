@@ -2293,6 +2293,11 @@ struct PendingBirth {
     sperm_source: Option<OrganismId>,
 }
 
+enum BirthCommitRoute {
+    Cycle,
+    NativeRobotInfo,
+}
+
 #[derive(Default)]
 struct LifecycleQueues {
     births: Vec<PendingBirth>,
@@ -11826,7 +11831,7 @@ impl Engine {
             }
         }
         self.commit_native_deaths(native_deaths);
-        self.commit_pending_births(&queues.births, trace)?;
+        self.commit_pending_births(&queues.births, BirthCommitRoute::Cycle, trace)?;
         if !deferred_deaths.is_empty() {
             self.commit_lifecycle_queues(
                 LifecycleQueues {
@@ -11910,6 +11915,7 @@ impl Engine {
     fn commit_pending_births(
         &mut self,
         births: &[PendingBirth],
+        route: BirthCommitRoute,
         trace: &mut CycleRecorder,
     ) -> Result<Option<OrganismId>, EngineError> {
         let birth_cycle = self.native_cycle_or_tick();
@@ -11934,16 +11940,24 @@ impl Engine {
                 continue;
             };
             let species = parent_state.identity.species;
-            let vegetable_birth = self
-                .species
-                .get(species.0 as usize)
-                .is_some_and(|value| value.vegetable);
             let native = self.native_random.is_some();
+            let native_robot_info =
+                native && !birth.sexual && matches!(route, BirthCommitRoute::NativeRobotInfo);
+            let vegetable_birth = if native_robot_info {
+                // VB6 Reproduce uses the actor's Veg flag. Corpse conversion clears it.
+                parent_state.flags.vegetable
+            } else {
+                self.species
+                    .get(species.0 as usize)
+                    .is_some_and(|value| value.vegetable)
+            };
+            let energy_insufficient = parent_state.materials.energy <= 0.0;
             if available_births == 0
-                || parent_state.flags.corpse
+                // Robot Info can call VB6 Reproduce on an existing corpse.
+                || (parent_state.flags.corpse && !native_robot_info)
                 || (!native && parent_state.flags.dead)
                 || !parent_state.flags.can_reproduce
-                || parent_state.materials.energy <= 0.0
+                || (!native_robot_info && energy_insufficient)
                 || if birth.sexual {
                     parent_state.materials.body <= 2.0
                 } else {
@@ -11985,7 +11999,8 @@ impl Engine {
             if self.config.greedy_reproduction && birth.percentage < 3 {
                 self.slots.get_mut(birth.parent)?.flags.dead = true;
             }
-            if birth.percentage <= 0 {
+            // The direct VB6 path draws before checking the parent's energy.
+            if birth.percentage <= 0 || (native_robot_info && energy_insufficient) {
                 continue;
             }
 
