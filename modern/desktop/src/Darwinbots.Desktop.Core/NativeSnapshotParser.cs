@@ -236,6 +236,7 @@ public static class NativeSnapshotParser
         return new EngineSnapshot(native.Tick, organisms.Length, backend, organisms)
         {
             NativeCycle = native.NativeCycle,
+            NativeSunOn = native.NativeSunOn,
             RenderInstances = renderInstances,
             Species = species,
             MutationSettings = new MutationSettingsSnapshot(
@@ -524,6 +525,7 @@ public static class NativeSnapshotParser
     private sealed record NativeSnapshot(
         [property: JsonPropertyName("tick")] ulong Tick,
         [property: JsonPropertyName("native_cycle")] int? NativeCycle,
+        [property: JsonPropertyName("native_sun_on")] bool? NativeSunOn,
         [property: JsonPropertyName("world_size")] float[]? WorldSize,
         [property: JsonPropertyName("organisms")] NativeOrganism[] Organisms,
         [property: JsonPropertyName("render_instances")] NativeRenderInstance[]? RenderInstances,

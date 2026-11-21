@@ -39,6 +39,9 @@ pub(crate) struct VegetationRuntime {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     native_repopulation_counter: Option<i32>,
     day_night_counter: u64,
+    /// The Sun button can show temporary feeding that differs from SimOpts.Daytime.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    native_sun_override: Option<bool>,
     sun_position: f64,
     sun_range: f64,
     sun_change: u8,
@@ -58,6 +61,7 @@ impl Default for VegetationRuntime {
             repopulation_counter: 0,
             native_repopulation_counter: None,
             day_night_counter: 0,
+            native_sun_override: None,
             sun_position: 0.5,
             sun_range: 1.0,
             sun_change: 10,
@@ -68,6 +72,14 @@ impl Default for VegetationRuntime {
 }
 
 impl VegetationRuntime {
+    pub(crate) fn native_sun_on(&self, daytime: bool) -> bool {
+        self.native_sun_override.unwrap_or(daytime)
+    }
+
+    pub(crate) fn set_native_sun_indicator(&mut self, daytime: bool, feed_this_cycle: bool) {
+        self.native_sun_override = (daytime != feed_this_cycle).then_some(feed_this_cycle);
+    }
+
     pub(crate) fn native_light_availability(&self) -> f64 {
         self.native_light_availability
     }
@@ -515,6 +527,7 @@ mod native_weather_tests {
             repopulation_counter: 17,
             native_repopulation_counter: None,
             day_night_counter: 23,
+            native_sun_override: None,
             sun_position: 0.125,
             sun_range: 0.75,
             sun_change: 22,
@@ -557,6 +570,7 @@ mod native_weather_tests {
             repopulation_counter: 17,
             native_repopulation_counter: None,
             day_night_counter: 23,
+            native_sun_override: None,
             sun_position: 0.125,
             sun_range: 0.75,
             sun_change: 22,
@@ -588,6 +602,7 @@ mod native_weather_tests {
             repopulation_counter: 17,
             native_repopulation_counter: None,
             day_night_counter: 23,
+            native_sun_override: None,
             sun_position: 0.125,
             sun_range: 0.75,
             sun_change: 22,

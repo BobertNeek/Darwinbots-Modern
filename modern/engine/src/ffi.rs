@@ -69,6 +69,7 @@ enum EngineCommand {
     SetNativeSunChange {
         sun_change: u8,
     },
+    ToggleNativeSun,
     ReadNativeProcessCaches,
     SetNativeProcessCaches {
         caches: NativeProcessCaches,
@@ -671,6 +672,7 @@ fn db_engine_command_batch_impl(
                 engine.set_native_sun_change(sun_change);
                 Ok(serde_json::Value::Null)
             }
+            EngineCommand::ToggleNativeSun => Ok(serde_json::json!(engine.toggle_native_sun())),
             EngineCommand::ReadNativeProcessCaches => engine
                 .read_native_process_caches()
                 .map(|caches| serde_json::json!(caches)),
@@ -1341,6 +1343,7 @@ fn db_engine_load_impl(engine: *mut Engine, save_data: *const u8, save_len: usiz
             if !bytes.starts_with(b"DB3S") {
                 loaded.retain_native_global_preferences(engine.configuration());
                 loaded.inherit_native_gaussian_spare(engine);
+                loaded.inherit_native_sun_indicator_after_sim_load(engine);
                 if let Err(error) = loaded.inherit_native_process_caches_after_sim_load(engine) {
                     return fail(DbStatus::EngineError, error);
                 }
@@ -1924,6 +1927,65 @@ mod tests {
             assert_eq!(db_buffer_free(&mut buffer), DbStatus::Ok);
         }
         (status, result)
+    }
+
+    #[test]
+    fn native_sun_toolbar_toggles_the_effective_feed_indicator_without_advancing() {
+        let mut config = EngineConfig::testing();
+        config.vegetation.daytime = false;
+        config.vegetation.day_night_enabled = true;
+        config.vegetation.sun_up_enabled = true;
+        config.vegetation.sun_up_threshold = 500_000;
+        config.vegetation.sun_threshold_mode = 0;
+        let mut world = Engine::new_native(config).unwrap();
+        assert_eq!(world.snapshot().native_sun_on, Some(true));
+        world
+            .spawn(LegacyDna::parse("start stop").unwrap())
+            .unwrap();
+        world.tick().unwrap();
+        assert!(!world.configuration().vegetation.daytime);
+        assert_eq!(world.snapshot().native_sun_on, Some(true));
+
+        let save = SaveFile::encode(&world).unwrap();
+        let mut world = SaveFile::decode(&save).unwrap();
+        assert_eq!(world.snapshot().native_sun_on, Some(true));
+        let mut expected = serde_json::to_value(&world).unwrap();
+        expected["vegetation_runtime"]
+            .as_object_mut()
+            .unwrap()
+            .remove("native_sun_override");
+        for enabled in [false, true] {
+            let (status, response) = classic_test_batch(
+                &mut world,
+                serde_json::json!([{ "type": "toggle_native_sun" }]),
+            );
+            assert_eq!(status, DbStatus::Ok);
+            let value: serde_json::Value = serde_json::from_slice(&response).unwrap();
+            assert_eq!(value["results"][0], enabled);
+            assert_eq!(world.snapshot().native_sun_on, Some(enabled));
+            expected["config"]["vegetation"]["daytime"] = enabled.into();
+            assert_eq!(serde_json::to_value(&world).unwrap(), expected);
+        }
+    }
+
+    #[test]
+    fn native_sun_toolbar_keeps_the_existing_button_state_during_a_sim_load() {
+        let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+        assert_eq!(world.toggle_native_sun(), Some(false));
+        let mut source = Engine::new_native(EngineConfig::testing()).unwrap();
+        source
+            .spawn_at(LegacyDna::parse("start stop").unwrap(), [500.0; 2])
+            .unwrap();
+        let save = source.export_native_sim().unwrap();
+        assert_eq!(
+            db_engine_load(&mut world, save.as_ptr(), save.len()),
+            DbStatus::Ok
+        );
+        assert!(world.configuration().vegetation.daytime);
+        assert_eq!(world.snapshot().native_sun_on, Some(false));
+        world.tick().unwrap();
+        assert!(world.configuration().vegetation.daytime);
+        assert_eq!(world.snapshot().native_sun_on, Some(true));
     }
 
     fn populated_native_cpu_candidate_fixture() -> Engine {

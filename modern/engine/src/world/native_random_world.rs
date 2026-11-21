@@ -16,6 +16,9 @@ impl Engine {
         engine.snapshot.native_cycle = Some(-1);
         engine.vegetation_runtime = VegetationRuntime::fresh_native_process();
         engine.initialize_native_start();
+        // The original graphical CheckBox starts unchecked (sun on).
+        engine.remember_native_sun_indicator(true);
+        engine.snapshot.native_sun_on = Some(true);
         Ok(engine)
     }
 
@@ -80,6 +83,34 @@ impl Engine {
         self.vegetation_runtime.sun_change()
     }
 
+    pub(super) fn native_sun_on(&self) -> Option<bool> {
+        self.native_cycle.map(|_| {
+            self.vegetation_runtime
+                .native_sun_on(self.config.vegetation.daytime)
+        })
+    }
+
+    pub(super) fn remember_native_sun_indicator(&mut self, enabled: bool) {
+        self.vegetation_runtime
+            .set_native_sun_indicator(self.config.vegetation.daytime, enabled);
+    }
+
+    pub(crate) fn inherit_native_sun_indicator_after_sim_load(&mut self, previous: &Self) {
+        let enabled = previous.native_sun_on().unwrap_or(true);
+        self.remember_native_sun_indicator(enabled);
+        self.snapshot.native_sun_on = Some(enabled);
+    }
+
+    pub(crate) fn toggle_native_sun(&mut self) -> Option<bool> {
+        // SunButton_Click uses the new button state. FeedVeg can have set
+        // the indicator from a temporary threshold without changing Daytime.
+        let enabled = !self.native_sun_on()?;
+        self.config.vegetation.daytime = enabled;
+        self.remember_native_sun_indicator(enabled);
+        self.snapshot.native_sun_on = Some(enabled);
+        Some(enabled)
+    }
+
     /// Transfer only SunChange; native save loads retain their own weather state.
     pub fn set_native_sun_change(&mut self, sun_change: u8) {
         self.vegetation_runtime.set_sun_change(sun_change);
@@ -136,6 +167,7 @@ impl Engine {
                 // Restarter.exe creates a new process with an empty gasdev cache.
                 *random = Default::default();
                 self.vegetation_runtime = VegetationRuntime::fresh_native_process();
+                self.remember_native_sun_indicator(true);
                 self.reset_native_energy_process();
                 self.set_death_poffs_enabled(true);
             }
