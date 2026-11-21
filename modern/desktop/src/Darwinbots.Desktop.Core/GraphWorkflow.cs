@@ -363,11 +363,14 @@ public sealed class GraphSuiteViewModel : INotifyPropertyChanged
         GraphsReset?.Invoke();
     }
 
-    public void ResetGraph(GraphMetric metric)
+    public void ResetGraph(GraphMetric metric) => ResetGraph(metric, preserveImported: false);
+
+    public void ResetGraph(GraphMetric metric, bool preserveImported)
     {
         _chartPoints.Remove(metric);
         if (_samples.LastOrDefault() is { } latest) _metricCutoffTicks[metric] = latest.Tick;
-        foreach (var graph in RunningGraphs.Where(graph => graph.Metric == metric)) graph.Reset();
+        var graphs = preserveImported ? ProjectedGraphs : RunningGraphs;
+        foreach (var graph in graphs.Where(graph => graph.Metric == metric)) graph.Reset();
     }
 
     public void CloseGraph(GraphMetric metric)

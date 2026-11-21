@@ -83,7 +83,7 @@ public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWi
         if (reset.Length > 0)
         {
             if (usesNativeSamples)
-                foreach (var (metric, _) in reset) ViewModel.ResetGraph(metric);
+                foreach (var (metric, _) in reset) ViewModel.ResetGraph(metric, preserveImported: true);
             ResetRecordingCharts(reset, feedImmediately: true);
         }
         if (usesNativeSamples || snapshot.History.Count == 0) return;
