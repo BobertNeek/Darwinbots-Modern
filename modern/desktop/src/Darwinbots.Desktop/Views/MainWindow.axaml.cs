@@ -2063,7 +2063,10 @@ public sealed partial class MainWindow : Window
                     openNativeConsole: () => _session == session && !_loadingSimulation && session.LatestSnapshot.NativeCycle.HasValue
                         ? ShowSelectedRobotConsoleAsync()
                         : Task.FromResult(LegacyCommandResult.Failure("SIMULATION IS UNAVAILABLE")),
-                    editNativeShortDescription: (owner, displayed) => EditNativeRobotDescriptionAsync(session, owner, displayed))
+                    editNativeShortDescription: (owner, displayed) => EditNativeRobotDescriptionAsync(session, owner, displayed),
+                    showNativeActivations: () => _session == session && session.LatestSnapshot.NativeCycle.HasValue
+                        ? ShowSelectedGeneActivationsAsync(allowEmptyFocus: true)
+                        : Task.FromResult(LegacyCommandResult.Failure("SIMULATION IS UNAVAILABLE")))
                 { Topmost = true };
                 _nativeRobotInfoWindow = viewer;
                 void FollowSelection(object? sender, System.ComponentModel.PropertyChangedEventArgs change)
@@ -2312,9 +2315,9 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private async Task<LegacyCommandResult> ShowSelectedGeneActivationsAsync()
+    private async Task<LegacyCommandResult> ShowSelectedGeneActivationsAsync(bool allowEmptyFocus = false)
     {
-        if (_session is not { } session || _loadingSimulation || _viewModel.SelectedKey is null)
+        if (_session is not { } session || _loadingSimulation || (!allowEmptyFocus && _viewModel.SelectedKey is null))
             return LegacyCommandResult.Failure("NO ROBOT SELECTED");
 
         var window = _toolWindows.ShowOrActivate("gene-activations", () =>

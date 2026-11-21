@@ -114,8 +114,9 @@ public sealed class RobotDetailsWindow : Window
         Func<OrganismKey?>? readFocus = null,
         Func<OrganismSnapshot, Task<OrganismKey?>>? reproduceNative = null,
         Func<Task<LegacyCommandResult>>? openNativeConsole = null,
-        Func<RobotDetailsWindow, OrganismSnapshot, Task<string?>>? editNativeShortDescription = null)
-        : this(session, focus, initialTab, string.Empty, session.LatestSnapshot.NativeCycle.HasValue, readFocus, reproduceNative, openNativeConsole, editNativeShortDescription)
+        Func<RobotDetailsWindow, OrganismSnapshot, Task<string?>>? editNativeShortDescription = null,
+        Func<Task<LegacyCommandResult>>? showNativeActivations = null)
+        : this(session, focus, initialTab, string.Empty, session.LatestSnapshot.NativeCycle.HasValue, readFocus, reproduceNative, openNativeConsole, editNativeShortDescription, showNativeActivations)
     {
         SetSnapshot(session.LatestSnapshot);
     }
@@ -133,7 +134,8 @@ public sealed class RobotDetailsWindow : Window
         Func<OrganismKey?>? readFocus = null,
         Func<OrganismSnapshot, Task<OrganismKey?>>? reproduceNative = null,
         Func<Task<LegacyCommandResult>>? openNativeConsole = null,
-        Func<RobotDetailsWindow, OrganismSnapshot, Task<string?>>? editNativeShortDescription = null)
+        Func<RobotDetailsWindow, OrganismSnapshot, Task<string?>>? editNativeShortDescription = null,
+        Func<Task<LegacyCommandResult>>? showNativeActivations = null)
     {
         _session = session;
         _readFocus = readFocus;
@@ -335,6 +337,16 @@ public sealed class RobotDetailsWindow : Window
                 catch (Exception error) { _status.Text = error.Message; }
             };
             robotTools.Children.Add(console);
+        }
+        if (showNativeActivations is not null)
+        {
+            var activations = new Button { Name = "NativeRobotInfoShowActivations", Content = "Show activations" };
+            activations.Click += async (_, _) =>
+            {
+                try { _status.Text = (await showNativeActivations()).Status; }
+                catch (Exception error) { _status.Text = error.Message; }
+            };
+            robotTools.Children.Add(activations);
         }
         if (_reproduceNative is not null)
         {

@@ -498,18 +498,32 @@ public sealed class RenderedWorldToolsCausalTests
                 var first = Assert.Single(snapshot.Organisms, robot => robot.ActivationBitmap.SequenceEqual([false, true, false]));
                 var second = Assert.Single(snapshot.Organisms, robot => robot.ActivationBitmap.SequenceEqual([false, false, true]));
 
-                viewModel.Select(new OrganismKey(first.Slot, first.Generation));
                 var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
                 var command = menu.FindCommandItem(LegacyCommandId.RobotViewGeneActivations)!;
-                command.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                var secondFocus = new OrganismKey(second.Slot, second.Generation);
+                viewModel.Select(secondFocus);
+                menu.FindCommandItem(LegacyCommandId.RobotShowInfo)!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => window.OwnedWindows.OfType<RobotDetailsWindow>().Any(), () => viewModel.Status);
+                var info = Assert.Single(window.OwnedWindows.OfType<RobotDetailsWindow>());
+                info.UpdateLayout();
+                var showActivations = Assert.Single(info.GetVisualDescendants().OfType<Button>(),
+                    button => button.Name == "NativeRobotInfoShowActivations");
+                viewModel.ClearSelection();
+                Assert.True(showActivations.IsVisible);
+                showActivations.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 await WaitFor(() => window.OwnedWindows.OfType<GeneActivationsWindow>().Any(), () => viewModel.Status);
 
                 var viewer = Assert.Single(window.OwnedWindows.OfType<GeneActivationsWindow>());
                 string?[] Text() => viewer.GetVisualDescendants().OfType<TextBlock>().Select(block => block.Text).ToArray();
+                Assert.Contains("No robot focused", Text());
+                await WaitFor(() => session.LatestSnapshot.GeneActivationMeter is { Focus: null }, () => viewModel.Status);
+
+                var firstFocus = new OrganismKey(first.Slot, first.Generation);
+                viewModel.Select(firstFocus);
                 Assert.Contains("G1:ON  G2:off", Text());
                 Assert.Single(viewer.GetVisualDescendants().OfType<Control>(), control => control.Name == "ActivationBands");
+                await WaitFor(() => session.LatestSnapshot.GeneActivationMeter?.Focus == firstFocus, () => viewModel.Status);
 
-                var secondFocus = new OrganismKey(second.Slot, second.Generation);
                 viewModel.Select(secondFocus);
                 Assert.Contains("G1:off  G2:ON", Text());
                 await WaitFor(() => session.LatestSnapshot.GeneActivationMeter?.Focus == secondFocus, () => viewModel.Status);
