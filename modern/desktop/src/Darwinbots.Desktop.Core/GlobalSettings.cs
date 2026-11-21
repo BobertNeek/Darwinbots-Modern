@@ -28,7 +28,10 @@ public enum GlobalMutationOscillationMode
 public sealed record GlobalMainSettings
 {
     public bool FixedRatio { get; init; }
-    public bool OldColors { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? OldColors { get; init; }
+    [JsonIgnore]
+    public bool EffectiveOldColors => OldColors != false;
     public bool SuppressBuoyancy { get; init; }
     public bool VideoOff { get; init; }
     public int GraphUpdatesPerTick { get; init; } = 1;

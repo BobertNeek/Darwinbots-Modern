@@ -159,7 +159,7 @@ public sealed partial class MainWindow : Window
         _zerobotProgression = null;
         InitializeComponent();
         Viewport.FixedRatio = _globalSettings.Main.FixedRatio;
-        Viewport.OldColors = _globalSettings.Main.OldColors;
+        Viewport.OldColors = _globalSettings.Main.EffectiveOldColors;
         if (_globalSettings.Evolution.Enabled) {
             var kind = _globalSettings.Evolution.Mode switch {
                 EvolutionMode.Zerobot => LocalModeKind.Zerobot,
@@ -1586,7 +1586,7 @@ public sealed partial class MainWindow : Window
         _globalSettings = dialog.Settings;
         SynchronizeSafemodePreference(_globalSettings.Main.SafeMode);
         Viewport.FixedRatio = _globalSettings.Main.FixedRatio;
-        Viewport.OldColors = _globalSettings.Main.OldColors;
+        Viewport.OldColors = _globalSettings.Main.EffectiveOldColors;
         if (_globalSettings.Evolution.Enabled) {
             var kind = _globalSettings.Evolution.Mode switch {
                 EvolutionMode.Zerobot => LocalModeKind.Zerobot,

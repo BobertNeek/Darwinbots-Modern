@@ -353,30 +353,39 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         {
             var settings = GlobalSettings.FromJson(File.ReadAllText(GlobalSettingsPath()));
             var main = settings.Main;
-            if (main.NewSeedOnLoad is null && ReadLegacyNewSeedOnLoad(main.MainDirectory) is { } newSeedOnLoad)
-                settings = settings with { Main = main with { NewSeedOnLoad = newSeedOnLoad } };
+            if (main.NewSeedOnLoad is null || main.OldColors is null)
+            {
+                var legacy = ReadLegacyGlobalPreferences(main.MainDirectory);
+                settings = settings with { Main = main with
+                {
+                    NewSeedOnLoad = main.NewSeedOnLoad ?? legacy.NewSeedOnLoad,
+                    OldColors = main.OldColors ?? legacy.OldColors,
+                }};
+            }
             return settings;
         }
         catch (FileNotFoundException) { return null; }
         catch (DirectoryNotFoundException) { return null; }
     }
 
-    private static bool? ReadLegacyNewSeedOnLoad(string mainDirectory)
+    private static (bool? NewSeedOnLoad, bool? OldColors) ReadLegacyGlobalPreferences(string mainDirectory)
     {
         if (string.IsNullOrWhiteSpace(mainDirectory) || !Path.IsPathFullyQualified(mainDirectory)
             || mainDirectory.StartsWith("//", StringComparison.Ordinal)
-            || mainDirectory.StartsWith(@"\\", StringComparison.Ordinal)) return null;
+            || mainDirectory.StartsWith(@"\\", StringComparison.Ordinal)) return default;
         try
         {
-            // frmGset writes a separate Boolean for Load Simulation after Start New.
-            return File.ReadLines(Path.Combine(mainDirectory, "Global.gset")).ElementAtOrDefault(4)?.Trim().ToUpperInvariant() switch
+            // frmGset writes one record per line, with Load Simulation at index 4 and Old Colors at index 7.
+            var entries = File.ReadLines(Path.Combine(mainDirectory, "Global.gset")).Take(8).ToArray();
+            bool? ReadBoolean(int index) => entries.ElementAtOrDefault(index)?.Trim().ToUpperInvariant() switch
             {
                 "#TRUE#" => true,
                 "#FALSE#" => false,
                 _ => null,
             };
+            return (ReadBoolean(4), ReadBoolean(7));
         }
-        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { return null; }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { return default; }
     }
 
     public async Task SaveGlobalSettingsAsync(GlobalSettings settings)
