@@ -47,7 +47,18 @@
         </StackPanel></Border>
       </StackPanel></ScrollViewer></TabItem>
 
-      <TabItem Header="ENERGY"><ScrollViewer><StackPanel Margin="18,0,4,20" Spacing="14">
+      <TabItem Header="GENERAL"><ScrollViewer><StackPanel Margin="18,0,4,20" Spacing="14">
+        <Border x:Name="FieldSizePanel" Classes="card" IsVisible="False">
+          <StackPanel Spacing="10">
+            <TextBlock Classes="section" Text="FIELD SIZE"/>
+            <Grid ColumnDefinitions="*,150" ColumnSpacing="12">
+              <TextBlock Text="Preset" VerticalAlignment="Center"/>
+              <ComboBox x:Name="FieldSizePreset" Grid.Column="1" AutomationProperties.Name="Field size preset"/>
+            </Grid>
+            <TextBlock x:Name="FieldSizeDimensions" AutomationProperties.Name="Field dimensions"/>
+            <TextBlock x:Name="FieldSizeUnavailable" Foreground="#66706B" TextWrapping="Wrap" IsVisible="False"/>
+          </StackPanel>
+        </Border>
         <Border Classes="card"><StackPanel Spacing="10"><TextBlock Classes="section" Text="ENERGY ECONOMY"/>
           <Grid ColumnDefinitions="*,150"><TextBlock Text="Metabolism per tick"/><NumericUpDown Grid.Column="1" x:Name="Metabolism" Minimum="0" Maximum="100"/></Grid>
           <Grid ColumnDefinitions="*,150"><TextBlock Text="Vegetable compatibility bonus"/><NumericUpDown Grid.Column="1" x:Name="VegetableEnergy" Minimum="0" Maximum="1000"/></Grid>

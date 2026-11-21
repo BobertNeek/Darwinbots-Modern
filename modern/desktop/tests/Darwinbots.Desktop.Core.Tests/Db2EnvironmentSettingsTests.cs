@@ -6,6 +6,42 @@ namespace Darwinbots.Desktop.Core.Tests;
 
 public sealed class Db2EnvironmentSettingsTests
 {
+    [Theory]
+    [InlineData(1, 9_237, 6_928)]
+    [InlineData(2, 16_000, 12_000)]
+    [InlineData(12, 96_000, 72_000)]
+    [InlineData(13, 192_000, 144_000)]
+    [InlineData(25, 2_496_000, 1_872_000)]
+    public void OriginalFieldSizePresetsHaveTheOriginalDimensions(int preset, int width, int height)
+    {
+        Assert.Equal((width, height), Db2FieldSize.Dimensions(preset));
+    }
+
+    [Fact]
+    public void EnvironmentCommandsPayloadOmitsUntouchedFieldSize()
+    {
+        using var untouched = JsonDocument.Parse(NativeCommandSerializer.SerializeEnvironment(EnvironmentUpdate.Default));
+        Assert.False(untouched.RootElement.GetProperty("commands")[0].TryGetProperty("field_size", out _));
+        using var resize = JsonDocument.Parse(NativeCommandSerializer.SerializeEnvironment(
+            EnvironmentUpdate.Default with { FieldSize = 25 }));
+        Assert.Equal(25, resize.RootElement.GetProperty("commands")[0].GetProperty("field_size").GetInt32());
+    }
+
+    [Fact]
+    public void LiveSettingsBatchIncludesTheStagedFieldAndMutationTogether()
+    {
+        var environment = EnvironmentUpdate.Default with { FieldSize = 5 };
+        var mutation = MutationSettingsUpdate.Default with { Enabled = false };
+        using var payload = JsonDocument.Parse(JsonSerializer.Serialize(
+            NativeCommandSerializer.CreateLiveSettingsBatch(environment, mutation)));
+        var commands = payload.RootElement.GetProperty("commands");
+        Assert.Equal(2, commands.GetArrayLength());
+        Assert.Equal("update_environment", commands[0].GetProperty("type").GetString());
+        Assert.Equal(5, commands[0].GetProperty("field_size").GetInt32());
+        Assert.Equal("update_mutation_settings", commands[1].GetProperty("type").GetString());
+        Assert.False(commands[1].GetProperty("enabled").GetBoolean());
+    }
+
     [Fact]
     public void ShapeVisibilitySurvivesSettingsAndEnvironmentCommandsIndependentlyOfOpacity()
     {

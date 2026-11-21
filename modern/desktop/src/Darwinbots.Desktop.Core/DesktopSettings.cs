@@ -17,6 +17,7 @@ public sealed record DesktopSettings
     public int OrganismCapacity { get; init; } = 25_000;
     public float WorldWidth { get; init; } = 16_000f;
     public float WorldHeight { get; init; } = 12_000f;
+    public int? NativeFieldSize { get; init; }
     public StartingMode StartingMode { get; init; } = StartingMode.StarterBotsAndVegetables;
     public ZerobotSustenance ZerobotSustenance { get; init; } = ZerobotSustenance.DisabledMetabolism;
     public bool AutomaticZerobotProgression { get; init; } = true;
@@ -59,6 +60,7 @@ public sealed record DesktopSettings
         OrganismCapacity = setup.PopulationCapacity,
         WorldWidth = setup.WorldWidth,
         WorldHeight = setup.WorldHeight,
+        NativeFieldSize = setup.NativeFieldSize,
         StartingMode = setup.StartingMode,
         ZerobotSustenance = setup.ZerobotSustenance,
         AutomaticZerobotProgression = setup.AutomaticZerobotProgression,
@@ -105,6 +107,7 @@ public sealed record DesktopSettings
             VegetablePopulationCap = VegetablePopulationCap,
             WorldWidth = WorldWidth,
             WorldHeight = WorldHeight,
+            NativeFieldSize = NativeFieldSize,
             MetabolismCost = MetabolismCost,
             VegetableEnergyPerTick = VegetableEnergyPerTick,
             SunlightEnergy = SunlightEnergy,
@@ -150,6 +153,8 @@ public sealed record DesktopSettings
             _ => throw new NotSupportedException($"Settings schema version {version} is not supported."),
         };
         settings.Validate();
+        if (!root.TryGetProperty("nativeFieldSize", out _))
+            settings = settings with { NativeFieldSize = LegacySettingsAdapter.ReadRetainedFieldSize(settings.LegacySettingsFields) };
         if (!root.TryGetProperty("ordinaryRestartOnExtinction", out _)
             && LegacySettingsAdapter.ReadRetainedFlag(settings.LegacySettingsFields, LegacySettingsAdapter.OrdinaryRestartOffset))
             settings = settings with { OrdinaryRestartOnExtinction = true };
@@ -174,6 +179,8 @@ public sealed record DesktopSettings
             throw new InvalidDataException("Tick and snapshot intervals must be positive.");
         if (OrganismCapacity <= 0 || WorldWidth <= 0 || WorldHeight <= 0)
             throw new InvalidDataException("Capacity and world dimensions must be positive.");
+        if (NativeFieldSize is { } size && !Db2FieldSize.IsValid(size))
+            throw new InvalidDataException("Original field size must be between 1 and 25.");
     }
 
     private static string ReadString(JsonElement root, string name, string fallback) =>

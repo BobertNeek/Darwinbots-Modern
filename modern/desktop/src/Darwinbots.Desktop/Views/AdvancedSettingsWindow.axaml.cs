@@ -14,7 +14,15 @@ public sealed partial class AdvancedSettingsWindow : Window
     private MutationProfileUpdate _mutationProfile = MutationProfileUpdate.Default;
     private readonly HashSet<NumericUpDown> _editedMutationRates = [];
 
+    private bool _otherLiveSettingsEdited;
+    private int _initialFieldSizeIndex;
+    private (float Width, float Height) _liveDimensions;
+
     public bool Accepted { get; private set; }
+    public bool LiveSettingsEdited => _otherLiveSettingsEdited || StagedFieldSize is not null;
+    private int? StagedFieldSize => FieldSizePanel.IsVisible && FieldSizePreset.IsEnabled
+        && FieldSizePreset.SelectedIndex != _initialFieldSizeIndex && Db2FieldSize.IsValid(FieldSizePreset.SelectedIndex)
+        ? FieldSizePreset.SelectedIndex : null;
     public MutationSettingsUpdate MutationUpdate => new(
         MutationsEnabled.IsChecked == true,
         (float)(GlobalMutationRate.Value ?? 1m),
@@ -47,13 +55,19 @@ public sealed partial class AdvancedSettingsWindow : Window
             DeadSnapshotEnabled.IsChecked == true,
             ExcludeRepopulatingRobots.IsChecked == true,
             (ulong)(AutosaveInterval.Value ?? 0),
-            (int)(SamplingInterval.Value ?? 200)));
+            (int)(SamplingInterval.Value ?? 200)))
+    {
+        FieldSize = StagedFieldSize,
+    };
 
     public AdvancedSettingsWindow() : this(EnvironmentUpdate.Default, EngineSnapshot.Empty) { }
-    public AdvancedSettingsWindow(EnvironmentUpdate update, EngineSnapshot? snapshot = null, int selectedTab = 0)
+    public AdvancedSettingsWindow(EnvironmentUpdate update, EngineSnapshot? snapshot = null, int selectedTab = 0,
+        bool showFieldSize = false, int? currentFieldSize = null, string? fieldSizeUnavailable = null)
     {
         InitializeComponent();
         SettingsTabs.SelectedIndex = Math.Clamp(selectedTab, 0, 3);
+        if (showFieldSize && snapshot is not null)
+            InitializeFieldSize(snapshot.WorldSize, currentFieldSize, fieldSizeUnavailable);
         ToroidalWorld.IsCheckedChanged += (_, _) =>
         {
             if (_initializing || _updatingTopology || ToroidalWorld.IsChecked is null) return;
@@ -83,6 +97,37 @@ public sealed partial class AdvancedSettingsWindow : Window
         PopulateMutations(snapshot ?? EngineSnapshot.Empty);
         WireDirtyTracking();
         _initializing = false;
+    }
+
+    private void InitializeFieldSize(float[] dimensions, int? currentPreset, string? unavailable)
+    {
+        _liveDimensions = (dimensions[0], dimensions[1]);
+        if (currentPreset is { } size && Db2FieldSize.IsValid(size))
+        {
+            var mapped = Db2FieldSize.Dimensions(size);
+            if (_liveDimensions == (mapped.Width, mapped.Height)) _initialFieldSizeIndex = size;
+        }
+        FieldSizePanel.IsVisible = true;
+        FieldSizePreset.ItemsSource = new[] { "Current dimensions" }
+            .Concat(Enumerable.Range(Db2FieldSize.Minimum, Db2FieldSize.Maximum).Select(size => $"Size {size}"))
+            .ToArray();
+        FieldSizePreset.SelectedIndex = _initialFieldSizeIndex;
+        FieldSizePreset.IsEnabled = unavailable is null;
+        FieldSizeUnavailable.Text = unavailable;
+        FieldSizeUnavailable.IsVisible = unavailable is not null;
+        UpdateFieldSizePreview();
+        FieldSizePreset.SelectionChanged += (_, _) =>
+        {
+            UpdateFieldSizePreview();
+            DirtyBadge.IsVisible = LiveSettingsEdited;
+        };
+    }
+
+    private void UpdateFieldSizePreview()
+    {
+        var dimensions = _liveDimensions;
+        if (StagedFieldSize is { } size) dimensions = Db2FieldSize.Dimensions(size);
+        FieldSizeDimensions.Text = $"{dimensions.Width:N0} × {dimensions.Height:N0}";
     }
 
     private void PopulateEnvironment(EnvironmentUpdate update)
@@ -233,7 +278,12 @@ public sealed partial class AdvancedSettingsWindow : Window
         foreach (var slider in this.GetLogicalDescendants().OfType<Slider>()) slider.PropertyChanged += (_, e) => { if (e.Property == Slider.ValueProperty) MarkDirty(); };
     }
 
-    private void MarkDirty() { if (!_initializing) DirtyBadge.IsVisible = true; }
+    private void MarkDirty()
+    {
+        if (_initializing) return;
+        _otherLiveSettingsEdited = true;
+        DirtyBadge.IsVisible = true;
+    }
     private void Apply_Click(object? sender, RoutedEventArgs e) { Accepted = true; Close(); }
     private void Cancel_Click(object? sender, RoutedEventArgs e) => Close();
 }

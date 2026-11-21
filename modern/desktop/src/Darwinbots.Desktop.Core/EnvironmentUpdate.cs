@@ -145,6 +145,8 @@ public sealed record EnvironmentUpdate(
     Db2RecordingOptions? Recording = null,
     bool? ShapesVisible = null)
 {
+    public int? FieldSize { get; init; }
+
     public static EnvironmentUpdate Default { get; } = new(
         0, 0, 100, [0f, 0f], 0f, 0.5f,
         Db2PhysicsOptions.Default,
@@ -225,6 +227,7 @@ public static class NativeCommandSerializer
             vegetable_population_cap = options.VegetablePopulationCap,
             world_width = options.WorldWidth,
             world_height = options.WorldHeight,
+            native_field_size = options.NativeFieldSize,
             backend = options.Backend,
             allow_cpu_fallback = true,
             metabolism_cost = options.EffectiveMetabolismCost,
@@ -307,17 +310,16 @@ public static class NativeCommandSerializer
     internal static object CreateMutationSettingsBatch(MutationSettingsUpdate update) => new
     {
         version = 1,
-        commands = new[]
-        {
-            new
-            {
-                type = "update_mutation_settings",
-                enabled = update.Enabled,
-                global_multiplier = update.GlobalMultiplier,
-                species_rates = update.SpeciesRates.Select(value => new { species = value.Species, rate = value.Rate }).ToArray(),
-                profile = update.Profile is null ? null : MutationProfile(update.Profile),
-            },
-        },
+        commands = new[] { MutationSettingsCommand(update) },
+    };
+
+    private static object MutationSettingsCommand(MutationSettingsUpdate update) => new
+    {
+        type = "update_mutation_settings",
+        enabled = update.Enabled,
+        global_multiplier = update.GlobalMultiplier,
+        species_rates = update.SpeciesRates.Select(value => new { species = value.Species, rate = value.Rate }).ToArray(),
+        profile = update.Profile is null ? null : MutationProfile(update.Profile),
     };
 
     internal static object MutationProfile(MutationProfileUpdate value) => new
@@ -359,31 +361,43 @@ public static class NativeCommandSerializer
     internal static object CreateEnvironmentBatch(EnvironmentUpdate update) => new
     {
         version = 1,
-        commands = new[]
-        {
-            new
-            {
-                type = "update_environment",
-                metabolism_cost = update.MetabolismCost,
-                vegetable_energy_per_tick = update.VegetableEnergyPerTick,
-                sunlight_energy = update.SunlightEnergy,
-                gravity = update.Gravity,
-                drag = update.Drag,
-                brownian_motion = update.BrownianMotion,
-                physics = Physics(update.Physics),
-                shots = Shots(update.Shots),
-                corpse_decay = CorpseDecay(update.CorpseDecay),
-                waste = Waste(update.Waste),
-                vegetation = Vegetation(update.Vegetation),
-                recording = Recording(update.Recording),
-                auto_speciation = update.AutoSpeciation,
-                speciation_genetic_distance_percent = update.SpeciationGeneticDistancePercent,
-                toroidal_world = update.ToroidalWorld,
-                shapes_visible = update.ShapesVisible,
-                axis_topology = AxisTopology(update.ToroidalWorld, update.WrapX, update.WrapY),
-            },
-        },
+        commands = new[] { EnvironmentCommand(update) },
     };
+
+    internal static object CreateLiveSettingsBatch(EnvironmentUpdate environment, MutationSettingsUpdate mutation) => new
+    {
+        version = 1,
+        commands = new[] { EnvironmentCommand(environment), MutationSettingsCommand(mutation) },
+    };
+
+    private static object EnvironmentCommand(EnvironmentUpdate update)
+    {
+        var command = new
+        {
+            type = "update_environment",
+            metabolism_cost = update.MetabolismCost,
+            vegetable_energy_per_tick = update.VegetableEnergyPerTick,
+            sunlight_energy = update.SunlightEnergy,
+            gravity = update.Gravity,
+            drag = update.Drag,
+            brownian_motion = update.BrownianMotion,
+            physics = Physics(update.Physics),
+            shots = Shots(update.Shots),
+            corpse_decay = CorpseDecay(update.CorpseDecay),
+            waste = Waste(update.Waste),
+            vegetation = Vegetation(update.Vegetation),
+            recording = Recording(update.Recording),
+            auto_speciation = update.AutoSpeciation,
+            speciation_genetic_distance_percent = update.SpeciationGeneticDistancePercent,
+            toroidal_world = update.ToroidalWorld,
+            shapes_visible = update.ShapesVisible,
+            axis_topology = AxisTopology(update.ToroidalWorld, update.WrapX, update.WrapY),
+        };
+        if (update.FieldSize is not { } size) return command;
+        var sizedCommand = JsonSerializer.SerializeToNode(command)!.AsObject();
+        sizedCommand["field_size"] = size;
+        return sizedCommand;
+    }
 
     internal static object Physics(Db2PhysicsOptions value) => new
     {

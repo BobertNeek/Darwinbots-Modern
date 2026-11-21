@@ -99,6 +99,8 @@ public sealed partial class MainWindow : Window
     private readonly LegacyCommandRouter _legacyCommands;
     private readonly OfflineDiagnosticRecovery _diagnostics = new();
     private bool _safemodeBackup;
+    private bool _safeModeRecoveryWorld;
+    private bool _editingLiveSettings;
     private ulong? _lastAutomaticSaveTick;
     private bool _hasBackgroundImage;
     private readonly SemaphoreSlim _deadRecordingGate = new(1, 1);
@@ -1480,16 +1482,56 @@ public sealed partial class MainWindow : Window
 
     private async Task<LegacyCommandResult> OpenAdvancedSettingsCommandAsync(int selectedTab = 0)
     {
-        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        var dialog = new AdvancedSettingsWindow(_liveEnvironment, _session.LatestSnapshot, selectedTab);
-        await dialog.ShowDialog(this);
-        if (!dialog.Accepted) return LegacyCommandResult.Cancel();
-        await _session.UpdateEnvironmentAsync(dialog.Update);
-        await _session.UpdateMutationSettingsAsync(dialog.MutationUpdate);
-        _liveEnvironment = dialog.Update;
-        SynchronizeRecordingPreferences();
-        RefreshEnvironmentControls();
-        return LegacyCommandResult.Success("LIVE SETTINGS APPLIED");
+        if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        if (_editingLiveSettings) return LegacyCommandResult.Failure("LIVE SETTINGS ALREADY OPEN");
+        _editingLiveSettings = true;
+        try
+        {
+            var configuration = await session.ReadConfigurationAsync();
+            if (_loadingSimulation || _navigationInFlight || _session != session)
+                return LegacyCommandResult.Cancel();
+            var current = session.LatestSnapshot;
+            var dialog = new AdvancedSettingsWindow(_liveEnvironment, current, selectedTab,
+                showFieldSize: current.NativeCycle is not null, currentFieldSize: configuration?.NativeFieldSize,
+                fieldSizeUnavailable: FieldSizeRestriction(current));
+            await dialog.ShowDialog(this);
+            if (!dialog.Accepted) return LegacyCommandResult.Cancel();
+            await _advanceGate.WaitAsync();
+            try
+            {
+                if (_loadingSimulation || _navigationInFlight || _session != session)
+                    return LegacyCommandResult.Cancel();
+                var update = dialog.Update;
+                var before = session.LatestSnapshot;
+                if (update.FieldSize is not null && FieldSizeRestriction(before) is { } restriction)
+                    return LegacyCommandResult.Failure(restriction);
+                await session.UpdateLiveSettingsAsync(update, dialog.MutationUpdate);
+                _liveEnvironment = update with { FieldSize = null };
+                SynchronizeRecordingPreferences();
+                RefreshEnvironmentControls();
+                if (update.FieldSize is not null)
+                {
+                    var applied = await session.ReadConfigurationAsync();
+                    var resized = session.LatestSnapshot;
+                    RefreshWorldDimensions(resized, applied);
+                    if (!before.WorldSize.SequenceEqual(resized.WorldSize))
+                    {
+                        Viewport.SetSnapshot(resized);
+                        Viewport.FitWorld();
+                    }
+                }
+                return LegacyCommandResult.Success("LIVE SETTINGS APPLIED");
+            }
+            finally { _advanceGate.Release(); }
+        }
+        finally { _editingLiveSettings = false; }
+    }
+
+    private string? FieldSizeRestriction(EngineSnapshot snapshot)
+    {
+        if (_safeModeRecoveryWorld || (RecoveryPanel.IsVisible && RecoveryRecoverButton.IsVisible))
+            return "Field size is locked during Safe Mode recovery.";
+        return snapshot.NativeF1Enabled ? "Field size is locked during an F1 contest." : null;
     }
 
     private async Task<LegacyCommandResult> OpenGlobalMutationRatesCommandAsync()
@@ -1893,7 +1935,7 @@ public sealed partial class MainWindow : Window
                 return LegacyCommandResult.Success(_viewModel.Status);
             }
             _runTimer.Stop();
-            await LoadSimulationWithSourceAsync(await File.ReadAllBytesAsync(path), path);
+            await LoadSimulationWithSourceAsync(await File.ReadAllBytesAsync(path), path, isSafeModeRecovery: true);
             _viewModel.Status = $"RECOVERED · {Path.GetFileName(path)}";
             ClearRecoveryPanel();
             return LegacyCommandResult.Success(_viewModel.Status);
@@ -2042,7 +2084,7 @@ public sealed partial class MainWindow : Window
             var compatibilityWarnings = new List<string>();
             if (_setup.LoadSavePath is { } savePath)
             {
-                await LoadSimulationWithSourceAsync(await File.ReadAllBytesAsync(savePath), savePath);
+                await LoadSimulationWithSourceAsync(await File.ReadAllBytesAsync(savePath), savePath, _setup.IsAutosaveRecovery);
             }
             else
                 foreach (var species in _setup.Species)
@@ -2108,6 +2150,20 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    private void RefreshWorldDimensions(EngineSnapshot snapshot, WorldConfiguration? configuration)
+    {
+        var size = snapshot.WorldSize;
+        _setup = _setup with
+        {
+            WorldWidth = size[0],
+            WorldHeight = size[1],
+            NativeFieldSize = configuration?.NativeFieldSize,
+        };
+        int capacity = configuration?.PopulationCapacity ?? _setup.PopulationCapacity;
+        int vegetables = configuration?.VegetablePopulationCap ?? _setup.VegetablePopulationCap;
+        WorldParametersText.Text = $"{size[0]:N0} × {size[1]:N0}\nCapacity {capacity:N0}\nVegetables {vegetables:N0}";
+    }
+
     private async Task SynchronizeLoadedWorldAsync()
     {
         if (_session is null) return;
@@ -2138,8 +2194,7 @@ public sealed partial class MainWindow : Window
                 },
             };
             RefreshEnvironmentControls();
-            var size = _session.LatestSnapshot.WorldSize;
-            WorldParametersText.Text = $"{size[0]:N0} × {size[1]:N0}\nCapacity {configuration.PopulationCapacity:N0}\nVegetables {configuration.VegetablePopulationCap:N0}";
+            RefreshWorldDimensions(_session.LatestSnapshot, configuration);
             _insertionSpecies.Clear();
             foreach (var species in configuration.Species) _insertionSpecies.Add(species);
             InsertionSpeciesSelector.SelectedIndex = _insertionSpecies.Count > 0 ? 0 : -1;
@@ -2958,7 +3013,7 @@ public sealed partial class MainWindow : Window
 
     private Task LoadSimulationAsync(byte[] save) => LoadSimulationWithSourceAsync(save, null);
 
-    private async Task LoadSimulationWithSourceAsync(byte[] save, string? sourcePath)
+    private async Task LoadSimulationWithSourceAsync(byte[] save, string? sourcePath, bool isSafeModeRecovery = false)
     {
         _runTimer.Stop();
         await _advanceGate.WaitAsync();
@@ -2969,6 +3024,7 @@ public sealed partial class MainWindow : Window
             var mainDirectory = _globalSettings.Main.MainDirectory;
             await _session.LoadWithNativeRestartSourcesAsync(save,
                 source => SetupStorageService.ResolveNativeRestartSource(source, sourcePath, mainDirectory));
+            _safeModeRecoveryWorld = isSafeModeRecovery;
             // A rejected load publishes no snapshot and must keep user-closed
             // graphs closed. Loading publications defer this until success.
             _automaticEvolutionGraphBoundary = null;

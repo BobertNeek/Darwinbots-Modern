@@ -21,6 +21,7 @@ public sealed partial class SetupWindow : Window
     private EnvironmentUpdate _environment = EnvironmentUpdate.Default;
     private GlobalSettings _globalSettings = new();
     private MutationSettingsUpdate _mutationSettings = MutationSettingsUpdate.Default;
+    private int? _nativeFieldSize;
     private IReadOnlyList<string>? _legacySettingsFields;
     private const string ZerobotDna = "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0";
     private const string FeederDna = "cond\r\nstart\r\n-2 .shoot store\r\n50 .shootval store\r\n314 rnd .aimdx store\r\nstop";
@@ -42,6 +43,8 @@ public sealed partial class SetupWindow : Window
         _nativeProcessCaches = nativeProcessCaches;
         _workflow = new(new WorldSetupOptions());
         InitializeComponent();
+        WorldWidth.ValueChanged += (_, _) => { if (_controlsReady) _nativeFieldSize = null; };
+        WorldHeight.ValueChanged += (_, _) => { if (_controlsReady) _nativeFieldSize = null; };
         if (!_speciesEditor)
             CreateWorldButton.HotKey = new KeyGesture(Key.Enter, KeyModifiers.Control);
         DataContext = this;
@@ -198,6 +201,7 @@ public sealed partial class SetupWindow : Window
             VegetablePopulationCap = (int)(VegetablePopulationCap.Value ?? 500),
             WorldWidth = (float)(WorldWidth.Value ?? 16_000),
             WorldHeight = (float)(WorldHeight.Value ?? 12_000),
+            NativeFieldSize = _nativeFieldSize,
             MetabolismCost = _environment.MetabolismCost,
             VegetableEnergyPerTick = _environment.VegetableEnergyPerTick,
             SunlightEnergy = _environment.SunlightEnergy,
@@ -363,6 +367,7 @@ public sealed partial class SetupWindow : Window
         };
         WorldWidth.Value = (decimal)setup.WorldWidth;
         WorldHeight.Value = (decimal)setup.WorldHeight;
+        _nativeFieldSize = setup.NativeFieldSize;
         PopulationCap.Value = setup.PopulationCapacity;
         VegetablePopulationCap.Value = setup.VegetablePopulationCap;
         Seed.Value = (decimal)setup.Seed;
@@ -403,6 +408,7 @@ public sealed partial class SetupWindow : Window
     private void NewWorld_Click(object? sender, RoutedEventArgs e)
     {
         _environment = EnvironmentUpdate.Default;
+        _nativeFieldSize = null;
         _globalSettings = new GlobalSettings();
         Backend.SelectedIndex = 0;
         WorldWidth.Value = 16_000;
