@@ -408,7 +408,7 @@ fn write_shot_taste(robot: &mut RobotState, event_point: [f32; 2], kind: i32) {
     robot.program.memory.write(MEM_SHOT_FLAVOR, kind);
 }
 
-fn publish_reproductive_readbacks(robot: &mut RobotState) {
+fn publish_reproductive_readbacks(robot: &mut RobotState, native_flow: bool) {
     robot
         .program
         .memory
@@ -417,10 +417,10 @@ fn publish_reproductive_readbacks(robot: &mut RobotState) {
         .program
         .memory
         .write(MEM_DNA_LENGTH, robot.program.dna.blocks().len() as i32);
-    robot
-        .program
-        .memory
-        .write(MEM_GENES, robot.program.dna.gene_count());
+    robot.program.memory.write(
+        MEM_GENES,
+        robot.program.dna.gene_count_for_world(native_flow),
+    );
     robot
         .program
         .memory
@@ -4717,6 +4717,9 @@ impl Engine {
         let mut memory = VmMemory::default();
         memory.write(MEM_NRG, 1_000);
         memory.write(468, 32_000);
+        if self.native_cycle.is_some() {
+            memory.write(MEM_GENES, dna.native_gene_count());
+        }
         memory.write(
             MEM_XPOS,
             native_sensing::position_word(
@@ -4894,6 +4897,7 @@ impl Engine {
             self.slots.get(id)?,
             &self.species,
             &self.config,
+            self.native_cycle.is_some(),
         ))
     }
 
@@ -5174,6 +5178,12 @@ impl Engine {
         if self.native_random.is_some() {
             organism.program.initialize_native_dna_context();
             organism.flags.new_move = organism.program.dna.uses_new_move();
+        }
+        if self.native_cycle.is_some() {
+            organism
+                .program
+                .memory
+                .write(MEM_GENES, organism.program.dna.native_gene_count());
         }
         organism.refresh_occurrence_census();
         self.publish_snapshot();
@@ -6926,7 +6936,7 @@ impl Engine {
                 }
                 *timer = -2;
             }
-            publish_reproductive_readbacks(robot);
+            publish_reproductive_readbacks(robot, self.native_cycle.is_some());
         }
     }
 
@@ -10399,7 +10409,7 @@ impl Engine {
                             source: Some(owner),
                         });
                         target_robot.effects.fertilization_timer = FERTILIZATION_WINDOW;
-                        publish_reproductive_readbacks(target_robot);
+                        publish_reproductive_readbacks(target_robot, self.native_cycle.is_some());
                         true
                     }
                     ProjectileEffect::WriteMemory { address, value } => {
@@ -11875,7 +11885,7 @@ impl Engine {
             {
                 let parent = self.slots.get_mut(birth.parent)?;
                 parent.effects.fertilization_timer = -18;
-                publish_reproductive_readbacks(parent);
+                publish_reproductive_readbacks(parent, self.native_cycle.is_some());
                 continue;
             }
             if birth.sexual {
@@ -12096,7 +12106,7 @@ impl Engine {
                 self.native_birth_mutations(child, birth.mutation_reproduction);
                 let child_state = self.slots.get_mut(child)?;
                 child_state.refresh_occurrence_census();
-                publish_reproductive_readbacks(child_state);
+                publish_reproductive_readbacks(child_state, self.native_cycle.is_some());
             }
             if self.create_birth_tie(birth.parent, child) {
                 trace.effect(
@@ -12139,7 +12149,7 @@ impl Engine {
                 parent_organism.effects.reproduction_assistance = 0;
                 if birth.sexual {
                     parent_organism.effects.fertilization_timer = -1;
-                    publish_reproductive_readbacks(parent_organism);
+                    publish_reproductive_readbacks(parent_organism, self.native_cycle.is_some());
                 }
             }
             trace.effect(
@@ -12539,6 +12549,12 @@ impl Engine {
                 organism.refresh_occurrence_census();
             }
             if report.changes > 0 {
+                if self.native_cycle.is_some() {
+                    organism
+                        .program
+                        .memory
+                        .write(MEM_GENES, organism.program.dna.native_gene_count());
+                }
                 if self.native_random.is_some()
                     && settings.epigenetic.reset_enabled
                     && matches!(context, MutationContext::Lifelong)
@@ -12881,6 +12897,7 @@ impl Engine {
                         organism,
                         &self.species,
                         &self.config,
+                        self.native_cycle.is_some(),
                     )
                 })
             })
@@ -13615,6 +13632,7 @@ fn snapshot_organism(
     organism: &RobotState,
     _species: &[SpeciesDefinition],
     config: &EngineConfig,
+    native_flow: bool,
 ) -> OrganismSnapshot {
     OrganismSnapshot {
         id,
@@ -13677,7 +13695,7 @@ fn snapshot_organism(
         subspecies: organism.program.mutation_metadata.subspecies,
         mutation_profile: organism.program.mutation_profile.clone(),
         dna_length: organism.program.dna.blocks().len() as u32,
-        gene_count: organism.program.dna.gene_count().max(0) as u32,
+        gene_count: organism.program.dna.gene_count_for_world(native_flow) as u32,
         phenotype: organism.phenotype.clone(),
         vision: VisionSnapshot::from_heading(
             &organism.program.memory,

@@ -440,6 +440,37 @@ impl LegacyDna {
         self.gene_ranges().len().min(i32::MAX as usize) as i32
     }
 
+    pub(crate) fn gene_count_for_world(&self, native_flow: bool) -> i32 {
+        if native_flow {
+            self.native_gene_count()
+        } else {
+            self.gene_count()
+        }
+    }
+
+    pub(crate) fn native_gene_count(&self) -> i32 {
+        // Module1.CountGenes assigns the first start or else to its cond.
+        // Subsequent starts and elses begin new genes even without a stop.
+        let mut count = 0;
+        let mut awaiting_branch = false;
+        for block in self.blocks.iter().take(MAX_DNA_BLOCKS) {
+            match (block.class, block.value) {
+                (TokenClass::End, 1) => break,
+                (TokenClass::Flow, 1) => {
+                    count += 1;
+                    awaiting_branch = true;
+                }
+                (TokenClass::Flow, 2 | 3) => {
+                    count += i32::from(!awaiting_branch);
+                    awaiting_branch = false;
+                }
+                (TokenClass::Flow, 4) => awaiting_branch = false,
+                _ => {}
+            }
+        }
+        count
+    }
+
     pub(crate) fn gene(&self, requested: i32) -> Option<Self> {
         let index = usize::try_from(requested.saturating_sub(1)).ok()?;
         let (start, end) = *self.gene_ranges().get(index)?;
