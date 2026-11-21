@@ -4,12 +4,15 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Darwinbots.Desktop.Core;
+using System.Text;
 
 namespace Darwinbots.Desktop.Views;
 
 public sealed class RobotConsoleWindow : Window
 {
     private readonly RobotConsoleController _controller;
+    private readonly OrganismKey _focus;
+    private readonly ulong _uniqueId;
     private readonly TextBox _transcript;
     private readonly TextBox _command;
     private bool _commandInFlight;
@@ -20,8 +23,8 @@ public sealed class RobotConsoleWindow : Window
         Func<Task>? play = null,
         Func<Task>? pause = null,
         Func<uint, CancellationToken, Task<(ulong Tick, ulong Advanced)>>? advance = null,
-
-        Action<bool>? showDna = null)
+        Action<bool>? showDna = null,
+        ulong uniqueId = 0)
     {
         Title = $"Darwinbots — Robot Console {focus.Slot}:{focus.Generation}";
         Width = 760;
@@ -31,6 +34,8 @@ public sealed class RobotConsoleWindow : Window
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         Background = Brush.Parse("#F4F0E6");
         _controller = new RobotConsoleController(session, focus, play, pause, advance, showDna);
+        _focus = focus;
+        _uniqueId = uniqueId;
 
         var root = new Grid { RowDefinitions = new RowDefinitions("66,*,Auto") };
         root.Children.Add(new Border
@@ -127,6 +132,43 @@ public sealed class RobotConsoleWindow : Window
         };
         button.Click += handler;
         return button;
+    }
+
+    internal bool RecordNativeCycle(EngineSnapshot snapshot, ulong previousTick)
+    {
+        var organism = snapshot.Organisms.FirstOrDefault(actor =>
+            actor.Slot == _focus.Slot && actor.Generation == _focus.Generation
+            && (_uniqueId == 0 || actor.UniqueId == _uniqueId));
+        if (organism is not null)
+        {
+            // The DNA phase records the incremented internal tick. Earlier execrob
+            // commands and skipped DNA phases cannot supply this cycle's frame.
+            if (snapshot.Tick > previousTick
+                && organism.ActivationHistory.LastOrDefault(frame => frame.Tick == snapshot.Tick) is { } frame)
+            {
+                var output = new StringBuilder();
+                output.AppendLine().AppendLine("***ROBOT GENES EXECUTION***");
+                for (var gene = 1; gene < frame.Activations.Length; gene++)
+                    output.Append(gene).AppendLine(frame.Activations[gene] ? " executed" : " not executed");
+                AppendNativeTranscript(output.ToString());
+            }
+            return true;
+        }
+        AppendNativeTranscript("Robot has died.\n");
+        return false;
+    }
+
+    private void AppendNativeTranscript(string output)
+    {
+        var text = _transcript.Text + output;
+        const int transcriptLimit = 2_500;
+        if (text.Length > transcriptLimit)
+        {
+            var boundary = text.IndexOf('\n', text.Length - transcriptLimit);
+            if (boundary >= 0) text = text[(boundary + 1)..];
+        }
+        _transcript.Text = text;
+        _transcript.CaretIndex = text.Length;
     }
 
     private void Command_KeyDown(object? sender, KeyEventArgs e)
