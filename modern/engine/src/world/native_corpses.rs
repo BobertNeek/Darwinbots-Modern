@@ -12,6 +12,7 @@ pub(super) struct NativeCorpseTransfer {
 
 impl Engine {
     pub(super) fn decay_native_corpses(&mut self) -> Result<(), EngineError> {
+        let native = self.native_random.is_some();
         for id in self.slots.ids_in_slot_order() {
             if !self
                 .slots
@@ -29,7 +30,7 @@ impl Engine {
             robot.counters.decay_timer = 0;
             let unit =
                 world_random_unit(&mut self.native_random, &mut robot.program.rng_state) as f32;
-            robot.set_heading(unit * 2.0 * std::f32::consts::PI);
+            robot.set_heading_for_profile(unit * 2.0 * std::f32::consts::PI, native);
             let body = robot.materials.body.max(0.0);
             let packet = self.config.corpse_decay.packet_size.max(0) as f32;
             let value = if f64::from(body) > f64::from(packet) / 10.0 {
