@@ -27,6 +27,7 @@ public sealed partial class GraphSuiteView : UserControl
     public GraphSuiteViewModel ViewModel => _viewModel;
     public event Action<GraphSeriesViewModel>? GraphWindowRequested;
     internal Func<GraphMetric, GraphSeriesViewModel?>? ReopenGraphRequested { get; set; }
+    internal Func<Func<Task<bool>>, Task>? ResetAllRequestedAsync { get; set; }
 
     public void SetSnapshot(EngineSnapshot snapshot)
     {
@@ -62,10 +63,14 @@ public sealed partial class GraphSuiteView : UserControl
     private async Task ConfirmResetGraphsAsync()
     {
         if (TopLevel.GetTopLevel(this) is not Window owner) return;
-        var dialog = new LegacyConfirmationWindow("Graph", "Are you sure you want to reset all graphs?", okCancel: true);
-        if (!await dialog.ShowDialog<bool>(owner)) return;
-        _viewModel.ResetAllGraphs();
+        if (ResetAllRequestedAsync is { } reset) await reset(ConfirmAsync);
+        else if (await ConfirmAsync()) _viewModel.ResetAllGraphs();
         RefreshChart();
+
+        Task<bool> ConfirmAsync() => owner.IsVisible
+            ? new LegacyConfirmationWindow("Graph", "Are you sure you want to reset all graphs?", okCancel: true)
+                .ShowDialog<bool>(owner)
+            : Task.FromResult(false);
     }
 
     private void ListGraphs_Click(object? sender, RoutedEventArgs e) => _viewModel.ListAllRunningGraphs();

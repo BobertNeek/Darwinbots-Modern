@@ -18,6 +18,7 @@ public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWi
     private EngineSnapshot _snapshot = EngineSnapshot.Empty;
     private uint? _nativeChartArgb;
     private NativeGraphLayoutState? _nativeLayout;
+    private Task _resetAllFeed = Task.CompletedTask;
 
     public GraphSuiteWindow() : this(EngineSnapshot.Empty)
     {
@@ -28,6 +29,7 @@ public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWi
         Func<GraphSamplingSettings?, Action<NativeGraphRecordingSample?>, Task>? consumeNativeSample = null,
         bool keepUpdatingOnClose = false,
         Func<Action<NativeGraphRecordingSample?>, Task>? consumeNativeResetSample = null,
+        Func<Func<Task<bool>>, Func<Task>, Task>? runNativeResetModal = null,
         bool nativeOldColors = false)
     {
         _recording = recording;
@@ -40,8 +42,9 @@ public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWi
         InitializeComponent();
         GraphView.GraphWindowRequested += OpenGraphWindow;
         GraphView.ReopenGraphRequested = ReopenGraphWindow;
+        GraphView.ResetAllRequestedAsync = confirm => ResetAllAsync(confirm, runNativeResetModal);
         SetSnapshot(snapshot);
-        ViewModel.GraphsReset += ResetRecordingCharts;
+        ViewModel.GraphsReset += () => _resetAllFeed = ResetRecordingChartsAsync(_recordingCharts, feedImmediately: true, resetSweep: true);
         ViewModel.RunningGraphs.CollectionChanged += (_, _) => NotifySamplingChanged(SamplingSettings);
         foreach (var slot in ViewModel.CustomMetrics)
             slot.PropertyChanged += (_, e) =>
@@ -96,7 +99,7 @@ public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWi
         {
             if (usesNativeSamples)
                 foreach (var (metric, _) in reset) ViewModel.ResetGraph(metric, preserveImported: true);
-            ResetRecordingCharts(reset, feedImmediately: true);
+            _ = ResetRecordingChartsAsync(reset, feedImmediately: true);
         }
         if (usesNativeSamples || snapshot.History.Count == 0) return;
         foreach (var (metric, chart) in _recordingCharts)
@@ -141,13 +144,24 @@ public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWi
         }
     }
 
-    private void ResetRecordingCharts() =>
-        ResetRecordingCharts(_recordingCharts, feedImmediately: true, resetSweep: true);
+    private async Task ResetAllAsync(Func<Task<bool>> confirm, Func<Func<Task<bool>>, Func<Task>, Task>? runNativeResetModal)
+    {
+        if (UsesNativeSamples && runNativeResetModal is not null)
+            await runNativeResetModal(confirm, ResetAndFeedAsync);
+        else if (await confirm())
+            await ResetAndFeedAsync();
 
-    private void ResetRecordingCharts(IEnumerable<KeyValuePair<GraphMetric, RecordingChart>> charts, bool feedImmediately,
+        Task ResetAndFeedAsync()
+        {
+            ViewModel.ResetAllGraphs();
+            return _resetAllFeed;
+        }
+    }
+
+    private Task ResetRecordingChartsAsync(IEnumerable<KeyValuePair<GraphMetric, RecordingChart>> charts, bool feedImmediately,
         bool resetSweep = false)
     {
-        if (_recording is null || _recording.IsSuspended) return;
+        if (_recording is null || _recording.IsSuspended) return Task.CompletedTask;
         var pendingReads = new List<(GraphMetric Metric, RecordingChart Chart, int Version)>();
         foreach (var (metric, chart) in charts)
         {
@@ -170,14 +184,13 @@ public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWi
             void Complete(NativeGraphRecordingSample? sample) =>
                 FinishNativeRead(pendingReads, generation, feedImmediately, resetSweep, sample);
             if (resetSweep && _consumeNativeResetSample is { } captureReset)
-                _ = captureReset(Complete);
-            else
-            {
-                GraphSamplingSettings? sampling = !feedImmediately ? null : resetSweep ? new(Generational: true)
-                    : SamplingFor(pendingReads.Select(entry => entry.Metric));
-                _ = capture(sampling, Complete);
-            }
+                return captureReset(Complete);
+
+            GraphSamplingSettings? sampling = !feedImmediately ? null : resetSweep ? new(Generational: true)
+                : SamplingFor(pendingReads.Select(entry => entry.Metric));
+            return capture(sampling, Complete);
         }
+        return Task.CompletedTask;
     }
 
     private void FinishNativeRead(List<(GraphMetric Metric, RecordingChart Chart, int Version)> pending,
@@ -338,14 +351,14 @@ public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWi
             {
                 recordingChart = new RecordingChart(_recording.Graph(graph.Metric));
                 _recordingCharts.Add(graph.Metric, recordingChart);
-                ResetRecordingCharts([new(graph.Metric, recordingChart)], feedImmediately: true);
+                _ = ResetRecordingChartsAsync([new(graph.Metric, recordingChart)], feedImmediately: true);
             }
         }
         var series = GraphView.SeriesFor(graph);
         var window = new GraphSeriesWindow(graph, series, recordingChart?.Save, recordingChart is null ? null : () =>
         {
             ViewModel.ResetGraph(graph.Metric);
-            ResetRecordingCharts([new(graph.Metric, recordingChart)], feedImmediately: false);
+            _ = ResetRecordingChartsAsync([new(graph.Metric, recordingChart)], feedImmediately: false);
         }, recordingChart is null ? null : () => UpdateGraphNow(graph.Metric, recordingChart), _keepUpdatingOnClose);
         window.SetNativeChartBackground(_nativeChartArgb);
         recordingChart?.Windows.Add(window);
