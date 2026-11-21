@@ -82,8 +82,10 @@ public sealed partial class MainWindow : Window
     private readonly IDesktopStorageService _storage;
     private bool _tickInFlight;
     private bool _navigationInFlight;
+    private bool _simulationFileCommandInFlight;
     private readonly SemaphoreSlim _advanceGate = new(1, 1);
     private volatile bool _loadingSimulation;
+    private int _worldLoadGeneration;
     private OrganismKey? _moveOrganism;
     private WorldInsertionController? _insertion;
     private bool _turbo;
@@ -1066,33 +1068,33 @@ public sealed partial class MainWindow : Window
         return LegacyCommandResult.Success("QUIT");
     }
 
-    private async Task<LegacyCommandResult> SaveSimulationWithoutMutationsCommandAsync()
-    {
-        if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        var format = await _storage.SaveSimulationWithMutationOptionsAsync(this, format =>
-            format == SimulationSaveFormat.Legacy
-                ? session.SaveLegacyWithoutMutationDetailsAsync()
-                : session.SaveWithoutMutationsAsync());
-        return format switch
+    private Task<LegacyCommandResult> SaveSimulationWithoutMutationsCommandAsync() =>
+        WithPausedSimulationFileDialogAsync(async session =>
         {
-            SimulationSaveFormat.Legacy => LegacyCommandResult.Success("DARWINBOTS 2 SIMULATION SAVED WITHOUT MUTATION DETAILS"),
-            SimulationSaveFormat.Modern => LegacyCommandResult.Success("SAVED WITHOUT MUTATION SETTINGS"),
-            _ => LegacyCommandResult.Cancel(),
-        };
-    }
+            var format = await _storage.SaveSimulationWithMutationOptionsAsync(this, format =>
+                format == SimulationSaveFormat.Legacy
+                    ? session.SaveLegacyWithoutMutationDetailsAsync()
+                    : session.SaveWithoutMutationsAsync());
+            return format switch
+            {
+                SimulationSaveFormat.Legacy => LegacyCommandResult.Success("DARWINBOTS 2 SIMULATION SAVED WITHOUT MUTATION DETAILS"),
+                SimulationSaveFormat.Modern => LegacyCommandResult.Success("SAVED WITHOUT MUTATION SETTINGS"),
+                _ => LegacyCommandResult.Cancel(),
+            };
+        });
 
-    private async Task<LegacyCommandResult> SaveSimulationCommandAsync()
-    {
-        if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        var format = await _storage.SaveSimulationWithFormatAsync(this, format =>
-            format == SimulationSaveFormat.Legacy ? session.SaveLegacyAsync() : session.SaveAsync());
-        return format switch
+    private Task<LegacyCommandResult> SaveSimulationCommandAsync() =>
+        WithPausedSimulationFileDialogAsync(async session =>
         {
-            SimulationSaveFormat.Legacy => LegacyCommandResult.Success("DARWINBOTS 2 SIMULATION SAVED"),
-            SimulationSaveFormat.Modern => LegacyCommandResult.Success("SAVED"),
-            _ => LegacyCommandResult.Cancel(),
-        };
-    }
+            var format = await _storage.SaveSimulationWithFormatAsync(this, format =>
+                format == SimulationSaveFormat.Legacy ? session.SaveLegacyAsync() : session.SaveAsync());
+            return format switch
+            {
+                SimulationSaveFormat.Legacy => LegacyCommandResult.Success("DARWINBOTS 2 SIMULATION SAVED"),
+                SimulationSaveFormat.Modern => LegacyCommandResult.Success("SAVED"),
+                _ => LegacyCommandResult.Cancel(),
+            };
+        });
 
     private async Task<LegacyCommandResult> SaveNativeSimulationCommandAsync()
     {
@@ -1103,14 +1105,46 @@ public sealed partial class MainWindow : Window
             : LegacyCommandResult.Cancel();
     }
 
-    private async Task<LegacyCommandResult> LoadSimulationCommandAsync()
+    private Task<LegacyCommandResult> LoadSimulationCommandAsync() =>
+        WithPausedSimulationFileDialogAsync(async session =>
+        {
+            if (await _storage.OpenSimulationAsync(this) is not { } save
+                || !OwnsSimulationFileCommand(session))
+                return LegacyCommandResult.Cancel();
+            await LoadSimulationAsync(save);
+            return LegacyCommandResult.Success("LOADED");
+        });
+
+    private async Task<LegacyCommandResult> WithPausedSimulationFileDialogAsync(
+        Func<SimulationSession, Task<LegacyCommandResult>> execute)
     {
-        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        if (await _storage.OpenSimulationAsync(this) is not { } save)
-            return LegacyCommandResult.Cancel();
-        await LoadSimulationAsync(save);
-        return LegacyCommandResult.Success("LOADED");
+        if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        if (_simulationFileCommandInFlight || _navigationInFlight || _loadingSimulation)
+            return LegacyCommandResult.Failure("SIMULATION FILE COMMAND UNAVAILABLE");
+
+        _simulationFileCommandInFlight = true;
+        var resume = _runTimer.IsEnabled;
+        var loadGeneration = _worldLoadGeneration;
+        _runTimer.Stop();
+        try
+        {
+            // Drain any running batch before displaying the dialog. Loading
+            // reacquires this gate after selection to install the saved world.
+            await _advanceGate.WaitAsync();
+            _advanceGate.Release();
+            if (!OwnsSimulationFileCommand(session)) return LegacyCommandResult.Cancel();
+            return await execute(session);
+        }
+        finally
+        {
+            _simulationFileCommandInFlight = false;
+            if (resume && loadGeneration == _worldLoadGeneration && OwnsSimulationFileCommand(session))
+                _runTimer.Start();
+        }
     }
+
+    private bool OwnsSimulationFileCommand(SimulationSession session) =>
+        IsVisible && !_navigationInFlight && ReferenceEquals(_session, session);
 
     private async Task<LegacyCommandResult> ImportOrganismsCommandAsync()
     {
@@ -2319,6 +2353,7 @@ public sealed partial class MainWindow : Window
 
     private void Run_Click(object? sender, RoutedEventArgs e)
     {
+        if (_simulationFileCommandInFlight) return;
         _runTimer.Start();
         _viewModel.Status = "RUNNING";
     }
@@ -2922,7 +2957,7 @@ public sealed partial class MainWindow : Window
 
     private async void RunTimer_Tick(object? sender, EventArgs e)
     {
-        if (_session is null || _tickInFlight) return;
+        if (_session is null || _tickInFlight || _simulationFileCommandInFlight) return;
         _tickInFlight = true;
         var adaptive = _turbo || _maximumSpeed;
         var batch = adaptive ? _maximumBatch : _ticksPerUpdate;
@@ -2949,6 +2984,7 @@ public sealed partial class MainWindow : Window
             if (_session is null) return;
             _loadingSimulation = true;
             await _session.LoadAsync(save);
+            _worldLoadGeneration++;
             // A rejected load publishes no snapshot and must keep user-closed
             // graphs closed. Loading publications defer this until success.
             _automaticEvolutionGraphBoundary = null;
@@ -2964,11 +3000,12 @@ public sealed partial class MainWindow : Window
 
     private async Task AdvanceSimulationAsync(uint count)
     {
+        if (_simulationFileCommandInFlight) return;
         await _advanceGate.WaitAsync();
         try
         {
             if (_session is null) return;
-            while (count > 0)
+            while (count > 0 && !_simulationFileCommandInFlight)
             {
                 var before = _session.LatestSnapshot;
                 if (_lastAutomaticSaveTick is { } savedTick && before.Tick < savedTick)
