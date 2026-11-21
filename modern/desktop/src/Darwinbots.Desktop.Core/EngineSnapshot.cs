@@ -292,6 +292,7 @@ public sealed partial record HistorySampleSnapshot
 }
 public sealed record SpeciesGraphSampleSnapshot(string Name, uint Color, IReadOnlyDictionary<string, double> Values);
 public sealed record GraphSamplingSettings(bool Selective = false, bool Generational = false, bool Slow = false);
+public sealed record NativeScenePaletteSnapshot(uint ChartArgb, uint ArenaArgb);
 
 public sealed record PhaseTimingsSnapshot(
     double Dna, double Intent, double Spatial, double Sensing, double Interactions,
@@ -308,6 +309,7 @@ public sealed record EngineSnapshot(
 {
     // Original VB6 cycle; Tick remains the unsigned scheduling clock.
     public int? NativeCycle { get; init; }
+    public NativeScenePaletteSnapshot? NativeScenePalette { get; init; }
     public IReadOnlyList<RenderInstanceSnapshot> RenderInstances { get; init; } = [];
     public IReadOnlyList<SpeciesSnapshot> Species { get; init; } = [];
     public MutationSettingsSnapshot MutationSettings { get; init; } = MutationSettingsSnapshot.Default;

@@ -9,12 +9,14 @@ public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWi
     private GraphSamplingSettings _lastSampling = new();
     private readonly LegacyGraphRecordingRun? _recording;
     private readonly bool _keepUpdatingOnClose;
+    private readonly bool _nativeOldColors;
     private readonly Func<bool>? _autoFork;
     private readonly Func<GraphSamplingSettings?, Action<NativeGraphRecordingSample?>, Task>? _consumeNativeSample;
     private readonly Func<Action<NativeGraphRecordingSample?>, Task>? _consumeNativeResetSample;
     private static readonly IReadOnlyDictionary<GraphMetric, double> EmptyMetrics = new Dictionary<GraphMetric, double>();
     private readonly Dictionary<GraphMetric, RecordingChart> _recordingCharts = [];
     private EngineSnapshot _snapshot = EngineSnapshot.Empty;
+    private uint? _nativeChartArgb;
     private NativeGraphLayoutState? _nativeLayout;
     private Task _resetAllFeed = Task.CompletedTask;
 
@@ -27,10 +29,12 @@ public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWi
         Func<GraphSamplingSettings?, Action<NativeGraphRecordingSample?>, Task>? consumeNativeSample = null,
         bool keepUpdatingOnClose = false,
         Func<Action<NativeGraphRecordingSample?>, Task>? consumeNativeResetSample = null,
-        Func<Func<Task<bool>>, Func<Task>, Task>? runNativeResetModal = null)
+        Func<Func<Task<bool>>, Func<Task>, Task>? runNativeResetModal = null,
+        bool nativeOldColors = false)
     {
         _recording = recording;
         _keepUpdatingOnClose = keepUpdatingOnClose;
+        _nativeOldColors = nativeOldColors;
         _autoFork = autoFork;
         _consumeNativeSample = consumeNativeSample ?? (readNativeSample is null ? null
             : async (_, consume) => consume(await readNativeSample()));
@@ -78,6 +82,7 @@ public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWi
     {
         var usedNativeSamples = UsesNativeSamples;
         _snapshot = snapshot;
+        SetScenePalette(snapshot);
         var usesNativeSamples = UsesNativeSamples;
         ViewModel.SetNativeFeed(usesNativeSamples);
         GraphView.SetSnapshot(snapshot);
@@ -106,6 +111,17 @@ public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWi
                 chart.MostRecentTick = sample.Tick;
             }
         }
+    }
+
+    internal void SetScenePalette(EngineSnapshot snapshot)
+    {
+        var chartArgb = snapshot.NativeCycle.HasValue
+            ? _nativeOldColors ? 0xffffffffu : snapshot.NativeScenePalette?.ChartArgb
+            : null;
+        if (_nativeChartArgb == chartArgb) return;
+        _nativeChartArgb = chartArgb;
+        foreach (var window in _graphWindows)
+            window.SetNativeChartBackground(chartArgb);
     }
 
     public void RecordNativeSamples(IReadOnlyList<NativeGraphRecordingSample> samples, int generation)
@@ -344,6 +360,7 @@ public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWi
             ViewModel.ResetGraph(graph.Metric);
             _ = ResetRecordingChartsAsync([new(graph.Metric, recordingChart)], feedImmediately: false);
         }, recordingChart is null ? null : () => UpdateGraphNow(graph.Metric, recordingChart), _keepUpdatingOnClose);
+        window.SetNativeChartBackground(_nativeChartArgb);
         recordingChart?.Windows.Add(window);
         _graphWindows.Add(window);
         if (recordingChart is not null)

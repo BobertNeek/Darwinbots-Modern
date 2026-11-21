@@ -2074,7 +2074,7 @@ public sealed partial class MainWindow : Window
                         _lastGraphRefreshTick = snapshot.Tick;
                     }
                     var currentGraphWorld = !loading && !_windowClosed && graphGeneration == _graphRecording.Generation;
-                    _toolWindows.PublishSnapshot(snapshot, updateGraphs && currentGraphWorld);
+                    _toolWindows.PublishSnapshot(snapshot, updateGraphs && currentGraphWorld, updateGraphPalette: currentGraphWorld);
                     if (currentGraphWorld) SynchronizeAutomaticEvolutionGraphs(snapshot);
                     BuoyancyWarning.IsVisible = !_globalSettings.Main.SuppressBuoyancy
                         && (_liveEnvironment.Gravity[1] == 0 || !_liveEnvironment.Vegetation.PondMode || _liveEnvironment.WrapY)
@@ -3236,7 +3236,7 @@ public sealed partial class MainWindow : Window
                 var window = new GraphSuiteWindow(_session?.LatestSnapshot ?? EngineSnapshot.Empty, _graphRecording,
                     () => _liveEnvironment.AutoSpeciation, consumeNativeSample: CaptureCurrentGraphSampleAsync,
                     keepUpdatingOnClose: _keepGraphsUpdatingOnClose, consumeNativeResetSample: CaptureGraphResetSampleAsync,
-                    runNativeResetModal: RunNativeGraphResetModalAsync);
+                    runNativeResetModal: RunNativeGraphResetModalAsync, nativeOldColors: _nativeOldColors);
                 window.SetNativeLayout(_nativeGraphLayout);
                 window.NativeLayoutEdited += PersistGraphLayout;
                 window.SamplingChanged += ConfigureGraphSampling;

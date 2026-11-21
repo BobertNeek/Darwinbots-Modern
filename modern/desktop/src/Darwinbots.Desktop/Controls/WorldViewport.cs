@@ -218,7 +218,11 @@ public sealed class WorldViewport : Control
     {
         base.Render(context);
         var overlay = OverlayProjection;
-        context.FillRectangle(new SolidColorBrush(Color.Parse(OldColors ? "#000040" : "#F9F8F2")), Bounds);
+        const uint defaultArenaArgb = 0xfff9f8f2;
+        var arenaArgb = OldColors ? 0xff000040u : _snapshot.NativeCycle.HasValue
+            ? _snapshot.NativeScenePalette?.ArenaArgb ?? defaultArenaArgb
+            : defaultArenaArgb;
+        context.FillRectangle(new SolidColorBrush(Color.FromUInt32(arenaArgb)), Bounds);
         if (overlay.HasBackgroundImage && _backgroundImage is not null) context.DrawImage(_backgroundImage, Bounds);
         DrawGrid(context);
         if (FlickerMode && (_flickerFrame = !_flickerFrame)) return;
