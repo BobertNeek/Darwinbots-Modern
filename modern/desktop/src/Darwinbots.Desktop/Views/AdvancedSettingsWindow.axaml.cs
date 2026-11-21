@@ -14,7 +14,9 @@ public sealed partial class AdvancedSettingsWindow : Window
     private MutationProfileUpdate _mutationProfile = MutationProfileUpdate.Default;
     private readonly HashSet<NumericUpDown> _editedMutationRates = [];
     private readonly GlobalSimulationCostSettings? _initialCosts;
+    private readonly Db2CostPreset? _initialCostPreset;
     private GlobalSimulationCostSettings? _stagedCosts;
+    private Db2CostPreset? _stagedCostPreset;
 
     private bool _otherLiveSettingsEdited;
     private int _initialFieldSizeIndex;
@@ -26,6 +28,8 @@ public sealed partial class AdvancedSettingsWindow : Window
         && FieldSizePreset.SelectedIndex != _initialFieldSizeIndex && Db2FieldSize.IsValid(FieldSizePreset.SelectedIndex)
         ? FieldSizePreset.SelectedIndex : null;
     public GlobalSimulationCostSettings? CostUpdate => _stagedCosts != _initialCosts ? _stagedCosts : null;
+    public Db2CostPreset? CostPresetUpdate => _stagedCostPreset != _initialCostPreset || CostUpdate is not null
+        ? _stagedCostPreset : null;
     public MutationSettingsUpdate MutationUpdate => new(
         MutationsEnabled.IsChecked == true,
         (float)(GlobalMutationRate.Value ?? 1m),
@@ -65,7 +69,7 @@ public sealed partial class AdvancedSettingsWindow : Window
 
     public AdvancedSettingsWindow() : this(EnvironmentUpdate.Default, EngineSnapshot.Empty) { }
     public AdvancedSettingsWindow(EnvironmentUpdate update, EngineSnapshot? snapshot = null, int selectedTab = 0,
-        GlobalSimulationCostSettings? costs = null,
+        GlobalSimulationCostSettings? costs = null, Db2CostPreset? currentCostPreset = null,
         bool showFieldSize = false, int? currentFieldSize = null, string? fieldSizeUnavailable = null)
     {
         _initialCosts = _stagedCosts = costs;
@@ -74,9 +78,11 @@ public sealed partial class AdvancedSettingsWindow : Window
         if (costs is not null)
         {
             SimulationCostsPanel.IsVisible = true;
-            CostPreset.SelectedIndex = costs == GlobalSimulationCostSettings.NoCosts ? 0
-                : costs == GlobalSimulationCostSettings.F1Default ? 1 : 2;
-            LiveCustomSimulationCostsButton.IsEnabled = CostPreset.SelectedIndex == 2;
+            _initialCostPreset = _stagedCostPreset = currentCostPreset
+                ?? (costs == GlobalSimulationCostSettings.NoCosts ? Db2CostPreset.NoCosts
+                    : costs == GlobalSimulationCostSettings.F1Default ? Db2CostPreset.F1 : Db2CostPreset.Custom);
+            CostPreset.SelectedIndex = (int)_initialCostPreset.Value;
+            LiveCustomSimulationCostsButton.IsEnabled = _stagedCostPreset == Db2CostPreset.Custom;
             CostPreset.SelectionChanged += (_, _) => SelectCostPreset();
         }
         if (showFieldSize && snapshot is not null)
@@ -295,14 +301,16 @@ public sealed partial class AdvancedSettingsWindow : Window
 
     private void SelectCostPreset()
     {
-        _stagedCosts = CostPreset.SelectedIndex switch
+        if (CostPreset.SelectedIndex is < 0 or > (int)Db2CostPreset.Custom) return;
+        _stagedCostPreset = (Db2CostPreset)CostPreset.SelectedIndex;
+        _stagedCosts = _stagedCostPreset switch
         {
-            0 => GlobalSimulationCostSettings.NoCosts,
-            1 => GlobalSimulationCostSettings.F1Default,
+            Db2CostPreset.NoCosts => GlobalSimulationCostSettings.NoCosts,
+            Db2CostPreset.F1 => GlobalSimulationCostSettings.F1Default,
             _ => _stagedCosts,
         };
-        LiveCustomSimulationCostsButton.IsEnabled = CostPreset.SelectedIndex == 2;
-        DirtyBadge.IsVisible = LiveSettingsEdited || CostUpdate is not null;
+        LiveCustomSimulationCostsButton.IsEnabled = _stagedCostPreset == Db2CostPreset.Custom;
+        RefreshDirtyBadge();
     }
 
     private async void LiveCustomSimulationCosts_Click(object? sender, RoutedEventArgs e)
@@ -312,8 +320,10 @@ public sealed partial class AdvancedSettingsWindow : Window
         await dialog.ShowDialog(this);
         if (!dialog.Accepted) return;
         _stagedCosts = dialog.Costs;
-        DirtyBadge.IsVisible = LiveSettingsEdited || CostUpdate is not null;
+        RefreshDirtyBadge();
     }
+
+    private void RefreshDirtyBadge() => DirtyBadge.IsVisible = LiveSettingsEdited || CostPresetUpdate is not null;
 
     private void MarkDirty()
     {

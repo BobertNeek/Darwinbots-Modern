@@ -1768,6 +1768,7 @@ public sealed partial class MainWindow : Window
             var current = session.LatestSnapshot;
             var costs = configuration?.Costs ?? _globalSettings.Costs;
             var dialog = new AdvancedSettingsWindow(_liveEnvironment, current, selectedTab, costs,
+                currentCostPreset: configuration?.NativeCostPreset,
                 showFieldSize: current.NativeCycle is not null, currentFieldSize: configuration?.NativeFieldSize,
                 fieldSizeUnavailable: FieldSizeRestriction(current));
             await dialog.ShowDialog(this);
@@ -1782,15 +1783,16 @@ public sealed partial class MainWindow : Window
                 if (update.FieldSize is not null && FieldSizeRestriction(before) is { } restriction)
                     return LegacyCommandResult.Failure(restriction);
                 var costUpdate = dialog.CostUpdate;
+                var presetUpdate = dialog.CostPresetUpdate;
                 if (dialog.LiveSettingsEdited)
                 {
-                    await session.UpdateLiveSettingsAsync(update, dialog.MutationUpdate, costUpdate);
+                    await session.UpdateLiveSettingsAsync(update, dialog.MutationUpdate, costUpdate, presetUpdate);
                     _liveEnvironment = update with { FieldSize = null };
                     SynchronizeRecordingPreferences();
                     RefreshEnvironmentControls();
                 }
-                else if (costUpdate is not null)
-                    await session.UpdateCostSettingsAsync(costUpdate);
+                else if (costUpdate is not null || presetUpdate is not null)
+                    await session.UpdateCostSettingsAsync(costUpdate, presetUpdate);
                 if (costUpdate is not null)
                     _activeCostMultiplier = (await session.ReadConfigurationAsync())?.GlobalCostMultiplier ?? costUpdate.GlobalMultiplier;
                 if (update.FieldSize is not null)

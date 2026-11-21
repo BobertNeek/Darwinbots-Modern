@@ -32,6 +32,7 @@ public sealed partial class SetupWindow : Window
     private Db2ShapeDriftOptions? _shapeDrift;
     private IReadOnlyList<ObstacleSnapshot> _obstacles = [];
     private int? _nativeFieldSize;
+    private Db2CostPreset? _nativeCostPreset;
     private IReadOnlyList<string>? _legacySettingsFields;
     private bool _allowEmptyStartupRoster;
     private const string ZerobotDna = "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0";
@@ -341,6 +342,7 @@ public sealed partial class SetupWindow : Window
             WorldWidth = fieldWidth,
             WorldHeight = fieldHeight,
             NativeFieldSize = _nativeFieldSize,
+            NativeCostPreset = _nativeCostPreset,
             MetabolismCost = _environment.MetabolismCost,
             VegetableEnergyPerTick = _environment.VegetableEnergyPerTick,
             SunlightEnergy = _environment.SunlightEnergy,
@@ -562,6 +564,7 @@ public sealed partial class SetupWindow : Window
         _shapeDrift = setup.ShapeDrift;
         _obstacles = setup.Obstacles;
         _legacySettingsFields = setup.LegacySettingsFields;
+        _nativeCostPreset = setup.NativeCostPreset;
         StarterMode.IsChecked = setup.StartingMode == StartingMode.StarterBotsAndVegetables;
         ZerobotMode.IsChecked = setup.StartingMode == StartingMode.Zerobots;
         ZerobotVegetableMode.IsChecked = setup.StartingMode == StartingMode.ZerobotsAndVegetables;
@@ -591,6 +594,7 @@ public sealed partial class SetupWindow : Window
         _shapeDrift = null;
         _obstacles = [];
         _legacySettingsFields = null;
+        _nativeCostPreset = null;
         ApplyGlobalSettings(_profileSettings);
         _nativeFieldSize = null;
         Backend.SelectedIndex = 0;
