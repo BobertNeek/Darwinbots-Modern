@@ -1,5 +1,7 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
@@ -21,6 +23,11 @@ public sealed class RobotDetailsWindow : Window
     private readonly SimulationSession? _session;
     private readonly Func<OrganismKey?>? _readFocus;
     private readonly Func<OrganismSnapshot, Task<OrganismKey?>>? _reproduceNative;
+    private readonly Func<RobotDetailsWindow, OrganismSnapshot, Task<string?>>? _editNativeShortDescription;
+    private OrganismSnapshot? _shortDescriptionActor;
+    private (OrganismKey Focus, ulong UniqueId, ulong SimulationId)? _shortDescriptionSubject;
+    private long _shortDescriptionReadVersion;
+    private bool _editingShortDescription;
     private OrganismSnapshot? _reproduceParent;
     private bool _reproduceInFlight;
     private OrganismKey? _focus;
@@ -40,6 +47,22 @@ public sealed class RobotDetailsWindow : Window
         IsVisible = false,
     };
     private readonly TextBox _dna = new();
+    private readonly Border _shortDescription = new()
+    {
+        Name = "RobotShortDescription",
+        IsVisible = false,
+        Focusable = true,
+        Background = Brushes.Transparent,
+        Margin = new Thickness(30, 6, 30, 0),
+        Padding = new Thickness(4, 2),
+        MinHeight = 23,
+    };
+    private readonly TextBlock _shortDescriptionValue = new()
+    {
+        Name = "RobotShortDescriptionValue",
+        FontFamily = new FontFamily("Consolas"),
+        FontSize = 12,
+    };
     private readonly TextBox _memory = new();
     private readonly TextBlock _activationSummary = new();
     private readonly StackPanel _activationTimeline = new();
@@ -57,8 +80,9 @@ public sealed class RobotDetailsWindow : Window
         OrganismKey focus,
         RobotDetailsTab initialTab = RobotDetailsTab.Facts,
         Func<OrganismKey?>? readFocus = null,
-        Func<OrganismSnapshot, Task<OrganismKey?>>? reproduceNative = null)
-        : this(session, focus, initialTab, string.Empty, readFocus, reproduceNative)
+        Func<OrganismSnapshot, Task<OrganismKey?>>? reproduceNative = null,
+        Func<RobotDetailsWindow, OrganismSnapshot, Task<string?>>? editNativeShortDescription = null)
+        : this(session, focus, initialTab, string.Empty, readFocus, reproduceNative, editNativeShortDescription)
     {
         SetSnapshot(session.LatestSnapshot);
     }
@@ -73,11 +97,13 @@ public sealed class RobotDetailsWindow : Window
         RobotDetailsTab initialTab,
         string dna,
         Func<OrganismKey?>? readFocus = null,
-        Func<OrganismSnapshot, Task<OrganismKey?>>? reproduceNative = null)
+        Func<OrganismSnapshot, Task<OrganismKey?>>? reproduceNative = null,
+        Func<RobotDetailsWindow, OrganismSnapshot, Task<string?>>? editNativeShortDescription = null)
     {
         _session = session;
         _readFocus = readFocus;
         _reproduceNative = reproduceNative;
+        _editNativeShortDescription = editNativeShortDescription;
         _focus = focus;
         Title = $"Darwinbots — Robot Details {focus.Slot}:{focus.Generation}";
         Width = 1_080;
@@ -169,6 +195,11 @@ public sealed class RobotDetailsWindow : Window
         });
         _tabs.SelectedIndex = (int)initialTab;
 
+        _tabs.SelectionChanged += (_, _) =>
+        {
+            if (_editNativeShortDescription is not null && _session is not null)
+                SetSnapshot(_session.LatestSnapshot);
+        };
         var root = new Grid { RowDefinitions = new RowDefinitions("76,*,42") };
         root.Children.Add(new Border
         {
@@ -211,8 +242,28 @@ public sealed class RobotDetailsWindow : Window
             BorderThickness = new Thickness(1),
             Child = facts,
         });
-        Grid.SetColumn(_tabs, 1);
-        body.Children.Add(_tabs);
+        Control tools = _tabs;
+        if (_editNativeShortDescription is not null)
+        {
+            _shortDescription.Child = _shortDescriptionValue;
+            ToolTip.SetTip(_shortDescription, "Double click to edit");
+            AutomationProperties.SetName(_shortDescription, "Short description");
+            _shortDescription.DoubleTapped += async (_, e) =>
+            {
+                e.Handled = true;
+                await EditShortDescriptionAsync();
+            };
+            _shortDescription.KeyDown += async (_, e) =>
+            {
+                if (e.Key is not (Key.Enter or Key.Space)) return;
+                e.Handled = true;
+                await EditShortDescriptionAsync();
+            };
+            DockPanel.SetDock(_shortDescription, Dock.Top);
+            tools = new DockPanel { Children = { _shortDescription, _tabs } };
+        }
+        Grid.SetColumn(tools, 1);
+        body.Children.Add(tools);
         Grid.SetRow(body, 1);
         root.Children.Add(body);
 
@@ -242,6 +293,72 @@ public sealed class RobotDetailsWindow : Window
         {
             _reproduceInFlight = false;
             _reproduce.IsEnabled = _reproduceParent is not null;
+        }
+    }
+
+    private async Task EditShortDescriptionAsync()
+    {
+        if (_editingShortDescription || !_shortDescription.IsEnabled
+            || _editNativeShortDescription is not { } edit || _shortDescriptionActor is not { } actor)
+            return;
+
+        _editingShortDescription = true;
+        var version = _shortDescriptionReadVersion;
+        try
+        {
+            var description = await edit(this, actor);
+            if (IsVisible && version == _shortDescriptionReadVersion && description is not null)
+            {
+                _shortDescriptionReadVersion++;
+                _shortDescriptionValue.Text = description;
+            }
+        }
+        catch (Exception error)
+        {
+            if (IsVisible && version == _shortDescriptionReadVersion)
+                _status.Text = $"DESCRIPTION UPDATE FAILED · {error.Message}";
+        }
+        finally { _editingShortDescription = false; }
+    }
+
+    internal void InvalidateShortDescription()
+    {
+        _shortDescriptionSubject = null;
+        _shortDescriptionReadVersion++;
+        if (IsVisible && _session is not null) SetSnapshot(_session.LatestSnapshot);
+    }
+
+    private void SynchronizeShortDescription(EngineSnapshot snapshot, OrganismSnapshot? selected)
+    {
+        if (_editNativeShortDescription is null || _session is not { } session) return;
+
+        _shortDescription.IsVisible = snapshot.NativeCycle.HasValue
+            && _tabs.SelectedIndex is (int)RobotDetailsTab.Dna or (int)RobotDetailsTab.Memory;
+        _shortDescriptionActor = IsVisible && _shortDescription.IsVisible ? selected : null;
+        _shortDescription.IsEnabled = _shortDescriptionActor is not null;
+        (OrganismKey Focus, ulong UniqueId, ulong SimulationId)? subject = _shortDescriptionActor is { } robot
+            ? (new OrganismKey(robot.Slot, robot.Generation), robot.UniqueId, robot.SimulationId)
+            : null;
+        if (subject == _shortDescriptionSubject) return;
+
+        _shortDescriptionSubject = subject;
+        var version = ++_shortDescriptionReadVersion;
+        _shortDescriptionValue.Text = string.Empty;
+        if (subject is { } current) _ = ReadShortDescriptionAsync(session, current.Focus, version);
+    }
+
+    private async Task ReadShortDescriptionAsync(SimulationSession session, OrganismKey focus, long version)
+    {
+        try
+        {
+            var description = await session.ReadRobotTagAsync(focus);
+            if (IsVisible && version == _shortDescriptionReadVersion)
+                _shortDescriptionValue.Text = description;
+        }
+        catch (Exception error)
+        {
+            if (IsVisible && version == _shortDescriptionReadVersion)
+                _status.Text = $"DESCRIPTION READ FAILED · {error.Message}";
         }
     }
 
@@ -324,6 +441,7 @@ public sealed class RobotDetailsWindow : Window
     {
         _diagnostic.Update(snapshot, _focus);
         var selected = FindActor(_focus);
+        SynchronizeShortDescription(snapshot, selected);
         // Console showdna initially displays its actor's facts alongside the selected actor's DNA.
         var consoleActor = snapshot.Tick == _followedTick ? FindActor(_consoleDnaFacts) : null;
         var organism = consoleActor ?? selected;

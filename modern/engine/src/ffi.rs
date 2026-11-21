@@ -173,6 +173,15 @@ enum EngineCommand {
         generation: u32,
         dna: String,
     },
+    ReadRobotTag {
+        slot: u32,
+        generation: u32,
+    },
+    SetRobotTag {
+        slot: u32,
+        generation: u32,
+        tag: String,
+    },
     ExportDna {
         slot: u32,
         generation: u32,
@@ -575,6 +584,7 @@ fn db_engine_command_batch_impl(
                 EngineCommand::ReadNativeGaussianSpare
                     | EngineCommand::ReadNativeSunChange
                     | EngineCommand::ReadNativeProcessCaches
+                    | EngineCommand::ReadRobotTag { .. }
                     | EngineCommand::ExportSpeciesTemplateDna { .. }
                     | EngineCommand::FindBestRobot { .. }
             )
@@ -603,6 +613,9 @@ fn db_engine_command_batch_impl(
                 EngineCommand::ReadNativeProcessCaches => engine
                     .read_native_process_caches()
                     .map(|caches| serde_json::json!(caches)),
+                EngineCommand::ReadRobotTag { slot, generation } => engine
+                    .read_robot_tag(OrganismId::new(*slot, *generation))
+                    .map(serde_json::Value::String),
                 EngineCommand::ExportSpeciesTemplateDna { species } => engine
                     .export_species_template_dna(crate::SpeciesId(*species))
                     .map(|dna| serde_json::json!({ "dna": dna })),
@@ -910,6 +923,16 @@ fn db_engine_command_batch_impl(
                 .load_dna_source(&dna)
                 .and_then(|dna| engine.replace_dna(OrganismId::new(slot, generation), dna))
                 .map(|_| serde_json::Value::Null),
+            EngineCommand::ReadRobotTag { slot, generation } => engine
+                .read_robot_tag(OrganismId::new(slot, generation))
+                .map(serde_json::Value::String),
+            EngineCommand::SetRobotTag {
+                slot,
+                generation,
+                tag,
+            } => engine
+                .set_robot_tag(OrganismId::new(slot, generation), &tag)
+                .map(serde_json::Value::String),
             EngineCommand::ExportDna { slot, generation } => engine
                 .export_dna(OrganismId::new(slot, generation))
                 .map(|dna| serde_json::json!({ "dna": dna })),
@@ -1908,6 +1931,114 @@ mod tests {
         let engine: Engine = serde_json::from_value(state).unwrap();
         assert!(!engine.has_native_random());
         engine
+    }
+
+    #[test]
+    fn native_robot_info_tag_updates_only_the_focused_robot_and_round_trips() {
+        use crate::native_binary::{NativeRecordFile, NativeValue};
+
+        let mut fixture = NativeRecordFile::decode(include_bytes!(
+            "../tests/fixtures/db24832-movement-start-48032.sim"
+        ))
+        .unwrap();
+        let retained_tag = format!("{:<45}12345", "Original description");
+        let first = fixture.robots.first_mut().unwrap();
+        first
+            .set_value("tag", NativeValue::Bytes(retained_tag.as_bytes().to_vec()))
+            .unwrap();
+        let mut peer = first.clone();
+        peer.set_value("old_slot", NativeValue::Word(2)).unwrap();
+        peer.set_value("absolute_id", NativeValue::Long(2)).unwrap();
+        fixture.robots.push(peer);
+        let mut world = Engine::from_native_sim(&fixture.encode().unwrap()).unwrap();
+        let focused = world.snapshot().organisms[0].id;
+        let peer = world.snapshot().organisms[1].id;
+        let read = |id: OrganismId| {
+            serde_json::json!({
+                "type": "read_robot_tag", "slot": id.slot(), "generation": id.generation(),
+            })
+        };
+        let set = |tag: &str| {
+            serde_json::json!({
+                "type": "set_robot_tag", "slot": focused.slot(), "generation": focused.generation(), "tag": tag,
+            })
+        };
+        let before = SaveFile::encode(&world).unwrap();
+        let publications = world.snapshot_publication_count();
+        let (status, reply) = classic_test_batch(&mut world, serde_json::json!([read(focused)]));
+        assert_eq!(status, DbStatus::Ok);
+        let reply: serde_json::Value = serde_json::from_slice(&reply).unwrap();
+        assert_eq!(reply["results"][0], "Original description");
+        assert_eq!(SaveFile::encode(&world).unwrap(), before);
+        assert_eq!(world.snapshot_publication_count(), publications);
+
+        let entered = format!("Café ÿ\r{}", "Z".repeat(60));
+        let normalized = format!("Caf? ÿ?{}", "Z".repeat(38));
+        let stale = OrganismId::new(focused.slot(), focused.generation() + 1);
+        let (status, _) =
+            classic_test_batch(&mut world, serde_json::json!([set(&entered), read(stale)]));
+        assert_ne!(status, DbStatus::Ok);
+        assert_eq!(SaveFile::encode(&world).unwrap(), before);
+
+        let (status, reply) = classic_test_batch(
+            &mut world,
+            serde_json::json!([set(&entered), read(focused), read(peer)]),
+        );
+        assert_eq!(status, DbStatus::Ok);
+        let reply: serde_json::Value = serde_json::from_slice(&reply).unwrap();
+        assert_eq!(
+            reply["results"],
+            serde_json::json!([normalized, normalized, "Original description"])
+        );
+        assert_eq!(world.snapshot().tick, 0);
+
+        let mut resumed = SaveFile::decode(&SaveFile::encode(&world).unwrap()).unwrap();
+        assert_eq!(resumed.read_robot_tag(focused).unwrap(), normalized);
+        let mut native_tag = b"Caf? \xff?".to_vec();
+        native_tag.extend([b'Z'; 38]);
+        native_tag.extend([b' '; 5]);
+        let sim = resumed.export_native_sim().unwrap();
+        let records = NativeRecordFile::decode(&sim).unwrap();
+        assert_eq!(records.robots[0].bytes("tag").unwrap(), native_tag);
+        assert_eq!(
+            records.robots[1].bytes("tag").unwrap(),
+            retained_tag.as_bytes()
+        );
+        let reopened = Engine::from_native_sim(&sim).unwrap();
+        assert_eq!(
+            reopened
+                .read_robot_tag(reopened.snapshot().organisms[0].id)
+                .unwrap(),
+            normalized
+        );
+
+        let dbo = resumed.export_native_organisms(&[focused]).unwrap();
+        let records = NativeRecordFile::decode(&dbo).unwrap();
+        assert_eq!(records.robots[0].bytes("tag").unwrap(), native_tag);
+        let mut imported = Engine::new_native(EngineConfig::testing()).unwrap();
+        assert_eq!(imported.import_native_organisms(&dbo, None).unwrap(), 1);
+        assert_eq!(
+            imported
+                .read_robot_tag(imported.snapshot().organisms[0].id)
+                .unwrap(),
+            normalized
+        );
+
+        // Both a blank accepted entry and original InputBox Cancel assign empty.
+        let (status, reply) = classic_test_batch(
+            &mut resumed,
+            serde_json::json!([set(""), read(focused), read(peer)]),
+        );
+        assert_eq!(status, DbStatus::Ok);
+        let reply: serde_json::Value = serde_json::from_slice(&reply).unwrap();
+        assert_eq!(
+            reply["results"],
+            serde_json::json!(["", "", "Original description"])
+        );
+        let packed = resumed.export_native_organisms(&[focused]).unwrap();
+        let records = NativeRecordFile::decode(&packed).unwrap();
+        assert_eq!(records.robots[0].bytes("tag").unwrap(), &[b' '; 50]);
+        assert!(!resumed.export_dna(focused).unwrap().contains("'#tag:"));
     }
 
     fn classic_test_batch(engine: &mut Engine, commands: serde_json::Value) -> (DbStatus, Vec<u8>) {

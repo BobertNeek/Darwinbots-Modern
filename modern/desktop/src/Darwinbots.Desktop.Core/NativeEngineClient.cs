@@ -296,6 +296,29 @@ public sealed partial class NativeEngineClient : IEngineClient
         ExecuteBatch(new { version = 1, commands = new[] { new { type = "replace_dna", slot, generation, dna } } }, "replace DNA");
     }
 
+    public string ReadRobotTag(OrganismKey focus)
+    {
+        var result = ExecuteBatchForResult(new
+        {
+            version = 1,
+            commands = new[] { new { type = "read_robot_tag", slot = focus.Slot, generation = focus.Generation } },
+        }, "read robot description");
+        return result.GetProperty("results")[0].GetString()
+            ?? throw new InvalidDataException("Native engine returned no robot description.");
+    }
+
+    public string SetRobotTag(OrganismKey focus, string tag)
+    {
+        ArgumentNullException.ThrowIfNull(tag);
+        var result = ExecuteBatchForResult(new
+        {
+            version = 1,
+            commands = new[] { new { type = "set_robot_tag", slot = focus.Slot, generation = focus.Generation, tag } },
+        }, "set robot description");
+        return result.GetProperty("results")[0].GetString()
+            ?? throw new InvalidDataException("Native engine returned no robot description.");
+    }
+
     public string ExportDna(uint slot, uint generation)
     {
         var result = ExecuteBatchForResult(new { version = 1, commands = new[] { new { type = "export_dna", slot, generation } } }, "export DNA");

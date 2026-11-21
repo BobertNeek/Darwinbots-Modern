@@ -1,7 +1,14 @@
 using System.Reflection;
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Headless;
+using Avalonia.Input;
+using Avalonia.Input.Raw;
 using Avalonia.Interactivity;
+using Avalonia.VisualTree;
+using Darwinbots.Desktop.Controls;
 using Darwinbots.Desktop.Core;
+using Darwinbots.Desktop.Core.LegacyMenus;
 using Darwinbots.Desktop.Services;
 using Darwinbots.Desktop.ViewModels;
 using Darwinbots.Desktop.Views;
@@ -11,6 +18,116 @@ namespace Darwinbots.Desktop.Tests;
 
 public sealed class NativeRobotFileIntegrationTests
 {
+    [Fact]
+    public async Task NativeRobotInfoShortDescriptionAppliesAndClearsOnlyTheStillFocusedRobot()
+    {
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var setup = new WorldSetupOptions { Backend = "Cpu" };
+            using var engine = new NativeEngineClient(setup);
+            engine.ImportDna("start stop", [500f, 500f]);
+            engine.ImportDna("start stop", [900f, 500f]);
+            await using var session = new SimulationSession(engine);
+            var window = new MainWindow([], setup, new FixedFactory(engine), new AuditStorageService());
+            try
+            {
+                DesktopTestApplication.UseSession(window, session);
+                window.Show();
+                var robots = session.LatestSnapshot.Organisms;
+                Assert.Equal(2, robots.Count);
+                var first = new OrganismKey(robots[0].Slot, robots[0].Generation);
+                var second = new OrganismKey(robots[1].Slot, robots[1].Generation);
+                await session.SetRobotTagAsync(first, "Original");
+                await session.SetRobotTagAsync(second, "Peer");
+                var published = session.LatestSnapshot;
+                Assert.Equal("Original", await session.ReadRobotTagAsync(first));
+                Assert.Same(published, session.LatestSnapshot);
+                var viewModel = Field<MainWindowViewModel>(window, "_viewModel");
+                viewModel.Select(first);
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                menu.FindCommandItem(LegacyCommandId.RobotShowInfo)!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => window.OwnedWindows.OfType<RobotDetailsWindow>().Any());
+                var info = Assert.Single(window.OwnedWindows.OfType<RobotDetailsWindow>());
+                var strip = Field<Border>(info, "_shortDescription");
+                var label = Field<TextBlock>(info, "_shortDescriptionValue");
+                Assert.False(strip.IsVisible);
+                info.SelectTab(RobotDetailsTab.Dna);
+                await WaitFor(() => label.Text == "Original");
+                Assert.True(strip.IsVisible);
+
+                var edit = await OpenDescriptionAsync();
+                Assert.Equal("Original", Input(edit).Text);
+                Input(edit).Text = "Café description";
+                await FinishAsync(edit, "APPLY");
+                Assert.Equal("Caf? description", label.Text);
+                Assert.Equal("Peer", await session.ReadRobotTagAsync(second));
+                info.SelectTab(RobotDetailsTab.Memory);
+                Assert.True(strip.IsVisible);
+                Assert.Equal("Caf? description", label.Text);
+
+                edit = await OpenDescriptionAsync();
+                Assert.Equal("Caf? description", Input(edit).Text);
+                edit.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
+                await WaitFor(() => !Field<bool>(info, "_editingShortDescription"));
+                Assert.True(info.Topmost);
+                Assert.Equal(string.Empty, label.Text);
+                Assert.Equal(string.Empty, await session.ReadRobotTagAsync(first));
+                Assert.Equal("Peer", await session.ReadRobotTagAsync(second));
+
+                edit = await OpenDescriptionAsync();
+                Input(edit).Text = "Stale edit";
+                viewModel.Select(second);
+                await FinishAsync(edit, "APPLY");
+                Assert.Equal(string.Empty, await session.ReadRobotTagAsync(first));
+                Assert.Equal("Peer", await session.ReadRobotTagAsync(second));
+
+                // Loading the same world can reuse every numeric identity.
+                // The stale dialog must still belong to the old world.
+                viewModel.Select(first);
+                menu.FindCommandItem(LegacyCommandId.RobotShowInfo)!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                edit = await OpenDescriptionAsync();
+                Input(edit).Text = "Stale world edit";
+                var saved = await session.SaveAsync();
+                var load = (Task)typeof(MainWindow).GetMethod("LoadSimulationAsync", BindingFlags.Instance | BindingFlags.NonPublic)!
+                    .Invoke(window, [saved, false])!;
+                await load;
+                viewModel.Select(first);
+                await FinishAsync(edit, "APPLY");
+                Assert.Equal(string.Empty, await session.ReadRobotTagAsync(first));
+                Assert.Equal("Peer", await session.ReadRobotTagAsync(second));
+                Assert.Equal(0UL, session.LatestSnapshot.Tick);
+
+                async Task<LegacyValueWindow> OpenDescriptionAsync()
+                {
+                    info.UpdateLayout();
+                    AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                    var center = strip.TranslatePoint(new Point(strip.Bounds.Width / 2, strip.Bounds.Height / 2), info);
+                    Assert.True(center.HasValue);
+                    for (var click = 0; click < 2; click++)
+                    {
+                        info.MouseDown(center.Value, MouseButton.Left, RawInputModifiers.None);
+                        info.MouseUp(center.Value, MouseButton.Left, RawInputModifiers.None);
+                    }
+                    await WaitFor(() => info.OwnedWindows.OfType<LegacyValueWindow>().Any());
+                    Assert.False(info.Topmost);
+                    return Assert.Single(info.OwnedWindows.OfType<LegacyValueWindow>());
+                }
+
+                async Task FinishAsync(LegacyValueWindow dialog, string action)
+                {
+                    Assert.Single(dialog.GetVisualDescendants().OfType<Button>(), button => Equals(button.Content, action))
+                        .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    await WaitFor(() => !Field<bool>(info, "_editingShortDescription"));
+                    Assert.True(info.Topmost);
+                }
+
+                static TextBox Input(LegacyValueWindow dialog) =>
+                    Assert.Single(dialog.GetVisualDescendants().OfType<TextBox>());
+            }
+            finally { window.Close(); }
+        }, CancellationToken.None);
+    }
+
     [Fact]
     public async Task PickedSidecarProfileReachesOnlyItsActualNativeSpeciesAndSelectedExport()
     {
