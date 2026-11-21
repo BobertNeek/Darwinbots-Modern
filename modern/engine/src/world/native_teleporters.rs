@@ -1,6 +1,11 @@
-use super::{Engine, EngineError, Teleporter, world_random_unit};
+use super::{
+    Engine, EngineError, FileTransferTransaction, Teleporter, random_teleporter_destination,
+    world_random_unit,
+};
 use crate::physics::{native_magnitude, native_scalar};
 use crate::{NativeTeleporterKind, NativeTeleporterOptions};
+use std::collections::HashMap;
+use std::path::PathBuf;
 
 impl Engine {
     /// Teleport.bas NewTeleporter, as called by the original New Teleporter form.
@@ -75,6 +80,88 @@ impl Engine {
         self.teleporters.push(teleporter);
         self.publish_snapshot();
         Ok(id)
+    }
+
+    pub(super) fn check_native_teleporters_staged(
+        &mut self,
+        transfers: &mut FileTransferTransaction,
+        shared_path_exports: &mut HashMap<u32, Vec<PathBuf>>,
+    ) {
+        let portals: Vec<_> = self
+            .teleporters
+            .iter()
+            .enumerate()
+            .filter_map(|(index, portal)| {
+                (!portal.internet
+                    && (portal.local || portal.outbound)
+                    && portal.native_top_left.is_some())
+                .then_some(index)
+            })
+            .collect();
+        if portals.is_empty() {
+            return;
+        }
+        let world_size = [self.config.world_width, self.config.world_height];
+        let mut fallback_random = self.config.seed ^ self.tick.rotate_left(23);
+
+        // Robots.bas UpdateBots, then Teleport.bas CheckTeleporters. Every slot
+        // tests each portal against its current position, including after ReSpawn.
+        for id in self.slots.ids_in_slot_order() {
+            for &index in &portals {
+                let Ok(robot) = self.slots.get(id) else { break };
+                if !robot.flags.exists || robot.flags.hidden {
+                    break;
+                }
+                let portal = &self.teleporters[index];
+                let filters = &portal.filters;
+                if !portal.native_contact().is_some_and(|contact| {
+                    contact.touches(robot.kinematics.position, robot.materials.radius)
+                }) || (robot.flags.vegetable && !filters.teleport_vegetables)
+                    || (robot.flags.corpse && !filters.teleport_corpses)
+                    || (!robot.flags.vegetable && !filters.teleport_heterotrophs)
+                {
+                    continue;
+                }
+                if portal.outbound {
+                    let outgoing = if portal.outbound_path.as_os_str().is_empty() {
+                        &portal.path
+                    } else {
+                        &portal.outbound_path
+                    };
+                    if outgoing.as_os_str().is_empty() {
+                        continue;
+                    }
+                    let incoming = if portal.inbound_path.as_os_str().is_empty() {
+                        &portal.path
+                    } else {
+                        &portal.inbound_path
+                    };
+                    let shared_path = portal.inbound && outgoing == incoming;
+                    let gateway = portal.id;
+                    let directory = outgoing.clone();
+                    if let Some(path) = self.stage_outbound_robot(id, &directory, transfers) {
+                        let sent = &mut self.teleporters[index].sent;
+                        *sent = sent.saturating_add(1);
+                        if shared_path {
+                            shared_path_exports.entry(gateway).or_default().push(path);
+                        }
+                        break;
+                    }
+                } else {
+                    let target = random_teleporter_destination(
+                        world_size,
+                        &mut self.native_random,
+                        &mut fallback_random,
+                    );
+                    let Ok(members) = self.teleporter_group_members(id, 50) else {
+                        continue;
+                    };
+                    self.respawn_group(id, target, &members);
+                    let sent = &mut self.teleporters[index].sent;
+                    *sent = sent.saturating_add(1);
+                }
+            }
+        }
     }
 
     pub(super) fn move_native_teleporters(&mut self) {
@@ -206,6 +293,169 @@ mod tests {
     use super::*;
     use crate::environment::inside_teleporter;
     use crate::{BackendPreference, EngineConfig, SaveFile, TeleporterFilters};
+
+    fn native_contact_test_world() -> Engine {
+        let mut engine = Engine::new_native(EngineConfig {
+            world_width: 16_000.0,
+            world_height: 12_000.0,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        engine.mutations_enabled = false;
+        engine
+    }
+
+    fn add_contact_test_portal(
+        engine: &mut Engine,
+        kind: NativeTeleporterKind,
+        center: [f32; 2],
+        path: &std::path::Path,
+    ) {
+        let id = engine
+            .add_native_teleporter(NativeTeleporterOptions {
+                kind,
+                path: path.to_path_buf(),
+                size: 1_000,
+                fixed_position: true,
+                poll_interval: 1,
+                capacity: 1,
+                filters: TeleporterFilters {
+                    teleport_vegetables: true,
+                    teleport_corpses: true,
+                    teleport_heterotrophs: true,
+                },
+            })
+            .unwrap();
+        engine
+            .drag_native_teleporter(id, [center[0], center[1] + 200.0])
+            .unwrap();
+        engine.teleporters.last_mut().unwrap().native_contact_center = Some(center);
+    }
+
+    #[test]
+    fn native_early_teleporters_follow_slot_order_and_recheck_the_new_position() {
+        use NativeTeleporterKind::{Intrasim, Outbound};
+        let start = [2_600.0, 2_600.0];
+        // The frozen replay's two Rnd draws produce [11253, 2490].
+        // ReSpawn pulls both changed axes back one unit toward the source.
+        let landing = [11_252.0, 2_491.0];
+        for (portals, counters, resident, files) in [
+            (
+                [(Intrasim, start), (Outbound, start)],
+                [1, 0],
+                Some(landing),
+                0,
+            ),
+            ([(Outbound, start), (Intrasim, start)], [1, 0], None, 1),
+            ([(Intrasim, start), (Outbound, landing)], [1, 1], None, 1),
+        ] {
+            let directory = tempfile::tempdir().unwrap();
+            let mut engine = native_contact_test_world();
+            let robot = engine
+                .spawn_at(crate::LegacyDna::parse("start stop").unwrap(), start)
+                .unwrap();
+            for (kind, contact) in portals {
+                add_contact_test_portal(&mut engine, kind, contact, directory.path());
+            }
+            engine.native_random =
+                crate::native_random::NativeRandom::from_uniform_state(6_319_630);
+
+            engine.tick().unwrap();
+
+            assert_eq!(
+                [engine.teleporters[0].sent, engine.teleporters[1].sent],
+                counters,
+                "{portals:?}"
+            );
+            assert_eq!(
+                engine.organism(robot).ok().map(|bot| bot.position),
+                resident,
+                "{portals:?}"
+            );
+            assert_eq!(
+                std::fs::read_dir(directory.path()).unwrap().count(),
+                files,
+                "{portals:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn native_local_respawn_resets_old_position_and_does_not_use_inbound_capacity() {
+        let mut engine = native_contact_test_world();
+        let first = engine
+            .spawn_at(
+                crate::LegacyDna::parse("start stop").unwrap(),
+                [2_380.0, 2_600.0],
+            )
+            .unwrap();
+        let second = engine
+            .spawn_at(
+                crate::LegacyDna::parse("start stop").unwrap(),
+                [2_820.0, 2_600.0],
+            )
+            .unwrap();
+        add_contact_test_portal(
+            &mut engine,
+            NativeTeleporterKind::Intrasim,
+            [2_600.0; 2],
+            std::path::Path::new(""),
+        );
+        engine.native_random = crate::native_random::NativeRandom::from_uniform_state(2_867_188);
+
+        engine.tick().unwrap();
+
+        assert_eq!(engine.teleporters[0].capacity, 1);
+        assert_eq!(engine.teleporters[0].sent, 2);
+        for (id, expected) in [(first, [6_073.0, 4_519.0]), (second, [11_252.0, 2_491.0])] {
+            let kinematics = &engine.slots.get(id).unwrap().kinematics;
+            assert_eq!(kinematics.position, expected);
+            assert_eq!(kinematics.previous_position, expected);
+            assert_eq!(kinematics.actual_velocity, [0.0; 2]);
+        }
+    }
+
+    #[test]
+    fn native_corpse_portal_contact_requires_both_corpse_and_heterotroph_filters() {
+        let mut engine = native_contact_test_world();
+        let start = [2_600.0; 2];
+        let corpse = engine
+            .spawn_at(crate::LegacyDna::parse("start stop").unwrap(), start)
+            .unwrap();
+        let flags = &mut engine.slots.get_mut(corpse).unwrap().flags;
+        flags.vegetable = false;
+        flags.corpse = true;
+        add_contact_test_portal(
+            &mut engine,
+            NativeTeleporterKind::Intrasim,
+            start,
+            std::path::Path::new(""),
+        );
+        engine.native_random = crate::native_random::NativeRandom::from_uniform_state(2_867_188);
+        let mut transfers = FileTransferTransaction::default();
+        let mut shared_path_exports = HashMap::new();
+
+        engine.teleporters[0].filters.teleport_heterotrophs = false;
+        engine.teleporters[0].filters.teleport_corpses = true;
+        assert!(engine.teleporters[0].filters.accepts(false, true));
+        engine.check_native_teleporters_staged(&mut transfers, &mut shared_path_exports);
+        assert_eq!(engine.slots.get(corpse).unwrap().kinematics.position, start);
+        assert_eq!(engine.teleporters[0].sent, 0);
+
+        engine.teleporters[0].filters.teleport_heterotrophs = true;
+        engine.teleporters[0].filters.teleport_corpses = false;
+        engine.check_native_teleporters_staged(&mut transfers, &mut shared_path_exports);
+        assert_eq!(engine.slots.get(corpse).unwrap().kinematics.position, start);
+        assert_eq!(engine.teleporters[0].sent, 0);
+
+        engine.teleporters[0].filters.teleport_corpses = true;
+        engine.check_native_teleporters_staged(&mut transfers, &mut shared_path_exports);
+        assert_eq!(
+            engine.slots.get(corpse).unwrap().kinematics.position,
+            [6_073.0, 4_519.0]
+        );
+        assert_eq!(engine.teleporters[0].sent, 1);
+    }
 
     #[test]
     fn original_teleporter_creation_uses_native_rng_and_legacy_fields() {

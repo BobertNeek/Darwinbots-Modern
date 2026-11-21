@@ -5716,11 +5716,7 @@ impl Engine {
         }
         self.trace_robot_phase(&mut trace, CyclePhase::TeleporterTest);
         let mut shared_path_exports = HashMap::new();
-        self.apply_file_teleporters_staged(
-            transfers,
-            FileTransferPhase::BeforeRobots,
-            &mut shared_path_exports,
-        )?;
+        self.apply_early_teleporters_staged(transfers, &mut shared_path_exports)?;
         self.apply_environment_features(false, true);
         self.trace_robot_phase(&mut trace, CyclePhase::FluidMass);
         if self.native_random.is_some() {
@@ -9576,6 +9572,11 @@ impl Engine {
             }
             cursor += 1;
         }
+        self.respawn_group(origin, target, &members);
+        members
+    }
+
+    fn respawn_group(&mut self, origin: OrganismId, target: [f32; 2], members: &[OrganismId]) {
         let radius_for = |id| {
             let robot = self.slots.get(id).unwrap();
             robot.materials.radius
@@ -9603,7 +9604,7 @@ impl Engine {
                 delta + delta.signum() * (radii_difference - 1.0)
             }
         });
-        for &member in &members {
+        for &member in members {
             let robot = self.slots.get_mut(member).unwrap();
             for (axis, delta) in displacement.into_iter().enumerate() {
                 robot.kinematics.position[axis] += delta;
@@ -9614,7 +9615,6 @@ impl Engine {
                     .relocate(member, robot.kinematics.position);
             }
         }
-        members
     }
 
     fn physics_phase(&mut self) -> Result<(), EngineError> {
@@ -10797,6 +10797,7 @@ impl Engine {
     }
 
     fn apply_teleporter_relocation(&mut self) {
+        let native_world = self.native_cycle.is_some();
         let world_size = [self.config.world_width, self.config.world_height];
         let mut fallback_random = self.config.seed ^ self.tick.rotate_left(23);
         let mut positions: Vec<_> = self
@@ -10931,6 +10932,7 @@ impl Engine {
                 };
                 if teleporter.internet
                     || !teleporter.local
+                    || (native_world && teleporter.native_top_left.is_some())
                     || used_capacity[teleporter_index] >= teleporter.capacity.max(1)
                     || !inside_teleporter(teleporter, corpse.position, radius)
                     || !teleporter.filters.accepts(false, true)
@@ -13752,19 +13754,26 @@ fn local_teleporter_destination(
     fallback: &mut u64,
 ) -> [f32; 2] {
     if teleporter.random_destination {
-        // VB6 multiplies each field extent by a Single random draw, then
-        // converts the result to Long before respawning the organism.
-        world_size.map(|extent| {
-            (extent * world_random_unit(native, fallback) as f32)
-                .round_ties_even()
-                .clamp(0.0, extent)
-        })
+        random_teleporter_destination(world_size, native, fallback)
     } else {
         [
             teleporter.destination[0].clamp(0.0, world_size[0]),
             teleporter.destination[1].clamp(0.0, world_size[1]),
         ]
     }
+}
+
+fn random_teleporter_destination(
+    world_size: [f32; 2],
+    native: &mut Option<crate::native_random::NativeRandom>,
+    fallback: &mut u64,
+) -> [f32; 2] {
+    // VB6 multiplies each field extent by a Single draw before converting to Long.
+    world_size.map(|extent| {
+        (extent * world_random_unit(native, fallback) as f32)
+            .round_ties_even()
+            .clamp(0.0, extent)
+    })
 }
 
 fn world_random_unit(
