@@ -11,6 +11,23 @@ impl SaveFile {
         Ok(Self::frame_payload(payload))
     }
 
+    pub(crate) fn encode_without_restart_mode(engine: &Engine) -> Result<Vec<u8>, EngineError> {
+        let mut value = engine.db3s_v3_payload()?;
+        let object = value.as_object_mut().ok_or_else(|| {
+            EngineError::Invariant("serialized engine must be an object".to_owned())
+        })?;
+        // A normal last-exit save preserves SimOpts.F1 but carries no external restart marker.
+        object.insert(
+            "native_f1".into(),
+            serde_json::json!(engine.snapshot().native_f1_enabled),
+        );
+        object.insert(
+            "local_mode".into(),
+            serde_json::to_value(crate::modes::LocalModeState::default())?,
+        );
+        Ok(Self::frame_payload(serde_json::to_vec(&value)?))
+    }
+
     pub fn encode_without_mutations(engine: &Engine) -> Result<Vec<u8>, EngineError> {
         let mut value = engine.db3s_v3_payload()?;
         let object = value.as_object_mut().ok_or_else(|| {

@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
@@ -23,20 +24,49 @@ public sealed partial class App : Application
     public override void OnFrameworkInitializationCompleted()
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            desktop.MainWindow = CreateStartupWindow(desktop.Args ?? [], AvaloniaDesktopStorageService.Instance,
+                window => desktop.MainWindow = window);
+        base.OnFrameworkInitializationCompleted();
+    }
+
+    private static Window CreateStartupWindow(string[] arguments, IDesktopStorageService storage, Action<Window> setMainWindow)
+    {
+        MainWindow OpenWorld(WorldSetupOptions options) => new(arguments, options, NativeEngineClientFactory.Instance, storage);
+        if (arguments.Length == 0 && storage.FindRestartContinuation() is { } continuation)
         {
-            var arguments = desktop.Args ?? [];
-            var setup = new SetupWindow(AvaloniaDesktopStorageService.Instance,
+            var globals = SetupWindow.ReadProfileSettings(storage, out _);
+            var simulation = OpenWorld(new WorldSetupOptions
+            {
+                LoadSavePath = continuation,
+                ResumeRestartMode = true,
+                GlobalSettings = globals,
+            });
+            simulation.RestartContinuationFailed += message =>
+            {
+                var fallback = OpenSetup(message);
+                setMainWindow(fallback);
+                fallback.Show();
+                simulation.Close();
+            };
+            return simulation;
+        }
+
+        return OpenSetup(null);
+
+        SetupWindow OpenSetup(string? startupError)
+        {
+            var setup = new SetupWindow(storage,
                 allowLastExitResume: arguments.Length == 0, loadLastExitSettings: arguments.Length == 0);
+            if (startupError is not null) setup.ShowStartupLoadError(startupError);
             setup.WorldCreated += options =>
             {
-                var simulation = new MainWindow(arguments, options);
-                desktop.MainWindow = simulation;
+                var simulation = OpenWorld(options);
+                setMainWindow(simulation);
                 simulation.Show();
                 setup.Close();
             };
-            desktop.MainWindow = setup;
+            return setup;
         }
-        base.OnFrameworkInitializationCompleted();
     }
 
     private void ApplyUiPreferences()

@@ -3350,6 +3350,66 @@ impl Engine {
         Ok(())
     }
 
+    pub(crate) fn resume_restart_mode(&mut self) -> Result<(), EngineError> {
+        if !self.local_mode.has_active_restart_mode() {
+            return Err(EngineError::Invariant(
+                "no active restart mode to resume".into(),
+            ));
+        }
+        let mode = &mut self.local_mode;
+        let result_boundary = match mode.evolution.as_mut() {
+            Some(evolution) => {
+                // A passed zerobot test leaves the original mode-9 marker active.
+                if evolution.phase == crate::EvolutionPhase::Complete {
+                    evolution.phase = crate::EvolutionPhase::ZerobotTesting;
+                }
+                (evolution.phase == crate::EvolutionPhase::Testing)
+                    .then_some(evolution.test_result_cursor)
+            }
+            None => mode
+                .series
+                .active_match
+                .map(|_| mode.series.match_start_result),
+        };
+        // Restart the unfinished match or test and retain earlier completed outcomes.
+        if let Some(boundary) = result_boundary {
+            let discarded = mode.results.len().saturating_sub(boundary);
+            mode.results.truncate(boundary);
+            mode.current_round = mode.current_round.saturating_sub(discarded as u32).max(1);
+        }
+        let resumed_round = mode.current_round;
+        mode.disqualifications
+            .retain(|record| record.round < resumed_round);
+        mode.adjudication = None;
+        mode.contest_runtime = Default::default();
+        mode.cycle_in_round = 0;
+        mode.status = LocalModeStatus::Running;
+        if mode.evolution.is_some() {
+            self.restart_staged_world(true)?;
+        } else {
+            self.restart_mode_world(None, NativeStartBoundary::ExternalProcess)?;
+        }
+        self.publish_snapshot();
+        Ok(())
+    }
+
+    pub(crate) fn clear_restart_mode_hiding(&mut self) {
+        let Some(evolution) = self.local_mode.evolution.as_mut() else {
+            return;
+        };
+        evolution.hidden = false;
+        for robot in self
+            .slots
+            .iter_mut()
+            .filter_map(|slot| slot.organism.as_mut())
+        {
+            if evolution.baseline_species.contains(&robot.identity.species) {
+                robot.flags.hidden = false;
+            }
+        }
+        self.publish_snapshot();
+    }
+
     pub fn adjudicate_local_round(
         &mut self,
         winner: Option<SpeciesId>,

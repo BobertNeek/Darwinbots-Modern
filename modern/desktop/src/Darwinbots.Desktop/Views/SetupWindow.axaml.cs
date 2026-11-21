@@ -54,15 +54,8 @@ public sealed partial class SetupWindow : Window
         LoadMode(StartingMode.StarterBotsAndVegetables);
         if (!_speciesEditor)
         {
-            try
-            {
-                _profileSettings = _storage.LoadGlobalSettings() ?? new();
-            }
-            catch (Exception error) when (error is IOException or UnauthorizedAccessException
-                or JsonException or ArgumentException or InvalidDataException)
-            {
-                SetupStatus.Text = $"GLOBAL SETTINGS LOAD FAILED · {error.Message}";
-            }
+            _profileSettings = ReadProfileSettings(_storage, out var error);
+            if (error is not null) SetupStatus.Text = $"GLOBAL SETTINGS LOAD FAILED · {error}";
             ApplyGlobalSettings(_profileSettings);
         }
         _workflow.Reset(ReadSetupOptions());
@@ -85,6 +78,20 @@ public sealed partial class SetupWindow : Window
             SpeciesEditActions.IsVisible = true;
         }
     }
+
+    internal static GlobalSettings ReadProfileSettings(IDesktopStorageService storage, out string? error)
+    {
+        error = null;
+        try { return storage.LoadGlobalSettings() ?? new(); }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException
+            or JsonException or ArgumentException or InvalidDataException)
+        {
+            error = exception.Message;
+            return new();
+        }
+    }
+
+    internal void ShowStartupLoadError(string error) => SetupStatus.Text = $"STARTUP LOAD FAILED · {error}";
 
     private void RestoreLastExitSettings()
     {

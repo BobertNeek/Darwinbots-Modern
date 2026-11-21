@@ -276,6 +276,21 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
     public Task SaveLastExitSimulationAsync(ReadOnlyMemory<byte> save) =>
         WriteLastExitFileAsync(LastExitSimulationPath(), save);
 
+    public string? FindRestartContinuation()
+    {
+        var file = new FileInfo(RestartContinuationPath());
+        return file.Exists ? file.FullName : null;
+    }
+
+    public Task SaveRestartContinuationAsync(ReadOnlyMemory<byte> save) =>
+        WriteLastExitFileAsync(RestartContinuationPath(), save);
+
+    public void ClearRestartContinuation()
+    {
+        try { File.Delete(RestartContinuationPath()); }
+        catch (DirectoryNotFoundException) { }
+    }
+
     public bool SupportsLastExitSettings => true;
 
     public bool HasLastExitSettings => File.Exists(LastExitSettingsPath());
@@ -398,6 +413,8 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
     private string LastStartPath() => Path.Combine(AutosaveDirectory(), "last-start.json");
 
     private string LastExitSimulationPath() => Path.Combine(AutosaveDirectory(), "Resume", "last-exit.db3s");
+
+    private string RestartContinuationPath() => Path.Combine(AutosaveDirectory(), "Resume", "restart-mode.db3s");
 
     private string LastExitSettingsPath() => Path.Combine(ProfileDirectory(), "last-exit-settings.json");
 

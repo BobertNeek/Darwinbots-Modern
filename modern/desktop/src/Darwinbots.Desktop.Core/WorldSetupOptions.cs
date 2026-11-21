@@ -63,6 +63,8 @@ public sealed record WorldSetupOptions
     public GlobalSettings GlobalSettings { get; init; } = new();
     public string? LoadSavePath { get; init; }
     public bool IsAutosaveRecovery { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool ResumeRestartMode { get; init; }
 
     public int EffectiveMetabolismCost => StartingMode == StartingMode.StarterBotsAndVegetables
         ? MetabolismCost
