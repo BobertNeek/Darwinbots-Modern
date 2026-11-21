@@ -12613,6 +12613,10 @@ impl Engine {
             .repopulation_amount
             .min(capacity)
             .min(vegetable_capacity);
+        if amount == 0 {
+            return Ok(());
+        }
+        let origin = self.native_script_origin_tail()?;
         for ordinal in 0..amount {
             let random = advance_random(
                 self.config.seed ^ self.tick.rotate_left(23) ^ (ordinal as u64).rotate_left(41),
@@ -12649,8 +12653,12 @@ impl Engine {
                 .native_placement_position(SpeciesId(species_index as u32), advance_random(random));
             let dna =
                 self.classic_native_start_dna(SpeciesId(species_index as u32), template.dna)?;
-            let id =
-                self.spawn_native_script_robot(dna, SpeciesId(species_index as u32), position)?;
+            let id = self.spawn_native_script_robot(
+                dna,
+                SpeciesId(species_index as u32),
+                position,
+                origin.as_ref(),
+            )?;
             self.apply_classic_start_actor(id, SpeciesId(species_index as u32))?;
             let robot = self.slots.get_mut(id)?;
             robot.materials.energy = template.initial_energy as f32;
