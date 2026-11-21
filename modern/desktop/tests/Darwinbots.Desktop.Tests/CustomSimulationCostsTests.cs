@@ -11,6 +11,7 @@ using Avalonia.VisualTree;
 using Darwinbots.Desktop.Controls;
 using Darwinbots.Desktop.Core;
 using Darwinbots.Desktop.Core.LegacyMenus;
+using Darwinbots.Desktop.Services;
 using Darwinbots.Desktop.ViewModels;
 using Darwinbots.Desktop.Views;
 using Xunit;
@@ -347,6 +348,94 @@ public sealed class CustomSimulationCostsTests
                 window.Close();
             }
         }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task SetupPhysicsAndCostsStagesTheWorldPresetWithoutChangingTheApplicationProfile()
+    {
+        var profile = Directory.CreateTempSubdirectory("darwinbots-startup-costs-");
+        try
+        {
+            var storage = new AvaloniaDesktopStorageService(profile.FullName);
+            var defaults = new GlobalSettings { Costs = new GlobalSimulationCostSettings { DnaCopy = 2.75 } };
+            await storage.SaveGlobalSettingsAsync(defaults);
+            var profilePath = Path.Combine(profile.FullName, "global-settings.json");
+            var originalProfile = await File.ReadAllBytesAsync(profilePath);
+
+            await DesktopTestApplication.Session.Dispatch(async () =>
+            {
+                var window = new SetupWindow(storage);
+                WorldSetupOptions? captured = null;
+                window.WorldCreated += options => captured = options;
+                window.Show();
+                try
+                {
+                    window.FindControl<ComboBox>("Backend")!.SelectedIndex = 1;
+                    var sections = window.FindControl<TabControl>("SimulationSettingsTabs")!;
+
+                    async Task<AdvancedSettingsWindow> Open(Db2CostPreset expected)
+                    {
+                        sections.SelectedIndex = 2;
+                        await WaitFor(() => window.OwnedWindows.OfType<AdvancedSettingsWindow>().Any());
+                        var dialog = Assert.Single(window.OwnedWindows.OfType<AdvancedSettingsWindow>());
+                        Assert.Equal("Darwinbots Simulation Settings", dialog.Title);
+                        Assert.True(dialog.FindControl<Border>("SimulationCostsPanel")!.IsVisible);
+                        Assert.Equal((int)expected, dialog.FindControl<ComboBox>("CostPreset")!.SelectedIndex);
+                        Assert.Equal(expected == Db2CostPreset.Custom,
+                            dialog.FindControl<Button>("LiveCustomSimulationCostsButton")!.IsEnabled);
+                        return dialog;
+                    }
+
+                    async Task CloseCosts(AdvancedSettingsWindow dialog, string button)
+                    {
+                        Click(dialog, button);
+                        await WaitFor(() => !dialog.IsVisible && sections.SelectedIndex == 0);
+                    }
+
+                    var settings = await Open(Db2CostPreset.Custom);
+                    settings.FindControl<ComboBox>("CostPreset")!.SelectedIndex = (int)Db2CostPreset.F1;
+                    await CloseCosts(settings, "CancelButton");
+
+                    settings = await Open(Db2CostPreset.Custom);
+                    Click(settings, "LiveCustomSimulationCostsButton");
+                    await WaitFor(() => settings.OwnedWindows.OfType<CustomSimulationCostsWindow>().Any());
+                    var custom = Assert.Single(settings.OwnedWindows.OfType<CustomSimulationCostsWindow>());
+                    Assert.Equal(2.75m, custom.FindControl<NumericUpDown>("DnaCopy")!.Value);
+                    Click(custom, "CancelButton");
+                    await WaitFor(() => !custom.IsVisible);
+                    settings.FindControl<ComboBox>("CostPreset")!.SelectedIndex = (int)Db2CostPreset.F1;
+                    await CloseCosts(settings, "ApplyButton");
+
+                    settings = await Open(Db2CostPreset.F1);
+                    await CloseCosts(settings, "CancelButton");
+                    Click(window, "CreateWorldButton");
+                    var created = Assert.IsType<WorldSetupOptions>(captured);
+                    Assert.Equal(defaults.Costs, created.GlobalSettings.Costs);
+                    Assert.Equal(GlobalSimulationCostSettings.F1Default, created.SimulationCosts);
+                    using var engine = new NativeEngineClient(created);
+                    var configuration = engine.ReadConfiguration();
+                    Assert.Equal(Db2CostPreset.F1, configuration.NativeCostPreset);
+                    Assert.Equal(GlobalSimulationCostSettings.F1Default, configuration.Costs);
+
+                    var exported = Db2SettingsCodec.Encode(DesktopSettings.FromWorldSetup(created));
+                    var retained = Db2SettingsCodec.Decode(exported).ToWorldSetup();
+                    Assert.Equal(Db2CostPreset.F1, retained.NativeCostPreset);
+                    Assert.Equal(GlobalSimulationCostSettings.F1Default, retained.EffectiveSimulationCosts);
+                    var original = LegacyDnaText.Decode(exported).Split("#DARWINBOTS_MODERN_SETTINGS_V1#")[0];
+                    var fromOriginal = Db2SettingsCodec.Decode(LegacyDnaText.Encode(original)).ToWorldSetup();
+                    Assert.Equal(Db2CostPreset.F1, fromOriginal.NativeCostPreset);
+                    Assert.Equal(0.05f, fromOriginal.EffectiveSimulationCosts.Movement);
+                    Assert.Equal(0, fromOriginal.EffectiveSimulationCosts.DnaCopy);
+                    Assert.Equal(originalProfile, await File.ReadAllBytesAsync(profilePath));
+                }
+                finally
+                {
+                    foreach (var owned in window.OwnedWindows.ToArray()) owned.Close();
+                    window.Close();
+                }
+            }, CancellationToken.None);
+        }
+        finally { profile.Delete(recursive: true); }
     }
 
     [Fact]
