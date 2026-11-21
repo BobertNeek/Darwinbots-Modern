@@ -23,7 +23,6 @@ public sealed partial class SetupWindow : Window
     private GlobalSettings _profileSettings = new();
     private GlobalSettings _globalSettings = new();
     private MutationSettingsUpdate _mutationSettings = MutationSettingsUpdate.Default;
-    private Db2CostPreset? _nativeCostPreset;
     private IReadOnlyList<string>? _legacySettingsFields;
     private const string ZerobotDna = "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0";
     private const string FeederDna = "cond\r\nstart\r\n-2 .shoot store\r\n50 .shootval store\r\n314 rnd .aimdx store\r\nstop";
@@ -187,8 +186,9 @@ public sealed partial class SetupWindow : Window
     private void PublishWorld(WorldSetupOptions options) =>
         WorldCreated?.Invoke(options with { NativeGaussianSpare = _nativeGaussianSpare, NativeSunChange = _nativeSunChange, NativeProcessCaches = _nativeProcessCaches });
 
-    private WorldSetupOptions ReadSetupOptions()
+    private WorldSetupOptions ReadSetupOptions(WorldSetupOptions? staged = null)
     {
+        staged ??= _workflow.WorkingCopy;
         var sustenance = (ZerobotSustenance)Math.Max(0, Sustenance.SelectedIndex);
         var species = Species.Select((row, index) => row.ToImport(index)).ToList();
         if (!_speciesEditor && CurrentMode() != StartingMode.StarterBotsAndVegetables)
@@ -213,7 +213,8 @@ public sealed partial class SetupWindow : Window
             VegetablePopulationCap = (int)(VegetablePopulationCap.Value ?? 500),
             WorldWidth = (float)(WorldWidth.Value ?? 16_000),
             WorldHeight = (float)(WorldHeight.Value ?? 12_000),
-            NativeCostPreset = _nativeCostPreset,
+            NativeCostPreset = staged.NativeCostPreset ?? Db2CostPreset.Custom,
+            SimulationCosts = staged.SimulationCosts,
             MetabolismCost = _environment.MetabolismCost,
             VegetableEnergyPerTick = _environment.VegetableEnergyPerTick,
             SunlightEnergy = _environment.SunlightEnergy,
@@ -269,9 +270,18 @@ public sealed partial class SetupWindow : Window
                     .Concat(Species.Select(row => new SpeciesSnapshot(row.Name, row.Vegetable,
                         row.Color, row.MinimumPopulation, row.Reseed, (float)row.MutationRate))).ToArray(),
             };
-            var dialog = new AdvancedSettingsWindow(_environment, snapshot, selectedTab);
+            var staged = _workflow.WorkingCopy;
+            var costs = staged.SimulationCosts ?? _globalSettings.Costs;
+            var dialog = new AdvancedSettingsWindow(_environment, snapshot, selectedTab,
+                costs, currentCostPreset: staged.NativeCostPreset ?? Db2CostPreset.Custom);
             await dialog.ShowDialog(this);
             if (!dialog.Accepted) return;
+            if (dialog.CostPresetUpdate is { } preset)
+                _workflow.UpdateWorkingCopy(options => options with
+                {
+                    NativeCostPreset = preset,
+                    SimulationCosts = dialog.CostUpdate ?? costs,
+                });
             _environment = dialog.Update;
             _globalSettings = _globalSettings with
             {
@@ -371,6 +381,12 @@ public sealed partial class SetupWindow : Window
     private void ApplyDesktopSettings(DesktopSettings settings)
     {
         var setup = settings.ToWorldSetup(_workflow.Live);
+        if (setup.SimulationCosts is not null || settings.LegacySettingsFields is not null)
+            setup = setup with
+            {
+                SimulationCosts = setup.EffectiveSimulationCosts,
+                GlobalSettings = setup.GlobalSettings with { Costs = _profileSettings.Costs },
+            };
         ApplySetupOptions(setup);
         _workflow.LoadWorkingCopy(setup);
     }
@@ -406,7 +422,6 @@ public sealed partial class SetupWindow : Window
         };
         _mutationSettings = setup.MutationSettings;
         _legacySettingsFields = setup.LegacySettingsFields;
-        _nativeCostPreset = setup.NativeCostPreset;
         StarterMode.IsChecked = setup.StartingMode == StartingMode.StarterBotsAndVegetables;
         ZerobotMode.IsChecked = setup.StartingMode == StartingMode.Zerobots;
         ZerobotVegetableMode.IsChecked = setup.StartingMode == StartingMode.ZerobotsAndVegetables;
@@ -426,7 +441,6 @@ public sealed partial class SetupWindow : Window
     private void NewWorld_Click(object? sender, RoutedEventArgs e)
     {
         _environment = EnvironmentUpdate.Default;
-        _nativeCostPreset = null;
         ApplyGlobalSettings(_profileSettings);
         Backend.SelectedIndex = 0;
         WorldWidth.Value = 16_000;
@@ -439,7 +453,7 @@ public sealed partial class SetupWindow : Window
         AutomaticProgression.IsChecked = true;
         StarterMode.IsChecked = true;
         Mode_Checked(StarterMode, e);
-        _workflow.Reset(ReadSetupOptions());
+        _workflow.Reset(ReadSetupOptions(new WorldSetupOptions()));
         SetupStatus.Text = "New world defaults restored.";
     }
 

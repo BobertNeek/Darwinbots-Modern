@@ -18,6 +18,8 @@ public sealed record DesktopSettings
     public float WorldWidth { get; init; } = 16_000f;
     public float WorldHeight { get; init; } = 12_000f;
     public Db2CostPreset? NativeCostPreset { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public GlobalSimulationCostSettings? SimulationCosts { get; init; }
     public StartingMode StartingMode { get; init; } = StartingMode.StarterBotsAndVegetables;
     public ZerobotSustenance ZerobotSustenance { get; init; } = ZerobotSustenance.DisabledMetabolism;
     public bool AutomaticZerobotProgression { get; init; } = true;
@@ -60,6 +62,7 @@ public sealed record DesktopSettings
         WorldWidth = setup.WorldWidth,
         WorldHeight = setup.WorldHeight,
         NativeCostPreset = setup.NativeCostPreset,
+        SimulationCosts = setup.SimulationCosts,
         StartingMode = setup.StartingMode,
         ZerobotSustenance = setup.ZerobotSustenance,
         AutomaticZerobotProgression = setup.AutomaticZerobotProgression,
@@ -105,6 +108,7 @@ public sealed record DesktopSettings
             WorldWidth = WorldWidth,
             WorldHeight = WorldHeight,
             NativeCostPreset = NativeCostPreset,
+            SimulationCosts = SimulationCosts,
             MetabolismCost = MetabolismCost,
             VegetableEnergyPerTick = VegetableEnergyPerTick,
             SunlightEnergy = SunlightEnergy,

@@ -95,7 +95,7 @@ internal static class LegacySettingsAdapter
         Number(global + 5, settings.VegetablePopulationCap); Flag(global + 9, settings.ToroidalWorld);
         var vegetation = settings.Vegetation;
         var physics = settings.Physics;
-        var cost = settings.GlobalSettings.Costs;
+        var cost = settings.SimulationCosts ?? settings.GlobalSettings.Costs;
         Number(global + 10, vegetation.MaxEnergyPerTick); Number(global + 11, vegetation.MinimumChloroplastEquivalents);
         Number(global + 13, cost.DnaStore); Number(global + 14, cost.ShotFormation);
         Number(global + 15, settings.Shots.FeedingProportion);
