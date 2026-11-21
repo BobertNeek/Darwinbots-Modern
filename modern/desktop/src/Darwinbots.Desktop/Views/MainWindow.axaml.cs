@@ -324,7 +324,16 @@ public sealed partial class MainWindow : Window
                 _viewModel.Status = "ORGANISM MOVED";
                 return;
             }
-            if (_environmentPlacement == EnvironmentPlacement.None) return;
+            if (_environmentPlacement == EnvironmentPlacement.None)
+            {
+                if (_loadingSimulation || _safeModeRecoveryWorld || RecoveryPanel.IsVisible
+                    || (_playerBotEnabled && _viewModel.SelectedKey is not null)) return;
+
+                _viewModel.ClearSelection();
+                Viewport.SetRobotFocus(null);
+                RefreshLegacyMenuStates();
+                return;
+            }
             if (_placementOrigin is null)
             {
                 _placementOrigin = position;
