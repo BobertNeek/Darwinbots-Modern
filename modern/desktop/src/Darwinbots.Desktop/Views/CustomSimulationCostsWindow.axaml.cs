@@ -60,18 +60,17 @@ public sealed partial class CustomSimulationCostsWindow : Window
         SetDisplayValue(DynamicMultiplier, costs.DynamicMultiplier);
         DynamicAllRobots.IsChecked = costs.DynamicAllRobots;
         SetDisplayValue(DynamicTargetPopulation, costs.DynamicTargetPopulation);
-        SetDisplayValue(DynamicPopulationRange, costs.DynamicPopulationRange);
+        SetDisplayValue(DynamicUpperRangePercent, costs.EffectiveDynamicUpperRangePercent);
+        SetDisplayValue(DynamicLowerRangePercent, costs.EffectiveDynamicLowerRangePercent);
         SetDisplayValue(DynamicSensitivity, costs.DynamicSensitivity);
         DynamicAllowNegative.IsChecked = costs.DynamicAllowNegative;
         SetDisplayValue(DynamicLowerZeroThreshold, costs.DynamicLowerZeroThreshold);
-        SetDisplayValue(DynamicUpperZeroThreshold, costs.DynamicUpperZeroThreshold);
         SetDisplayValue(DynamicLowerReinstateThreshold, costs.DynamicLowerReinstateThreshold);
         SetDisplayValue(DynamicUpperReinstateThreshold, costs.DynamicUpperReinstateThreshold);
     }
 
     private GlobalSimulationCostSettings ReadCosts()
     {
-        var populationRange = (int)Read(DynamicPopulationRange, Costs.DynamicPopulationRange);
         return Costs with
         {
             GlobalMultiplier = Read(GlobalCostMultiplier, Costs.GlobalMultiplier),
@@ -104,13 +103,13 @@ public sealed partial class CustomSimulationCostsWindow : Window
             DynamicMultiplier = Read(DynamicMultiplier, Costs.DynamicMultiplier),
             DynamicAllRobots = DynamicAllRobots.IsChecked == true,
             DynamicTargetPopulation = (int)Read(DynamicTargetPopulation, Costs.DynamicTargetPopulation),
-            DynamicPopulationRange = populationRange,
-            DynamicUpperRangePercent = populationRange != Costs.DynamicPopulationRange
-                ? populationRange : Costs.DynamicUpperRangePercent,
+            DynamicUpperRangePercent = ReadRangePercent(DynamicUpperRangePercent,
+                Costs.DynamicUpperRangePercent, Costs.EffectiveDynamicUpperRangePercent),
+            DynamicLowerRangePercent = ReadRangePercent(DynamicLowerRangePercent,
+                Costs.DynamicLowerRangePercent, Costs.EffectiveDynamicLowerRangePercent),
             DynamicSensitivity = Read(DynamicSensitivity, Costs.DynamicSensitivity),
             DynamicAllowNegative = DynamicAllowNegative.IsChecked == true,
             DynamicLowerZeroThreshold = Read(DynamicLowerZeroThreshold, Costs.DynamicLowerZeroThreshold),
-            DynamicUpperZeroThreshold = Read(DynamicUpperZeroThreshold, Costs.DynamicUpperZeroThreshold),
             DynamicLowerReinstateThreshold = Read(DynamicLowerReinstateThreshold, Costs.DynamicLowerReinstateThreshold),
             DynamicUpperReinstateThreshold = Read(DynamicUpperReinstateThreshold, Costs.DynamicUpperReinstateThreshold),
         };
@@ -119,11 +118,14 @@ public sealed partial class CustomSimulationCostsWindow : Window
     private static decimal DisplayValue(NumericUpDown control, double value) =>
         (decimal)Math.Clamp(value, (double)control.Minimum, (double)control.Maximum);
 
-    private static void SetDisplayValue(NumericUpDown control, double value) =>
+    internal static void SetDisplayValue(NumericUpDown control, double value) =>
         control.Value = DisplayValue(control, value);
 
     private static double Read(NumericUpDown control, double previous) =>
         control.Value is { } value && value != DisplayValue(control, previous) ? (double)value : previous;
+
+    internal static double? ReadRangePercent(NumericUpDown control, double? explicitValue, double effectiveValue) =>
+        control.Value is { } value && value != DisplayValue(control, effectiveValue) ? (double)value : explicitValue;
 
     private void Apply_Click(object? sender, RoutedEventArgs e)
     {

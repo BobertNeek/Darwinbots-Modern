@@ -91,11 +91,11 @@ public sealed partial class GlobalSettingsWindow : Window
         DynamicMultiplier.Value = (decimal)costs.DynamicMultiplier;
         DynamicAllRobots.IsChecked = costs.DynamicAllRobots;
         DynamicTargetPopulation.Value = costs.DynamicTargetPopulation;
-        DynamicPopulationRange.Value = costs.DynamicPopulationRange;
+        CustomSimulationCostsWindow.SetDisplayValue(DynamicUpperRangePercent, costs.EffectiveDynamicUpperRangePercent);
+        CustomSimulationCostsWindow.SetDisplayValue(DynamicLowerRangePercent, costs.EffectiveDynamicLowerRangePercent);
         DynamicSensitivity.Value = (decimal)costs.DynamicSensitivity;
         DynamicAllowNegative.IsChecked = costs.DynamicAllowNegative;
         DynamicLowerZeroThreshold.Value = (decimal)costs.DynamicLowerZeroThreshold;
-        DynamicUpperZeroThreshold.Value = (decimal)costs.DynamicUpperZeroThreshold;
         DynamicLowerReinstateThreshold.Value = (decimal)costs.DynamicLowerReinstateThreshold;
         DynamicUpperReinstateThreshold.Value = (decimal)costs.DynamicUpperReinstateThreshold;
         LeagueOfflineOwned.IsChecked = settings.League.OwnedByOfflineModes;
@@ -165,7 +165,7 @@ public sealed partial class GlobalSettingsWindow : Window
             EpigeneticOverloadThreshold = (ulong)(EpigeneticOverloadThreshold.Value ?? 17),
             SaveAsTemporaryGene = SaveAsTemporaryGene.IsChecked == true,
         },
-        Costs = new GlobalSimulationCostSettings
+        Costs = Settings.Costs with
         {
             GlobalMultiplier = (double)(GlobalCostMultiplier.Value ?? 1),
             DnaNumber = (double)(DnaNumber.Value ?? 0),
@@ -197,11 +197,13 @@ public sealed partial class GlobalSettingsWindow : Window
             DynamicMultiplier = (double)(DynamicMultiplier.Value ?? 0),
             DynamicAllRobots = DynamicAllRobots.IsChecked == true,
             DynamicTargetPopulation = (int)(DynamicTargetPopulation.Value ?? 0),
-            DynamicPopulationRange = (int)(DynamicPopulationRange.Value ?? 0),
+            DynamicUpperRangePercent = CustomSimulationCostsWindow.ReadRangePercent(DynamicUpperRangePercent,
+                Settings.Costs.DynamicUpperRangePercent, Settings.Costs.EffectiveDynamicUpperRangePercent),
+            DynamicLowerRangePercent = CustomSimulationCostsWindow.ReadRangePercent(DynamicLowerRangePercent,
+                Settings.Costs.DynamicLowerRangePercent, Settings.Costs.EffectiveDynamicLowerRangePercent),
             DynamicSensitivity = (double)(DynamicSensitivity.Value ?? 1),
             DynamicAllowNegative = DynamicAllowNegative.IsChecked == true,
             DynamicLowerZeroThreshold = (double)(DynamicLowerZeroThreshold.Value ?? 0),
-            DynamicUpperZeroThreshold = (double)(DynamicUpperZeroThreshold.Value ?? 0),
             DynamicLowerReinstateThreshold = (double)(DynamicLowerReinstateThreshold.Value ?? 0),
             DynamicUpperReinstateThreshold = (double)(DynamicUpperReinstateThreshold.Value ?? 0),
         },
