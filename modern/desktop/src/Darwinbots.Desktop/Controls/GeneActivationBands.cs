@@ -8,6 +8,7 @@ namespace Darwinbots.Desktop.Controls;
 
 internal sealed class GeneActivationBands : Control
 {
+    private static readonly Typeface LabelTypeface = new(new FontFamily("Consolas, DejaVu Sans Mono, Menlo, $Default"));
     private GeneActivationMeterSnapshot? _meter;
     private bool _hasCurrentFocus;
 
@@ -53,7 +54,7 @@ internal sealed class GeneActivationBands : Control
                 context.DrawLine(tickPen, new Point(x, bandsHeight), new Point(x, bandsHeight + labelHeight / 2));
             }
             var text = new FormattedText(label.Number.ToString(CultureInfo.InvariantCulture), CultureInfo.InvariantCulture,
-                FlowDirection.LeftToRight, Typeface.Default, 10, Brushes.Black);
+                FlowDirection.LeftToRight, LabelTypeface, 10, Brushes.Black);
             context.DrawText(text, new Point(label.Center * Bounds.Width - text.Width / 2, bandsHeight + 2));
         }
     }
