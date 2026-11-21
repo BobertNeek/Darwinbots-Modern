@@ -46,6 +46,7 @@ public sealed record OrganismSnapshot(
     int Poisoned = 0,
     OrganismKey?[]? Parents = null)
 {
+    public bool Exists { get; init; } = true;
     public bool IsCorpse { get; init; }
     public bool IsHidden { get; init; }
     public VisualPhenotypeSnapshot Phenotype { get; init; } = VisualPhenotypeSnapshot.Default;
@@ -65,6 +66,7 @@ public sealed record OrganismSnapshot(
     public ulong Descendants { get; init; }
     public ulong SimulationId { get; init; }
     public ulong UniqueId { get; init; }
+    public ulong? ParentAbsoluteId { get; init; }
     public int VirusTimer { get; init; }
     public ulong NewMutations { get; init; }
     public ulong TotalMutations { get; init; }

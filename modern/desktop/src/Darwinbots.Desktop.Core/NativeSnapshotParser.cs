@@ -48,6 +48,7 @@ public static class NativeSnapshotParser
             organism.Poisoned,
             organism.Parents?.Select(parent => parent is null ? (OrganismKey?)null : new OrganismKey(parent.Slot, parent.Generation)).ToArray())
         {
+            Exists = organism.Flags?.Exists ?? true,
             IsCorpse = organism.Flags?.Corpse ?? false,
             IsHidden = organism.Flags?.Hidden ?? false,
             Phenotype = ParsePhenotype(organism.Phenotype),
@@ -71,6 +72,7 @@ public static class NativeSnapshotParser
             Descendants = organism.Descendants,
             SimulationId = organism.SimulationId,
             UniqueId = organism.UniqueId,
+            ParentAbsoluteId = organism.ParentAbsoluteId,
             VirusTimer = organism.VirusTimer,
             Touch = organism.Touch,
             Taste = organism.Taste,
@@ -919,6 +921,7 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("descendants")] ulong Descendants,
         [property: JsonPropertyName("simulation_id")] ulong SimulationId,
         [property: JsonPropertyName("unique_id")] ulong UniqueId,
+        [property: JsonPropertyName("parent_absolute_id")] ulong? ParentAbsoluteId,
         [property: JsonPropertyName("virus_timer")] int VirusTimer,
         [property: JsonPropertyName("new_mutations")] ulong NewMutations,
         [property: JsonPropertyName("total_mutations")] ulong TotalMutations,
@@ -933,7 +936,8 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("flags")] NativeOrganismFlags? Flags);
 
     private sealed record NativeOrganismFlags([property: JsonPropertyName("corpse")] bool Corpse,
-        [property: JsonPropertyName("hidden")] bool Hidden);
+        [property: JsonPropertyName("hidden")] bool Hidden,
+        [property: JsonPropertyName("exists")] bool? Exists);
 
     private sealed record NativeMutationProfile(
         [property: JsonPropertyName("point")] NativeMutationRate? Point,
