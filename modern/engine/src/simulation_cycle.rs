@@ -2,6 +2,26 @@ use serde::{Deserialize, Serialize};
 
 use crate::OrganismId;
 
+/// Schedule the position writeback performed by DB2's Redraw after a cycle.
+#[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum NativeRedrawCadence {
+    #[default]
+    Off,
+    EveryCycle,
+    EveryTenthCycle,
+}
+
+impl NativeRedrawCadence {
+    pub(crate) fn applies(self, native_cycle: i32) -> bool {
+        match self {
+            Self::Off => false,
+            Self::EveryCycle => true,
+            Self::EveryTenthCycle => native_cycle % 10 == 0,
+        }
+    }
+}
+
 #[repr(u16)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum CyclePhase {
