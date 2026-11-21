@@ -14,7 +14,7 @@ public enum SimulationSaveFormat
 
 public interface IDesktopStorageService
 {
-    Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner);
+    Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner, string? mainDirectory = null);
     Task<bool> SaveLivingSnapshotAsync(
         TopLevel owner,
         string suggestedFileName,

@@ -24,11 +24,14 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         _profileDirectory = Path.GetFullPath(profileDirectory);
     }
 
-    public async Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner)
+    public async Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner, string? mainDirectory = null)
     {
-        var files = await owner.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        var storage = owner.StorageProvider;
+        using var folder = mainDirectory is null ? null : await NativeRobotFolderAsync(storage, mainDirectory);
+        var files = await storage.OpenFilePickerAsync(new FilePickerOpenOptions
         {
             Title = "Import Darwinbots robot DNA",
+            SuggestedStartLocation = folder,
             AllowMultiple = true,
             FileTypeFilter = [RobotFileType()],
         });
