@@ -4,6 +4,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using System.Globalization;
 using Darwinbots.Desktop.Core;
+using Darwinbots.Desktop.Core.LegacyMenus;
 
 namespace Darwinbots.Desktop.Views;
 
@@ -23,6 +24,7 @@ public sealed class RobotDetailsWindow : Window
     private readonly TextBlock _subtitle = new();
     private readonly TextBlock _facts = new();
     private readonly TextBlock _factsTab = new();
+    private readonly Button? _showNativeActivations;
     private readonly TextBox _dna = new();
     private readonly TextBox _memory = new();
     private readonly TextBlock _activationSummary = new();
@@ -39,8 +41,9 @@ public sealed class RobotDetailsWindow : Window
     public RobotDetailsWindow(
         SimulationSession session,
         OrganismKey focus,
-        RobotDetailsTab initialTab = RobotDetailsTab.Facts)
-        : this(session, focus, initialTab, string.Empty)
+        RobotDetailsTab initialTab = RobotDetailsTab.Facts,
+        Func<Task<LegacyCommandResult>>? showNativeActivations = null)
+        : this(session, focus, initialTab, string.Empty, showNativeActivations)
     {
         Update(session.LatestSnapshot);
     }
@@ -53,7 +56,8 @@ public sealed class RobotDetailsWindow : Window
         SimulationSession? session,
         OrganismKey focus,
         RobotDetailsTab initialTab,
-        string dna)
+        string dna,
+        Func<Task<LegacyCommandResult>>? showNativeActivations = null)
     {
         _session = session;
         _focus = focus;
@@ -173,6 +177,23 @@ public sealed class RobotDetailsWindow : Window
         });
 
         var body = new Grid { ColumnDefinitions = new ColumnDefinitions("330,*") };
+        Control facts = new ScrollViewer { Content = _facts };
+        if (showNativeActivations is not null)
+        {
+            _showNativeActivations = new Button
+            {
+                Name = "NativeRobotInfoShowActivations",
+                Content = "Show activations",
+                Margin = new Thickness(0, 10, 0, 0),
+            };
+            _showNativeActivations.Click += async (_, _) =>
+            {
+                try { _status.Text = (await showNativeActivations()).Status; }
+                catch (Exception error) { _status.Text = error.Message; }
+            };
+            DockPanel.SetDock(_showNativeActivations, Dock.Bottom);
+            facts = new DockPanel { Children = { _showNativeActivations, facts } };
+        }
         body.Children.Add(new Border
         {
             Margin = new Thickness(18, 18, 0, 0),
@@ -180,7 +201,7 @@ public sealed class RobotDetailsWindow : Window
             Background = Brush.Parse("#E5ECD9"),
             BorderBrush = Brush.Parse("#C8C3B6"),
             BorderThickness = new Thickness(1),
-            Child = new ScrollViewer { Content = _facts },
+            Child = facts,
         });
         Grid.SetColumn(_tabs, 1);
         body.Children.Add(_tabs);
@@ -236,6 +257,8 @@ public sealed class RobotDetailsWindow : Window
 
     public void SetSnapshot(EngineSnapshot snapshot)
     {
+        if (_showNativeActivations is not null)
+            _showNativeActivations.IsVisible = snapshot.NativeCycle.HasValue;
         _diagnostic.Update(snapshot, _focus);
         var organism = snapshot.Organisms.FirstOrDefault(value =>
             value.Slot == _focus.Slot && value.Generation == _focus.Generation);
