@@ -70,6 +70,25 @@ public sealed class LegacySettingsImportTests
         }
     }
 
+    [Theory]
+    [InlineData(0d, "0", 50d)]
+    [InlineData(37.5d, "37.5", 37.5d)]
+    public void BareNativeSettingsApplyTheOriginalDynamicSensitivityFallback(double configured, string value, double expected)
+    {
+        var fixture = Path.Combine(RepositoryRoot(), "Installer", "sets", "Simple Simulation.set");
+        var original = Db2SettingsCodec.Decode(File.ReadAllBytes(fixture));
+        var costs = original.GlobalSettings.Costs with { DynamicSensitivity = configured };
+        var settings = original with { GlobalSettings = original.GlobalSettings with { Costs = costs } };
+        var encoded = Db2SettingsCodec.Encode(settings);
+        var native = LegacyDnaText.Decode(encoded).Split("#DARWINBOTS_MODERN_SETTINGS_V1#")[0];
+        const int costsStart = 2 + 90 + 8 + 92 * 2;
+        Assert.Equal(value, native.Split("\r\n")[costsStart + 55]);
+
+        var imported = Db2SettingsCodec.Decode(LegacyDnaText.Encode(native));
+        Assert.Equal(expected, imported.GlobalSettings.Costs.DynamicSensitivity);
+        Assert.Equal(configured, Db2SettingsCodec.Decode(encoded).GlobalSettings.Costs.DynamicSensitivity);
+    }
+
     [Fact]
     public void ExportedSettingsKeepNativeFieldsReadableWithoutTheModernExtension()
     {
