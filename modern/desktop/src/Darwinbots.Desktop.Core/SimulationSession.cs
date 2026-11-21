@@ -658,6 +658,10 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task RemoveFileTeleporterAsync(uint id, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.RemoveFileTeleporter(id), cancellationToken);
 
+    public Task RemoveTeleportersAsync(IReadOnlyList<uint> teleporterIds, IReadOnlyList<uint> fileTeleporterIds,
+        CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.RemoveTeleporters(teleporterIds, fileTeleporterIds), cancellationToken);
+
     public Task SetBrownianMotionAsync(float value, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.SetBrownianMotion(value), cancellationToken);
 

@@ -899,6 +899,14 @@ public sealed partial class NativeEngineClient : IEngineClient
     public void RemoveFileTeleporter(uint id) => ExecuteBatch(
         new { version = 1, commands = new[] { new { type = "remove_file_teleporter", id } } }, "remove file teleporter");
 
+    public void RemoveTeleporters(IReadOnlyList<uint> teleporterIds, IReadOnlyList<uint> fileTeleporterIds) => ExecuteBatch(
+        new
+        {
+            version = 1,
+            commands = teleporterIds.Select(id => new { type = "remove_teleporter", id })
+                .Concat(fileTeleporterIds.Select(id => new { type = "remove_file_teleporter", id })).ToArray(),
+        }, "remove teleporters");
+
     private static object FileTeleporterPayload(FileTeleporterSnapshot teleporter) => new
     {
         id = teleporter.Id,

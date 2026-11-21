@@ -685,6 +685,103 @@ public sealed class TeleporterRenderedTests
         }, CancellationToken.None);
     }
 
+    [Fact]
+    public async Task DeleteAllTeleportersClearsSelectionBeforeTheIdIsReused()
+    {
+        var setup = new WorldSetupOptions { Backend = "Cpu", WorldWidth = 4_000, WorldHeight = 2_000, PopulationCapacity = 16 };
+        var transferDirectory = Directory.CreateTempSubdirectory("darwinbots-delete-teleporters-");
+        try
+        {
+            var nativeInbound = transferDirectory.CreateSubdirectory("native-inbound").FullName;
+            var fileInbound = transferDirectory.CreateSubdirectory("file-inbound").FullName;
+            await DesktopTestApplication.Session.Dispatch(async () =>
+            {
+                var player = new MainWindow([], setup, NativeEngineClientFactory.Instance, new AuditStorageService())
+                {
+                    WindowState = WindowState.Normal, Width = 1_100, Height = 820,
+                };
+                player.Show();
+                try
+                {
+                    var menu = player.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                    var delete = menu.FindCommandItem(LegacyCommandId.ObjectsDeleteTeleporter)!;
+                    var deleteAll = menu.FindCommandItem(LegacyCommandId.ObjectsDeleteAllTeleporters)!;
+                    var add = player.FindControl<Button>("AddTeleporterButton")!;
+                    var edit = player.FindControl<Button>("EditTeleporterButton")!;
+                    var viewport = player.FindControl<WorldViewport>("Viewport")!;
+                    var model = Assert.IsType<MainWindowViewModel>(player.DataContext);
+                    await WaitFor(() => Session(player) is not null && deleteAll.IsEnabled);
+                    var session = Session(player)!;
+                    var playerSelection = typeof(MainWindow).GetField("_selectedFeature", BindingFlags.Instance | BindingFlags.NonPublic)!;
+                    var viewportSelection = typeof(WorldViewport).GetField("_selectedFeature", BindingFlags.Instance | BindingFlags.NonPublic)!;
+                    var viewportSnapshot = typeof(WorldViewport).GetField("_snapshot", BindingFlags.Instance | BindingFlags.NonPublic)!;
+
+                    StabilizeForInput(player, viewport);
+                    var source = new Point(viewport.Bounds.Width * 0.25, viewport.Bounds.Height * 0.30);
+                    var destination = new Point(viewport.Bounds.Width * 0.68, viewport.Bounds.Height * 0.62);
+                    async Task<TeleporterSnapshot> PlaceLocalAsync()
+                    {
+                        Click(player, add);
+                        ClickAt(player, viewport, source);
+                        ClickAt(player, viewport, destination);
+                        await WaitFor(() => model.Status.EndsWith("ADDED", StringComparison.Ordinal)
+                            && session.LatestSnapshot.Teleporters.Count == 1
+                            && viewportSnapshot.GetValue(viewport) is EngineSnapshot drawn
+                            && drawn.Teleporters.Count == 1);
+                        return Assert.Single(session.LatestSnapshot.Teleporters);
+                    }
+
+                    var original = await PlaceLocalAsync();
+                    ClickAt(player, viewport, source);
+                    Assert.True(delete.IsEnabled);
+                    Assert.True(edit.IsEnabled);
+                    var selected = new WorldFeatureSelection(WorldFeatureKind.Teleporter, original.Id);
+                    Assert.Equal(selected, playerSelection.GetValue(player));
+                    Assert.Equal(selected, viewportSelection.GetValue(viewport));
+
+                    await session.AddTeleporterAsync(new TeleporterSnapshot(2, [2_000f, 800f], 80f, [2_000f, 800f])
+                    {
+                        Mode = "inbound", Path = nativeInbound, InboundPath = nativeInbound,
+                    });
+                    await session.AddFileTeleporterAsync(new FileTeleporterSnapshot(
+                        3, [3_000f, 1_600f], 80f, fileInbound, "", 10, 0, 4,
+                        new TeleporterFilterSnapshot(false, false, true), 0, 0));
+                    var before = session.LatestSnapshot;
+                    Assert.Single(before.Teleporters, teleporter => teleporter.Inbound && !teleporter.Local);
+                    Assert.Single(before.FileTeleporters);
+
+                    deleteAll.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    await WaitFor(() => model.Status == "DELETED 3 TELEPORTER(S)");
+                    Assert.Empty(session.LatestSnapshot.Teleporters);
+                    Assert.Empty(session.LatestSnapshot.FileTeleporters);
+                    Assert.Equal(before.Tick, session.LatestSnapshot.Tick);
+                    Assert.Equal(before.Population, session.LatestSnapshot.Population);
+                    Assert.Null(playerSelection.GetValue(player));
+                    Assert.Null(viewportSelection.GetValue(viewport));
+                    Assert.False(delete.IsEnabled);
+                    Assert.False(edit.IsEnabled);
+
+                    var replacement = await PlaceLocalAsync();
+                    Assert.Equal(original.Id, replacement.Id);
+                    Assert.False(delete.IsEnabled);
+                    Assert.False(edit.IsEnabled);
+                    ClickAt(player, viewport, source);
+                    Assert.True(delete.IsEnabled);
+                    Assert.True(edit.IsEnabled);
+                    delete.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    await WaitFor(() => model.Status == $"TELEPORTER {replacement.Id} REMOVED");
+                    Assert.Empty(session.LatestSnapshot.Teleporters);
+                    Assert.False(delete.IsEnabled);
+                    Assert.False(edit.IsEnabled);
+                    Assert.Same(session, Session(player));
+                    Assert.Equal(before.Tick, session.LatestSnapshot.Tick);
+                }
+                finally { player.Close(); }
+            }, CancellationToken.None);
+        }
+        finally { transferDirectory.Delete(recursive: true); }
+    }
+
     private static SimulationSession? Session(MainWindow window) =>
         typeof(MainWindow)
             .GetField("_session", BindingFlags.Instance | BindingFlags.NonPublic)

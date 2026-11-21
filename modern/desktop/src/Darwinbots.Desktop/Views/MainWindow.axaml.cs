@@ -2550,17 +2550,20 @@ public sealed partial class MainWindow : Window
         var route = ObjectEditorPolicy.RouteDelete(ToObjectEditorKind(feature.Kind), SelectedObject());
         if (!route.Allowed)
             return LegacyCommandResult.Failure(route.DisabledReason ?? "SELECT A WORLD OBJECT FIRST");
+        var generation = _worldLoadGeneration;
         await _advanceGate.WaitAsync();
         try
         {
-            if (_loadingSimulation || _navigationInFlight || !IsVisible || _session != session)
+            if (_loadingSimulation || _navigationInFlight || !IsVisible || _session != session
+                || generation != _worldLoadGeneration)
                 return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+            if (_selectedFeature != feature) return LegacyCommandResult.Cancel();
             var snapshot = session.LatestSnapshot;
             if (feature.Kind == WorldFeatureKind.Obstacle && snapshot.Obstacles.Any(obstacle => obstacle.Id == feature.Id))
                 await session.RemoveObstacleAsync(feature.Id);
             else if (feature.Kind == WorldFeatureKind.Teleporter
                 && (snapshot.FileTeleporters.Any(teleporter => teleporter.Id == feature.Id)
-                    || snapshot.Teleporters.Any(teleporter => teleporter.Id == feature.Id)))
+                    || snapshot.Teleporters.Any(teleporter => teleporter.Id == feature.Id && IsOfflineTeleporter(teleporter))))
                 await DeleteSelectedTeleporterAsync(session, feature.Id);
             else return LegacyCommandResult.Failure("SELECT A WORLD OBJECT FIRST");
             if (_selectedFeature == feature)
@@ -2577,12 +2580,32 @@ public sealed partial class MainWindow : Window
     private async Task<LegacyCommandResult> DeleteAllTeleportersCommandAsync()
     {
         if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        var snapshot = session.LatestSnapshot;
-        var teleporterIds = snapshot.Teleporters.Select(teleporter => teleporter.Id).ToArray();
-        var fileTeleporterIds = snapshot.FileTeleporters.Select(teleporter => teleporter.Id).ToArray();
-        await DeleteTeleportersAsync(session, teleporterIds, fileTeleporterIds);
-        return LegacyCommandResult.Success($"DELETED {teleporterIds.Length + fileTeleporterIds.Length} TELEPORTER(S)");
+        var generation = _worldLoadGeneration;
+        await _advanceGate.WaitAsync();
+        try
+        {
+            if (_loadingSimulation || _navigationInFlight || !IsVisible || _session != session
+                || generation != _worldLoadGeneration)
+                return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+            var snapshot = session.LatestSnapshot;
+            var teleporterIds = snapshot.Teleporters.Where(IsOfflineTeleporter).Select(teleporter => teleporter.Id).ToArray();
+            var fileTeleporterIds = snapshot.FileTeleporters.Select(teleporter => teleporter.Id).ToArray();
+            var count = teleporterIds.Length + fileTeleporterIds.Length;
+            if (count != 0) await DeleteTeleportersAsync(session, teleporterIds, fileTeleporterIds);
+            if (_selectedFeature is { Kind: WorldFeatureKind.Teleporter })
+            {
+                _selectedFeature = null;
+                Viewport.SelectFeature(null);
+                RefreshFeatureEditorButtons();
+                RefreshLegacyMenuStates();
+            }
+            return LegacyCommandResult.Success($"DELETED {count} TELEPORTER(S)");
+        }
+        finally { _advanceGate.Release(); }
     }
+
+    private static bool IsOfflineTeleporter(TeleporterSnapshot teleporter) =>
+        !teleporter.Internet && !string.Equals(teleporter.Mode.Trim(), "internet", StringComparison.OrdinalIgnoreCase);
 
     private Task DeleteSelectedTeleporterAsync(SimulationSession session, uint id) =>
         session.LatestSnapshot.FileTeleporters.Any(teleporter => teleporter.Id == id)
@@ -2598,8 +2621,7 @@ public sealed partial class MainWindow : Window
             InvalidateTeleporterDrag();
             if (_nativeTeleporterEditor is { } editor && teleporterIds.Contains(editor.TeleporterId))
                 CloseNativeTeleporterEditor();
-            foreach (var id in teleporterIds) await session.RemoveTeleporterAsync(id);
-            foreach (var id in fileTeleporterIds) await session.RemoveFileTeleporterAsync(id);
+            await session.RemoveTeleportersAsync(teleporterIds, fileTeleporterIds);
         }
         finally { _teleporterDeletionsInFlight--; }
     }
