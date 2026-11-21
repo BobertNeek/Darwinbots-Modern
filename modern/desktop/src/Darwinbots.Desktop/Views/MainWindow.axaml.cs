@@ -109,6 +109,7 @@ public sealed partial class MainWindow : Window
     private bool _editingLiveSettings;
     private int _worldLoadGeneration;
     private bool _showingNativeRobotMutationRates;
+    private bool _simulationFileCommandInFlight;
     private readonly SemaphoreSlim _advanceGate = new(1, 1);
     private volatile bool _loadingSimulation;
     private RobotDetailsWindow? _nativeRobotInfoWindow;
@@ -1270,33 +1271,33 @@ public sealed partial class MainWindow : Window
         return LegacyCommandResult.Success(_windowClosed ? "QUIT" : _viewModel.Status);
     }
 
-    private async Task<LegacyCommandResult> SaveSimulationWithoutMutationsCommandAsync()
-    {
-        if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        var format = await _storage.SaveSimulationWithMutationOptionsAsync(this, format =>
-            format == SimulationSaveFormat.Legacy
-                ? session.SaveLegacyWithoutMutationDetailsAsync()
-                : session.SaveWithoutMutationsAsync());
-        return format switch
+    private Task<LegacyCommandResult> SaveSimulationWithoutMutationsCommandAsync() =>
+        WithPausedSimulationFileDialogAsync(async session =>
         {
-            SimulationSaveFormat.Legacy => LegacyCommandResult.Success("DARWINBOTS 2 SIMULATION SAVED WITHOUT MUTATION DETAILS"),
-            SimulationSaveFormat.Modern => LegacyCommandResult.Success("SAVED WITHOUT MUTATION SETTINGS"),
-            _ => LegacyCommandResult.Cancel(),
-        };
-    }
+            var format = await _storage.SaveSimulationWithMutationOptionsAsync(this, format =>
+                format == SimulationSaveFormat.Legacy
+                    ? session.SaveLegacyWithoutMutationDetailsAsync()
+                    : session.SaveWithoutMutationsAsync());
+            return format switch
+            {
+                SimulationSaveFormat.Legacy => LegacyCommandResult.Success("DARWINBOTS 2 SIMULATION SAVED WITHOUT MUTATION DETAILS"),
+                SimulationSaveFormat.Modern => LegacyCommandResult.Success("SAVED WITHOUT MUTATION SETTINGS"),
+                _ => LegacyCommandResult.Cancel(),
+            };
+        });
 
-    private async Task<LegacyCommandResult> SaveSimulationCommandAsync()
-    {
-        if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        var format = await _storage.SaveSimulationWithFormatAsync(this, format =>
-            format == SimulationSaveFormat.Legacy ? session.SaveLegacyAsync() : session.SaveAsync());
-        return format switch
+    private Task<LegacyCommandResult> SaveSimulationCommandAsync() =>
+        WithPausedSimulationFileDialogAsync(async session =>
         {
-            SimulationSaveFormat.Legacy => LegacyCommandResult.Success("DARWINBOTS 2 SIMULATION SAVED"),
-            SimulationSaveFormat.Modern => LegacyCommandResult.Success("SAVED"),
-            _ => LegacyCommandResult.Cancel(),
-        };
-    }
+            var format = await _storage.SaveSimulationWithFormatAsync(this, format =>
+                format == SimulationSaveFormat.Legacy ? session.SaveLegacyAsync() : session.SaveAsync());
+            return format switch
+            {
+                SimulationSaveFormat.Legacy => LegacyCommandResult.Success("DARWINBOTS 2 SIMULATION SAVED"),
+                SimulationSaveFormat.Modern => LegacyCommandResult.Success("SAVED"),
+                _ => LegacyCommandResult.Cancel(),
+            };
+        });
 
     private async Task<LegacyCommandResult> SaveNativeSimulationCommandAsync()
     {
@@ -1307,14 +1308,46 @@ public sealed partial class MainWindow : Window
             : LegacyCommandResult.Cancel();
     }
 
-    private async Task<LegacyCommandResult> LoadSimulationCommandAsync()
+    private Task<LegacyCommandResult> LoadSimulationCommandAsync() =>
+        WithPausedSimulationFileDialogAsync(async session =>
+        {
+            if (await _storage.OpenSimulationWithSourceAsync(this) is not { } save
+                || !OwnsSimulationFileCommand(session))
+                return LegacyCommandResult.Cancel();
+            await LoadSimulationWithSourceAsync(save.Data, save.LocalPath);
+            return LegacyCommandResult.Success("LOADED");
+        });
+
+    private async Task<LegacyCommandResult> WithPausedSimulationFileDialogAsync(
+        Func<SimulationSession, Task<LegacyCommandResult>> execute)
     {
-        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        if (await _storage.OpenSimulationWithSourceAsync(this) is not { } save)
-            return LegacyCommandResult.Cancel();
-        await LoadSimulationWithSourceAsync(save.Data, save.LocalPath);
-        return LegacyCommandResult.Success("LOADED");
+        if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        if (_simulationFileCommandInFlight || _navigationInFlight || _loadingSimulation || _savingLastExit || _windowClosed)
+            return LegacyCommandResult.Failure("SIMULATION FILE COMMAND UNAVAILABLE");
+
+        _simulationFileCommandInFlight = true;
+        var resume = _runTimer.IsEnabled;
+        var loadGeneration = _worldLoadGeneration;
+        _runTimer.Stop();
+        try
+        {
+            // Drain any running batch before displaying the dialog. Loading
+            // reacquires this gate after selection to install the saved world.
+            await _advanceGate.WaitAsync();
+            _advanceGate.Release();
+            if (!OwnsSimulationFileCommand(session)) return LegacyCommandResult.Cancel();
+            return await execute(session);
+        }
+        finally
+        {
+            _simulationFileCommandInFlight = false;
+            if (resume && loadGeneration == _worldLoadGeneration && OwnsSimulationFileCommand(session))
+                _runTimer.Start();
+        }
     }
+
+    private bool OwnsSimulationFileCommand(SimulationSession session) =>
+        IsVisible && !_windowClosed && !_savingLastExit && !_navigationInFlight && ReferenceEquals(_session, session);
 
     private async Task<LegacyCommandResult> ImportOrganismCommandAsync()
     {
@@ -3104,7 +3137,7 @@ public sealed partial class MainWindow : Window
 
     private void Run_Click(object? sender, RoutedEventArgs e)
     {
-        if (_savingLastExit) return;
+        if (_savingLastExit || _simulationFileCommandInFlight) return;
         _runTimer.Start();
         _viewModel.Status = "RUNNING";
     }
@@ -3804,15 +3837,13 @@ public sealed partial class MainWindow : Window
 
     private async void Load_Click(object? sender, RoutedEventArgs e)
     {
-        if (_session is null) return;
-        if (await _storage.OpenSimulationWithSourceAsync(this) is not { } save) return;
-        await LoadSimulationWithSourceAsync(save.Data, save.LocalPath);
-        _viewModel.Status = "LOADED";
+        var result = await _legacyCommands.ExecuteAsync(LegacyCommandId.FileLoadSimulation);
+        if (!string.IsNullOrWhiteSpace(result.Status)) _viewModel.Status = result.Status;
     }
 
     private async void RunTimer_Tick(object? sender, EventArgs e)
     {
-        if (_session is null || _tickInFlight || !_runTimer.IsEnabled) return;
+        if (_session is null || _tickInFlight || !_runTimer.IsEnabled || _simulationFileCommandInFlight) return;
         _tickInFlight = true;
         var adaptive = !_limitMode && (_turbo || _maximumSpeed);
         var batch = _limitMode ? 1u : adaptive ? _maximumBatch : _ticksPerUpdate;
@@ -3977,7 +4008,7 @@ public sealed partial class MainWindow : Window
             if (expectedSession is not null && (_windowClosed || expectedSession != _session
                 || expectedGeneration != _worldLoadGeneration))
                 throw new InvalidOperationException("This console belongs to a previous simulation.");
-            if (_windowClosed || _session is not { } session || count == 0 || _savingLastExit)
+            if (_windowClosed || _session is not { } session || count == 0 || _savingLastExit || _simulationFileCommandInFlight)
                 return (_session?.LatestSnapshot.Tick ?? 0, 0);
 
             return redrawNative && session.LatestSnapshot.NativeCycle.HasValue
@@ -3996,7 +4027,7 @@ public sealed partial class MainWindow : Window
             await session.FinishOrdinaryRestartAsync();
         var requiresOriginalSource = session.LatestSnapshot.NativeCycle.HasValue
             && await session.HasUnresolvedNativeRepopulationSourcesAsync();
-        while (count > 0)
+        while (count > 0 && !_simulationFileCommandInFlight)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var before = session.LatestSnapshot;
