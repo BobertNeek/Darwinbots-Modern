@@ -307,17 +307,16 @@ public static class NativeCommandSerializer
     internal static object CreateMutationSettingsBatch(MutationSettingsUpdate update) => new
     {
         version = 1,
-        commands = new[]
-        {
-            new
-            {
-                type = "update_mutation_settings",
-                enabled = update.Enabled,
-                global_multiplier = update.GlobalMultiplier,
-                species_rates = update.SpeciesRates.Select(value => new { species = value.Species, rate = value.Rate }).ToArray(),
-                profile = update.Profile is null ? null : MutationProfile(update.Profile),
-            },
-        },
+        commands = new[] { MutationSettingsCommand(update) },
+    };
+
+    private static object MutationSettingsCommand(MutationSettingsUpdate update) => new
+    {
+        type = "update_mutation_settings",
+        enabled = update.Enabled,
+        global_multiplier = update.GlobalMultiplier,
+        species_rates = update.SpeciesRates.Select(value => new { species = value.Species, rate = value.Rate }).ToArray(),
+        profile = update.Profile is null ? null : MutationProfile(update.Profile),
     };
 
     internal static object MutationProfile(MutationProfileUpdate value) => new
@@ -359,30 +358,39 @@ public static class NativeCommandSerializer
     internal static object CreateEnvironmentBatch(EnvironmentUpdate update) => new
     {
         version = 1,
-        commands = new[]
+        commands = new[] { EnvironmentCommand(update) },
+    };
+
+    internal static object CreateNativeAdvancedSettingsBatch(EnvironmentUpdate environment, MutationSettingsUpdate mutation) => new
+    {
+        version = 1,
+        commands = new object[]
         {
-            new
-            {
-                type = "update_environment",
-                metabolism_cost = update.MetabolismCost,
-                vegetable_energy_per_tick = update.VegetableEnergyPerTick,
-                sunlight_energy = update.SunlightEnergy,
-                gravity = update.Gravity,
-                drag = update.Drag,
-                brownian_motion = update.BrownianMotion,
-                physics = Physics(update.Physics),
-                shots = Shots(update.Shots),
-                corpse_decay = CorpseDecay(update.CorpseDecay),
-                waste = Waste(update.Waste),
-                vegetation = Vegetation(update.Vegetation),
-                recording = Recording(update.Recording),
-                auto_speciation = update.AutoSpeciation,
-                speciation_genetic_distance_percent = update.SpeciationGeneticDistancePercent,
-                toroidal_world = update.ToroidalWorld,
-                shapes_visible = update.ShapesVisible,
-                axis_topology = AxisTopology(update.ToroidalWorld, update.WrapX, update.WrapY),
-            },
+            EnvironmentCommand(environment), MutationSettingsCommand(mutation),
+            new { type = "accept_native_advanced_daylight" },
         },
+    };
+
+    private static object EnvironmentCommand(EnvironmentUpdate update) => new
+    {
+        type = "update_environment",
+        metabolism_cost = update.MetabolismCost,
+        vegetable_energy_per_tick = update.VegetableEnergyPerTick,
+        sunlight_energy = update.SunlightEnergy,
+        gravity = update.Gravity,
+        drag = update.Drag,
+        brownian_motion = update.BrownianMotion,
+        physics = Physics(update.Physics),
+        shots = Shots(update.Shots),
+        corpse_decay = CorpseDecay(update.CorpseDecay),
+        waste = Waste(update.Waste),
+        vegetation = Vegetation(update.Vegetation),
+        recording = Recording(update.Recording),
+        auto_speciation = update.AutoSpeciation,
+        speciation_genetic_distance_percent = update.SpeciationGeneticDistancePercent,
+        toroidal_world = update.ToroidalWorld,
+        shapes_visible = update.ShapesVisible,
+        axis_topology = AxisTopology(update.ToroidalWorld, update.WrapX, update.WrapY),
     };
 
     internal static object Physics(Db2PhysicsOptions value) => new

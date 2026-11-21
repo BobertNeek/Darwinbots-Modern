@@ -807,6 +807,13 @@ public sealed partial class NativeEngineClient : IEngineClient
         ExecuteBatch(NativeCommandSerializer.CreateEnvironmentBatch(update), "update environment");
     }
 
+    public void AcceptNativeAdvancedSettings(EnvironmentUpdate environment, MutationSettingsUpdate mutation)
+    {
+        ValidatePosition(environment.Gravity);
+        ExecuteBatch(NativeCommandSerializer.CreateNativeAdvancedSettingsBatch(environment, mutation),
+            "apply native advanced settings");
+    }
+
     private static OrganismKey ReadKey(JsonElement value) => new(
         value.GetProperty("slot").GetUInt32(),
         value.GetProperty("generation").GetUInt32());
