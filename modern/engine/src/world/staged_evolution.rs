@@ -1311,6 +1311,29 @@ mod tests {
     }
 
     #[test]
+    fn resume_restart_mode_repeats_passed_zerobot_test_and_keeps_the_archive() {
+        let (mut world, _) = manual_zerobot_fixture();
+        let state = world.local_mode.evolution.as_mut().unwrap();
+        state.phase = EvolutionPhase::Complete;
+        state.candidate = state.mutators.clone();
+        let original_archive = state.stages.clone();
+        let original_candidate = state.candidate.clone();
+        world.local_mode.status = LocalModeStatus::Completed;
+        assert!(world.local_mode.has_active_restart_mode());
+        let bytes = crate::SaveFile::encode(&world).unwrap();
+
+        let mut resumed = crate::SaveFile::decode(&bytes).unwrap();
+        resumed.resume_restart_mode().unwrap();
+        let state = resumed.local_mode.evolution.as_ref().unwrap();
+        assert_eq!(resumed.local_mode.status, LocalModeStatus::Running);
+        assert_eq!(state.phase, EvolutionPhase::ZerobotTesting);
+        assert_eq!(state.stages, original_archive);
+        assert_eq!(state.candidate, original_candidate);
+        assert_eq!(state.cycle_in_attempt, 0);
+        assert_eq!(resumed.native_cycle, Some(-1));
+    }
+
+    #[test]
     fn native_cycle_staged_handicap_and_stagnancy_do_not_use_attempt_call_count() {
         let mut world = simple();
         world.native_cycle = Some(0);
@@ -1656,6 +1679,18 @@ mod tests {
                 .filter_map(|slot| slot.organism.as_ref())
                 .filter(|robot| !robot.flags.hidden)
                 .all(|robot| robot.program.memory.read(901) == 111)
+        );
+
+        world.clear_restart_mode_hiding();
+        assert!(world.local_mode.has_active_restart_mode());
+        assert!(!world.local_mode.evolution.as_ref().unwrap().hidden);
+        assert!(!world.slots.get(id).unwrap().flags.hidden);
+        assert!(
+            world
+                .snapshot
+                .render_instances
+                .iter()
+                .any(|instance| instance.slot == id.slot())
         );
     }
 

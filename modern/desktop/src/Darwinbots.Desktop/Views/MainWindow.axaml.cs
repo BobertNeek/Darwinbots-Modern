@@ -135,6 +135,7 @@ public sealed partial class MainWindow : Window
     private bool _deadRecordingEnabled;
     private bool _excludeRepopulatingDead;
     private bool _startupComplete;
+    private bool _ownsRestartContinuation;
     private bool _savingLastExit;
     private bool _skipLastExitCheckpoint;
     private bool _windowClosed;
@@ -157,6 +158,8 @@ public sealed partial class MainWindow : Window
     private double _activeCostMultiplier;
     private TrayIcon? _trayIcon;
     private NativeMenuItem? _trayIgnoreErrorsItem;
+
+    internal event Action<string>? RestartContinuationFailed;
 
     public MainWindow() : this([], new WorldSetupOptions(), NativeEngineClientFactory.Instance, AvaloniaDesktopStorageService.Instance) { }
 
@@ -1871,6 +1874,7 @@ public sealed partial class MainWindow : Window
 
     private WorldSetupOptions CreateNextWorldSetup() => _setup with
     {
+        ResumeRestartMode = false,
         GlobalSettings = _globalSettings,
         Recording = _liveEnvironment.Recording ?? new(),
         ShapesVisible = _liveEnvironment.ShapesVisible ?? _setup.ShapesVisible,
@@ -2479,6 +2483,19 @@ public sealed partial class MainWindow : Window
                         _runTimer.Stop();
                         _viewModel.Status = "ZEROBOT EVOLUTION COMPLETE";
                     }
+                    if (!loading && _ownsRestartContinuation && snapshot.LocalMode.Status == LocalModeStatus.Completed
+                        && !snapshot.LocalMode.HasActiveRestartMode)
+                    {
+                        try
+                        {
+                            _storage.ClearRestartContinuation();
+                            _ownsRestartContinuation = false;
+                        }
+                        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+                        {
+                            _viewModel.Status = $"RESTART CONTINUATION CLEANUP FAILED · {error.Message}";
+                        }
+                    }
                     Viewport.SetSnapshot(snapshot);
                     if (_nativeTeleporterEditor is { } editor
                         && (!snapshot.NativeCycle.HasValue
@@ -2514,7 +2531,7 @@ public sealed partial class MainWindow : Window
             var compatibilityWarnings = new List<string>();
             if (_setup.LoadSavePath is { } savePath)
             {
-                await LoadSimulationWithSourceAsync(await File.ReadAllBytesAsync(savePath), savePath);
+                await LoadSimulationWithSourceAsync(await File.ReadAllBytesAsync(savePath), savePath, _setup.ResumeRestartMode);
             }
             else
                 foreach (var species in _setup.Species)
@@ -2558,9 +2575,19 @@ public sealed partial class MainWindow : Window
             if (_windowClosed) return;
             SetIgnoreErrors(!_safemodeBackup);
             _startupComplete = true;
+            if (_setup.ResumeRestartMode)
+            {
+                _runTimer.Start();
+                _viewModel.Status = "RESTART MODE RESUMED";
+            }
         }
         catch (Exception error)
         {
+            if (!_windowClosed && _setup.ResumeRestartMode && RestartContinuationFailed is { } recover)
+            {
+                recover($"Restart mode could not be resumed. {error.Message}");
+                return;
+            }
             await HandleEngineErrorAsync(error, attemptRecovery: true);
         }
     }
@@ -3610,7 +3637,7 @@ public sealed partial class MainWindow : Window
 
     private Task LoadSimulationAsync(byte[] save) => LoadSimulationWithSourceAsync(save, null);
 
-    private async Task LoadSimulationWithSourceAsync(byte[] save, string? sourcePath)
+    private async Task LoadSimulationWithSourceAsync(byte[] save, string? sourcePath, bool resumeRestartMode = false)
     {
         _runTimer.Stop();
         await _advanceGate.WaitAsync();
@@ -3624,6 +3651,8 @@ public sealed partial class MainWindow : Window
             var mainDirectory = _globalSettings.Main.MainDirectory;
             await _session.LoadWithNativeRestartSourcesAsync(save,
                 source => SetupStorageService.ResolveNativeRestartSource(source, sourcePath, mainDirectory));
+            if (resumeRestartMode) await _session.ResumeRestartModeAsync();
+            _ownsRestartContinuation = resumeRestartMode;
             CloseNativeTeleporterEditor();
             _toolWindows.Close(NewTeleporterToolKey);
             _playerBotHighlights.Clear();
@@ -3822,13 +3851,14 @@ public sealed partial class MainWindow : Window
         var close = false;
         var wasEnabled = IsEnabled;
         var disablingForSave = false;
+        var restartMode = false;
         var failure = "LAST SIMULATION SAVE FAILED";
         await _advanceGate.WaitAsync();
         try
         {
             if (_windowClosed || !ReferenceEquals(_session, session) || _navigationInFlight) return;
-            var choice = LiveQuitChoice.KeepSettings;
-            if (_storage.SupportsLastExitSettings && session.LatestSnapshot.LocalMode.Status == LocalModeStatus.Idle)
+            restartMode = session.LatestSnapshot.LocalMode.HasActiveRestartMode;
+            if (restartMode || _storage.SupportsLastExitSettings)
             {
                 if (OwnedWindows.Any(window => window.IsVisible && window.IsDialog)) return;
                 if (!IsVisible)
@@ -3837,32 +3867,62 @@ public sealed partial class MainWindow : Window
                     Show();
                     WindowState = WindowState.Normal;
                 }
-                choice = await new LiveQuitSettingsWindow(_storage.HasLastExitSettings).ShowDialog<LiveQuitChoice>(this);
             }
-            if (choice == LiveQuitChoice.Cancel || _windowClosed || !ReferenceEquals(_session, session)) return;
-
-            IsEnabled = false;
-            disablingForSave = true;
-            _viewModel.Status = "SAVING LAST SIMULATION";
-            byte[] simulation;
-            if (choice == LiveQuitChoice.SaveSettings)
+            var restartChoice = restartMode
+                ? await new RestartQuitWindow().ShowDialog<RestartQuitChoice>(this)
+                : RestartQuitChoice.Stop;
+            if (restartChoice == RestartQuitChoice.Cancel || _windowClosed || !ReferenceEquals(_session, session)) return;
+            if (restartMode && restartChoice == RestartQuitChoice.Keep)
             {
-                failure = "LAST EXIT SETTINGS SAVE FAILED";
-                var capture = await session.CaptureLastExitAsync(CreateNextWorldSetup() with { TicksPerUpdate = _ticksPerUpdate });
-                await _storage.SaveLastExitSettingsAsync(capture.Settings);
-                simulation = capture.Simulation;
-                failure = "LAST SIMULATION SAVE FAILED";
+                IsEnabled = false;
+                disablingForSave = true;
+                failure = "RESTART CONTINUATION SAVE FAILED";
+                _viewModel.Status = "SAVING RESTART CONTINUATION";
+                await _storage.SaveRestartContinuationAsync(await session.SaveAsync());
             }
-            else simulation = await session.SaveAsync();
-            await _storage.SaveLastExitSimulationAsync(simulation);
+            else
+            {
+                if (restartMode || _ownsRestartContinuation)
+                {
+                    failure = "RESTART CONTINUATION CLEANUP FAILED";
+                    _storage.ClearRestartContinuation();
+                    _ownsRestartContinuation = false;
+                    if (restartMode && session.LatestSnapshot.LocalMode.Evolution is not null)
+                        await session.ClearRestartModeHidingAsync();
+                }
+                var choice = _storage.SupportsLastExitSettings
+                    ? await new LiveQuitSettingsWindow(_storage.HasLastExitSettings).ShowDialog<LiveQuitChoice>(this)
+                    : LiveQuitChoice.KeepSettings;
+                if (choice == LiveQuitChoice.Cancel || _windowClosed || !ReferenceEquals(_session, session)) return;
+
+                IsEnabled = false;
+                disablingForSave = true;
+                _viewModel.Status = "SAVING LAST SIMULATION";
+                byte[] simulation;
+                if (choice == LiveQuitChoice.SaveSettings)
+                {
+                    failure = "LAST EXIT SETTINGS SAVE FAILED";
+                    var capture = await session.CaptureLastExitAsync(
+                        CreateNextWorldSetup() with { TicksPerUpdate = _ticksPerUpdate }, stopRestartMode: restartMode);
+                    await _storage.SaveLastExitSettingsAsync(capture.Settings);
+                    simulation = capture.Simulation;
+                }
+                else
+                {
+                    failure = "LAST SIMULATION SAVE FAILED";
+                    simulation = restartMode ? await session.SaveWithoutRestartModeAsync() : await session.SaveAsync();
+                }
+                failure = "LAST SIMULATION SAVE FAILED";
+                await _storage.SaveLastExitSimulationAsync(simulation);
+            }
             _skipLastExitCheckpoint = true;
             close = true;
         }
         catch (Exception error)
         {
-            _skipLastExitCheckpoint = true;
+            _skipLastExitCheckpoint = !restartMode && !_ownsRestartContinuation;
             if (!_windowClosed)
-                _viewModel.Status = $"{failure} · {error.Message} · CLOSE AGAIN TO EXIT";
+                _viewModel.Status = $"{failure} · {error.Message} · {(_skipLastExitCheckpoint ? "CLOSE AGAIN TO EXIT" : "CLOSE AGAIN TO RETRY")}";
         }
         finally
         {

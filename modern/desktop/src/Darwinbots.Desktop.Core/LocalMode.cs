@@ -164,6 +164,15 @@ public sealed record LocalModeSnapshot(
     public LeagueSeriesSnapshot? Series { get; init; }
     public StagedEvolutionSnapshot? Evolution { get; init; }
 
+    public bool HasActiveRestartMode => Status switch
+    {
+        LocalModeStatus.Running or LocalModeStatus.RoundComplete => Evolution is not null
+            || Series is { Workflow: not LeagueWorkflow.Direct } series
+                && (series.ActiveMatch.Count == 2 || series.ActiveSeed.HasValue),
+        LocalModeStatus.Completed => Kind == LocalModeKind.Zerobot && Evolution?.Phase == "complete",
+        _ => false,
+    };
+
     public static LocalModeSnapshot Idle { get; } = new(
         LocalModeStatus.Idle,
         LocalModeKind.League,
