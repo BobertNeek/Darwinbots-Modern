@@ -617,6 +617,9 @@ impl Engine {
             flag(t, "hide_pred", evolution.hidden)?;
             flag(t, "stagnant", evolution.stagnant)?;
         }
+        if let Some(preset) = c.native_field_size {
+            number(t, "field_size", f64::from(preset))?;
+        }
         if let Some(restart) = self.native_restart_export_override() {
             flag(t, "restart", restart)?;
         }
