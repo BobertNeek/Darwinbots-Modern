@@ -44,8 +44,6 @@ public sealed partial class SetupWindow : Window
         _nativeGaussianSpare = nativeGaussianSpare;
         _nativeSunChange = nativeSunChange;
         _nativeProcessCaches = nativeProcessCaches;
-        if (startChloroplasts is { } amount)
-            _environment = _environment with { Vegetation = _environment.Vegetation with { StartChloroplasts = amount } };
         _workflow = new(new WorldSetupOptions());
         InitializeComponent();
         if (!_speciesEditor)
@@ -59,6 +57,8 @@ public sealed partial class SetupWindow : Window
             if (error is not null) SetupStatus.Text = $"GLOBAL SETTINGS LOAD FAILED · {error}";
             ApplyGlobalSettings(_profileSettings);
         }
+        if ((startChloroplasts ?? _profileSettings.Main.StartChloroplasts) is { } amount)
+            _environment = _environment with { Vegetation = _environment.Vegetation with { StartChloroplasts = amount } };
         _workflow.Reset(ReadSetupOptions());
         OnboardingPanel.IsVisible = !_speciesEditor && _storage.IsFirstRun;
         ResumeMenuItem.IsVisible = !_speciesEditor && allowLastExitResume && _storage.FindLastExitSimulation() is not null;

@@ -37,7 +37,14 @@ public sealed partial class App : Application
         {
             var globals = SetupWindow.ReadProfileSettings(storage, out _);
             if (FindStartupSave(requestedSave, globals.Main.MainDirectory) is { } path)
-                return OpenWorld(new WorldSetupOptions { LoadSavePath = path, GlobalSettings = globals });
+                return OpenWorld(new WorldSetupOptions
+                {
+                    LoadSavePath = path, GlobalSettings = globals,
+                    Vegetation = Db2VegetationOptions.Default with
+                    {
+                        StartChloroplasts = globals.Main.StartChloroplasts ?? Db2VegetationOptions.Default.StartChloroplasts,
+                    },
+                });
             error = $"Simulation file not found: {requestedSave}";
         }
 

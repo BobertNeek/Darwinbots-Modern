@@ -31,6 +31,7 @@ public sealed partial class GlobalSettingsWindow : Window
         GreedyEnforcement.IsChecked = main.GreedyEnforcement;
         NewSeed.IsChecked = main.NewSeed;
         SafeMode.IsChecked = main.SafeMode;
+        StartChloroplasts.Value = main.StartChloroplasts ?? Db2VegetationOptions.Default.StartChloroplasts;
         FindBestWeight.Value = main.EffectiveFindBestWeight;
         MainDirectory.Text = main.MainDirectory;
 
@@ -129,6 +130,9 @@ public sealed partial class GlobalSettingsWindow : Window
             NewSeed = NewSeed.IsChecked == true,
             MainDirectory = MainDirectory.Text ?? string.Empty,
             SafeMode = SafeMode.IsChecked == true,
+            StartChloroplasts = StartChloroplasts.Value is { } amount
+                && (Settings.Main.StartChloroplasts is not null || amount != Db2VegetationOptions.Default.StartChloroplasts)
+                    ? (int)amount : null,
             FindBestEnergyWeighting = (FindBestWeight.Value ?? 0) > 0,
             FindBestWeight = (int)(FindBestWeight.Value ?? 0),
         },

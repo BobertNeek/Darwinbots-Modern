@@ -11,10 +11,12 @@ namespace Darwinbots.Desktop.Tests;
 public sealed class PositionalStartupSaveTests
 {
     [Theory]
-    [InlineData(true, false)]
-    [InlineData(true, true)]
-    [InlineData(false, false)]
-    public async Task APositionalSaveStartsInTheLoadedSimulation(bool legacyFormat, bool useLegacySaveDirectory)
+    [InlineData(true, false, null)]
+    [InlineData(true, false, 7280)]
+    [InlineData(true, true, 7280)]
+    [InlineData(false, false, 7280)]
+    public async Task APositionalSaveStartsInTheLoadedSimulation(bool legacyFormat, bool useLegacySaveDirectory,
+        int? globalStartChloroplasts)
     {
         var profile = Directory.CreateTempSubdirectory("darwinbots-positional-save-");
         try
@@ -22,7 +24,10 @@ public sealed class PositionalStartupSaveTests
             var legacyDirectory = Path.Combine(profile.FullName, "Legacy Main Directory");
             var saves = Directory.CreateDirectory(Path.Combine(legacyDirectory, "Saves"));
             var storage = new AvaloniaDesktopStorageService(profile.FullName);
-            await storage.SaveGlobalSettingsAsync(new GlobalSettings { Main = new GlobalMainSettings { MainDirectory = legacyDirectory } });
+            await storage.SaveGlobalSettingsAsync(new GlobalSettings
+            {
+                Main = new GlobalMainSettings { MainDirectory = legacyDirectory, StartChloroplasts = globalStartChloroplasts },
+            });
             var name = $"Startup World {Guid.NewGuid():N}" + (legacyFormat ? ".SIM" : ".db3s");
             var path = Path.Combine(saves.FullName, name);
             using var engine = new NativeEngineClient(new WorldSetupOptions
@@ -55,7 +60,7 @@ public sealed class PositionalStartupSaveTests
                     var session = Assert.IsType<SimulationSession>(typeof(MainWindow)
                         .GetField("_session", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(runtime));
                     var configuration = Assert.IsType<WorldConfiguration>(await session.ReadConfigurationAsync());
-                    Assert.Equal(legacyFormat ? 0 : 1234,
+                    Assert.Equal(legacyFormat ? globalStartChloroplasts ?? 0 : 1234,
                         configuration.Environment.Vegetation.StartChloroplasts);
                     Assert.Same(runtime, Assert.Single(opened));
                 }

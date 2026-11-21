@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using System.Security.Cryptography;
 using Darwinbots.Desktop.Core;
@@ -64,6 +65,23 @@ public static class SetupStorageService
         var source = candidates.FirstOrDefault(File.Exists)
             ?? throw new FileNotFoundException($"DNA file for legacy species '{species.Name}' was not found.", species.DnaPath);
         return species with { Dna = LegacyDnaText.Decode(File.ReadAllBytes(source)), DnaPath = Path.GetFullPath(source) };
+    }
+
+    internal static int? ReadNativeStartingChloroplasts(string? mainDirectory)
+    {
+        if (string.IsNullOrWhiteSpace(mainDirectory)) return null;
+        var directory = mainDirectory.Replace('\', '/');
+        if (directory.Contains('\0') || directory.StartsWith("//", StringComparison.Ordinal)
+            || !Path.IsPathFullyQualified(directory)) return null;
+        try
+        {
+            // frmGset writes one record per line. HDRoutines reads StartChlr as a VB Integer.
+            var entry = File.ReadLines(Path.Combine(directory, "Global.gset")).Skip(29).FirstOrDefault();
+            if (double.TryParse(entry, NumberStyles.Float, CultureInfo.InvariantCulture, out var amount) && double.IsFinite(amount))
+                return (int)Math.Clamp(Math.Round(amount, MidpointRounding.ToEven), 0, 32_000);
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { }
+        return null;
     }
 
     private static bool IsModernJson(string path) =>
