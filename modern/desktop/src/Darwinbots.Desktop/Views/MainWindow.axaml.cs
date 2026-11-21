@@ -76,6 +76,7 @@ public sealed partial class MainWindow : Window
     private bool _navigationInFlight;
     private readonly SemaphoreSlim _advanceGate = new(1, 1);
     private volatile bool _loadingSimulation;
+    private bool _showingNativePhylogeny;
     private OrganismKey? _moveOrganism;
     private WorldInsertionController? _insertion;
     private bool _turbo;
@@ -1587,24 +1588,51 @@ public sealed partial class MainWindow : Window
         return window;
     }
 
-    private Task<LegacyCommandResult> ShowSelectedPhylogenyAsync()
+    private async Task<LegacyCommandResult> ShowSelectedPhylogenyAsync()
     {
         if (_session is not { } session || _loadingSimulation || SelectedRobotKey() is not { } focus)
-            return Task.FromResult(LegacyCommandResult.Failure("NO ROBOT SELECTED"));
-        var window = _toolWindows.ShowOrActivate(
-            $"phylogeny:{focus.Slot}:{focus.Generation}",
-            () => new PhylogenyWindow(session.LatestSnapshot, focus, depth =>
+            return LegacyCommandResult.Failure("NO ROBOT SELECTED");
+        var native = session.LatestSnapshot.NativeCycle.HasValue;
+        if (!native)
+        {
+            var tool = _toolWindows.ShowOrActivate($"phylogeny:{focus.Slot}:{focus.Generation}", CreateWindow);
+            tool.SetSnapshot(session.LatestSnapshot);
+            return LegacyCommandResult.Success("PHILOGENY OPEN");
+        }
+
+        if (_showingNativePhylogeny || _navigationInFlight) return LegacyCommandResult.Cancel();
+        _showingNativePhylogeny = true;
+        var wasRunning = _runTimer.IsEnabled;
+        _runTimer.Stop();
+        await _advanceGate.WaitAsync();
+        try
+        {
+            if (_session != session || _loadingSimulation || _navigationInFlight || !IsVisible || SelectedRobotKey() != focus
+                || !session.LatestSnapshot.Organisms.Any(robot => robot.Slot == focus.Slot && robot.Generation == focus.Generation))
+                return LegacyCommandResult.Cancel();
+            await CreateWindow().ShowDialog(this);
+            return LegacyCommandResult.Success(_viewModel.Status);
+        }
+        finally
+        {
+            _advanceGate.Release();
+            _showingNativePhylogeny = false;
+            if (wasRunning && _session == session && IsVisible && !_loadingSimulation && !_navigationInFlight)
+                _runTimer.Start();
+        }
+
+        PhylogenyWindow CreateWindow() =>
+            new(session.LatestSnapshot, focus, depth =>
             {
                 if (_session != session || _loadingSimulation) return;
                 var descendants = PhylogenyModel.DescendantLinks(session.LatestSnapshot, focus, depth);
+                if (native) Viewport.ShowPhylogeny([]);
                 Viewport.HighlightRobots(descendants.Select(link => link.Child));
             }, () =>
             {
                 if (_session != session || _loadingSimulation) return;
                 Viewport.ShowPhylogeny(PhylogenyModel.WholeLineage(session.LatestSnapshot, focus));
-            }));
-        window.SetSnapshot(session.LatestSnapshot);
-        return Task.FromResult(LegacyCommandResult.Success("PHILOGENY OPEN"));
+            }) { Topmost = native };
     }
 
     private async Task<LegacyCommandResult> ChangeSelectedSpeciesColorAsync()
