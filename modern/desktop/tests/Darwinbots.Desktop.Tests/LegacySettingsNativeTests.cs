@@ -83,6 +83,95 @@ public sealed class LegacySettingsNativeTests
     }
 
     [Fact]
+    public void RootedLegacySettingsKeepNativeFilenamesAndRenamedRosterLabels()
+    {
+        var directory = Directory.CreateTempSubdirectory("db-set-named-sidecar-");
+        try
+        {
+            var path = Path.Combine(directory.FullName, "Setup.set");
+            var first = new SpeciesImport("Base.txt", "start stop\r\n", false, 0xff123456, 5, 3000, 0, false, 0);
+            var second = first with { Dna = "start 2 .up store stop\r\n" };
+            var renamed = first with { Name = "Renamed Line", DnaPath = Path.Combine(directory.FullName, "Original.txt") };
+            var settings = new DesktopSettings { Species = [first, second, renamed] };
+
+            var encoded = SetupStorageService.EncodeSettings(path, settings);
+            var modern = SetupStorageService.DecodeSettings(path, encoded);
+            var native = SetupStorageService.DecodeSettings(path, WithoutModernExtension(encoded));
+
+            Assert.Equal(settings.Species.Select(row => row.Name), modern.Species.Select(row => row.Name));
+            Assert.Equal(settings.Species.Select(row => row.Name), native.Species.Select(row => row.Name));
+            Assert.Equal(settings.Species.Select(row => row.Dna), native.Species.Select(row => row.Dna));
+            Assert.Equal(native.Species.Select(row => row.Name), native.Species.Select(row => Path.GetFileName(row.DnaPath)));
+            Assert.NotEqual(Path.GetDirectoryName(native.Species[0].DnaPath), Path.GetDirectoryName(native.Species[1].DnaPath));
+            Assert.Equal(Path.GetDirectoryName(native.Species[0].DnaPath), Path.GetDirectoryName(native.Species[2].DnaPath));
+            Assert.Equal(encoded, SetupStorageService.EncodeSettings(path, settings));
+            Assert.Equal(3, Directory.GetFiles(Path.ChangeExtension(path, ".robots"), "*", SearchOption.AllDirectories).Length);
+        }
+        finally { directory.Delete(recursive: true); }
+    }
+
+    [Theory]
+    [InlineData("../Outside.txt", "Picked.txt")]
+    [InlineData("NUL.txt", "Picked.txt")]
+    [InlineData("Modern 🙂", null)]
+    public void RootedLegacySettingsFallBackWhenTheLabelCannotBeANativeFilename(string label, string? fallback)
+    {
+        var directory = Directory.CreateTempSubdirectory("db-set-sidecar-fallback-");
+        try
+        {
+            var path = Path.Combine(directory.FullName, "Setup.set");
+            var row = new SpeciesImport(label, "start stop\r\n", false, 0xff123456, 1, 1000, 0, false, 0)
+            {
+                DnaPath = fallback is null ? null : @"C:\Robots\" + fallback,
+            };
+            var encoded = SetupStorageService.EncodeSettings(path, new() { Species = [row] });
+            var modern = Assert.Single(SetupStorageService.DecodeSettings(path, encoded).Species);
+            var native = Assert.Single(SetupStorageService.DecodeSettings(path, WithoutModernExtension(encoded)).Species);
+
+            Assert.Equal(label, modern.Name);
+            var expected = fallback ?? Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
+                LegacyDnaText.Encode(row.Dna))) + ".txt";
+            Assert.Equal(expected, native.Name);
+            Assert.Equal(expected, Path.GetFileName(native.DnaPath));
+            Assert.Equal(row.Dna, native.Dna);
+        }
+        finally { directory.Delete(recursive: true); }
+    }
+
+    [Fact]
+    public void PreviouslyGeneratedFlatHashSidecarsStillLoad()
+    {
+        var directory = Directory.CreateTempSubdirectory("db-set-old-sidecar-");
+        try
+        {
+            var path = Path.Combine(directory.FullName, "Previous.set");
+            const string dna = "start stop\r\n";
+            var bytes = LegacyDnaText.Encode(dna);
+            var hashName = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes)) + ".txt";
+            var bundle = directory.CreateSubdirectory("Previous.robots");
+            var dnaPath = Path.Combine(bundle.FullName, hashName);
+            File.WriteAllBytes(dnaPath, bytes);
+            var row = new SpeciesImport("Previous label", dna, false, 0xff123456, 1, 1000, 0, false, 0) { DnaPath = dnaPath };
+            var encoded = Db2SettingsCodec.Encode(new() { Species = [row] });
+
+            var modern = Assert.Single(SetupStorageService.DecodeSettings(path, encoded).Species);
+            var native = Assert.Single(SetupStorageService.DecodeSettings(path, WithoutModernExtension(encoded)).Species);
+            Assert.Equal(row.Name, modern.Name);
+            Assert.Equal(dnaPath, modern.DnaPath);
+            Assert.Equal(hashName, native.Name);
+            Assert.Equal(dnaPath, native.DnaPath);
+            Assert.Equal(dna, native.Dna);
+        }
+        finally { directory.Delete(recursive: true); }
+    }
+
+    private static byte[] WithoutModernExtension(byte[] bytes)
+    {
+        var text = LegacyDnaText.Decode(bytes);
+        return LegacyDnaText.Encode(text[..text.IndexOf("#DARWINBOTS_MODERN_SETTINGS_V1#", StringComparison.Ordinal)]);
+    }
+
+    [Fact]
     public void ConfigurationRestoresNonDefaultCostMutationAndMainRuleEditorsWithoutTicking()
     {
         var costs = new GlobalSimulationCostSettings
