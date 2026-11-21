@@ -96,6 +96,104 @@ public sealed class SetupAddSpeciesRenderedTests
         finally { temporary.Delete(recursive: true); }
     }
 
+    [Fact]
+    public async Task NativeSetupStagesOriginalAppearanceAndUsesItAtStart()
+    {
+        var temporary = Directory.CreateTempSubdirectory("darwinbots-setup-native-appearance-");
+        try
+        {
+            var path = Path.Combine(temporary.FullName, "Palette.txt");
+            await File.WriteAllTextAsync(path, "start stop");
+            var storage = new AvaloniaDesktopStorageService(Path.Combine(temporary.FullName, "profile"));
+            await storage.SaveGlobalSettingsAsync(new GlobalSettings { Main = new GlobalMainSettings { OldColors = true } });
+            var clock = new AppearanceClock();
+            await DesktopTestApplication.Session.Dispatch(async () =>
+            {
+                var window = new SetupWindow(storage, stageNativeAppearance: SetupWindow.CreateNativeAppearanceProvider(0x08_d82a, clock));
+                try
+                {
+                    _ = new DnaPicker(window, path);
+                    window.Show();
+                    var row = await AddSpeciesAsync(window, 5, 3_000, "Palette.txt");
+                    Assert.Equal(0xff45_ed29u, row.Color);
+                    WorldSetupOptions? created = null;
+                    window.WorldCreated += options => created = options;
+                    Click(window, "CreateWorldButton");
+                    var species = Assert.Single(Assert.IsType<WorldSetupOptions>(created).Species, item => item.Name == "Palette.txt");
+                    Assert.Equal(row.ToImport(0).Skin, species.Skin);
+                    Assert.Contains(species.Skin!, point => point.Angle < 0);
+                    Assert.Equal(2, clock.Reads);
+                }
+                finally { window.Close(); }
+            }, CancellationToken.None);
+        }
+        finally { temporary.Delete(recursive: true); }
+    }
+
+    [Fact]
+    public async Task NativeLiveSpeciesCancelKeepsAppearanceDrawsWithoutChangingTheRoster()
+    {
+        var temporary = Directory.CreateTempSubdirectory("darwinbots-live-native-appearance-");
+        try
+        {
+            var path = Path.Combine(temporary.FullName, "Test.txt");
+            await File.WriteAllTextAsync(path, "start stop");
+            var storage = new AvaloniaDesktopStorageService(Path.Combine(temporary.FullName, "profile"));
+            var setup = new WorldSetupOptions { Backend = "Cpu", NativeGaussianSpare = 0.125f };
+            var clock = new AppearanceClock();
+            using var engine = new NativeEngineClient(setup, clock);
+            await using var session = new SimulationSession(engine);
+            await session.RefreshSnapshotAsync();
+            var before = await session.ReadConfigurationAsync();
+            var initialState = await session.ReadNativeSetupUniformStateAsync();
+            var expected = Assert.IsType<NativeSpeciesAppearance>(NativeEngineClient.StageNativeSetupAppearance(
+                "Test.txt", "start stop", false, initialState, new AppearanceClock()));
+
+            await DesktopTestApplication.Session.Dispatch(async () =>
+            {
+                var world = new MainWindow([], setup, new AuditEngineClientFactory(), storage);
+                DesktopTestApplication.UseSession(world, session);
+                try
+                {
+                    world.Show();
+                    var command = world.FindControl<LegacyMenuBar>("HistoricMenuBar")!.FindCommandItem(LegacyCommandId.EditSpecies)!;
+                    command.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    await WaitForAsync(() => world.OwnedWindows.OfType<SetupWindow>().Any(), "Edit Species did not open.");
+                    var editor = Assert.Single(world.OwnedWindows.OfType<SetupWindow>());
+                    _ = new DnaPicker(editor, path);
+                    var row = await AddSpeciesAsync(editor, 5, 3_000, "Test.txt");
+                    Assert.Equal(expected.Argb, row.Color);
+                    Assert.Equal(expected.Skin, row.ToImport(0).Skin);
+                    Click(editor, "SpeciesCancelButton");
+                    await WaitForAsync(() => !editor.IsVisible, "Edit Species did not close after Cancel.");
+                    Assert.Equal(expected.UniformState, await session.ReadNativeSetupUniformStateAsync());
+                    Assert.Equal(0.125f, await session.ReadNativeGaussianSpareAsync());
+                    var after = await session.ReadConfigurationAsync();
+                    Assert.Equal(before!.Species.Select(s => s.Name), after!.Species.Select(s => s.Name));
+                    Assert.Equal(before.Seed, after.Seed);
+                    Assert.Empty(session.LatestSnapshot.Organisms);
+                    Assert.Equal(2, clock.Reads);
+                }
+                finally
+                {
+                    foreach (var owned in world.OwnedWindows.ToArray()) owned.Close();
+                    typeof(MainWindow).GetField("_session", WindowFields)!.SetValue(world, null);
+                    world.Close();
+                }
+            }, CancellationToken.None);
+        }
+        finally { temporary.Delete(recursive: true); }
+    }
+
+    private sealed class AppearanceClock : TimeProvider
+    {
+        private static readonly DateTimeOffset Midnight = new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        private readonly double[] _seconds = [1.25, 12_345.5];
+        public int Reads { get; private set; }
+        public override TimeZoneInfo LocalTimeZone => TimeZoneInfo.Utc;
+        public override DateTimeOffset GetUtcNow() => Midnight.AddSeconds(_seconds[Reads++]);
+    }
+
     [Theory]
     [InlineData("robots")]
     [InlineData("Robots")]

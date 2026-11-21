@@ -1015,7 +1015,11 @@ public sealed partial class MainWindow : Window
             }
             if (openSetup)
             {
-                var setupWindow = new SetupWindow(_storage, spare, sunChange, caches);
+                var stageAppearance = _engineFactory is NativeEngineClientFactory
+                    ? SetupWindow.CreateNativeAppearanceProvider(_session is { } active ? await active.ReadNativeSetupUniformStateAsync() : null)
+                    : null;
+                var setupWindow = new SetupWindow(_storage, spare, sunChange, caches,
+                    stageNativeAppearance: stageAppearance);
                 setupWindow.WorldCreated += options =>
                 {
                     var replacement = new MainWindow(_startupArguments, options, _engineFactory, _storage);
@@ -1448,7 +1452,7 @@ public sealed partial class MainWindow : Window
 
     private async Task<LegacyCommandResult> OpenSpeciesSettingsCommandAsync()
     {
-        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
         var running = _runTimer.IsEnabled;
         _runTimer.Stop();
         WorldSetupOptions? startNew = null;
@@ -1459,7 +1463,8 @@ public sealed partial class MainWindow : Window
             if (configuration is null) return LegacyCommandResult.Failure("SPECIES SETTINGS UNAVAILABLE");
             var dialog = new SetupWindow(_storage,
                 speciesEditor: CreateNextWorldSetup() with { Species = configuration.Species },
-                nativeSpeciesImport: _session.LatestSnapshot.NativeCycle.HasValue);
+                nativeSpeciesImport: session.LatestSnapshot.NativeCycle.HasValue,
+                stageNativeAppearance: session.StageNativeSpeciesAppearanceAsync);
             await dialog.ShowDialog(this);
             if (dialog.EditedOptions is not { } edited) return LegacyCommandResult.Cancel();
             if (dialog.StartNewRequested) startNew = edited;

@@ -4,6 +4,7 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using Avalonia.Styling;
 using Darwinbots.Desktop.Core;
+using Darwinbots.Desktop.Services;
 using Darwinbots.Desktop.Views;
 
 namespace Darwinbots.Desktop;
@@ -23,7 +24,8 @@ public sealed partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            var setup = new SetupWindow();
+            var setup = new SetupWindow(AvaloniaDesktopStorageService.Instance,
+                stageNativeAppearance: SetupWindow.CreateNativeAppearanceProvider());
             setup.WorldCreated += options =>
             {
                 var simulation = new MainWindow(desktop.Args ?? [], options);
