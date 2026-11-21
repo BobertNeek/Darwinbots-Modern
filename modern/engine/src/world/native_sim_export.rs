@@ -1373,7 +1373,11 @@ mod tests {
             .teleporters
             .push(Teleporter::new(0, [800.0, 800.0], 60.0, [800.0, 800.0]));
         let bytes = engine.export_native_sim().unwrap();
-        let imported = Engine::from_native_sim(&bytes).unwrap();
+        let imported = Engine::from_native_sim_with_start_chloroplasts(
+            &bytes,
+            engine.config.vegetation.start_chloroplasts,
+        )
+        .unwrap();
         assert_eq!(imported.config.world_width, 1000.0);
         assert_eq!(imported.slots.len(), 1);
         assert_eq!(
