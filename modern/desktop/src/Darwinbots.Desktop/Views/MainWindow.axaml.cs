@@ -2245,11 +2245,26 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private async Task<LegacyCommandResult> ShowSelectedGeneActivationsAsync()
+    private Task<LegacyCommandResult> ShowSelectedGeneActivationsAsync()
     {
-        var organism = _viewModel.SelectedOrganism!;
-        ShowRobotDetails(_session!, organism, RobotDetailsTab.GeneActivations);
-        return LegacyCommandResult.Success("GENE ACTIVATIONS OPEN");
+        if (_session is not { } session || _viewModel.SelectedKey is null)
+            return Task.FromResult(LegacyCommandResult.Failure("NO ROBOT SELECTED"));
+
+        var window = _toolWindows.ShowOrActivate("gene-activations", () =>
+        {
+            var viewer = new GeneActivationsWindow();
+            void FollowSelection(object? sender, System.ComponentModel.PropertyChangedEventArgs change)
+            {
+                if (change.PropertyName == nameof(MainWindowViewModel.SelectedId))
+                    viewer.SetFocus(_viewModel.SelectedKey, session.LatestSnapshot);
+            }
+
+            _viewModel.PropertyChanged += FollowSelection;
+            viewer.Closed += (_, _) => _viewModel.PropertyChanged -= FollowSelection;
+            return viewer;
+        });
+        window.SetFocus(_viewModel.SelectedKey, session.LatestSnapshot);
+        return Task.FromResult(LegacyCommandResult.Success("GENE ACTIVATIONS OPEN"));
     }
 
     private async Task<LegacyCommandResult> MakeSelectedNewSpeciesAsync()

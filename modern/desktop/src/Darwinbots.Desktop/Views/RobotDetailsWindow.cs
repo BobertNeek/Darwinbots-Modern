@@ -773,7 +773,7 @@ public sealed class RobotDetailsWindow : Window
                 BorderThickness = new Thickness(1),
                 Child = new TextBlock
                 {
-                    Text = $"TICK {frame.Tick:N0}    {FormatActivations(frame.Activations)}    ACTIVE {frame.ActiveGeneCount:N0}",
+                    Text = $"TICK {frame.Tick:N0}    {GeneActivationsWindow.FormatActivations(frame.Activations)}    ACTIVE {frame.ActiveGeneCount:N0}",
                     FontFamily = DesktopFonts.Inspector,
                     FontSize = 12,
                 },
@@ -841,9 +841,4 @@ public sealed class RobotDetailsWindow : Window
 
     private static string FormatVector(float[] values) =>
         values.Length >= 2 ? $"{values[0]:0.00}, {values[1]:0.00}" : "0.00, 0.00";
-
-    private static string FormatActivations(IReadOnlyList<bool> activations) =>
-        activations.Count == 0
-            ? "NO GENE DATA"
-            : string.Join("  ", activations.Select((active, index) => $"G{index + 1}:{(active ? "ON" : "off")}"));
 }
