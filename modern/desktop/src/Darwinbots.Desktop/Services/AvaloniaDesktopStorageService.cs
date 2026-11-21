@@ -333,6 +333,11 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
 
     private static string? LocalPath(IStorageItem item) => item.Path.IsFile ? item.Path.LocalPath : null;
 
+    internal static string GraphDirectory(string mainDirectory) =>
+        string.IsNullOrWhiteSpace(mainDirectory)
+            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Darwinbots Modern")
+            : mainDirectory;
+
     private static string AutosaveDirectory() =>
         Environment.GetEnvironmentVariable(AutosaveDirectoryVariable) is { Length: > 0 } configured
             ? Path.GetFullPath(configured)

@@ -60,6 +60,21 @@ public sealed class PersistentToolWindowRegistry
             if (updateGraphs || window is not GraphSuiteWindow) window.SetSnapshot(snapshot);
     }
 
+    internal bool WantsNativeGraphSamples => _windows.Values.OfType<GraphSuiteWindow>()
+        .Any(window => window.WantsNativeGraphSamples);
+
+    internal void PublishNativeGraphSamples(IReadOnlyList<NativeGraphRecordingSample> samples, int generation)
+    {
+        foreach (var window in _windows.Values.OfType<GraphSuiteWindow>().ToArray())
+            window.RecordNativeSamples(samples, generation);
+    }
+
+    internal void PublishGraphSnapshot(EngineSnapshot snapshot)
+    {
+        foreach (var window in _windows.Values.OfType<GraphSuiteWindow>().ToArray())
+            window.SetSnapshot(snapshot);
+    }
+
     public bool Close(string key)
     {
         if (!_windows.TryGetValue(key, out var window)) return false;

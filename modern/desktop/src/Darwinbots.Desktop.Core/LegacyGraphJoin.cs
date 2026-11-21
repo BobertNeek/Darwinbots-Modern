@@ -109,6 +109,35 @@ public static class LegacyGraphJoin
         return files;
     }
 
+    public static string SerializeNativeSegment(string header, IReadOnlyList<LegacyGraphRobot> robots)
+    {
+        ArgumentNullException.ThrowIfNull(header);
+        ArgumentNullException.ThrowIfNull(robots);
+        if (robots.Any(robot => robot.Values.Count != SamplesPerSegment))
+            throw new ArgumentException($"Each series requires exactly {SamplesPerSegment} values.", nameof(robots));
+
+        var builder = new StringBuilder().Append(header).Append("\r\n");
+        foreach (var robot in robots)
+        {
+            var color = ((robot.Color >> 16) & 0xffu) | (robot.Color & 0xff00u) | ((robot.Color & 0xffu) << 16);
+            var name = robot.Name.EndsWith(".txt", StringComparison.Ordinal) ? robot.Name[..^4] : robot.Name;
+            var caption = name.Length > 28 ? name[..25] + "..." : name;
+            builder.Append(color.ToString(CultureInfo.InvariantCulture)).Append(':').Append(caption).Append(',');
+        }
+        builder.Append("\r\n");
+
+        for (var row = 0; row < SamplesPerSegment; row++)
+        {
+            foreach (var robot in robots)
+            {
+                var value = (float)robot.Values[row];
+                builder.Append(value == 0f ? "0" : value.ToString("G7", CultureInfo.InvariantCulture)).Append('\t');
+            }
+            builder.Append("\r\n");
+        }
+        return builder.ToString();
+    }
+
     private static IReadOnlyList<LegacyGraphRobot> ParseRobots(string line)
     {
         return line.Split(',', StringSplitOptions.RemoveEmptyEntries)
