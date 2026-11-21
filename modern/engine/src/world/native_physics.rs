@@ -60,11 +60,15 @@ impl Engine {
                 self.config.drag,
                 &settings,
             );
-            apply_angular_damping(
-                &mut robot.kinematics.angular_momentum,
-                mass * settings.surface_gravity * settings.kinetic_friction,
-                &settings,
-            );
+            // FrictionForces and SphereDragForces both exit before checking
+            // angular underflow when surface gravity and density are zero.
+            if settings.surface_gravity != 0.0 || settings.density != 0.0 {
+                apply_angular_damping(
+                    &mut robot.kinematics.angular_momentum,
+                    mass * settings.surface_gravity * settings.kinetic_friction,
+                    &settings,
+                );
+            }
             if brownian != 0.0 {
                 let random = self.native_random.as_mut().unwrap();
                 let impulse = (f64::from(brownian) * 0.5 * f64::from(random.unit())) as f32;
@@ -233,6 +237,30 @@ impl Engine {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn native_brownian_turn_retains_small_momentum_without_environmental_resistance() {
+        // Original 2.48.32 robot 145's transition from cycle 394 to 395.
+        for (surface_gravity, expected) in [(0.0, 0xb96c_78e5), (1.0, 0xb96c_9142)] {
+            let mut config = EngineConfig::testing();
+            config.brownian_motion = 0.5;
+            config.physics.density = 0.0;
+            config.physics.surface_gravity = surface_gravity;
+            let mut world = Engine::new_native(config).unwrap();
+            let id = world
+                .spawn_at(LegacyDna::parse("start stop").unwrap(), [500.0; 2])
+                .unwrap();
+            world.slots.get_mut(id).unwrap().kinematics.angular_momentum =
+                f32::from_bits(0x33c2_e7ef);
+            world.native_random =
+                Some(serde_json::from_value(serde_json::json!({ "state": 0x0e9953_u32 })).unwrap());
+
+            world.native_intent_phase();
+
+            let robot = world.slots.get(id).unwrap();
+            assert_eq!(robot.kinematics.angular_momentum.to_bits(), expected);
+        }
+    }
 
     #[test]
     fn native_brownian_turn_rounds_at_the_angular_momentum_assignment() {
