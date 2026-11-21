@@ -731,6 +731,145 @@ mod native_loop_tests {
     }
 
     #[test]
+    fn native_toxin_impacts_compare_the_shot_filename_to_the_targets_current_filename() {
+        use crate::native_binary::{NativeRecordFile, NativeSimulationTail};
+
+        for kind in [-3, -5] {
+            for same_filename in [false, true] {
+                let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+                let dna = LegacyDna::parse("stop").unwrap();
+                let owner = world.spawn_at(dna.clone(), [165.0, 200.0]).unwrap();
+                let target = world.spawn_at(dna, [200.0, 200.0]).unwrap();
+                let roster_name = world.species[0].name.clone();
+                let founder_name = "Renamed.txt";
+                let firing_name = if same_filename {
+                    founder_name
+                } else {
+                    &roster_name
+                };
+                // Save Robot DNA's rename changes FName alone, retaining the roster ID.
+                let source = world.slots.get_mut(owner).unwrap();
+                source.identity.species_file = firing_name.to_owned();
+                source.materials.radius = 10.0;
+                source.program.memory.write(834, 500);
+                source.program.memory.write(835, 500);
+                let recipient = world.slots.get_mut(target).unwrap();
+                recipient.materials.radius = 10.0;
+                recipient.counters.age = 10;
+
+                if kind == -3 {
+                    world
+                        .pending_projectile_requests
+                        .push(PendingProjectileRequest {
+                            owner_slot: owner.slot() as usize,
+                            kind,
+                            value: 100.0,
+                            range_multiplier: 1.0,
+                            angle: 0.0,
+                        });
+                    world.projectile_spawn_phase().unwrap();
+                } else {
+                    world
+                        .spawn_native_effect_packet(
+                            owner,
+                            [175.0, 200.0],
+                            [40.0, 0.0],
+                            400.0,
+                            100.0,
+                            kind,
+                            0,
+                        )
+                        .unwrap();
+                }
+
+                world.slots.get_mut(owner).unwrap().identity.species_file = "Later.txt".into();
+                world.slots.get_mut(target).unwrap().identity.species_file = founder_name.into();
+                let file = NativeRecordFile::decode(&world.export_native_sim().unwrap()).unwrap();
+                let tail = NativeSimulationTail::decode(&file.tail).unwrap();
+                assert_eq!(
+                    tail.bytes("shot[0].species").unwrap(),
+                    firing_name.as_bytes()
+                );
+
+                phase(&mut world);
+
+                assert_eq!(world.stats.projectile_impacts, 1);
+                assert_eq!(world.stats.projectile_effects, 1);
+                let recipient = world.slots.get(target).unwrap();
+                if kind == -3 {
+                    assert_eq!(recipient.materials.venom > 0.0, same_filename);
+                    assert_eq!(recipient.effects.paralysis_active, !same_filename);
+                } else {
+                    assert_eq!(recipient.materials.poison > 0.0, same_filename);
+                    assert_eq!(recipient.effects.poisoning_active, !same_filename);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn native_virus_waste_and_decay_packets_capture_the_filename_at_creation() {
+        let mut world = Engine::new_native(EngineConfig {
+            waste: WasteSettings {
+                alzheimer_threshold: 0,
+                defecation_threshold: 200,
+            },
+            corpse_decay: CorpseDecaySettings {
+                enabled: true,
+                mode: crate::CorpseDecayMode::WasteShot,
+                period: 1,
+                packet_size: 10,
+                ..Default::default()
+            },
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let dna = LegacyDna::parse("start 1 20 store stop end").unwrap();
+        let owner = world.spawn_at(dna, [500.0; 2]).unwrap();
+        let actor = world.slots.get_mut(owner).unwrap();
+        actor.identity.species_file = "Virus.txt".into();
+        actor.program.memory.write(335, 1);
+        world.virus_commands_phase().unwrap();
+        let virus = world
+            .projectiles
+            .stored
+            .iter()
+            .position(|&stored| stored)
+            .unwrap();
+        assert!(world.projectiles.alive[virus]);
+        assert_eq!(
+            world.projectiles.source_species_names[virus].as_deref(),
+            Some("Virus.txt")
+        );
+
+        let actor = world.slots.get_mut(owner).unwrap();
+        actor.identity.species_file = "Waste.txt".into();
+        actor.effects.virus_build_timer = 1;
+        actor.program.memory.write(335, 0);
+        actor.program.memory.write(338, 1);
+        actor.materials.waste = 250.0;
+        world.virus_commands_phase().unwrap();
+        assert!(!world.projectiles.stored[virus]);
+        assert_eq!(
+            world.projectiles.source_species_names[virus].as_deref(),
+            Some("Virus.txt")
+        );
+        world.waste_phase().unwrap();
+        assert_eq!(
+            world.projectiles.source_species_names[virus + 1].as_deref(),
+            Some("Waste.txt")
+        );
+
+        world.become_native_corpse(owner).unwrap();
+        world.slots.get_mut(owner).unwrap().identity.species_file = "SavedCorpse.txt".into();
+        world.decay_native_corpses().unwrap();
+        assert_eq!(
+            world.projectiles.source_species_names[virus + 2].as_deref(),
+            Some("SavedCorpse.txt")
+        );
+    }
+
+    #[test]
     fn native_flash_cleanup_also_clears_dead_slots_and_continues_exactly_after_db3s() {
         for was_alive in [false, true] {
             let (mut world, owner, _) = feeding_world(100);

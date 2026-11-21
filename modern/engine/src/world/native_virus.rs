@@ -78,6 +78,7 @@ impl Engine {
     pub(super) fn virus_commands_phase(&mut self) -> Result<(), EngineError> {
         let mut disqualified = Vec::new();
         let native_flow = self.native_cycle.is_some();
+        let native = self.native_random.is_some();
         let costs = self.active_dna_costs();
         let multiplier = costs.dynamic_multiplier(self.cost_population());
         let prohibited = self
@@ -120,10 +121,7 @@ impl Engine {
             } else {
                 robot.heading()
             };
-            let source_name = self
-                .species
-                .get(robot.identity.species.0 as usize)
-                .map(|species| species.name.clone());
+            let source_name = shot_species_name(robot, &self.species, native).map(str::to_owned);
             if !prohibited && make > 0 && robot.effects.virus_build_timer == 0 {
                 if robot.materials.chloroplasts == 0.0 {
                     disqualified.push((owner, DisqualificationAction::Virus));

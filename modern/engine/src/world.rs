@@ -10651,6 +10651,7 @@ impl Engine {
     }
 
     fn projectile_spawn_phase(&mut self) -> Result<(), EngineError> {
+        let native = self.native_random.is_some();
         for request in std::mem::take(&mut self.pending_projectile_requests) {
             let slot = request.owner_slot;
             let Some(owner) = self.slots[..]
@@ -10668,10 +10669,8 @@ impl Engine {
                 -8 => Some(owner.program.dna.clone()),
                 _ => None,
             };
-            let source_species_name = self
-                .species
-                .get(owner.identity.species.0 as usize)
-                .map(|species| species.name.clone());
+            let source_species_name =
+                shot_species_name(owner, &self.species, native).map(str::to_owned);
             let owner_id = OrganismId::new(slot as u32, self.slots[slot].generation);
             let owner_virtual_body = self.virtual_body_for(owner_id);
             // Shots.newshot stores the shooter's venom cells for every shot kind.
@@ -11253,19 +11252,10 @@ impl Engine {
                         if toxin_power < 1.0 {
                             return Ok(false);
                         }
-                        let target_species = self.slots[target]
-                            .organism
-                            .as_ref()
-                            .unwrap()
-                            .identity
-                            .species;
-                        let conspecific = source_species_name.as_deref()
-                            == self
-                                .species
-                                .get(target_species.0 as usize)
-                                .map(|species| species.name.as_str());
                         let target_robot = self.slots[target].organism.as_mut().unwrap();
-                        if conspecific {
+                        if source_species_name.as_deref()
+                            == shot_species_name(target_robot, &self.species, native_boundary)
+                        {
                             target_robot.materials.venom =
                                 (target_robot.materials.venom + toxin_power).min(32_000.0);
                             target_robot
@@ -11305,19 +11295,10 @@ impl Engine {
                         if toxin_power < 1.0 {
                             return Ok(false);
                         }
-                        let target_species = self.slots[target]
-                            .organism
-                            .as_ref()
-                            .unwrap()
-                            .identity
-                            .species;
-                        let conspecific = source_species_name.as_deref()
-                            == self
-                                .species
-                                .get(target_species.0 as usize)
-                                .map(|species| species.name.as_str());
                         let target_robot = self.slots[target].organism.as_mut().unwrap();
-                        if conspecific {
+                        if source_species_name.as_deref()
+                            == shot_species_name(target_robot, &self.species, native_boundary)
+                        {
                             target_robot.materials.poison =
                                 (target_robot.materials.poison + toxin_power).min(32_000.0);
                             target_robot
@@ -14352,6 +14333,21 @@ fn native_census_filename<'a>(robot: &'a RobotState, species: &'a [SpeciesDefini
         species
             .get(robot.identity.species.0 as usize)
             .map_or("", |entry| entry.name.as_str())
+    }
+}
+
+fn shot_species_name<'a>(
+    robot: &'a RobotState,
+    species: &'a [SpeciesDefinition],
+    native: bool,
+) -> Option<&'a str> {
+    if native {
+        // Shots.newshot and the native toxin handlers use the actor's FName.
+        Some(native_census_filename(robot, species))
+    } else {
+        species
+            .get(robot.identity.species.0 as usize)
+            .map(|entry| entry.name.as_str())
     }
 }
 
