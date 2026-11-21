@@ -380,13 +380,11 @@ public sealed class RobotDetailsWindow : Window
             $"DNA VIEW       {dnaSummary}",
             $"MEMORY VIEW    {memorySummary}");
         _factsTab.Text = _facts.Text;
-        if (_postDnaMemory.IsVisible && _postDnaMemory.IsChecked == true)
+        if (_postDnaMemory.IsVisible && _postDnaMemory.IsChecked == true
+            && snapshot.NativePostDnaMemory is { } sample && sample.RequestId == _postDnaMemoryRequestId
+            && sample.Tick == snapshot.Tick && sample.Focus == _focus)
         {
-            var sample = snapshot.NativePostDnaMemory;
-            _memory.Text = sample is not null && sample.RequestId == _postDnaMemoryRequestId
-                && sample.Tick == snapshot.Tick && sample.Focus == _focus
-                ? FormatMemory(sample.Memory)
-                : "Post-DNA memory will appear after the next cycle.";
+            _memory.Text = FormatMemory(sample.Memory);
         }
         else
         {

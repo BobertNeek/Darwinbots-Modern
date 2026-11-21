@@ -126,16 +126,26 @@ public sealed class NativeRobotFileIntegrationTests
                 await session.StepAsync();
                 await WaitFor(() => memory.Text?.Contains("-3000", StringComparison.Ordinal) == true);
                 Assert.Null(session.LatestSnapshot.NativePostDnaMemory);
+                await session.SetOrganismMemoryAsync(second.Slot, second.Generation, address, -4321);
                 var save = await session.SaveAsync();
                 watch.IsChecked = true;
-                Assert.Contains("next cycle", memory.Text);
+                Assert.Contains("-3000", memory.Text);
                 await session.StepAsync();
                 await WaitFor(() => memory.Text?.Contains("12345", StringComparison.Ordinal) == true);
                 Assert.Equal(-3000, session.LatestSnapshot.Organisms[0].Memory.Single(cell => cell.Address == address).Value);
                 Assert.Equal(first, session.LatestSnapshot.NativePostDnaMemory!.Focus);
 
+                info.SelectTab(RobotDetailsTab.Dna);
+                await session.StepAsync();
+                Assert.Null(session.LatestSnapshot.NativePostDnaMemory);
+                info.SelectTab(RobotDetailsTab.Memory);
+                Assert.True(watch.IsChecked);
+                Assert.Contains("-3000", memory.Text);
+                await session.StepAsync();
+                await WaitFor(() => memory.Text?.Contains("12345", StringComparison.Ordinal) == true);
+
                 viewModel.Select(second);
-                Assert.Contains("next cycle", memory.Text);
+                Assert.DoesNotContain("12345", memory.Text);
                 await session.StepAsync();
                 await WaitFor(() => memory.Text?.Contains("23456", StringComparison.Ordinal) == true);
                 Assert.Equal(second, session.LatestSnapshot.NativePostDnaMemory!.Focus);
@@ -144,7 +154,7 @@ public sealed class NativeRobotFileIntegrationTests
                     .Invoke(window, [save, false])!;
                 await load;
                 Assert.Null(session.LatestSnapshot.NativePostDnaMemory);
-                Assert.Contains("next cycle", memory.Text);
+                Assert.Contains("-4321", memory.Text);
                 await session.StepAsync();
                 await WaitFor(() => memory.Text?.Contains("23456", StringComparison.Ordinal) == true);
 
