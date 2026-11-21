@@ -615,6 +615,73 @@ mod tests {
     }
 
     #[test]
+    fn native_tie_poison_defense_can_spend_less_than_one_unit() {
+        for (native, available_poison, expected_dose) in [
+            (true, 0.75, 0.25),
+            (true, 0.25, 0.0),
+            (false, 0.75, 0.0),
+            (false, 1.25, 1.0),
+        ] {
+            for location in [-1, -6] {
+                let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+                let attacker_species = world.register_species(SpeciesDefinition {
+                    name: "Thief.txt".into(),
+                    ..Default::default()
+                });
+                let defender_species = world.register_species(SpeciesDefinition {
+                    name: "Defender.txt".into(),
+                    ..Default::default()
+                });
+                let dna = LegacyDna::parse("stop").unwrap();
+                let source = world
+                    .spawn_species_at(dna.clone(), attacker_species, [400.0, 500.0])
+                    .unwrap();
+                let target = world
+                    .spawn_species_at(dna, defender_species, [500.0; 2])
+                    .unwrap();
+                assert!(world.native_make_tie(source, target, 100, 0, 7));
+                if !native {
+                    world.native_random = None;
+                }
+                let actor = world.slots.get_mut(source).unwrap();
+                actor.counters.age = 2;
+                actor.program.memory.write(455, 7);
+                actor.program.memory.write(452, location);
+                actor.program.memory.write(453, -1);
+                let defender = world.slots.get_mut(target).unwrap();
+                defender.materials.poison = available_poison;
+                defender.program.memory.write(834, 600);
+                defender.program.memory.write(839, 137);
+                let resource = |robot: &RobotState| {
+                    if location == -1 {
+                        robot.materials.energy
+                    } else {
+                        robot.materials.body
+                    }
+                };
+                let before = resource(defender);
+
+                world.tie_exchange_phase(&mut CycleRecorder::disabled(1));
+
+                let attacker = world.slots.get(source).unwrap();
+                let defender = world.slots.get(target).unwrap();
+                let defended = expected_dose > 0.0;
+                assert_eq!(attacker.effects.poisoning_active, defended);
+                assert_eq!(attacker.effects.poisoning_countdown, expected_dose);
+                assert_eq!(defender.materials.poison, available_poison - expected_dose);
+                assert_eq!(
+                    resource(defender),
+                    before - if defended { 0.0 } else { 1.0 }
+                );
+                if defended {
+                    assert_eq!(attacker.effects.poisoning_location, 600);
+                    assert_eq!(attacker.effects.poisoning_value, 137);
+                }
+            }
+        }
+    }
+
+    #[test]
     fn native_cycle_fresh_zero_and_legacy_tick_are_distinct_without_shifting_dna_age() {
         for native in [false, true] {
             let mut world = if native {

@@ -14708,7 +14708,13 @@ fn apply_tie_poison_defense(
     amount: f32,
     native: &mut Option<crate::native_random::NativeRandom>,
 ) -> bool {
-    let poison_tag = scale_tie_amount(amount, 0.25).max(1.0);
+    let poison_tag = scale_tie_amount(amount, 0.25);
+    // Native Update_Ties keeps the fractional result of Abs(l / 4).
+    let poison_tag = if native.is_some() {
+        poison_tag
+    } else {
+        poison_tag.max(1.0)
+    };
     if target.materials.poison <= poison_tag {
         return false;
     }
