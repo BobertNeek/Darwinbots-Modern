@@ -114,7 +114,8 @@ public sealed record GenomeRecordCapture(ulong Tick, IReadOnlyList<DeathRecordSn
 public sealed record MemoryCellSnapshot(ushort Address, int Value);
 
 public sealed record NativePostDnaMemorySnapshot(
-    ulong RequestId, ulong Tick, OrganismKey Focus, IReadOnlyList<MemoryCellSnapshot> Memory);
+    ulong RequestId, ulong Tick, OrganismKey Focus,
+    IReadOnlyList<MemoryCellSnapshot>? Memory, OrganismSnapshot? Facts);
 
 public sealed record SpeciesSnapshot(
     string Name,

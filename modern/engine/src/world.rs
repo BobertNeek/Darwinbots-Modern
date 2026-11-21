@@ -5283,6 +5283,7 @@ impl Engine {
             self.absolute_parent_id(organism),
             &self.config,
             self.native_cycle.is_some(),
+            true,
         ))
     }
 
@@ -14256,6 +14257,7 @@ impl Engine {
                         self.absolute_parent_id(organism),
                         &self.config,
                         self.native_cycle.is_some(),
+                        true,
                     )
                 })
             })
@@ -15071,6 +15073,7 @@ fn snapshot_organism(
     parent_absolute_id: u64,
     config: &EngineConfig,
     native_flow: bool,
+    include_memory: bool,
 ) -> OrganismSnapshot {
     OrganismSnapshot {
         id,
@@ -15090,12 +15093,16 @@ fn snapshot_organism(
         private_variable_count: organism.program.private_variable_count,
         used_variables: organism.program.used_variables.clone(),
         occurrence_counts: organism.senses.occurrence_counts.clone(),
-        memory: organism
-            .program
-            .memory
-            .entries()
-            .map(|(address, value)| MemoryCellSnapshot { address, value })
-            .collect(),
+        memory: if include_memory {
+            organism
+                .program
+                .memory
+                .entries()
+                .map(|(address, value)| MemoryCellSnapshot { address, value })
+                .collect()
+        } else {
+            Vec::new()
+        },
         species: organism.identity.species,
         vegetable: organism.flags.vegetable,
         parents: organism.identity.parents,

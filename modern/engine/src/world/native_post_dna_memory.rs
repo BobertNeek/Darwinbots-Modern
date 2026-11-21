@@ -5,6 +5,7 @@ use super::*;
 #[derive(Clone, Default)]
 pub(super) struct NativePostDnaMemoryView {
     watch: Option<(u64, OrganismId)>,
+    capture_memory: bool,
     sample: Option<NativePostDnaMemorySample>,
 }
 
@@ -13,7 +14,9 @@ pub(crate) struct NativePostDnaMemorySample {
     request_id: u64,
     tick: u64,
     focus: OrganismId,
-    memory: Vec<MemoryCellSnapshot>,
+    facts: OrganismSnapshot,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    memory: Option<Vec<MemoryCellSnapshot>>,
 }
 
 impl Engine {
@@ -21,6 +24,7 @@ impl Engine {
         &mut self,
         request_id: u64,
         focus: Option<OrganismId>,
+        capture_memory: bool,
     ) {
         let watch = focus
             .filter(|&id| {
@@ -30,11 +34,12 @@ impl Engine {
             })
             .map(|id| (request_id, id));
         if self.post_dna_memory.watch != watch {
-            self.post_dna_memory = NativePostDnaMemoryView {
-                watch,
-                sample: None,
-            };
+            self.post_dna_memory.watch = watch;
+            self.post_dna_memory.sample = None;
+        } else if !capture_memory && let Some(sample) = self.post_dna_memory.sample.as_mut() {
+            sample.memory = None;
         }
+        self.post_dna_memory.capture_memory = capture_memory;
     }
 
     pub(crate) fn native_post_dna_memory_sample(&self) -> Option<&NativePostDnaMemorySample> {
@@ -51,17 +56,23 @@ impl Engine {
         };
         // The original updates Robot Info after ExecRobs, before EraseSenses
         // and the PlayerBot overrides.
+        let capture_memory = self.post_dna_memory.capture_memory;
         self.post_dna_memory.sample = self.slots.get(focus).ok().map(|robot| {
-            let memory = robot
-                .program
-                .memory
-                .entries()
-                .map(|(address, value)| MemoryCellSnapshot { address, value })
-                .collect();
+            let mut facts =
+                snapshot_organism(
+                    focus,
+                    robot,
+                    self.absolute_parent_id(robot),
+                    &self.config,
+                    true,
+                    capture_memory,
+                );
+            let memory = capture_memory.then(|| std::mem::take(&mut facts.memory));
             NativePostDnaMemorySample {
                 request_id,
                 tick: self.tick,
                 focus,
+                facts,
                 memory,
             }
         });
@@ -107,7 +118,7 @@ mod tests {
             .unwrap();
         let mut unwatched = world.fork_cpu_command_candidate().unwrap().unwrap();
         let before = SaveFile::encode(&world).unwrap();
-        world.configure_native_post_dna_memory_watch(1, Some(first));
+        world.configure_native_post_dna_memory_watch(1, Some(first), true);
         assert!(world.native_post_dna_memory_sample().is_none());
         assert_eq!(SaveFile::encode(&world).unwrap(), before);
         world.tick_many(3).unwrap();
@@ -122,17 +133,23 @@ mod tests {
             (sample.request_id, sample.tick, sample.focus),
             (1, 3, first)
         );
-        assert!(sample.memory.contains(&MemoryCellSnapshot {
-            address: ADDRESS,
-            value: 12345
-        }));
+        assert!(
+            sample
+                .memory
+                .as_ref()
+                .unwrap()
+                .contains(&MemoryCellSnapshot {
+                    address: ADDRESS,
+                    value: 12345
+                })
+        );
         assert_eq!(world.memory_at(first, i32::from(ADDRESS)).unwrap(), -3000);
 
         let mut loaded = SaveFile::decode(&SaveFile::encode(&world).unwrap()).unwrap();
         loaded.tick().unwrap();
         assert!(loaded.native_post_dna_memory_sample().is_none());
 
-        world.configure_native_post_dna_memory_watch(2, Some(second));
+        world.configure_native_post_dna_memory_watch(2, Some(second), true);
         assert!(world.native_post_dna_memory_sample().is_none());
         world.tick().unwrap();
         let sample = world.native_post_dna_memory_sample().unwrap();
@@ -140,10 +157,16 @@ mod tests {
             (sample.request_id, sample.tick, sample.focus),
             (2, 4, second)
         );
-        assert!(sample.memory.contains(&MemoryCellSnapshot {
-            address: ADDRESS,
-            value: 23456
-        }));
+        assert!(
+            sample
+                .memory
+                .as_ref()
+                .unwrap()
+                .contains(&MemoryCellSnapshot {
+                    address: ADDRESS,
+                    value: 23456
+                })
+        );
         world.remove(second).unwrap();
         assert!(world.native_post_dna_memory_sample().is_none());
         let replacement = spawn(&mut world, 3000, [900.0, 500.0]);
@@ -157,8 +180,53 @@ mod tests {
     fn portable_worlds_do_not_capture_post_dna_memory() {
         let mut world = Engine::new(EngineConfig::testing()).unwrap();
         let focus = spawn(&mut world, 12345, [500.0, 500.0]);
-        world.configure_native_post_dna_memory_watch(1, Some(focus));
+        world.configure_native_post_dna_memory_watch(1, Some(focus), true);
         world.tick().unwrap();
         assert!(world.native_post_dna_memory_sample().is_none());
+    }
+
+    #[test]
+    fn native_post_dna_facts_precede_body_conversion_and_aging_without_copying_memory() {
+        let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+        world.mutations_enabled = false;
+        let focus = world
+            .spawn_at(
+                LegacyDna::parse("start 100 .strbody store stop").unwrap(),
+                [500.0, 500.0],
+            )
+            .unwrap();
+        let mut unwatched = world.fork_cpu_command_candidate().unwrap().unwrap();
+        let initial = world.organism(focus).unwrap();
+        world.configure_native_post_dna_memory_watch(5, Some(focus), false);
+        world.tick().unwrap();
+        unwatched.tick().unwrap();
+
+        let sample = world.native_post_dna_memory_sample().unwrap();
+        assert_eq!((sample.request_id, sample.focus), (5, focus));
+        assert_eq!(sample.facts.age, initial.age);
+        assert_eq!(sample.facts.body, initial.body);
+        assert!(sample.memory.is_none());
+        assert!(sample.facts.memory.is_empty());
+        let final_actor = world.organism(focus).unwrap();
+        assert_eq!(final_actor.age, sample.facts.age + 1);
+        assert_eq!(final_actor.body, sample.facts.body + 10);
+        assert!(final_actor.energy <= sample.facts.energy - 100);
+        assert_eq!(
+            SaveFile::encode(&world).unwrap(),
+            SaveFile::encode(&unwatched).unwrap()
+        );
+
+        world.configure_native_post_dna_memory_watch(5, Some(focus), true);
+        let sample = world.native_post_dna_memory_sample().unwrap();
+        assert_eq!(sample.facts.age, initial.age);
+        assert!(sample.memory.is_none());
+        world.tick().unwrap();
+        let sample = world.native_post_dna_memory_sample().unwrap();
+        assert_eq!(sample.facts.age, initial.age + 1);
+        assert!(sample.memory.is_some());
+        world.configure_native_post_dna_memory_watch(5, Some(focus), false);
+        let sample = world.native_post_dna_memory_sample().unwrap();
+        assert_eq!(sample.facts.age, initial.age + 1);
+        assert!(sample.memory.is_none());
     }
 }

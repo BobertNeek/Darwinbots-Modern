@@ -28,7 +28,7 @@ public static class NativeSnapshotParser
         if (native is null)
             throw new InvalidDataException("The native engine returned an empty snapshot.");
         var preserveSkin = native.NativeCycle.HasValue;
-        var organisms = (native.Organisms ?? []).Select(organism => new OrganismSnapshot(
+        OrganismSnapshot ProjectOrganism(NativeOrganism organism) => new(
             organism.Id.Slot,
             organism.Id.Generation,
             organism.Position,
@@ -87,7 +87,8 @@ public static class NativeSnapshotParser
             MutationProfile = ParseMutationProfile(organism.MutationProfile),
             DnaLength = organism.DnaLength,
             GeneCount = organism.GeneCount,
-        }).ToArray();
+        };
+        var organisms = (native.Organisms ?? []).Select(ProjectOrganism).ToArray();
         var renderInstances = (native.RenderInstances ?? []).Select(instance => new RenderInstanceSnapshot(
             instance.Slot,
             instance.Position,
@@ -260,7 +261,8 @@ public static class NativeSnapshotParser
             PlayerBot = playerBot,
             NativePostDnaMemory = native.NativePostDnaMemory is { Focus: { } watched } sample
                 ? new(sample.RequestId, sample.Tick, new(watched.Slot, watched.Generation),
-                    (sample.Memory ?? []).Select(cell => new MemoryCellSnapshot(cell.Address, cell.Value)).ToArray())
+                    sample.Memory?.Select(cell => new MemoryCellSnapshot(cell.Address, cell.Value)).ToArray(),
+                    sample.Facts is null ? null : ProjectOrganism(sample.Facts))
                 : null,
             RestrictionOptions = restrictionOptions,
             Stats = stats,
@@ -581,7 +583,8 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("request_id")] ulong RequestId,
         [property: JsonPropertyName("tick")] ulong Tick,
         [property: JsonPropertyName("focus")] NativeId? Focus,
-        [property: JsonPropertyName("memory")] NativeMemoryCell[]? Memory);
+        [property: JsonPropertyName("memory")] NativeMemoryCell[]? Memory,
+        [property: JsonPropertyName("facts")] NativeOrganism? Facts);
 
     private sealed record NativePlayerBot(
         [property: JsonPropertyName("enabled")] bool Enabled,
