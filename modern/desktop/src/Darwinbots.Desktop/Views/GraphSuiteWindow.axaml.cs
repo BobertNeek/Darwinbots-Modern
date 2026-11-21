@@ -9,7 +9,7 @@ public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWi
     private GraphSamplingSettings _lastSampling = new();
     private readonly LegacyGraphRecordingRun? _recording;
     private readonly Func<bool>? _autoFork;
-    private readonly Func<Task<NativeGraphRecordingSample?>>? _readNativeSample;
+    private readonly Func<Action<NativeGraphRecordingSample?>, Task>? _readNativeSample;
     private static readonly IReadOnlyDictionary<GraphMetric, double> EmptyMetrics = new Dictionary<GraphMetric, double>();
     private readonly Dictionary<GraphMetric, RecordingChart> _recordingCharts = [];
     private EngineSnapshot _snapshot = EngineSnapshot.Empty;
@@ -19,13 +19,16 @@ public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWi
     }
 
     public GraphSuiteWindow(EngineSnapshot snapshot, LegacyGraphRecordingRun? recording = null, Func<bool>? autoFork = null,
-        Func<Task<NativeGraphRecordingSample?>>? readNativeSample = null)
+        Func<Task<NativeGraphRecordingSample?>>? readNativeSample = null,
+        Func<Action<NativeGraphRecordingSample?>, Task>? consumeNativeSample = null)
     {
         _recording = recording;
         _autoFork = autoFork;
-        _readNativeSample = readNativeSample;
+        _readNativeSample = consumeNativeSample ?? (readNativeSample is null ? null
+            : async consume => consume(await readNativeSample()));
         InitializeComponent();
         GraphView.GraphWindowRequested += OpenGraphWindow;
+        GraphView.ReopenGraphRequested = ReopenGraphWindow;
         SetSnapshot(snapshot);
         ViewModel.GraphsReset += ResetRecordingCharts;
         ViewModel.RunningGraphs.CollectionChanged += (_, _) => NotifySamplingChanged(SamplingSettings);
@@ -48,7 +51,7 @@ public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWi
     private bool UsesNativeSamples => _readNativeSample is not null && _snapshot.NativeCycle.HasValue;
 
     internal bool WantsNativeGraphSamples => UsesNativeSamples && IsVisible && _recording?.IsSuspended == false
-        && _recordingCharts.Values.Any(chart => chart.Windows.Any(window => window.IsVisible));
+        && _recordingCharts.Values.Any(chart => chart.Windows.Any(window => window.IsCollecting));
 
     public void SetSnapshot(EngineSnapshot snapshot)
     {
@@ -77,7 +80,7 @@ public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWi
         if (!WantsNativeGraphSamples || _recording?.Generation != generation) return;
         foreach (var (metric, chart) in _recordingCharts)
         {
-            if (chart.Generation != generation || chart.AwaitingNativeRead || !chart.Windows.Any(window => window.IsVisible))
+            if (chart.Generation != generation || chart.AwaitingNativeRead || !chart.Windows.Any(window => window.IsCollecting))
                 continue;
             foreach (var sample in samples)
             {
@@ -88,7 +91,7 @@ public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWi
         }
     }
 
-    private void ResetRecordingCharts() => ResetRecordingCharts(_recordingCharts, feedImmediately: true);
+    private void ResetRecordingCharts() => ResetRecordingCharts(_recordingCharts, feedImmediately: false);
 
     private void ResetRecordingCharts(IEnumerable<KeyValuePair<GraphMetric, RecordingChart>> charts, bool feedImmediately)
     {
@@ -106,15 +109,16 @@ public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWi
             else if (feedImmediately && ViewModel.HistorySamples.LastOrDefault() is { } sample)
                 RecordPoint(metric, chart, sample);
         }
-        if (pendingReads.Count > 0)
-            _ = FinishNativeReadAsync(pendingReads, _recording.Generation, feedImmediately);
+        if (pendingReads.Count > 0 && _readNativeSample is { } read)
+        {
+            var generation = _recording.Generation;
+            _ = read(sample => FinishNativeRead(pendingReads, generation, feedImmediately, sample));
+        }
     }
 
-    private async Task FinishNativeReadAsync(List<(GraphMetric Metric, RecordingChart Chart, int Version)> pending,
-        int generation, bool feedImmediately)
+    private void FinishNativeRead(List<(GraphMetric Metric, RecordingChart Chart, int Version)> pending,
+        int generation, bool feedImmediately, NativeGraphRecordingSample? sample)
     {
-        if (_readNativeSample is not { } read) return;
-        var sample = await read();
         if (_recording is not { } recording || recording.Generation != generation || recording.IsSuspended) return;
 
         foreach (var (metric, chart, version) in pending)
@@ -125,7 +129,7 @@ public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWi
             chart.AwaitingNativeRead = false;
             if (sample is null) continue;
             chart.MostRecentTick = sample.Tick;
-            if (feedImmediately) RecordPoint(metric, chart, ProjectNativePoint(sample));
+            if (feedImmediately) AppendImmediatePoint(metric, chart, ProjectNativePoint(sample));
         }
     }
 
@@ -135,6 +139,47 @@ public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWi
     private void RecordPoint(GraphMetric metric, RecordingChart chart, GraphMetricSample sample) =>
         chart.Save.AddPoint(ViewModel.LegacyPoint(metric, sample), ViewModel.LegacyHeader(metric),
             _autoFork?.Invoke() == true);
+
+    internal void LoadGraphWorld(EngineSnapshot snapshot)
+    {
+        foreach (var window in _graphWindows.Where(window => window.NeedsCleanupOnLoad).ToArray())
+            window.CloseForCleanup();
+        ViewModel.ClearPreviousGraphWorld();
+        SetSnapshot(snapshot);
+    }
+
+    private void UpdateGraphNow(GraphMetric metric, RecordingChart chart)
+    {
+        if (_recording is not { } recording || recording.IsSuspended) return;
+        var generation = recording.Generation;
+        var version = chart.Version;
+        if (UsesNativeSamples && _readNativeSample is { } read)
+            _ = read(sample =>
+            {
+                if (sample is null || recording.IsSuspended || recording.Generation != generation
+                    || chart.Version != version || !_recordingCharts.TryGetValue(metric, out var active) || active != chart)
+                    return;
+                AppendImmediatePoint(metric, chart, ProjectNativePoint(sample));
+            });
+        else if (ViewModel.HistorySamples.LastOrDefault() is { } sample)
+            AppendImmediatePoint(metric, chart, sample);
+    }
+
+    private void AppendImmediatePoint(GraphMetric metric, RecordingChart chart, GraphMetricSample sample)
+    {
+        RecordPoint(metric, chart, sample);
+        chart.MostRecentTick = Math.Max(chart.MostRecentTick, sample.Tick);
+        ViewModel.AppendImmediatePoint(metric, sample);
+    }
+
+    private GraphSeriesViewModel? ReopenGraphWindow(GraphMetric metric)
+    {
+        if (!_recordingCharts.TryGetValue(metric, out var chart) || chart.Windows.FirstOrDefault() is not { } window)
+            return null;
+        window.Reopen(this);
+        UpdateGraphNow(metric, chart); // Original NewGraph feeds once when shown again.
+        return window.Graph;
+    }
 
     public void OpenEvolutionGraphs()
     {
@@ -174,7 +219,7 @@ public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWi
         {
             ViewModel.ResetGraph(graph.Metric);
             ResetRecordingCharts([new(graph.Metric, recordingChart)], feedImmediately: false);
-        });
+        }, recordingChart is null ? null : () => UpdateGraphNow(graph.Metric, recordingChart));
         recordingChart?.Windows.Add(window);
         _graphWindows.Add(window);
         window.Closed += (_, _) =>
@@ -183,7 +228,12 @@ public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWi
             if (recordingChart is not null)
             {
                 recordingChart.Windows.Remove(window);
-                if (recordingChart.Windows.Count == 0) _recordingCharts.Remove(graph.Metric);
+                if (recordingChart.Windows.Count == 0)
+                {
+                    _recordingCharts.Remove(graph.Metric);
+                    recordingChart.Save.ResetPoints();
+                    ViewModel.CloseGraph(graph.Metric);
+                }
             }
             foreach (var item in series) ViewModel.RunningGraphs.Remove(item);
         };
@@ -202,7 +252,7 @@ public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWi
 
     protected override void OnClosed(EventArgs e)
     {
-        foreach (var window in _graphWindows.ToArray()) window.Close();
+        foreach (var window in _graphWindows.ToArray()) window.CloseForCleanup();
         _graphWindows.Clear();
         NotifySamplingChanged(new GraphSamplingSettings());
         base.OnClosed(e);

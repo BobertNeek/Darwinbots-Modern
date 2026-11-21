@@ -159,6 +159,99 @@ public sealed class GraphContestRenderedTests
     }
 
     [Fact]
+    public async Task NativeChartUpdatesAtTheSameTickAndKeepsRecordingWhenHidden()
+    {
+        var root = Directory.CreateTempSubdirectory("darwinbots-native-graph-gestures-");
+        try
+        {
+            await DesktopTestApplication.Session.Dispatch(async () =>
+            {
+                const string stamp = "native-gestures";
+                var run = new LegacyGraphRecordingRun(root.FullName, stamp);
+                run.Graph(GraphMetric.Population).SetEnabled(true);
+                var segmentPath = Path.Combine(root.FullName, stamp, "Populations1.gsave");
+                SpeciesGraphSampleSnapshot Alga(int value) =>
+                    new("Alga.txt", 0xff123456u, new Dictionary<string, double> { ["population"] = value });
+                NativeGraphRecordingSample Sample(int tick, int value) => new((ulong)tick, tick, [Alga(value)], []);
+                var current = Sample(10, 1);
+                var initial = EngineSnapshot.Empty with
+                {
+                    Tick = 10, NativeCycle = 10, Population = 1,
+                    Species = [new SpeciesSnapshot("Alga.txt", true, 0xff123456u, 0, false)],
+                    Organisms = [new OrganismSnapshot(0, 0, [20f, 20f], [0f, 0f], 1_000, 10, Vegetable: true)],
+                };
+                var suite = new GraphSuiteWindow(initial, run, readNativeSample: () => Task.FromResult<NativeGraphRecordingSample?>(current));
+                try
+                {
+                    suite.Show();
+                    suite.ViewModel.SelectedChoice = GraphCatalog.For(GraphMetric.Population);
+                    var open = suite.FindControl<GraphSuiteView>("GraphView")!.FindControl<Button>("OpenGraphButton")!;
+                    open.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    var graph = Assert.Single(suite.OwnedWindows.OfType<GraphSeriesWindow>());
+                    var series = Assert.Single(suite.ViewModel.RunningGraphs);
+                    await FlushGraphPresentationAsync();
+                    Assert.True(graph.FindControl<CheckBox>("SaveGraphData")!.IsChecked);
+                    Assert.Equal(new GraphSample(10, 1), Assert.Single(series.Samples));
+                    var update = graph.FindControl<Button>("UpdateGraphNowButton")!;
+                    Assert.True(update.IsVisible);
+                    var initialVisibleCount = series.Samples.Count;
+                    var closed = false;
+                    graph.Closed += (_, _) => closed = true;
+
+                    current = Sample(10, 2);
+                    update.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    await WaitFor(() => series.Samples.LastOrDefault()?.Value == 2d, () => "Update Now did not append the first point.");
+                    current = Sample(10, 3);
+                    update.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    await WaitFor(() => series.Samples.LastOrDefault()?.Value == 3d, () => "Update Now discarded a second point at the same tick.");
+                    Assert.Equal(initialVisibleCount + 2, series.Samples.Count);
+                    Assert.Equal(new[] { 2d, 3d }, series.Samples.TakeLast(2).Select(point => point.Value));
+
+                    suite.RecordNativeSamples(Enumerable.Range(4, 995).Select(value => Sample(value + 7, value)).ToArray(), run.Generation);
+                    Assert.False(File.Exists(segmentPath));
+                    await RespondToWindowCloseAsync("YES");
+                    await WaitFor(() => !graph.IsVisible, () => "YES did not hide the graph.");
+                    Assert.False(closed);
+                    Assert.Same(series, Assert.Single(suite.ViewModel.RunningGraphs));
+
+                    current = Sample(1_006, 999);
+                    suite.RecordNativeSamples([current], run.Generation);
+                    await WaitFor(() => File.Exists(segmentPath), () => "The hidden graph did not finish saving its segment.");
+                    var segment = Assert.Single(LegacyGraphJoin.Parse([File.ReadAllText(segmentPath)]));
+                    Assert.Equal(Enumerable.Range(1, 999).Select(value => (double)value), Assert.Single(segment.Robots).Values);
+
+                    open.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    await WaitFor(() => graph.IsVisible, () => "Opening Population did not reopen the hidden graph.");
+                    Assert.Same(graph, Assert.Single(suite.OwnedWindows.OfType<GraphSeriesWindow>()));
+                    Assert.Same(series, Assert.Single(suite.ViewModel.RunningGraphs));
+                    Assert.True(graph.FindControl<CheckBox>("SaveGraphData")!.IsChecked);
+
+                    await RespondToWindowCloseAsync("NO");
+                    await WaitFor(() => closed, () => "NO did not close the graph.");
+                    Assert.Empty(suite.ViewModel.RunningGraphs);
+
+                    async Task RespondToWindowCloseAsync(string response)
+                    {
+                        typeof(Window).GetMethod("HandleClosing", BindingFlags.Instance | BindingFlags.NonPublic)!
+                            .Invoke(graph, [WindowCloseReason.WindowClosing]);
+                        IEnumerable<LegacyConfirmationWindow> Prompts() =>
+                            graph.OwnedWindows.Concat(suite.OwnedWindows).OfType<LegacyConfirmationWindow>();
+                        await WaitFor(() => Prompts().Any(), () => "Closing the graph did not ask whether to keep updating.");
+                        await FlushGraphPresentationAsync();
+                        var prompt = Assert.Single(Prompts());
+                        Assert.Contains(prompt.GetVisualDescendants().OfType<TextBlock>(),
+                            text => text.Text == "Would you like to keep updating this graph?");
+                        var choice = Assert.Single(prompt.GetVisualDescendants().OfType<Button>(), button => Equals(button.Content, response));
+                        choice.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    }
+                }
+                finally { suite.Close(); }
+            }, CancellationToken.None);
+        }
+        finally { root.Delete(recursive: true); }
+    }
+
+    [Fact]
     public async Task LoadingASimulationRestoresTheOpenGraphsSaveCheckbox()
     {
         var root = Directory.CreateTempSubdirectory("darwinbots-graph-settings-");
