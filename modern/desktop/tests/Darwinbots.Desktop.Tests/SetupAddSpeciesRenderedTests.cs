@@ -22,6 +22,80 @@ public sealed class SetupAddSpeciesRenderedTests
     private const string Dna = "' first line\r\n// second line\r\n'\r\n\r\n/ after the blank line\r\nstart\r\nstop\r\n";
     private const string LeadingComment = " first line\r\n/ second line\r\n\r\n";
 
+    [Fact]
+    public async Task NativeSkinSurvivesSetupLiveEditingAndBothSimulationFormats()
+    {
+        SkinPointSnapshot[] original = [new(0f, 314), new(1f, -942), new(7f / 60f, -386), new(50f / 60f, 0)];
+        SkinPointSnapshot[] edited = [new(0f, -388), new(0.5f, -942), original[2], original[3]];
+        var setup = new WorldSetupOptions
+        {
+            Backend = "Cpu",
+            Species = [new("Skin.txt", "start stop", false, 0xff239ac0, 1, 1000, 0, false, 0) { Skin = original }],
+        };
+        var temporary = Directory.CreateTempSubdirectory("darwinbots-native-skin-");
+        try
+        {
+            var storage = new AvaloniaDesktopStorageService(temporary.FullName);
+            await storage.MarkFirstRunCompleteAsync();
+            await DesktopTestApplication.Session.Dispatch(() =>
+            {
+                WorldSetupOptions? created = null;
+                var startup = new SetupWindow(storage);
+                try
+                {
+                    typeof(SetupWindow).GetMethod("ApplySetupOptions", WindowFields)!.Invoke(startup, [setup]);
+                    startup.Show();
+                    var row = Assert.Single(startup.Species);
+                    var controls = ExpandSkinControls(startup, row);
+                    Assert.Equal(0m, controls[0].Value);
+                    Assert.Equal(1m, controls[2].Value);
+                    Assert.Equal(-942m, controls[3].Value);
+                    Assert.Equal(original, row.ToImport(0).Skin);
+                    startup.WorldCreated += options => created = options;
+                    Click(startup, "CreateWorldButton");
+                }
+                finally { if (startup.IsVisible) startup.Close(); }
+
+                Assert.NotNull(created);
+                var initialSpecies = Assert.Single(created.Species);
+                Assert.Equal(original, initialSpecies.Skin);
+                using var engine = new NativeEngineClient(created);
+                engine.ImportSpecies(initialSpecies);
+                var live = new SetupWindow(storage, speciesEditor: created with { Species = engine.ReadConfiguration().Species });
+                try
+                {
+                    live.Show();
+                    var row = Assert.Single(live.Species);
+                    var controls = ExpandSkinControls(live, row);
+                    Assert.Equal(original, row.ToImport(0).Skin);
+                    controls[1].Value = -388;
+                    controls[2].Value = 0.5m;
+                    Assert.Equal(edited, row.ToImport(0).Skin);
+                    Click(live, "SpeciesApplyButton");
+                    engine.UpdateSpeciesSettings(Assert.IsType<WorldSetupOptions>(live.EditedOptions).Species);
+                }
+                finally { if (live.IsVisible) live.Close(); }
+
+                CheckSkins(engine);
+                foreach (var bytes in new[] { engine.Save(), engine.SaveLegacy() })
+                {
+                    using var reloaded = new NativeEngineClient(created);
+                    reloaded.Load(bytes);
+                    CheckSkins(reloaded);
+                }
+
+                void CheckSkins(NativeEngineClient client)
+                {
+                    Assert.Equal(edited, Assert.Single(client.ReadConfiguration().Species).Skin);
+                    var snapshot = client.Snapshot();
+                    Assert.Equal(original, Assert.Single(snapshot.Organisms).Phenotype.Skin);
+                    Assert.Equal(original, Assert.Single(snapshot.RenderInstances).Skin);
+                }
+            }, CancellationToken.None);
+        }
+        finally { temporary.Delete(recursive: true); }
+    }
+
     [Theory]
     [InlineData("robots")]
     [InlineData("Robots")]
@@ -118,6 +192,11 @@ public sealed class SetupAddSpeciesRenderedTests
                         control => control.Watermark == "Species comment");
                     Assert.Equal(native ? LeadingComment : string.Empty, comment.Text);
                     Assert.Equal(Dna, added.Dna);
+                    var skinControls = SkinControlsFor(editor, added);
+                    Assert.Equal(native ? 0m : 0.15m, skinControls[0].Minimum);
+                    Assert.Equal(native ? 1m : 0.82m, skinControls[0].Maximum);
+                    Assert.Equal(native ? -65_220m : 0m, skinControls[1].Minimum);
+                    Assert.Equal(native ? 65_850m : 1256m, skinControls[1].Maximum);
                     var prior = Assert.Single(editor.Species, row => row.Name == existing.Name);
                     Assert.Equal(existing.InitialCount, prior.InitialCount);
                     Assert.Equal(existing.InitialEnergy, prior.InitialEnergy);
@@ -187,8 +266,7 @@ public sealed class SetupAddSpeciesRenderedTests
                     Assert.InRange(expander.Bounds.Height, compactHeight - 1, compactHeight + 1);
 
                     var coordinate = details.GetVisualDescendants().OfType<NumericUpDown>().Last(control => control.Maximum == 1_000_000);
-                    var skinPoints = details.GetVisualDescendants().OfType<NumericUpDown>()
-                        .Where(control => control.Maximum is 0.82m or 1256m).ToArray();
+                    var skinPoints = SkinControlsFor(window, added);
                     Assert.Equal(8, skinPoints.Length);
                     Assert.All(skinPoints, control => Assert.True(control.Bounds.Width >= 100));
                     var restriction = Assert.Single(details.GetVisualDescendants().OfType<CheckBox>(),
@@ -217,6 +295,19 @@ public sealed class SetupAddSpeciesRenderedTests
 
     private static Border DetailsFor(SetupWindow window, SetupSpeciesRow row) =>
         Assert.Single(window.GetVisualDescendants().OfType<Border>(), detail => detail.Name == "SpeciesDetails" && detail.DataContext == row);
+
+    private static NumericUpDown[] ExpandSkinControls(SetupWindow window, SetupSpeciesRow row)
+    {
+        window.UpdateLayout();
+        var expander = Assert.Single(window.GetVisualDescendants().OfType<Expander>(), control => control.DataContext == row);
+        expander.IsExpanded = true;
+        window.UpdateLayout();
+        return SkinControlsFor(window, row);
+    }
+
+    private static NumericUpDown[] SkinControlsFor(SetupWindow window, SetupSpeciesRow row) =>
+        DetailsFor(window, row).GetVisualDescendants().OfType<NumericUpDown>()
+            .Where(control => control.Classes.Contains("skin-coordinate")).ToArray();
 
     private static GlobalSettings Settings(string mainDirectory) => new()
     {

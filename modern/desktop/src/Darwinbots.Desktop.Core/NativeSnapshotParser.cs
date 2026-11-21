@@ -27,6 +27,7 @@ public static class NativeSnapshotParser
     {
         if (native is null)
             throw new InvalidDataException("The native engine returned an empty snapshot.");
+        var preserveSkin = native.NativeCycle.HasValue;
         var organisms = (native.Organisms ?? []).Select(organism => new OrganismSnapshot(
             organism.Id.Slot,
             organism.Id.Generation,
@@ -50,7 +51,7 @@ public static class NativeSnapshotParser
         {
             IsCorpse = organism.Flags?.Corpse ?? false,
             IsHidden = organism.Flags?.Hidden ?? false,
-            Phenotype = ParsePhenotype(organism.Phenotype),
+            Phenotype = ParsePhenotype(organism.Phenotype, preserveSkin),
             Vision = ParseVision(organism.Vision),
             CurrentGene = organism.CurrentGene,
             ConditionCount = organism.ConditionCount,
@@ -93,7 +94,7 @@ public static class NativeSnapshotParser
         {
             Generation = instance.Generation,
             Aim = instance.Aim,
-            Skin = ParseSkin(instance.Skin),
+            Skin = ParseSkin(instance.Skin, preserveSkin),
             LineageId = instance.LineageId,
             Vegetable = instance.Vegetable,
         }).ToArray();
@@ -476,13 +477,13 @@ public static class NativeSnapshotParser
         _ => LocalModeStatus.Idle,
     };
 
-    private static VisualPhenotypeSnapshot ParsePhenotype(NativeVisualPhenotype? phenotype) =>
+    private static VisualPhenotypeSnapshot ParsePhenotype(NativeVisualPhenotype? phenotype, bool preserveSkin) =>
         phenotype is null
             ? VisualPhenotypeSnapshot.Default
             : new VisualPhenotypeSnapshot(
                 phenotype.LineageId,
                 phenotype.Color,
-                ParseSkin(phenotype.Skin),
+                ParseSkin(phenotype.Skin, preserveSkin),
                 phenotype.AccumulatedMutations);
 
     private static VisionSnapshot ParseVision(NativeVision? vision)
@@ -505,7 +506,7 @@ public static class NativeSnapshotParser
         return new VisionSnapshot((byte)Math.Clamp(vision?.FocusEye ?? 4, 0, 8), defaults);
     }
 
-    private static SkinPointSnapshot[] ParseSkin(NativeSkinPoint[]? skin)
+    private static SkinPointSnapshot[] ParseSkin(NativeSkinPoint[]? skin, bool preserveSkin)
     {
         var defaults = VisualSnapshotDefaults.DefaultSkin();
         if (skin is null)
@@ -514,9 +515,10 @@ public static class NativeSnapshotParser
         }
         for (var index = 0; index < Math.Min(defaults.Length, skin.Length); index++)
         {
-            defaults[index] = new SkinPointSnapshot(
-                Math.Clamp(skin[index].Radius, 0.15f, 0.82f),
-                ((skin[index].Angle % 1257) + 1257) % 1257);
+            var point = skin[index];
+            defaults[index] = preserveSkin ? new(point.Radius, point.Angle) : new(
+                Math.Clamp(point.Radius, 0.15f, 0.82f),
+                ((point.Angle % 1257) + 1257) % 1257);
         }
         return defaults;
     }
