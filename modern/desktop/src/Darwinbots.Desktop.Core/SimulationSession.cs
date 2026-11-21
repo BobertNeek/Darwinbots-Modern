@@ -128,6 +128,9 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task SetDeathPoffsEnabledAsync(bool enabled, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.SetDeathPoffsEnabled(enabled), cancellationToken);
 
+    public Task SetNativeTeleporterHighlightsAsync(bool enabled, CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.SetNativeTeleporterHighlights(enabled), cancellationToken);
+
     public Task MoveAsync(uint slot, uint generation, float[] position, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.Move(slot, generation, position), cancellationToken);
 

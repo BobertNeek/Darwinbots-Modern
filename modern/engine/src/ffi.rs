@@ -125,6 +125,9 @@ enum EngineCommand {
     SetDeathPoffsEnabled {
         enabled: bool,
     },
+    SetNativeTeleporterHighlights {
+        enabled: bool,
+    },
     ImportSpecies {
         #[serde(default)]
         comment: String,
@@ -755,6 +758,10 @@ fn db_engine_command_batch_impl(
                 .map(|_| serde_json::Value::Null),
             EngineCommand::SetDeathPoffsEnabled { enabled } => {
                 engine.set_death_poffs_enabled(enabled);
+                Ok(serde_json::Value::Null)
+            }
+            EngineCommand::SetNativeTeleporterHighlights { enabled } => {
+                engine.set_native_teleporter_highlights(enabled);
                 Ok(serde_json::Value::Null)
             }
             EngineCommand::RemoveMany {
@@ -1512,6 +1519,78 @@ mod tests {
         );
         assert_eq!(current.snapshot().stats.native_energy_delta, Some(107));
         assert_eq!(current.snapshot().stats.native_shots_visited, Some(21));
+    }
+
+    #[test]
+    fn native_teleporter_highlights_preserve_loaded_records_and_vacant_slots() {
+        let mut saved = Engine::new_native(EngineConfig::testing()).unwrap();
+        saved
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [500.0, 500.0])
+            .unwrap();
+        fn add(engine: &mut Engine, id: u32) {
+            engine
+                .add_teleporter(crate::Teleporter::new(id, [100.0; 2], 20.0, [200.0; 2]))
+                .unwrap();
+        }
+        fn highlights(engine: &Engine) -> Vec<bool> {
+            engine
+                .snapshot()
+                .teleporters
+                .iter()
+                .map(|teleporter| teleporter.highlight)
+                .collect()
+        }
+        add(&mut saved, 1);
+        add(&mut saved, 2);
+        assert_eq!(highlights(&saved), [true, true]);
+        let mut unhighlighted = saved.snapshot().teleporters[0].clone();
+        unhighlighted.highlight = false;
+        saved.update_teleporter(unhighlighted).unwrap();
+        let original = saved.export_native_sim().unwrap();
+
+        let mut current = Engine::new_native(EngineConfig::testing()).unwrap();
+        let (status, _) = classic_test_batch(
+            &mut current,
+            serde_json::json!([{"type":"set_native_teleporter_highlights","enabled":false}]),
+        );
+        assert_eq!(status, DbStatus::Ok);
+        assert_eq!(
+            db_engine_load(&mut current, original.as_ptr(), original.len()),
+            DbStatus::Ok
+        );
+        assert_eq!(highlights(&current), [false, true]);
+        add(&mut current, 3);
+        assert_eq!(highlights(&current), [false, true, false]);
+        let saved_round = SaveFile::encode(&current).unwrap();
+        let mut restored = SaveFile::decode(&saved_round).unwrap();
+        assert_eq!(highlights(&restored), [false, true, false]);
+        add(&mut restored, 4);
+        assert_eq!(highlights(&restored), [false, true, false, false]);
+
+        let mut fresh_process = Engine::from_native_sim(&original).unwrap();
+        assert_eq!(highlights(&fresh_process), [false, true]);
+        let first_slot_id = fresh_process.snapshot().teleporters[0].id;
+        fresh_process.remove_teleporter(first_slot_id).unwrap();
+        add(&mut fresh_process, 3);
+        assert_eq!(highlights(&fresh_process), [true, true]);
+        add(&mut fresh_process, 4);
+        assert_eq!(highlights(&fresh_process), [true, true, true]);
+
+        let mut internet = crate::Teleporter::new(9, [100.0; 2], 20.0, [200.0; 2]);
+        internet.internet = true;
+        internet.highlight = true;
+        fresh_process.add_teleporter(internet).unwrap();
+        let (status, _) = classic_test_batch(
+            &mut fresh_process,
+            serde_json::json!([{"type":"set_native_teleporter_highlights","enabled":false}]),
+        );
+        assert_eq!(status, DbStatus::Ok);
+        assert_eq!(highlights(&fresh_process), [false, false, false, true]);
+
+        let mut portable = Engine::new(EngineConfig::testing()).unwrap();
+        add(&mut portable, 1);
+        portable.set_native_teleporter_highlights(true);
+        assert_eq!(highlights(&portable), [false]);
     }
 
     #[test]

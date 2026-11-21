@@ -822,7 +822,7 @@ public sealed class WorldViewport : Control
         // VB uses the rectangle's width midpoint and one third of its height.
         var markCenter = new Point(center.X, center.Y - height * scaleY / 6);
         var penWidth = 1 / RenderScale;
-        if (HighlightNativeTeleporters)
+        if (teleporter.Highlight)
         {
             var mark = teleporter.Local ? Brushes.Yellow
                 : teleporter.Outbound ? Brushes.Red
