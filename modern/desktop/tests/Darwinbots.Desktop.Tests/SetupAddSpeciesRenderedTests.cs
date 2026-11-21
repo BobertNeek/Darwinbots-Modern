@@ -2,6 +2,7 @@ using System.Reflection;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using Avalonia.VisualTree;
 using Darwinbots.Desktop.Controls;
 using Darwinbots.Desktop.Core;
 using Darwinbots.Desktop.Core.LegacyMenus;
@@ -14,7 +15,8 @@ namespace Darwinbots.Desktop.Tests;
 public sealed class SetupAddSpeciesRenderedTests
 {
     private const BindingFlags WindowFields = BindingFlags.Instance | BindingFlags.NonPublic;
-    private const string Dna = "start\r\nstop\r\n";
+    private const string Dna = "' first line\r\n// second line\r\n'\r\n\r\n/ after the blank line\r\nstart\r\nstop\r\n";
+    private const string LeadingComment = " first line\r\n/ second line\r\n\r\n";
 
     [Theory]
     [InlineData("robots")]
@@ -53,6 +55,8 @@ public sealed class SetupAddSpeciesRenderedTests
                     Assert.Equal(5, imported.InitialCount);
                     Assert.Equal(3_000, imported.InitialEnergy);
                     Assert.Equal(file, imported.DnaPath);
+                    Assert.Equal(LeadingComment, imported.Comment);
+                    Assert.Equal(Dna, imported.Dna);
                 }
                 finally { window.Close(); }
             }, CancellationToken.None);
@@ -73,7 +77,10 @@ public sealed class SetupAddSpeciesRenderedTests
             var file = Path.Combine(temporary.FullName, "Added Species.txt");
             await File.WriteAllTextAsync(file, Dna);
             var storage = new AvaloniaDesktopStorageService(Path.Combine(temporary.FullName, "profile"));
-            var existing = new SpeciesImport("Existing", "start stop", false, 0xff239ac0, 50, 1_000, 0, false, 0);
+            var existing = new SpeciesImport("Existing", "start stop", false, 0xff239ac0, 50, 1_000, 0, false, 0)
+            {
+                Comment = "Already registered",
+            };
             var engine = new AuditEngineClient
             {
                 NativeCycle = native ? 1 : null,
@@ -97,11 +104,19 @@ public sealed class SetupAddSpeciesRenderedTests
                     await WaitForAsync(() => world.OwnedWindows.OfType<SetupWindow>().Any(), "Edit Species did not open.");
                     var editor = Assert.Single(world.OwnedWindows.OfType<SetupWindow>());
                     var picker = new DnaPicker(editor, file);
-                    await AddSpeciesAsync(editor, native ? 5 : 50, native ? 3_000 : 1_000);
+                    var added = await AddSpeciesAsync(editor, native ? 5 : 50, native ? 3_000 : 1_000);
                     picker.AssertStartedIn(native ? robots.FullName : null);
+                    editor.UpdateLayout();
+                    var details = Assert.Single(editor.GetVisualDescendants().OfType<Expander>(), control => control.DataContext == added);
+                    details.IsExpanded = true;
+                    editor.UpdateLayout();
+                    var comment = Assert.Single(details.GetVisualDescendants().OfType<TextBox>(), control => control.Watermark == "Species comment");
+                    Assert.Equal(native ? LeadingComment : string.Empty, comment.Text);
+                    Assert.Equal(Dna, added.Dna);
                     var prior = Assert.Single(editor.Species, row => row.Name == existing.Name);
                     Assert.Equal(existing.InitialCount, prior.InitialCount);
                     Assert.Equal(existing.InitialEnergy, prior.InitialEnergy);
+                    Assert.Equal(existing.Comment, prior.Comment);
 
                     Click(editor, "SpeciesCancelButton");
                     await WaitForAsync(() => !editor.IsVisible, "Edit Species did not close after Cancel.");
@@ -126,7 +141,7 @@ public sealed class SetupAddSpeciesRenderedTests
     private static void Click(Window window, string button) =>
         window.FindControl<Button>(button)!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
-    private static async Task AddSpeciesAsync(SetupWindow window, int count, float energy)
+    private static async Task<SetupSpeciesRow> AddSpeciesAsync(SetupWindow window, int count, float energy)
     {
         Click(window, "AddDnaButton");
         await WaitForAsync(() => window.Species.Any(row => row.Name == "Added Species"),
@@ -134,6 +149,7 @@ public sealed class SetupAddSpeciesRenderedTests
         var row = Assert.Single(window.Species, row => row.Name == "Added Species");
         Assert.Equal(count, row.InitialCount);
         Assert.Equal(energy, row.InitialEnergy);
+        return row;
     }
 
     private static async Task WaitForAsync(Func<bool> condition, string message)
