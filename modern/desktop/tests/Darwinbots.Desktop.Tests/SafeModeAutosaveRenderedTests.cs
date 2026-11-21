@@ -294,12 +294,17 @@ public sealed class SafeModeAutosaveRenderedTests
             var main = profile.CreateSubdirectory("main");
             var robots = main.CreateSubdirectory("Robots");
             var literal = profile.CreateSubdirectory("custom");
+            var relative = profile.CreateSubdirectory(Path.Combine("Saves", "relative"));
             const string name = "fixture-specific-café.txt";
             const string savedDna = "' literal café\r\nstart stop";
             const string rootDna = "' configured\r\nstart stop";
+            const string relativeDna = "' saved relative directory\r\nstart stop";
             const string siblingDna = "' explicit save directory\r\nstart stop";
+            var rootPath = Path.Combine(robots.FullName, name);
+            var stalePath = Path.Combine(profile.FullName, "unavailable");
             File.WriteAllBytes(Path.Combine(literal.FullName, name), LegacyDnaText.Encode(savedDna));
-            File.WriteAllBytes(Path.Combine(robots.FullName, name), LegacyDnaText.Encode(rootDna));
+            File.WriteAllBytes(rootPath, LegacyDnaText.Encode(rootDna));
+            File.WriteAllBytes(Path.Combine(relative.FullName, name), LegacyDnaText.Encode(relativeDna));
             File.WriteAllBytes(Path.Combine(Path.GetDirectoryName(sim)!, name), LegacyDnaText.Encode(siblingDna));
 
             string? Resolve(string directory) => SetupStorageService.ResolveNativeRestartSource(
@@ -307,11 +312,18 @@ public sealed class SafeModeAutosaveRenderedTests
             Assert.Equal(savedDna, Resolve(literal.FullName));
             Assert.Equal(rootDna, Resolve(@"&#\Robots"));
             Assert.Equal(rootDna, Resolve(""));
-            Assert.Equal(siblingDna, Resolve("relocated"));
-            Assert.Equal(siblingDna, Resolve("https://example.invalid/robots"));
-            Assert.Equal(siblingDna, Resolve(@"\\example.invalid\robots"));
+            Assert.Equal(relativeDna, Resolve("relative"));
+            Assert.Equal(rootDna, Resolve(stalePath));
+            Assert.Equal(rootDna, Resolve("relocated"));
+            Assert.Equal(rootDna, Resolve("https://example.invalid/robots"));
+            Assert.Equal(rootDna, Resolve(@"\\example.invalid\robots"));
             File.WriteAllBytes(Path.Combine(literal.FullName, name), [0xef, 0xbb, 0xbf, 0xff]);
+            Assert.Equal(rootDna, Resolve(literal.FullName));
+
+            File.Delete(rootPath);
+            Assert.Equal(siblingDna, Resolve(stalePath));
             Assert.Equal(siblingDna, Resolve(literal.FullName));
+            Assert.Equal(siblingDna, Resolve(@"\\example.invalid\robots"));
             Assert.Null(SetupStorageService.ResolveNativeRestartSource(new(2, "../" + name, ""), sim, main.FullName));
         }
         finally { profile.Delete(recursive: true); }
