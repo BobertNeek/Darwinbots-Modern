@@ -271,7 +271,12 @@ fn resolve_contacts(
         );
         let mass1 = if first_fixed { 32_000.0 } else { first_mass };
         let mass2 = if second_fixed { 32_000.0 } else { second_mass };
-        let inverse_mass = 1.0 / (mass1 + mass2);
+        let inverse_mass = if native_precision {
+            // Repel3 keeps the sum through division before VectorScalar takes a Single.
+            (1.0 / (f64::from(mass1) + f64::from(mass2))) as f32
+        } else {
+            1.0 / (mass1 + mass2)
+        };
         let first_result = native_scalar(
             add(
                 native_scalar(
@@ -308,6 +313,55 @@ fn resolve_contacts(
 #[cfg(test)]
 mod native_contact_tests {
     use super::{resolve_collisions, resolve_native_collisions};
+
+    #[test]
+    fn native_contact_rounds_the_mass_reciprocal_after_division() {
+        // Original 2.48.32, robot 275 and newborn 303 during cycle 286.
+        let positions = [
+            [f32::from_bits(0x466a_5461), f32::from_bits(0x4585_d5f7)],
+            [f32::from_bits(0x466a_7cb8), f32::from_bits(0x4582_2164)],
+        ];
+        let velocities = [[f32::from_bits(0x4076_b428), f32::from_bits(0xc25e_d833)]; 2];
+        let radii = [59.680_05, 59.692_26];
+        let masses = [f32::from_bits(0x3f98_0d36), f32::from_bits(0x3e40_8312)];
+        let fixed = [false; 2];
+        let pairs = [(0, 1)];
+
+        let mut native_positions = positions;
+        let mut native_velocities = velocities;
+        resolve_native_collisions(
+            &mut native_positions,
+            &mut native_velocities,
+            &radii,
+            &masses,
+            &fixed,
+            &pairs,
+            0.0,
+        );
+        assert_eq!(
+            native_velocities[0].map(f32::to_bits),
+            [0x404d_bc82, 0xc240_bd8f]
+        );
+
+        // Scaling both masses by a power of two keeps the velocity math and
+        // places both masses above the portable minimum.
+        let portable_masses = masses.map(|mass| mass * 8.0);
+        let mut portable_positions = positions;
+        let mut portable_velocities = velocities;
+        resolve_collisions(
+            &mut portable_positions,
+            &mut portable_velocities,
+            &radii,
+            &portable_masses,
+            &fixed,
+            &pairs,
+            0.0,
+        );
+        assert_eq!(
+            portable_velocities[0].map(f32::to_bits),
+            [0x404d_bc84, 0xc240_bd90]
+        );
+    }
 
     #[test]
     fn native_contact_rounds_the_full_magnitude_to_single() {
