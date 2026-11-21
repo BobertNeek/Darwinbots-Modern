@@ -108,32 +108,50 @@ public sealed partial class NativeEngineClient : IEngineClient
 
     public void Tick(uint count = 1) => Advance(count, 100, null);
 
+    public void Tick(uint count, bool requireNativeRepopulationSource, IReadOnlyList<ulong> cancelledLineages) =>
+        Advance(count, 100, null, requireNativeRepopulationSource, cancelledLineages);
+
     public void TickRecordingDeaths(uint count, Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted) =>
         TickRecordingDeaths(count, 100, onCommitted);
 
     public void TickRecordingDeaths(uint count, int weightPercent, Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted) =>
         Advance(count, weightPercent, onCommitted);
 
-    private void Advance(uint count, int weightPercent, Action<IReadOnlyList<DeathRecordSnapshot>>? onDeathsCommitted)
+    public void TickRecordingDeaths(uint count, int weightPercent, IReadOnlyList<ulong> cancelledLineages,
+        Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted) =>
+        Advance(count, weightPercent, onCommitted, requireNativeRepopulationSource: true, cancelledLineages);
+
+    private void Advance(uint count, int weightPercent, Action<IReadOnlyList<DeathRecordSnapshot>>? onDeathsCommitted,
+        bool requireNativeRepopulationSource = false, IReadOnlyList<ulong>? cancelledLineages = null)
     {
         EnsureAlive();
         if (count == 0) return;
+        if (requireNativeRepopulationSource && count != 1)
+            throw new ArgumentOutOfRangeException(nameof(count), "Missing native sources must be resolved one cycle at a time.");
         if (_sampleRestartClockPerCycle && count is > 1 and <= 1_000_000)
         {
             // External league/staged restarts take a new Timer sample for each
             // original cycle. Each successful cycle commits before the next begins.
-            for (uint cycle = 0; cycle < count; cycle++) Advance(1, weightPercent, onDeathsCommitted);
+            for (uint cycle = 0; cycle < count; cycle++)
+                Advance(1, weightPercent, onDeathsCommitted, requireNativeRepopulationSource, cancelledLineages);
             return;
         }
-        var restart = NativeRestartSeedCommand();
+        var command = new
+        {
+            type = "tick",
+            count,
+            capture_deaths = onDeathsCommitted is not null,
+            recording_weight = weightPercent,
+            require_native_repopulation_source = requireNativeRepopulationSource,
+            cancelled_native_repopulation_lineages = cancelledLineages ?? [],
+        };
+        var batch = new { version = 1, commands = new object[] { NativeRestartSeedCommand(), command } };
         if (onDeathsCommitted is null)
         {
-            ExecuteBatch(new { version = 1, commands = new object[] { restart, new { type = "tick", count } } }, "advance simulation");
+            ExecuteBatch(batch, "advance simulation");
             return;
         }
-        var result = ExecuteBatchForResult(
-            new { version = 1, commands = new object[] { restart, new { type = "tick", count, capture_deaths = true, recording_weight = weightPercent } } },
-            "advance simulation with death records");
+        var result = ExecuteBatchForResult(batch, "advance simulation with death records");
         var records = result.GetProperty("results")[1].GetProperty("death_records").Deserialize<DeathRecordSnapshot[]>(DeathRecordJson);
         if (records is { Length: > 0 }) onDeathsCommitted(records);
     }
@@ -1105,7 +1123,17 @@ public sealed partial class NativeEngineClient : IEngineClient
         return new(result.GetProperty("requested").GetBoolean(), sources);
     }
 
-    public int BindNativeRestartSources(IReadOnlyList<NativeRestartBinding> sources)
+    public bool HasUnresolvedNativeRepopulationSources()
+    {
+        EnsureAlive();
+        return ExecuteBatchForResult(new { version = 1, commands = new[] { new { type = "has_unresolved_native_repopulation_sources" } } },
+            "check original repopulation sources").GetProperty("results")[0].GetBoolean();
+    }
+
+    public int BindNativeRestartSources(IReadOnlyList<NativeRestartBinding> sources) =>
+        BindNativeRestartSources(sources, preserveExisting: false);
+
+    public int BindNativeRestartSources(IReadOnlyList<NativeRestartBinding> sources, bool preserveExisting)
     {
         EnsureAlive();
         var result = ExecuteBatchForResult(new
@@ -1116,7 +1144,8 @@ public sealed partial class NativeEngineClient : IEngineClient
                 new
                 {
                     type = "bind_native_restart_sources",
-                    sources = sources.Select(source => new { lineage_id = source.LineageId, dna = source.Dna }).ToArray(),
+                    preserve_existing = preserveExisting,
+                    sources,
                 },
             },
         }, "bind original restart sources");
@@ -1502,26 +1531,26 @@ public sealed partial class NativeEngineClient : IEngineClient
 
     private static void ThrowIfFailed(DbStatus status, string operation)
     {
-        if (status != DbStatus.Ok)
-        {
-            var detail = ReadLastError();
-            throw new InvalidOperationException($"Native engine could not {operation}; status {(int)status} ({status}). {detail}");
-        }
-    }
-
-    private static string ReadLastError()
-    {
+        if (status == DbStatus.Ok) return;
+        var detail = "No error detail was provided.";
         var buffer = new NativeBuffer();
-        if (NativeMethods.LastErrorJson(ref buffer) != DbStatus.Ok || buffer.Data == IntPtr.Zero) return "No error detail was provided.";
-        try
+        if (NativeMethods.LastErrorJson(ref buffer) == DbStatus.Ok && buffer.Data != IntPtr.Zero)
         {
-            using var document = JsonDocument.Parse(CopyBuffer(buffer));
-            return document.RootElement.GetProperty("message").GetString() ?? "No error detail was provided.";
+            try
+            {
+                using var document = JsonDocument.Parse(CopyBuffer(buffer));
+                var error = document.RootElement;
+                detail = error.GetProperty("message").GetString() ?? detail;
+                if (status == DbStatus.EngineError
+                    && error.TryGetProperty("code", out var code) && code.ValueEquals("missing_native_repopulation_source")
+                    && error.TryGetProperty("lineage_id", out var lineage) && lineage.TryGetUInt64(out var lineageId)
+                    && error.TryGetProperty("filename", out var filename) && filename.GetString() is { } name
+                    && error.TryGetProperty("directory", out var directory) && directory.GetString() is { } folder)
+                    throw new MissingNativeRepopulationSourceException(detail, new(lineageId, name, folder));
+            }
+            finally { NativeMethods.BufferFree(ref buffer); }
         }
-        finally
-        {
-            NativeMethods.BufferFree(ref buffer);
-        }
+        throw new InvalidOperationException($"Native engine could not {operation}; status {(int)status} ({status}). {detail}");
     }
 
     private enum DbStatus

@@ -12,6 +12,16 @@ public interface IEngineClient : IDisposable
     // A null result means recording removal is unavailable and nothing was removed.
     IReadOnlyList<DeathRecordSnapshot>? RemoveRecordingDeaths(
         IReadOnlyList<OrganismKey> organisms, bool suppressDeathPoffs, bool excludeVegetables, int weightPercent) => null;
+    void Tick(uint count, bool requireNativeRepopulationSource, IReadOnlyList<ulong> cancelledLineages)
+    {
+        if (requireNativeRepopulationSource)
+            throw new NotSupportedException("Original repopulation sources are unavailable in this engine client.");
+        Tick(count);
+    }
+
+    void TickRecordingDeaths(uint count, int weightPercent, IReadOnlyList<ulong> cancelledLineages,
+        Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted) =>
+        Tick(count, requireNativeRepopulationSource: true, cancelledLineages);
     DnaImportReport ImportDna(string dna, float[]? position = null);
     int ImportOrganism(ReadOnlyMemory<byte> payload) => throw new NotSupportedException("This engine client does not support organism interchange.");
     DnaImportReport ImportSpecies(SpeciesImport species);
@@ -133,7 +143,10 @@ public interface IEngineClient : IDisposable
     void FinishOrdinaryRestart() =>
         throw new NotSupportedException("Ordinary simulation restart is unavailable in this engine client.");
     NativeRestartSources ReadNativeRestartSources() => NativeRestartSources.Empty;
+    bool HasUnresolvedNativeRepopulationSources() => false;
     int BindNativeRestartSources(IReadOnlyList<NativeRestartBinding> sources) => 0;
+    int BindNativeRestartSources(IReadOnlyList<NativeRestartBinding> sources, bool preserveExisting) =>
+        preserveExisting ? 0 : BindNativeRestartSources(sources);
     void AdjudicateLocalRound(uint? winner, string reason);
     void SetOrganismAim(uint slot, uint generation, int aim);
     void UpdateEnvironment(EnvironmentUpdate update);

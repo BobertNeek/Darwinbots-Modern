@@ -38,14 +38,32 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         var result = new List<DesktopTextFile>(files.Count);
         foreach (var file in files)
         {
-            await using var stream = await file.OpenReadAsync();
-            using var memory = new MemoryStream();
-            await stream.CopyToAsync(memory);
+            var dna = await ReadDnaAsync(file);
             var path = LocalPath(file);
             var profile = path is null ? null : await Db2RobotFileStorage.ReadMutationProfileAsync(path);
-            result.Add(new DesktopTextFile(file.Name, LegacyDnaText.Decode(memory.ToArray()), path, profile));
+            result.Add(new DesktopTextFile(file.Name, dna, path, profile));
         }
         return result;
+    }
+
+    public async Task<DesktopTextFile?> OpenNativeRepopulationSourceAsync(TopLevel owner, NativeRestartSource source)
+    {
+        var files = await owner.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = $"Find original Darwinbots DNA for {source.Filename}",
+            AllowMultiple = false,
+            FileTypeFilter = [RobotFileType()],
+        });
+        if (files.FirstOrDefault() is not { } file) return null;
+        return new DesktopTextFile(file.Name, await ReadDnaAsync(file), file.Path.IsUnc ? null : LocalPath(file));
+    }
+
+    private static async Task<string> ReadDnaAsync(IStorageFile file)
+    {
+        await using var stream = await file.OpenReadAsync();
+        using var memory = new MemoryStream();
+        await stream.CopyToAsync(memory);
+        return LegacyDnaText.Decode(memory.ToArray());
     }
 
     public async Task<byte[]?> OpenOrganismAsync(TopLevel owner, string? mainDirectory = null)

@@ -17,6 +17,8 @@ public sealed record DesktopSimulationFile(byte[] Data, string? LocalPath = null
 public interface IDesktopStorageService
 {
     Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner, string? mainDirectory = null, bool allowMultiple = true);
+    Task<DesktopTextFile?> OpenNativeRepopulationSourceAsync(TopLevel owner, NativeRestartSource source) =>
+        Task.FromResult<DesktopTextFile?>(null);
     Task<bool> SaveLivingSnapshotAsync(
         TopLevel owner,
         string suggestedFileName,

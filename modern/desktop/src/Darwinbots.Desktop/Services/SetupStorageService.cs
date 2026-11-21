@@ -116,6 +116,10 @@ public static class SetupStorageService
         return null;
     }
 
+    internal static string? SelectedDnaDirectory(string? path) =>
+        path is not null && IsLocalPath(PortablePath(path)) && Path.IsPathFullyQualified(path)
+            ? Path.GetDirectoryName(path) : null;
+
     private static IEnumerable<string> NativeRestartSourcePaths(string name, string savedDirectory, string? simulationPath,
         string mainDirectory)
     {

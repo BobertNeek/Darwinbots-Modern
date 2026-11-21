@@ -2116,6 +2116,8 @@ public sealed class RenderedControlSurfaceAuditTests
 internal sealed class AuditStorageService : IDesktopStorageService
 {
     public IReadOnlyList<DesktopTextFile> DnaFiles { get; init; } = [];
+    public Func<TopLevel, NativeRestartSource, Task<DesktopTextFile?>>? ResolveNativeRepopulationSource { get; init; }
+    public ConcurrentQueue<(TopLevel Owner, NativeRestartSource Source)> NativeRepopulationSourceRequests { get; } = [];
     public string? PickedSimulationPath { get; init; }
     public byte[]? OpenedSimulation { get; set; }
     public DesktopSettings? SettingsToOpen { get; init; }
@@ -2166,6 +2168,11 @@ internal sealed class AuditStorageService : IDesktopStorageService
         return Task.FromResult(true);
     }
 
+    public Task<DesktopTextFile?> OpenNativeRepopulationSourceAsync(TopLevel owner, NativeRestartSource source)
+    {
+        NativeRepopulationSourceRequests.Enqueue((owner, source));
+        return ResolveNativeRepopulationSource?.Invoke(owner, source) ?? Task.FromResult<DesktopTextFile?>(null);
+    }
     public Task<string?> PickSimulationPathAsync(TopLevel owner) => Task.FromResult(PickedSimulationPath);
     public Task<byte[]?> OpenSimulationAsync(TopLevel owner) => Task.FromResult(OpenedSimulation);
 
@@ -2297,6 +2304,11 @@ internal sealed class AuditEngineClient : IEngineClient
 
     public OrganismSnapshot Organism { get; }
     public ConcurrentQueue<string> Calls { get; } = [];
+    public List<NativeRestartSource> UnresolvedNativeRepopulationSources { get; } = [];
+    public Dictionary<ulong, string> BoundNativeRestartSourceDna { get; } = [];
+    public ConcurrentQueue<(IReadOnlyList<NativeRestartBinding> Sources, bool PreserveExisting)> NativeRestartBindings { get; } = [];
+    public ConcurrentQueue<(uint Count, int? FromCycle, bool Required, ulong[] CancelledLineages)> NativeRepopulationTickAttempts { get; } = [];
+    public HashSet<ulong> CommittedCancelledRepopulationLineages { get; } = [];
     public ConcurrentQueue<EnvironmentUpdate> EnvironmentUpdates { get; } = [];
     public ConcurrentQueue<MutationSettingsUpdate> MutationUpdates { get; } = [];
     public Dictionary<uint, string> SpeciesTemplateDna { get; } = [];
@@ -2346,6 +2358,32 @@ internal sealed class AuditEngineClient : IEngineClient
         else if (NativeCycle is { } cycle) NativeCycle = checked(cycle + checked((int)count));
         Calls.Enqueue($"Tick:{count}");
     }
+
+    public void Tick(uint count, bool requireNativeRepopulationSource, IReadOnlyList<ulong> cancelledLineages)
+    {
+        NativeRepopulationTickAttempts.Enqueue((count, NativeCycle, requireNativeRepopulationSource, cancelledLineages.ToArray()));
+        if (requireNativeRepopulationSource && FindUnresolvedNativeRepopulationSource(cancelledLineages) is { } source)
+            throw new MissingNativeRepopulationSourceException($"Missing native repopulation source {source.Filename}.", source);
+        Tick(count);
+        CommittedCancelledRepopulationLineages.UnionWith(cancelledLineages);
+    }
+
+    public bool HasUnresolvedNativeRepopulationSources() =>
+        FindUnresolvedNativeRepopulationSource([]) is not null;
+
+    public int BindNativeRestartSources(IReadOnlyList<NativeRestartBinding> sources, bool preserveExisting)
+    {
+        NativeRestartBindings.Enqueue((sources.ToArray(), preserveExisting));
+        if (!preserveExisting) BoundNativeRestartSourceDna.Clear();
+        foreach (var source in sources) BoundNativeRestartSourceDna[source.LineageId] = source.Dna;
+        return sources.Count;
+    }
+
+    private NativeRestartSource? FindUnresolvedNativeRepopulationSource(IReadOnlyList<ulong> cancelledLineages) =>
+        UnresolvedNativeRepopulationSources.FirstOrDefault(source => !BoundNativeRestartSourceDna.ContainsKey(source.LineageId)
+            && !CommittedCancelledRepopulationLineages.Contains(source.LineageId)
+            && !cancelledLineages.Contains(source.LineageId));
+
     public DnaImportReport ImportDna(string dna, float[]? position = null) { Calls.Enqueue("ImportDna"); return DnaImportReport.Compatible; }
     public DnaImportReport ImportSpecies(SpeciesImport species) { Calls.Enqueue($"ImportSpecies:{species.Name}"); return DnaImportReport.Compatible; }
     public DnaImportReport InsertSpeciesAt(SpeciesImport species, float[] position)

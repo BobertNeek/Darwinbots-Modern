@@ -172,6 +172,169 @@ public sealed class SafeModeAutosaveRenderedTests
     }
 
     [Fact]
+    public async Task MissingRepopulationSourceRetriesBeforeSafeModeCheckpoint()
+    {
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var factory = new AuditEngineClientFactory(encodeTickInSave: true);
+            var picker = new TaskCompletionSource<DesktopTextFile?>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var storage = new AuditStorageService { ResolveNativeRepopulationSource = (_, _) => picker.Task };
+            var window = new MainWindow([], Setup(true), factory, storage);
+            try
+            {
+                Show(window);
+                await Ready(window);
+                var engine = Assert.Single(factory.Clients);
+                var session = Field<SimulationSession>(window, "_session");
+                var missing = RequireRepopulationSource(engine, 42);
+                const string existingDna = "start\nstop\n";
+                const string selectedDna = "start\n1 .up store\nstop\n";
+                var selectedPath = Path.Combine(Path.GetTempPath(), missing.Filename);
+                engine.BoundNativeRestartSourceDna.Add(17, existingDna);
+                await session.RefreshSnapshotAsync();
+                engine.Calls.Clear();
+
+                var advance = InvokeTask(window, "AdvanceSimulationAsync", 3u);
+                await WaitFor(() => storage.NativeRepopulationSourceRequests.Count == 1);
+                var request = Assert.Single(storage.NativeRepopulationSourceRequests);
+                Assert.Same(window, request.Owner);
+                Assert.Equal(missing, request.Source);
+                var attempt = Assert.Single(engine.NativeRepopulationTickAttempts);
+                Assert.Equal((1u, (int?)1999, true), (attempt.Count, attempt.FromCycle, attempt.Required));
+                Assert.Empty(attempt.CancelledLineages);
+                AssertUncommittedRepopulationTick(session, engine, storage);
+
+                picker.SetResult(new DesktopTextFile(missing.Filename, selectedDna, selectedPath));
+                await advance.WaitAsync(TimeSpan.FromSeconds(8));
+
+                var binding = Assert.Single(engine.NativeRestartBindings);
+                Assert.True(binding.PreserveExisting);
+                Assert.Equal(new NativeRestartBinding(missing.LineageId, selectedDna, Path.GetDirectoryName(selectedPath)),
+                    Assert.Single(binding.Sources));
+                Assert.Equal(existingDna, engine.BoundNativeRestartSourceDna[17]);
+                Assert.Equal(selectedDna, engine.BoundNativeRestartSourceDna[missing.LineageId]);
+                Assert.Empty(engine.CommittedCancelledRepopulationLineages);
+                Assert.Equal(new[] { "Tick:1", "Save", "Tick:2" }, TickAndSaveCalls(engine));
+                Assert.Equal(1ul, BitConverter.ToUInt64(Assert.Single(storage.AutosaveWrites)));
+                Assert.Equal(3ul, session.LatestSnapshot.Tick);
+                Assert.Equal(2002, session.LatestSnapshot.NativeCycle);
+            }
+            finally
+            {
+                picker.TrySetResult(null);
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CancelingOneRepopulationSourcePreservesTransportAndCommitsAfterReplacement(bool running)
+    {
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var factory = new AuditEngineClientFactory(encodeTickInSave: true);
+            var firstPicker = new TaskCompletionSource<DesktopTextFile?>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var secondPicker = new TaskCompletionSource<DesktopTextFile?>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var tickStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var releaseTick = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var timeout = TimeSpan.FromSeconds(8);
+            var storage = new AuditStorageService
+            {
+                ResolveNativeRepopulationSource = (_, source) => source.LineageId == 42 ? firstPicker.Task : secondPicker.Task,
+            };
+            var window = new MainWindow([], Setup(true) with { TicksPerUpdate = 1 }, factory, storage);
+            try
+            {
+                Show(window);
+                await Ready(window);
+                var engine = Assert.Single(factory.Clients);
+                var session = Field<SimulationSession>(window, "_session");
+                var timer = Field<DispatcherTimer>(window, "_runTimer");
+                var gate = Field<SemaphoreSlim>(window, "_advanceGate");
+                var missing = RequireRepopulationSource(engine, 42);
+                var replacement = RequireRepopulationSource(engine, 43);
+                await session.RefreshSnapshotAsync();
+                await WaitFor(() => ViewModel(window).NativeCycle == 1999);
+                engine.Calls.Clear();
+                engine.AdvanceNativeCycle = (count, previous) =>
+                {
+                    tickStarted.TrySetResult();
+                    releaseTick.Task.WaitAsync(timeout).GetAwaiter().GetResult();
+                    return previous + checked((int)count);
+                };
+
+                Named<Button>(window, running ? "RunButton" : "StepButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => storage.NativeRepopulationSourceRequests.Count == 1);
+                AssertUncommittedRepopulationTick(session, engine, storage);
+                Assert.Equal(running, timer.IsEnabled);
+                firstPicker.SetResult(null);
+
+                await WaitFor(() => storage.NativeRepopulationSourceRequests.Count == 2);
+                AssertUncommittedRepopulationTick(session, engine, storage);
+                Assert.Empty(engine.NativeRestartBindings);
+                var requests = storage.NativeRepopulationSourceRequests.ToArray();
+                Assert.All(requests, request => Assert.Same(window, request.Owner));
+                Assert.Equal(new[] { missing, replacement }, requests.Select(request => request.Source));
+
+                const string dna = "start\n1 .up store\nstop\n";
+                secondPicker.SetResult(new DesktopTextFile(replacement.Filename, dna));
+                await tickStarted.Task.WaitAsync(timeout);
+                Assert.Equal(running, timer.IsEnabled);
+                if (running) Named<Button>(window, "PauseButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                releaseTick.SetResult();
+                await WaitFor(() => gate.CurrentCount == 1 && ViewModel(window).NativeCycle == 2000);
+
+                var attempts = engine.NativeRepopulationTickAttempts.ToArray();
+                Assert.Equal(3, attempts.Length);
+                Assert.All(attempts, attempt =>
+                    Assert.Equal((1u, (int?)1999, true), (attempt.Count, attempt.FromCycle, attempt.Required)));
+                Assert.Empty(attempts[0].CancelledLineages);
+                Assert.Equal(missing.LineageId, Assert.Single(attempts[1].CancelledLineages));
+                Assert.Equal(missing.LineageId, Assert.Single(attempts[2].CancelledLineages));
+                Assert.Equal(missing.LineageId, Assert.Single(engine.CommittedCancelledRepopulationLineages));
+                var binding = Assert.Single(engine.NativeRestartBindings);
+                Assert.True(binding.PreserveExisting);
+                Assert.Equal(new NativeRestartBinding(replacement.LineageId, dna), Assert.Single(binding.Sources));
+                Assert.Equal(new[] { "Tick:1", "Save" }, TickAndSaveCalls(engine));
+                Assert.Equal(1ul, BitConverter.ToUInt64(Assert.Single(storage.AutosaveWrites)));
+                Assert.Equal(1ul, session.LatestSnapshot.Tick);
+                Assert.Equal(2000, session.LatestSnapshot.NativeCycle);
+                Assert.False(timer.IsEnabled);
+            }
+            finally
+            {
+                firstPicker.TrySetResult(null);
+                secondPicker.TrySetResult(null);
+                releaseTick.TrySetResult();
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
+    private static NativeRestartSource RequireRepopulationSource(AuditEngineClient engine, ulong lineageId)
+    {
+        var source = new NativeRestartSource(lineageId, $"missing-alga-{Guid.NewGuid():N}.txt", "Robots");
+        engine.NativeCycle = 1999;
+        engine.UnresolvedNativeRepopulationSources.Add(source);
+        return source;
+    }
+
+    private static IEnumerable<string> TickAndSaveCalls(AuditEngineClient engine) =>
+        engine.Calls.Where(call => call.StartsWith("Tick:", StringComparison.Ordinal) || call == "Save");
+
+    private static void AssertUncommittedRepopulationTick(
+        SimulationSession session, AuditEngineClient engine, AuditStorageService storage)
+    {
+        Assert.Equal(0ul, session.LatestSnapshot.Tick);
+        Assert.Equal(1999, session.LatestSnapshot.NativeCycle);
+        Assert.Empty(TickAndSaveCalls(engine));
+        Assert.Empty(engine.CommittedCancelledRepopulationLineages);
+        Assert.Empty(storage.AutosaveWrites);
+    }
+
+    [Fact]
     public async Task RestartCapableBatchObservesResetAndCanSaveTheSameNativeBoundaryInTwoWorlds()
     {
         var path = Path.Combine(Path.GetTempPath(), $"db24832-reset-cycle-backup-{Guid.NewGuid():N}.db3s");

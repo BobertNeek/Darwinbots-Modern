@@ -69,7 +69,22 @@ public sealed class SimulationSession : IAsyncDisposable
 
     public Task StepRecordingDeathsAsync(uint count, int weightPercent,
         Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted, CancellationToken cancellationToken = default) =>
-        Enqueue(engine => engine.TickRecordingDeaths(count, weightPercent, onCommitted), cancellationToken, measureTicks: true);
+        Enqueue(engine =>
+        {
+            ApplyPlayerBotPointer(engine);
+            engine.TickRecordingDeaths(count, weightPercent, onCommitted);
+        }, cancellationToken, measureTicks: true);
+
+    public Task StepRequiringNativeRepopulationSourceAsync(IReadOnlyList<ulong> cancelledLineages, int weightPercent,
+        Action<IReadOnlyList<DeathRecordSnapshot>>? onCommitted, CancellationToken cancellationToken = default) =>
+        Enqueue(engine =>
+        {
+            ApplyPlayerBotPointer(engine);
+            if (onCommitted is null)
+                engine.Tick(1, requireNativeRepopulationSource: true, cancelledLineages);
+            else
+                engine.TickRecordingDeaths(1, weightPercent, cancelledLineages, onCommitted);
+        }, cancellationToken, measureTicks: true);
 
     public async Task<OrganismKey?> FindBestRobotAsync(bool energyWeighting, CancellationToken cancellationToken = default)
         => await FindBestRobotAsync(energyWeighting ? 100 : 0, cancellationToken).ConfigureAwait(false);
@@ -695,6 +710,22 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task LoadAsync(byte[] save, CancellationToken cancellationToken = default) =>
         LoadWithNativeRestartSourcesAsync(save, null, cancellationToken);
 
+    public async Task<bool> HasUnresolvedNativeRepopulationSourcesAsync(CancellationToken cancellationToken = default)
+    {
+        var unresolved = false;
+        await Enqueue(engine => unresolved = engine.HasUnresolvedNativeRepopulationSources(),
+            cancellationToken, publishSnapshot: false).ConfigureAwait(false);
+        return unresolved;
+    }
+
+    public async Task<bool> BindNativeRepopulationSourceAsync(NativeRestartBinding source, CancellationToken cancellationToken = default)
+    {
+        var bound = 0;
+        await Enqueue(engine => bound = engine.BindNativeRestartSources([source], preserveExisting: true),
+            cancellationToken, publishSnapshot: false).ConfigureAwait(false);
+        return bound == 1;
+    }
+
     public Task LoadWithNativeRestartSourcesAsync(byte[] save, Func<NativeRestartSource, string?>? resolveSource,
         CancellationToken cancellationToken = default)
     {
@@ -756,6 +787,7 @@ public sealed class SimulationSession : IAsyncDisposable
                     command.Completion.TrySetResult();
                     continue;
                 }
+
                 var snapshot = _engine.Snapshot();
                 var elapsed = _performanceClock.Elapsed.TotalSeconds;
                 var advanced = command.MeasureTicks && _lastPublishedTick is { } previous && snapshot.Tick >= previous
