@@ -136,7 +136,7 @@ public sealed class Db2PersistenceTests
         };
         var snapshot = new EngineSnapshot(91, 1, "CPU", [organism])
         {
-            Species = [new SpeciesSnapshot("Fixture", false, 0xff239ac0, 0, false)],
+            Species = [new SpeciesSnapshot("Oracle,movement.txt", false, 0xff239ac0, 0, false)],
         };
 
         var text = Db2GenomeRecordFile.EncodeLiving(
@@ -144,8 +144,45 @@ public sealed class Db2PersistenceTests
             new Dictionary<OrganismKey, string> { [new OrganismKey(7, 3)] = "start\r\nstop" });
 
         Assert.StartsWith(Db2GenomeRecordFile.Header + "\r\n", text);
-        Assert.Contains("7003,0,Fixture,3,0,19,4,1,2,5,0,885,885,12\r\nstart\r\nstop\r\n", text);
+        Assert.Contains("7003,0,Oracle,movement.txt,3,0,19,4,1,2,5,0,885,885,12\r\nstart\r\nstop\r\n", text);
+        Assert.Equal("Oracle,movement.txt", Assert.Single(Db2GenomeRecordFile.Decode(text)).Founder);
     }
+
+    [Fact]
+    public void NativeDeadRowsAndEarlierQuotedModernFounderRowsCanShareOneArchive()
+    {
+        var death = new DeathRecordSnapshot(4, 1, 0, "Oracle,movement.txt", 0, 0, 4,
+            0, 0, 6, 0, 0, 30000, 0, "start\n'quoted \" DNA comment\nstop", []);
+        var text = Db2GenomeRecordFile.EncodeDead([death], includeHeader: true);
+        Assert.Contains("\r\n\r\n\r\n1,0,Oracle,movement.txt,0,0,4,0,0,6,0,0,30000,30000,0\r\n", text);
+
+        const string earlier = "\r\n\r\n2,1,\"Oracle,\"\"earlier\"\".txt\",4,91,22,8,3,10,6,7,92.5,100,4\r\nstop\r\n";
+        var rows = Db2GenomeRecordFile.Decode(text + earlier);
+        Assert.Collection(rows,
+            raw =>
+            {
+                Assert.Equal("Oracle,movement.txt", raw.Founder);
+                Assert.Equal(death.Dna, raw.Dna);
+            },
+            quoted =>
+            {
+                Assert.Equal("Oracle,\"earlier\".txt", quoted.Founder);
+                Assert.Equal(1UL, quoted.ParentId);
+                Assert.Equal(4U, quoted.Generation);
+                Assert.Equal(92.5, quoted.Fitness);
+                Assert.Equal("stop", quoted.Dna);
+            });
+
+        var modernOnly = death with { Founder = "First,\"quoted\"\r\nSecond" };
+        var modern = Db2GenomeRecordFile.EncodeDead([modernOnly], includeHeader: true);
+        Assert.Contains("1,0,\"First,\"\"quoted\"\"\r\nSecond\",0,0,4,0,0,6,0,0,30000,30000,0\r\n", modern);
+    }
+
+    [Theory]
+    [InlineData("7003,11,Oracle,movement.txt,3,82,19,4,1,2,5,6,885,885,invalid")]
+    [InlineData("7003,11,\"Oracle,movement.txt,3,82,19,4,1,2,5,6,885,885,12")]
+    public void GenomeRecordStillRejectsMalformedMetadata(string row) => Assert.Throws<InvalidDataException>(
+        () => Db2GenomeRecordFile.Decode(Db2GenomeRecordFile.Header + "\r\n\r\n\r\n" + row));
 
     [Fact]
     public void GenomeRecordRoundTripPreservesFitnessMutationSidecarsAndDeadRetentionWithoutDecay()
