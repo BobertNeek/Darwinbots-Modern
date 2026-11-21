@@ -17,6 +17,33 @@ public sealed record PhylogenyGraph(
 
 public static class PhylogenyModel
 {
+    public static int? CountNativeDescendants(EngineSnapshot snapshot, OrganismKey focus)
+    {
+        var ancestor = snapshot.Organisms.FirstOrDefault(robot =>
+            robot.Exists && robot.Slot == focus.Slot && robot.Generation == focus.Generation);
+        if (ancestor is null) return null;
+
+        // DB2 discendenti scans existing slots by primary absolute parent, including corpses.
+        var children = snapshot.Organisms
+            .Where(robot => robot.Exists && robot.ParentAbsoluteId.HasValue)
+            .OrderBy(robot => robot.Slot)
+            .ToLookup(robot => robot.ParentAbsoluteId!.Value, robot => robot.UniqueId);
+        var count = 0;
+        CountChildren(ancestor.UniqueId);
+        return count;
+
+        void CountChildren(ulong absoluteId)
+        {
+            // The VB6 ByRef count gates entry only. An open scan still counts its remaining children.
+            if (count >= 1_000) return;
+            foreach (var child in children[absoluteId])
+            {
+                count++;
+                CountChildren(child);
+            }
+        }
+    }
+
     public static PhylogenyGraph Build(EngineSnapshot snapshot, OrganismKey focus, int maxDepth)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
