@@ -163,28 +163,40 @@ fn native_token(
             (TokenClass::Dereference, value)
         });
     let value = if let Some(name) = value.strip_prefix('.') {
-        // System names compare without case; real-robot private names compare
-        // exactly and later duplicate definitions replace earlier matches.
-        // For scratch n = 0 this branch has no private-variable slice.
-        if name.is_empty() {
-            0
-        } else {
-            private_variables
-                .and_then(|variables| {
-                    variables
-                        .iter()
-                        .rev()
-                        .find(|(candidate, _)| candidate.as_str() == name)
-                })
-                .map_or_else(
-                    || crate::sysvar_address(name).unwrap_or(0),
-                    |(_, value)| *value,
-                )
-        }
+        native_symbol_address(name, private_variables.unwrap_or_default()).unwrap_or(0)
     } else {
         native_integer(value, line)?
     };
     Ok(DnaBlock { class, value })
+}
+
+pub(crate) fn native_robot_memory_address(
+    name: &str,
+    private_variables: &[(String, i32)],
+) -> Option<i32> {
+    if let Some(symbol) = name.strip_prefix('.') {
+        return native_symbol_address(symbol, private_variables);
+    }
+    // SysvarTok uses VB Val for numeric addresses, including its type suffixes.
+    // Keep the console's existing convenience for undotted built-in names.
+    native_integer(name, 1)
+        .ok()
+        .filter(|value| *value != 0)
+        .or_else(|| crate::sysvar_address(name))
+}
+
+fn native_symbol_address(name: &str, private_variables: &[(String, i32)]) -> Option<i32> {
+    if name.is_empty() {
+        return None;
+    }
+    // Built-ins ignore case. Private names are literal and the last exact
+    // definition can override a built-in even if its address is invalid.
+    private_variables
+        .iter()
+        .rev()
+        .find(|(candidate, _)| candidate.as_str() == name)
+        .map(|(_, value)| *value)
+        .or_else(|| crate::sysvar_address(name))
 }
 
 fn native_integer(text: &str, line: usize) -> Result<i32, EngineError> {

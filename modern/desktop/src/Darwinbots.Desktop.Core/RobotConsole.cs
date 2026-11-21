@@ -59,9 +59,8 @@ public sealed class RobotConsoleController
                 return "pause";
             case "set":
                 RequireArguments(command, 2);
-                var address = await _session.ResolveMemoryAddressAsync(command.Arguments[0], cancellationToken).ConfigureAwait(false);
                 var value = ParseInt(command.Arguments[1], "value");
-                await _session.SetOrganismMemoryAsync(_focus.Slot, _focus.Generation, address, value, cancellationToken)
+                var address = await _session.SetNamedOrganismMemoryAsync(_focus, command.Arguments[0], value, cancellationToken)
                     .ConfigureAwait(false);
                 return $"mem[{address}] = {value}";
             case "energy":
@@ -72,9 +71,10 @@ public sealed class RobotConsoleController
                 return $"energy = {energy}";
             case "printmem":
             case "?":
-                if (command.Arguments.Count == 0) return PrintMemory(command.Arguments);
-                var resolved = await _session.ResolveMemoryAddressAsync(command.Arguments[0], cancellationToken).ConfigureAwait(false);
-                return PrintMemory([resolved.ToString()]);
+                if (command.Arguments.Count == 0) return PrintMemory();
+                var memory = await _session.ReadNamedOrganismMemoryAsync(_focus, command.Arguments[0], cancellationToken)
+                    .ConfigureAwait(false);
+                return $"mem[{memory.Address}] = {memory.Value}";
             case "execrob":
                 await _session.ExecuteRobotsAsync(cancellationToken).ConfigureAwait(false);
                 return $"DNA executed at cycle {_session.LatestSnapshot.Tick}";
@@ -95,17 +95,8 @@ public sealed class RobotConsoleController
         }
     }
 
-    private string PrintMemory(IReadOnlyList<string> arguments)
-    {
-        var organism = CurrentOrganism();
-        if (arguments.Count > 0)
-        {
-            var address = ParseAddress(arguments[0]);
-            var cell = organism.Memory.FirstOrDefault(cell => cell.Address == address);
-            return $"mem[{address}] = {cell?.Value ?? 0}";
-        }
-        return string.Join(Environment.NewLine, organism.Memory.Select(cell => $"mem[{cell.Address}] = {cell.Value}"));
-    }
+    private string PrintMemory() =>
+        string.Join(Environment.NewLine, CurrentOrganism().Memory.Select(cell => $"mem[{cell.Address}] = {cell.Value}"));
 
     private string PrintEyes()
     {
@@ -137,13 +128,6 @@ public sealed class RobotConsoleController
         var value = ParseInt(arguments[0], "cycle count");
         if (value is < 1 or > 1_000_000) throw new ArgumentOutOfRangeException(nameof(arguments));
         return (uint)value;
-    }
-
-    private static ushort ParseAddress(string value)
-    {
-        var address = ParseInt(value, "memory address");
-        if (address is < 1 or > 1000) throw new ArgumentOutOfRangeException(nameof(value));
-        return (ushort)address;
     }
 
     private static int ParseInt(string value, string name) =>

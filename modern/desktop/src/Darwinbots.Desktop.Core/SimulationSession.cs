@@ -568,6 +568,34 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task SetOrganismMemoryAsync(uint slot, uint generation, ushort address, int value, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.SetOrganismMemory(slot, generation, address, value), cancellationToken);
 
+    internal async Task<ushort> SetNamedOrganismMemoryAsync(
+        OrganismKey focus, string name, int value, CancellationToken cancellationToken)
+    {
+        ushort address = 0;
+        await Enqueue(engine =>
+        {
+            address = engine.ResolveMemoryAddress(name, focus);
+            engine.SetOrganismMemory(focus.Slot, focus.Generation, address, value);
+        }, cancellationToken).ConfigureAwait(false);
+        return address;
+    }
+
+    internal async Task<(ushort Address, int Value)> ReadNamedOrganismMemoryAsync(
+        OrganismKey focus, string name, CancellationToken cancellationToken)
+    {
+        (ushort Address, int Value) result = default;
+        await Enqueue(engine =>
+        {
+            var address = engine.ResolveMemoryAddress(name, focus);
+            var organism = engine.Snapshot().Organisms.FirstOrDefault(candidate =>
+                candidate.Slot == focus.Slot && candidate.Generation == focus.Generation)
+                ?? throw new InvalidOperationException("The focused robot is no longer live.");
+            var cell = organism.Memory.FirstOrDefault(candidate => candidate.Address == address);
+            result = (address, cell?.Value ?? 0);
+        }, cancellationToken).ConfigureAwait(false);
+        return result;
+    }
+
     public async Task<ushort> ResolveMemoryAddressAsync(string name, CancellationToken cancellationToken = default)
     {
         ushort address = 0;

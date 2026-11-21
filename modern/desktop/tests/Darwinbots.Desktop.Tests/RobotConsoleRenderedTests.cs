@@ -197,6 +197,72 @@ public sealed class RobotConsoleRenderedTests
         }, CancellationToken.None);
     }
 
+    [Fact]
+    public async Task NativeConsoleMemoryCommandsUseTheRobotsPrivateDefinitionsAfterSelectionMoves()
+    {
+        var setup = new WorldSetupOptions
+        {
+            Backend = "Cpu",
+            PopulationCapacity = 64,
+            Species =
+            [
+                new("Tracker", "def Counter 901\ndef Counter 902\ndef up 903\ndef Counter% 904\nstart stop",
+                    false, 0xff239ac0, 1, 1_000, 0, false, 1),
+                new("Other", "def Counter 911\nstart stop", false, 0xffbb832c, 1, 1_000, 0, false, 1),
+            ],
+        };
+
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], setup, NativeEngineClientFactory.Instance, new AuditStorageService());
+            try
+            {
+                window.Show();
+                var viewModel = Assert.IsType<MainWindowViewModel>(window.DataContext);
+                await WaitForAsync(() => viewModel.Population == 2
+                    && viewModel.Status.Contains("WORLD READY", StringComparison.Ordinal));
+                var session = Assert.IsType<SimulationSession>(typeof(MainWindow)
+                    .GetField("_session", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(window));
+                var snapshot = session.LatestSnapshot;
+                var tracker = Assert.Single(snapshot.Organisms,
+                    robot => snapshot.Species[(int)robot.Species].Name == "Tracker");
+                var other = Assert.Single(snapshot.Organisms,
+                    robot => snapshot.Species[(int)robot.Species].Name == "Other");
+                viewModel.Select(new OrganismKey(tracker.Slot, tracker.Generation));
+
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                menu.FindCommandItem(LegacyCommandId.RobotOpenConsole)!
+                    .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitForAsync(() => window.OwnedWindows.OfType<RobotConsoleWindow>().Any());
+                var console = Assert.Single(window.OwnedWindows.OfType<RobotConsoleWindow>());
+                console.UpdateLayout();
+                var transcript = Assert.Single(console.GetVisualDescendants().OfType<TextBox>(), box => box.IsReadOnly);
+                var command = Assert.Single(console.GetVisualDescendants().OfType<TextBox>(), box => !box.IsReadOnly);
+                var run = Assert.Single(console.GetVisualDescendants().OfType<Button>(), button => Equals(button.Content, "RUN"));
+
+                viewModel.Select(new OrganismKey(other.Slot, other.Generation));
+                await RunAndWaitAsync(command, run, transcript, "set .Counter 124", "mem[902] = 124");
+                await RunAndWaitAsync(command, run, transcript, "? .Counter", "> ? .Counter\nmem[902] = 124");
+                await RunAndWaitAsync(command, run, transcript, "set .up 21", "mem[903] = 21");
+                await RunAndWaitAsync(command, run, transcript, "printmem .UP", "> printmem .UP\nmem[1] = 0");
+                await RunAndWaitAsync(command, run, transcript, "set .Counter% -8", "mem[904] = -8");
+                await RunAndWaitAsync(command, run, transcript, "printmem .COUNTER", "unknown memory address .COUNTER");
+
+                var live = session.LatestSnapshot;
+                var tracked = Assert.Single(live.Organisms, robot => robot.Slot == tracker.Slot);
+                Assert.Equal(124, Assert.Single(tracked.Memory, cell => cell.Address == 902).Value);
+                Assert.DoesNotContain(Assert.Single(live.Organisms, robot => robot.Slot == other.Slot).Memory,
+                    cell => cell.Address == 911 && cell.Value == 124);
+                Assert.Equal(snapshot.Tick, live.Tick);
+            }
+            finally
+            {
+                foreach (var ownedWindow in window.OwnedWindows.ToArray()) ownedWindow.Close();
+                if (window.IsVisible) window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
     private static async Task RunAndWaitAsync(
         TextBox command,
         Button run,

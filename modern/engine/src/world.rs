@@ -4841,6 +4841,26 @@ impl Engine {
         Ok(())
     }
 
+    pub(crate) fn resolve_memory_address(
+        &self,
+        name: &str,
+        focus: Option<OrganismId>,
+    ) -> Result<u16, EngineError> {
+        let address = if let Some(id) = focus.filter(|_| self.native_random.is_some()) {
+            let robot = self.slots.get(id)?;
+            crate::dna::native_robot_memory_address(name, robot.program.dna.native_user_variables())
+        } else {
+            name.parse::<u16>()
+                .ok()
+                .map(i32::from)
+                .or_else(|| crate::sysvar_address(name.trim_start_matches('.')))
+        };
+        address
+            .filter(|address| (1..=1000).contains(address))
+            .map(|address| address as u16)
+            .ok_or_else(|| EngineError::Invariant(format!("unknown memory address {name}")))
+    }
+
     pub fn set_organism_memory(
         &mut self,
         id: OrganismId,

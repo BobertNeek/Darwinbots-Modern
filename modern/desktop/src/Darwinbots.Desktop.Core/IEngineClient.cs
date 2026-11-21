@@ -135,6 +135,7 @@ public interface IEngineClient : IDisposable
     void SetOrganismMemory(uint slot, uint generation, ushort address, int value);
     ushort ResolveMemoryAddress(string name) => ushort.TryParse(name, out var address) && address is >= 1 and <= 1000
         ? address : throw new FormatException($"Unknown memory address '{name}'.");
+    ushort ResolveMemoryAddress(string name, OrganismKey focus) => ResolveMemoryAddress(name);
     void ExecuteRobots() => throw new NotSupportedException("DNA-only execution is unavailable.");
     OrganismKey? FindBestRobot(bool energyWeighting) => null;
     OrganismKey? FindBestRobot(int weightPercent) => FindBestRobot(weightPercent > 0);
