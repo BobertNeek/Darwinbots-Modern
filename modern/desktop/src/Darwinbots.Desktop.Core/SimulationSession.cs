@@ -340,6 +340,18 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task ConfigureGraphSamplingAsync(GraphSamplingSettings settings, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.ConfigureGraphSampling(settings), cancellationToken);
 
+    public async Task<NativeGraphRecordingState?> ReadNativeGraphRecordingAsync(CancellationToken cancellationToken = default)
+    {
+        NativeGraphRecordingState? recording = null;
+        await Enqueue(engine => recording = engine.ReadNativeGraphRecording(), cancellationToken, publishSnapshot: false)
+            .ConfigureAwait(false);
+        return recording;
+    }
+
+    public Task UpdateNativeGraphRecordingAsync(string? runStamp, IReadOnlyList<NativeGraphRecordingRow> graphs,
+        CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.UpdateNativeGraphRecording(runStamp, graphs), cancellationToken, publishSnapshot: false);
+
     public Task UpdateEnvironmentAsync(EnvironmentUpdate update, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.UpdateEnvironment(update), cancellationToken);
 
