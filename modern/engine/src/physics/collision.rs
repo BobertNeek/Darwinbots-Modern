@@ -94,15 +94,19 @@ pub(crate) fn native_dot(first: [f32; 2], second: [f32; 2]) -> f32 {
     (f64::from(first[0]) * f64::from(second[0]) + f64::from(first[1]) * f64::from(second[1])) as f32
 }
 
-fn vector_magnitude(vector: [f32; 2], native_contact: bool) -> f32 {
+pub(crate) fn native_full_magnitude(vector: [f32; 2]) -> f32 {
+    vector_magnitude(vector, true)
+}
+
+fn vector_magnitude(vector: [f32; 2], full_quotient: bool) -> f32 {
     let maximum = vector[0].abs().max(vector[1].abs());
     let minimum = vector[0].abs().min(vector[1].abs());
     if maximum < 0.00001 {
         0.0
     } else {
-        // Repel3's VectorMagnitude keeps the quotient through the Double power
+        // Common.VectorMagnitude keeps the quotient through the Double power
         // expression before narrowing the completed result to Single.
-        let ratio = if native_contact {
+        let ratio = if full_quotient {
             f64::from(minimum) / f64::from(maximum)
         } else {
             f64::from(minimum / maximum)
@@ -176,7 +180,11 @@ fn resolve_contacts(
     // Physics.Repel3, including its gradual separation, projection damping and
     // finite fixed-bot mass. VectorScalar's native Single clamp is intentional.
     let elasticity = elasticity.clamp(0.0, 1.0);
-    let magnitude = |vector| vector_magnitude(vector, native_precision);
+    let magnitude: fn([f32; 2]) -> f32 = if native_precision {
+        native_full_magnitude
+    } else {
+        native_magnitude
+    };
     for &(first, second) in pairs {
         if first == second || first >= positions.len() || second >= positions.len() {
             continue;
