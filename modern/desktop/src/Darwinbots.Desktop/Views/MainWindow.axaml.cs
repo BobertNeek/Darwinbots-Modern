@@ -1074,7 +1074,7 @@ public sealed partial class MainWindow : Window
             var format = await _storage.SaveSimulationWithMutationOptionsAsync(this, format =>
                 format == SimulationSaveFormat.Legacy
                     ? session.SaveLegacyWithoutMutationDetailsAsync()
-                    : session.SaveWithoutMutationsAsync());
+                : session.SaveWithoutMutationsAsync(), _globalSettings.Main.MainDirectory);
             return format switch
             {
                 SimulationSaveFormat.Legacy => LegacyCommandResult.Success("DARWINBOTS 2 SIMULATION SAVED WITHOUT MUTATION DETAILS"),
@@ -1087,7 +1087,8 @@ public sealed partial class MainWindow : Window
         WithPausedSimulationFileDialogAsync(async session =>
         {
             var format = await _storage.SaveSimulationWithFormatAsync(this, format =>
-                format == SimulationSaveFormat.Legacy ? session.SaveLegacyAsync() : session.SaveAsync());
+                format == SimulationSaveFormat.Legacy ? session.SaveLegacyAsync() : session.SaveAsync(),
+                _globalSettings.Main.MainDirectory);
             return format switch
             {
                 SimulationSaveFormat.Legacy => LegacyCommandResult.Success("DARWINBOTS 2 SIMULATION SAVED"),
@@ -1108,7 +1109,7 @@ public sealed partial class MainWindow : Window
     private Task<LegacyCommandResult> LoadSimulationCommandAsync() =>
         WithPausedSimulationFileDialogAsync(async session =>
         {
-            if (await _storage.OpenSimulationAsync(this) is not { } save
+            if (await _storage.OpenSimulationAsync(this, _globalSettings.Main.MainDirectory) is not { } save
                 || !OwnsSimulationFileCommand(session))
                 return LegacyCommandResult.Cancel();
             await LoadSimulationAsync(save);
@@ -2950,7 +2951,7 @@ public sealed partial class MainWindow : Window
     private async void Load_Click(object? sender, RoutedEventArgs e)
     {
         if (_session is null) return;
-        if (await _storage.OpenSimulationAsync(this) is not { } save) return;
+        if (await _storage.OpenSimulationAsync(this, _globalSettings.Main.MainDirectory) is not { } save) return;
         await LoadSimulationAsync(save);
         _viewModel.Status = "LOADED";
     }
