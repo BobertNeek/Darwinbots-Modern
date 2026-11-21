@@ -1227,10 +1227,10 @@ impl ProjectilePool {
         } else {
             self.ages[shot] as f32 / self.ranges[shot]
         };
-        // Atn takes Double; assignment to the shot's Single rounds only at the end.
-        self.energies[shot] = (f64::from(self.energies[shot])
-            * f64::from(progress * 40.0 - 40.0).atan()
-            / (-40.0_f64).atan()) as f32;
+        // Updateshots retains the angle expression through the Double Atn argument.
+        let angle = f64::from(progress) * 40.0 - 40.0;
+        self.energies[shot] =
+            (f64::from(self.energies[shot]) * angle.atan() / (-40.0_f64).atan()) as f32;
     }
 }
 
@@ -1458,6 +1458,28 @@ mod native_boundary_tests {
             );
             assert_eq!(serde_json::to_value(&pool).unwrap(), before);
         }
+    }
+
+    #[test]
+    fn native_collision_decay_keeps_the_wide_argument_to_atn() {
+        // Original 2.48.32 cycle 366, incoming shot 72 that spawned shot 281.
+        let mut pool = ProjectilePool::default();
+        pool.reset_native_slots(100);
+        let shot = packet(&mut pool, [0.0; 2], [0.0; 2], 400.0).unwrap() as usize;
+        pool.kinds[shot] = -1;
+        pool.ranges[shot] = 10.0;
+        pool.ages[shot] = 9;
+        pool.values[shot] = 294;
+        pool.energies[shot] = 400.0;
+
+        pool.native_collision_decay(shot, &ShotSettings::default());
+
+        assert_eq!(pool.energies[shot].to_bits(), 0x43ab_89b4);
+        assert_eq!(
+            pool.impact_power(shot as u32, &ShotSettings::default())
+                .to_bits(),
+            0x437c_2925
+        );
     }
 
     #[test]
