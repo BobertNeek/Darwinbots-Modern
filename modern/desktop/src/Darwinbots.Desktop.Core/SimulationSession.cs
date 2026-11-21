@@ -854,6 +854,10 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task UpdateEnvironmentAsync(EnvironmentUpdate update, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.UpdateEnvironment(update), cancellationToken);
 
+    public Task AcceptNativeAdvancedSettingsAsync(EnvironmentUpdate? environment, MutationSettingsUpdate? mutation,
+        GlobalSimulationCostSettings? costs, Db2CostPreset? preset, CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.AcceptNativeAdvancedSettings(environment, mutation, costs, preset), cancellationToken);
+
     public Task UpdateLiveSettingsAsync(EnvironmentUpdate environment, MutationSettingsUpdate mutation,
         GlobalSimulationCostSettings? costs = null, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.UpdateLiveSettings(environment, mutation, costs), cancellationToken);

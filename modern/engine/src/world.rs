@@ -7573,6 +7573,20 @@ impl Engine {
         Ok(())
     }
 
+    pub(crate) fn accept_native_advanced_daylight(&mut self) -> Option<bool> {
+        self.native_cycle?;
+        let vegetation = &mut self.config.vegetation;
+        if !vegetation.day_night_enabled {
+            vegetation.daytime = true;
+        }
+        if !vegetation.sun_on_random && !vegetation.weather_enabled {
+            self.vegetation_runtime.normalize_native_sun_band();
+        }
+        let daytime = vegetation.daytime;
+        self.publish_snapshot();
+        Some(daytime)
+    }
+
     pub fn update_db2_settings(
         &mut self,
         physics: Option<crate::PhysicsSettings>,

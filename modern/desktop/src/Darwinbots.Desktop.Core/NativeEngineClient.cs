@@ -1437,6 +1437,16 @@ public sealed partial class NativeEngineClient : IEngineClient
         if (environment.FieldSize is not null) CacheWorldDimensions(Snapshot());
     }
 
+    public void AcceptNativeAdvancedSettings(EnvironmentUpdate? environment, MutationSettingsUpdate? mutation,
+        GlobalSimulationCostSettings? costs, Db2CostPreset? preset)
+    {
+        if (environment is not null) ValidatePosition(environment.Gravity);
+        if (mutation is not null) ValidateMutationSettings(mutation);
+        ExecuteBatch(NativeCommandSerializer.CreateLiveSettingsBatch(environment, mutation, costs, preset, acceptNativeDaylight: true),
+            "apply native advanced settings");
+        if (environment?.FieldSize is not null) CacheWorldDimensions(Snapshot());
+    }
+
     private static OrganismKey ReadKey(JsonElement value) => new(
         value.GetProperty("slot").GetUInt32(),
         value.GetProperty("generation").GetUInt32());

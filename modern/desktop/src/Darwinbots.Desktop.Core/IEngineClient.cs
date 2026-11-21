@@ -229,6 +229,13 @@ public interface IEngineClient : IDisposable
         UpdateEnvironment(environment);
         UpdateMutationSettings(mutation);
     }
+    void AcceptNativeAdvancedSettings(EnvironmentUpdate? environment, MutationSettingsUpdate? mutation,
+        GlobalSimulationCostSettings? costs, Db2CostPreset? preset)
+    {
+        if (environment is not null && mutation is not null) UpdateLiveSettings(environment, mutation, costs, preset);
+        else if (costs is not null || preset is not null) UpdateCostSettings(costs, preset);
+    }
+
     void ConfigureGraphSampling(GraphSamplingSettings settings)
     {
         if (settings.Selective || settings.Generational || settings.Slow)

@@ -119,6 +119,7 @@ enum EngineCommand {
         sun_change: u8,
     },
     ToggleNativeSun,
+    AcceptNativeAdvancedDaylight,
     ReadNativeProcessCaches,
     ReadRobotTagReport,
     SetNativeProcessCaches {
@@ -1111,6 +1112,9 @@ fn db_engine_command_batch_impl(
                 Ok(serde_json::Value::Null)
             }
             EngineCommand::ToggleNativeSun => Ok(serde_json::json!(engine.toggle_native_sun())),
+            EngineCommand::AcceptNativeAdvancedDaylight => {
+                Ok(serde_json::json!(engine.accept_native_advanced_daylight()))
+            }
             EngineCommand::ReadNativeProcessCaches => engine
                 .read_native_process_caches()
                 .map(|caches| serde_json::json!(caches)),
@@ -3142,6 +3146,51 @@ mod tests {
         );
         assert_eq!(status, DbStatus::InvalidCommand);
         assert_eq!(batched.export_native_sim().unwrap(), expected);
+    }
+
+    #[test]
+    fn native_advanced_daylight_accept_normalizes_only_the_original_light_conditions() {
+        for (day_cycle, weather) in [(false, false), (true, false), (false, true), (true, true)] {
+            let mut config = EngineConfig::testing();
+            config.vegetation.daytime = false;
+            config.vegetation.day_night_enabled = day_cycle;
+            config.vegetation.sun_on_random = weather;
+            let seed = Engine::new_native(config).unwrap();
+            let mut fixture = serde_json::to_value(seed).unwrap();
+            fixture["vegetation_runtime"]["day_night_counter"] = 17.into();
+            fixture["vegetation_runtime"]["sun_position"] = 0.125.into();
+            fixture["vegetation_runtime"]["sun_range"] = 0.375.into();
+            fixture["vegetation_runtime"]["sun_change"] = 10.into();
+            let mut world = Engine::restore(serde_json::from_value(fixture).unwrap()).unwrap();
+            let before = SaveFile::encode(&world).unwrap();
+            let (status, result) = classic_test_batch(
+                &mut world,
+                serde_json::json!([
+                    {"type": "accept_native_advanced_daylight"},
+                    {"type": "export_species_template_dna", "species": u32::MAX},
+                ]),
+            );
+            assert_ne!(status, DbStatus::Ok);
+            assert!(result.is_empty());
+            assert_eq!(SaveFile::encode(&world).unwrap(), before);
+
+            let (status, result) = classic_test_batch(
+                &mut world,
+                serde_json::json!([
+                    {"type": "accept_native_advanced_daylight"},
+                ]),
+            );
+            assert_eq!(status, DbStatus::Ok);
+            let response: serde_json::Value = serde_json::from_slice(&result).unwrap();
+            assert_eq!(response["results"][0], !day_cycle);
+            assert_eq!(world.snapshot().native_cycle, Some(-1));
+            let after = serde_json::to_value(&world).unwrap();
+            let light = &after["vegetation_runtime"];
+            assert_eq!(light["day_night_counter"], 17);
+            assert_eq!(light["sun_change"], 10);
+            assert_eq!(light["sun_position"], if weather { 0.125 } else { 0.5 });
+            assert_eq!(light["sun_range"], if weather { 0.375 } else { 1.0 });
+        }
     }
 
     fn classic_test_batch(engine: &mut Engine, commands: serde_json::Value) -> (DbStatus, Vec<u8>) {

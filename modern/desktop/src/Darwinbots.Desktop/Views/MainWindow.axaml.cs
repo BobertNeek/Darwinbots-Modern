@@ -1914,7 +1914,24 @@ public sealed partial class MainWindow : Window
                     return LegacyCommandResult.Failure(restriction);
                 var costUpdate = dialog.CostUpdate;
                 var presetUpdate = dialog.CostPresetUpdate;
-                if (dialog.LiveSettingsEdited)
+                if (before.NativeCycle.HasValue)
+                {
+                    var live = dialog.LiveSettingsEdited;
+                    if (live && await session.ReadConfigurationAsync() is { } active)
+                        update = update with
+                        {
+                            Vegetation = update.Vegetation with { Daytime = active.Environment.Vegetation.Daytime },
+                        };
+                    await session.AcceptNativeAdvancedSettingsAsync(live ? update : null,
+                        live ? dialog.MutationUpdate : null, costUpdate, presetUpdate);
+                    if (await session.ReadConfigurationAsync() is { } applied)
+                    {
+                        _liveEnvironment = applied.Environment with { FieldSize = null };
+                        SynchronizeRecordingPreferences();
+                        RefreshEnvironmentControls();
+                    }
+                }
+                else if (dialog.LiveSettingsEdited)
                 {
                     await session.UpdateLiveSettingsAsync(update, dialog.MutationUpdate, costUpdate, presetUpdate);
                     _liveEnvironment = update with { FieldSize = null };

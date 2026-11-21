@@ -384,11 +384,14 @@ public static class NativeCommandSerializer
         commands = new[] { EnvironmentCommand(update) },
     };
 
-    internal static object CreateLiveSettingsBatch(EnvironmentUpdate environment, MutationSettingsUpdate mutation,
-        GlobalSimulationCostSettings? costs = null, Db2CostPreset? preset = null)
+    internal static object CreateLiveSettingsBatch(EnvironmentUpdate? environment, MutationSettingsUpdate? mutation,
+        GlobalSimulationCostSettings? costs = null, Db2CostPreset? preset = null, bool acceptNativeDaylight = false)
     {
-        List<object> commands = [EnvironmentCommand(environment), MutationSettingsCommand(mutation)];
+        List<object> commands = [];
+        if (environment is not null) commands.Add(EnvironmentCommand(environment));
+        if (mutation is not null) commands.Add(MutationSettingsCommand(mutation));
         if (costs is not null || preset is not null) commands.Add(CostSettingsCommand(costs, preset));
+        if (acceptNativeDaylight) commands.Add(new { type = "accept_native_advanced_daylight" });
         return new { version = 1, commands };
     }
 

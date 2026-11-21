@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.Collections.Concurrent;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -17,6 +18,7 @@ using Darwinbots.Desktop.Services;
 using Darwinbots.Desktop.ViewModels;
 using Darwinbots.Desktop.Views;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Xunit;
 
 namespace Darwinbots.Desktop.Tests;
@@ -953,6 +955,71 @@ public sealed class RuntimeControlSurfaceTests
             }, CancellationToken.None);
         }
         finally { File.Delete(path); }
+    }
+
+    [Fact]
+    public async Task NativeAdvancedAcceptNormalizesTheFixedSunWithoutEdits()
+    {
+        var setup = new WorldSetupOptions
+        {
+            Backend = "Cpu", PopulationCapacity = 16, VegetablePopulationCap = 0,
+            Species = [new("Night Watch", "start stop", false, 0xff123456, 1, 1_000, 0, false, 0)],
+        };
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var storage = new AuditStorageService();
+            var window = new MainWindow([], setup, NativeEngineClientFactory.Instance, storage);
+            SimulationSession? activeSession = null;
+            try
+            {
+                window.Show();
+                var model = Field<MainWindowViewModel>(window, "_viewModel");
+                await WaitFor(() => model.Status.StartsWith("WORLD READY", StringComparison.Ordinal), () => model.Status);
+                var session = activeSession = Field<SimulationSession>(window, "_session");
+                var before = await session.SaveAsync();
+                var fixture = JsonNode.Parse(before.AsSpan(10))!;
+                fixture["config"]!["vegetation"]!["daytime"] = false;
+                var runtime = fixture["vegetation_runtime"]!;
+                runtime["day_night_counter"] = 17;
+                runtime["sun_position"] = 0.125;
+                runtime["sun_range"] = 0.375;
+                runtime["sun_change"] = 10;
+                var body = JsonSerializer.SerializeToUtf8Bytes(fixture);
+                var framed = new byte[10 + body.Length];
+                before.AsSpan(0, 6).CopyTo(framed);
+                BinaryPrimitives.WriteInt32LittleEndian(framed.AsSpan(6), body.Length);
+                body.CopyTo(framed, 10);
+                storage.OpenedSimulation = framed;
+                window.FindControl<Button>("LoadButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => model.Status == "LOADED", () => model.Status);
+
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.EditPhysicsAndCosts)!
+                    .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => window.OwnedWindows.OfType<AdvancedSettingsWindow>().Any(), () => model.Status);
+                var dialog = Assert.Single(window.OwnedWindows.OfType<AdvancedSettingsWindow>());
+                dialog.FindControl<Button>("ApplyButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => model.Status == "LIVE SETTINGS APPLIED", () => model.Status);
+
+                var configuration = Assert.IsType<WorldConfiguration>(await session.ReadConfigurationAsync());
+                Assert.True(configuration.Environment.Vegetation.Daytime);
+                Assert.False(configuration.Environment.Vegetation.DayNightEnabled);
+                Assert.Equal(-1, session.LatestSnapshot.NativeCycle);
+                using var save = JsonDocument.Parse((await session.SaveAsync()).AsMemory(10));
+                var light = save.RootElement.GetProperty("vegetation_runtime");
+                Assert.Equal(17UL, light.GetProperty("day_night_counter").GetUInt64());
+                Assert.Equal(0.5, light.GetProperty("sun_position").GetDouble());
+                Assert.Equal(1.0, light.GetProperty("sun_range").GetDouble());
+                Assert.Equal(10, light.GetProperty("sun_change").GetInt32());
+            }
+            finally
+            {
+                foreach (var dialog in window.OwnedWindows.OfType<AdvancedSettingsWindow>().ToArray()) dialog.Close();
+                SetField(window, "_session", null);
+                window.Close();
+                if (activeSession is not null) await activeSession.DisposeAsync();
+            }
+        }, CancellationToken.None);
     }
 
     [Theory]
