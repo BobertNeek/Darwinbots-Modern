@@ -789,6 +789,12 @@ public sealed partial class NativeEngineClient : IEngineClient
         new { version = 1, commands = new[] { new { type = "set_organism_aim", slot, generation, aim } } },
         "set organism aim");
 
+    public void ConfigureNativePostDnaMemoryWatch(ulong requestId, OrganismKey? focus) => ExecuteBatch(new
+    {
+        version = 1,
+        commands = new[] { new { type = "configure_native_post_dna_memory_watch", request_id = requestId, focus = OrganismPayload(focus) } },
+    }, "configure post-DNA memory");
+
     public void ConfigureGraphSampling(GraphSamplingSettings settings) => ExecuteBatch(new
     {
         version = 1,
