@@ -311,7 +311,7 @@ mod tests {
         center: [f32; 2],
         path: &std::path::Path,
     ) {
-        let id = engine
+        engine
             .add_native_teleporter(NativeTeleporterOptions {
                 kind,
                 path: path.to_path_buf(),
@@ -326,10 +326,19 @@ mod tests {
                 },
             })
             .unwrap();
-        engine
-            .drag_native_teleporter(id, [center[0], center[1] + 200.0])
-            .unwrap();
-        engine.teleporters.last_mut().unwrap().native_contact_center = Some(center);
+        let teleporter = engine.teleporters.last_mut().unwrap();
+        let visible_center = [center[0], center[1] + 200.0];
+        teleporter.native_top_left = Some([
+            visible_center[0] - teleporter.width / 2.0,
+            visible_center[1] - teleporter.height / 2.0,
+        ]);
+        teleporter.center = visible_center;
+        teleporter.native_contact_center = Some(center);
+    }
+
+    fn restore_contact_test_random(engine: &mut Engine, state: u32) {
+        engine.native_random =
+            Some(serde_json::from_value(serde_json::json!({ "state": state })).unwrap());
     }
 
     #[test]
@@ -357,8 +366,7 @@ mod tests {
             for (kind, contact) in portals {
                 add_contact_test_portal(&mut engine, kind, contact, directory.path());
             }
-            engine.native_random =
-                crate::native_random::NativeRandom::from_uniform_state(6_319_630);
+            restore_contact_test_random(&mut engine, 6_319_630);
 
             engine.tick().unwrap();
 
@@ -401,7 +409,7 @@ mod tests {
             [2_600.0; 2],
             std::path::Path::new(""),
         );
-        engine.native_random = crate::native_random::NativeRandom::from_uniform_state(2_867_188);
+        restore_contact_test_random(&mut engine, 2_867_188);
 
         engine.tick().unwrap();
 
@@ -431,7 +439,7 @@ mod tests {
             start,
             std::path::Path::new(""),
         );
-        engine.native_random = crate::native_random::NativeRandom::from_uniform_state(2_867_188);
+        restore_contact_test_random(&mut engine, 2_867_188);
         let mut transfers = FileTransferTransaction::default();
         let mut shared_path_exports = HashMap::new();
 
