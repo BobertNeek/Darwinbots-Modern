@@ -229,7 +229,7 @@ public sealed partial class MainWindow : Window
             UiPreferencesController.ApplyNumericCulture(this);
         };
         _toolWindows = new PersistentToolWindowRegistry(this);
-        _activeCostMultiplier = setup.GlobalSettings.Costs.GlobalMultiplier;
+        _activeCostMultiplier = setup.EffectiveSimulationCosts.GlobalMultiplier;
         foreach (var species in setup.Species)
             _insertionSpecies.Add(species);
         InsertionSpeciesSelector.ItemsSource = _insertionSpecies;
@@ -2490,7 +2490,7 @@ public sealed partial class MainWindow : Window
                 NativeSunChange = _initialNativeSunChange,
                 NativeProcessCaches = _initialNativeProcessCaches,
             };
-            _activeCostMultiplier = worldSetup.GlobalSettings.Costs.GlobalMultiplier;
+            _activeCostMultiplier = worldSetup.EffectiveSimulationCosts.GlobalMultiplier;
             _session = new SimulationSession(_engineFactory.Create(worldSetup));
             _initialNativeGaussianSpare = null;
             _initialNativeSunChange = null;

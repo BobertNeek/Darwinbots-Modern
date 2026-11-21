@@ -32,7 +32,6 @@ public sealed partial class SetupWindow : Window
     private Db2ShapeDriftOptions? _shapeDrift;
     private IReadOnlyList<ObstacleSnapshot> _obstacles = [];
     private int? _nativeFieldSize;
-    private Db2CostPreset? _nativeCostPreset;
     private IReadOnlyList<string>? _legacySettingsFields;
     private bool _allowEmptyStartupRoster;
     private const string ZerobotDna = "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0";
@@ -342,7 +341,8 @@ public sealed partial class SetupWindow : Window
             WorldWidth = fieldWidth,
             WorldHeight = fieldHeight,
             NativeFieldSize = _nativeFieldSize,
-            NativeCostPreset = _nativeCostPreset,
+            NativeCostPreset = staged.NativeCostPreset ?? Db2CostPreset.Custom,
+            SimulationCosts = staged.SimulationCosts,
             MetabolismCost = _environment.MetabolismCost,
             VegetableEnergyPerTick = _environment.VegetableEnergyPerTick,
             SunlightEnergy = _environment.SunlightEnergy,
@@ -414,9 +414,18 @@ public sealed partial class SetupWindow : Window
             };
             var initial = _environment.Vegetation.StartChloroplasts;
             var presented = ReadSetupVegetation(CurrentMode(), (ZerobotSustenance)Math.Max(0, Sustenance.SelectedIndex));
-            var dialog = new AdvancedSettingsWindow(_environment with { Vegetation = presented }, snapshot, selectedTab);
+            var staged = _workflow.WorkingCopy;
+            var costs = staged.SimulationCosts ?? _globalSettings.Costs;
+            var dialog = new AdvancedSettingsWindow(_environment with { Vegetation = presented }, snapshot, selectedTab,
+                costs, currentCostPreset: staged.NativeCostPreset ?? Db2CostPreset.Custom);
             await dialog.ShowDialog(this);
             if (!dialog.Accepted) return;
+            if (dialog.CostPresetUpdate is not null || dialog.CostUpdate is not null)
+                _workflow.UpdateWorkingCopy(options => options with
+                {
+                    NativeCostPreset = dialog.CostPresetUpdate ?? options.NativeCostPreset ?? Db2CostPreset.Custom,
+                    SimulationCosts = dialog.CostUpdate ?? costs,
+                });
             _environment = dialog.Update;
             if (_environment.Vegetation.StartChloroplasts != presented.StartChloroplasts)
                 _startingChloroplastsConfigured = true;
@@ -523,6 +532,12 @@ public sealed partial class SetupWindow : Window
     private void ApplyDesktopSettings(DesktopSettings settings)
     {
         var setup = settings.ToWorldSetup(_workflow.Live);
+        if (setup.SimulationCosts is not null || settings.LegacySettingsFields is not null)
+            setup = setup with
+            {
+                SimulationCosts = setup.EffectiveSimulationCosts,
+                GlobalSettings = setup.GlobalSettings with { Costs = _profileSettings.Costs },
+            };
         ApplySetupOptions(setup);
         _startingChloroplastsConfigured = true;
         _workflow.LoadWorkingCopy(setup);
@@ -564,7 +579,6 @@ public sealed partial class SetupWindow : Window
         _shapeDrift = setup.ShapeDrift;
         _obstacles = setup.Obstacles;
         _legacySettingsFields = setup.LegacySettingsFields;
-        _nativeCostPreset = setup.NativeCostPreset;
         StarterMode.IsChecked = setup.StartingMode == StartingMode.StarterBotsAndVegetables;
         ZerobotMode.IsChecked = setup.StartingMode == StartingMode.Zerobots;
         ZerobotVegetableMode.IsChecked = setup.StartingMode == StartingMode.ZerobotsAndVegetables;
@@ -594,7 +608,6 @@ public sealed partial class SetupWindow : Window
         _shapeDrift = null;
         _obstacles = [];
         _legacySettingsFields = null;
-        _nativeCostPreset = null;
         ApplyGlobalSettings(_profileSettings);
         _nativeFieldSize = null;
         Backend.SelectedIndex = 0;

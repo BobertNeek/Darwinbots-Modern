@@ -40,6 +40,7 @@ public sealed record WorldSetupOptions
     public float WorldHeight { get; init; } = 12_000f;
     public int? NativeFieldSize { get; init; }
     public Db2CostPreset? NativeCostPreset { get; init; }
+    public GlobalSimulationCostSettings? SimulationCosts { get; init; }
     public int MetabolismCost { get; init; }
     public int VegetableEnergyPerTick { get; init; }
     public int SunlightEnergy { get; init; } = 100;
@@ -68,6 +69,8 @@ public sealed record WorldSetupOptions
     public uint TicksPerUpdate { get; init; } = 1;
     public IReadOnlyList<SpeciesImport> Species { get; init; } = [];
     public GlobalSettings GlobalSettings { get; init; } = new();
+    [System.Text.Json.Serialization.JsonIgnore]
+    public GlobalSimulationCostSettings EffectiveSimulationCosts => SimulationCosts ?? GlobalSettings.Costs;
     public string? LoadSavePath { get; init; }
     public bool IsAutosaveRecovery { get; init; }
     [System.Text.Json.Serialization.JsonIgnore]

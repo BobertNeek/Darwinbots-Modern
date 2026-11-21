@@ -265,7 +265,7 @@ public static class NativeCommandSerializer
                 vertical = shapeDrift.Vertical,
                 rate = shapeDrift.Rate,
             } : null,
-            dna_costs = DnaCosts(options.GlobalSettings.Costs),
+            dna_costs = DnaCosts(options.EffectiveSimulationCosts),
             advanced_mutation = AdvancedMutation(options.GlobalSettings.AdvancedMutation, options.GlobalSettings.Main),
             disqualification = options.GlobalSettings.League.DisqualificationRule,
             recognition_fudging = options.GlobalSettings.League.RecognitionFudging,
