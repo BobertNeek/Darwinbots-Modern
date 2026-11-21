@@ -202,6 +202,62 @@ public sealed class RobotConsoleRenderedTests
     }
 
     [Fact]
+    public async Task NativeConsolePrintsTheRemovedRobotsFinalPassBeforeItsDeathNotice()
+    {
+        const string dna = "cond\n*.robage 1 =\nstart\n1 501 store\nstop\ncond\n*.robage 0 =\nstart\n1 502 store\nstop";
+        var setup = new WorldSetupOptions
+        {
+            Backend = "Cpu",
+            CorpseDecay = new(Enabled: false),
+            GlobalSettings = new() { Costs = new() { DnaStore = 2 } },
+            Species = [new SpeciesImport("Terminal Console Robot", dna, false, 0xff239ac0, 1, 1_000, 0, false, 1)],
+        };
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], setup, NativeEngineClientFactory.Instance, new AuditStorageService());
+            try
+            {
+                window.Show();
+                var model = Assert.IsType<MainWindowViewModel>(window.DataContext);
+                await WaitForAsync(() => model.SelectedKey.HasValue && model.NativeCycle.HasValue);
+                var session = (SimulationSession)typeof(MainWindow)
+                    .GetField("_session", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(window)!;
+                var focus = model.SelectedKey!.Value;
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                menu.FindCommandItem(LegacyCommandId.RobotOpenConsole)!
+                    .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitForAsync(() => window.OwnedWindows.OfType<RobotConsoleWindow>().Any());
+                var console = Assert.Single(window.OwnedWindows.OfType<RobotConsoleWindow>());
+                console.UpdateLayout();
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                var transcript = Assert.Single(console.GetVisualDescendants().OfType<TextBox>(), box => box.IsReadOnly);
+                var command = Assert.Single(console.GetVisualDescendants().OfType<TextBox>(), box => !box.IsReadOnly);
+                var run = Assert.Single(console.GetVisualDescendants().OfType<Button>(), button => Equals(button.Content, "RUN"));
+                var start = session.LatestSnapshot.Tick;
+                const string header = "***ROBOT GENES EXECUTION***";
+                await RunAndWaitAsync(command, run, transcript, "cycle 1", $"cycle {start + 1} (+1)");
+                Assert.Contains($"{header}\n1 not executed\n2 executed", (transcript.Text ?? "").Replace("\r", ""),
+                    StringComparison.Ordinal);
+
+                await session.SetOrganismEnergyAsync(focus.Slot, focus.Generation, 1);
+                await RunAndWaitAsync(command, run, transcript, "cycle 2", $"cycle {start + 3} (+2)");
+                Assert.DoesNotContain(session.LatestSnapshot.Organisms,
+                    actor => actor.Slot == focus.Slot && actor.Generation == focus.Generation);
+                var output = (transcript.Text ?? "").Replace("\r", "");
+                Assert.Contains($"> cycle 2\n\n{header}\n1 executed\n2 not executed\nRobot has died.\ncycle {start + 3} (+2)",
+                    output, StringComparison.Ordinal);
+                Assert.Equal(2, output.Split(header, StringSplitOptions.None).Length - 1);
+                Assert.Single(output.Split("Robot has died.", StringSplitOptions.None).Skip(1));
+            }
+            finally
+            {
+                foreach (var ownedWindow in window.OwnedWindows.ToArray()) ownedWindow.Close();
+                if (window.IsVisible) window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
     public async Task ConsoleCycleUsesTheOwnerForSourceRecoveryAndSafeModeCheckpoint()
     {
         await DesktopTestApplication.Session.Dispatch(async () =>

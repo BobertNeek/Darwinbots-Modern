@@ -172,13 +172,22 @@ public sealed partial class NativeEngineClient : IEngineClient
         return result.Deserialize<NativeGraphRecordingSample>(NativeRecordingJson);
     }
 
-    private void Advance(uint count, int weightPercent, Action<IReadOnlyList<DeathRecordSnapshot>>? onDeathsCommitted,
+    public IReadOnlyList<NativeConsoleActivationFrame> TickWatchingNativeConsoles(IReadOnlyList<OrganismKey> focuses,
+        bool requireNativeRepopulationSource, IReadOnlyList<ulong> cancelledLineages,
+        int weightPercent = 100, Action<IReadOnlyList<DeathRecordSnapshot>>? onDeathsCommitted = null,
+        Action<IReadOnlyList<NativeGraphRecordingSample>>? onGraphSamplesCommitted = null,
+        NativeRedrawCadence? nativeRedraw = null) =>
+        Advance(1, weightPercent, onDeathsCommitted, requireNativeRepopulationSource, cancelledLineages,
+            onGraphSamplesCommitted, nativeRedraw ?? NativeRedrawCadence.Off, focuses);
+
+    private IReadOnlyList<NativeConsoleActivationFrame> Advance(uint count, int weightPercent, Action<IReadOnlyList<DeathRecordSnapshot>>? onDeathsCommitted,
         bool requireNativeRepopulationSource = false, IReadOnlyList<ulong>? cancelledLineages = null,
         Action<IReadOnlyList<NativeGraphRecordingSample>>? onGraphSamplesCommitted = null,
-        NativeRedrawCadence nativeRedraw = NativeRedrawCadence.Off)
+        NativeRedrawCadence nativeRedraw = NativeRedrawCadence.Off,
+        IReadOnlyList<OrganismKey>? consoleFocuses = null)
     {
         EnsureAlive();
-        if (count == 0) return;
+        if (count == 0) return [];
         if (requireNativeRepopulationSource && count != 1)
             throw new ArgumentOutOfRangeException(nameof(count), "Missing native sources must be resolved one cycle at a time.");
         if (_sampleRestartClockPerCycle && count is > 1 and <= 1_000_000)
@@ -187,7 +196,7 @@ public sealed partial class NativeEngineClient : IEngineClient
             // original cycle. Each successful cycle commits before the next begins.
             for (uint cycle = 0; cycle < count; cycle++)
                 Advance(1, weightPercent, onDeathsCommitted, requireNativeRepopulationSource, cancelledLineages, onGraphSamplesCommitted, nativeRedraw);
-            return;
+            return [];
         }
         var cadence = nativeRedraw switch
         {
@@ -206,12 +215,13 @@ public sealed partial class NativeEngineClient : IEngineClient
             require_native_repopulation_source = requireNativeRepopulationSource,
             cancelled_native_repopulation_lineages = cancelledLineages ?? [],
             capture_graph_samples = onGraphSamplesCommitted is not null,
+            console_focuses = consoleFocuses?.Select(focus => new { slot = focus.Slot, generation = focus.Generation }).ToArray() ?? [],
         };
         var batch = new { version = 1, commands = new object[] { NativeRestartSeedCommand(), command } };
-        if (onDeathsCommitted is null && onGraphSamplesCommitted is null)
+        if (onDeathsCommitted is null && onGraphSamplesCommitted is null && consoleFocuses is not { Count: > 0 })
         {
             ExecuteBatch(batch, "advance simulation");
-            return;
+            return [];
         }
         var result = ExecuteBatchForResult(batch, "advance simulation with recording").GetProperty("results")[1];
         if (onDeathsCommitted is not null &&
@@ -220,6 +230,9 @@ public sealed partial class NativeEngineClient : IEngineClient
         if (onGraphSamplesCommitted is not null &&
             result.GetProperty("graph_samples").Deserialize<NativeGraphRecordingSample[]>(NativeRecordingJson) is { Length: > 0 } samples)
             onGraphSamplesCommitted(samples);
+        return consoleFocuses is { Count: > 0 } && result.TryGetProperty("console_activations", out var activations)
+            ? activations.Deserialize<NativeConsoleActivationFrame[]>(NativeRecordingJson) ?? []
+            : [];
     }
 
     public GenomeRecordCapture CaptureLivingSnp(int weightPercent)

@@ -4185,6 +4185,8 @@ public sealed partial class MainWindow : Window
             var observesOrdinaryRestart = before.OrdinaryRestartAvailable && before.OrdinaryRestartOnExtinction;
             var recordConsole = before.NativeCycle.HasValue && _nativeConsoleObservers.Count > 0
                 && (consoleStep || _recordNativeConsolePlay);
+            var consoleFocuses = recordConsole ? _nativeConsoleObservers.Select(window => window.WatchedRobot).ToArray() : null;
+            IReadOnlyList<NativeConsoleActivationFrame> terminalFrames = [];
             var batch = observesOrdinaryRestart || requiresOriginalSource || recordConsole
                 ? 1u : Math.Min(count, checkpointBoundary);
             NativeRedrawCadence? cadence = continuous
@@ -4245,7 +4247,7 @@ public sealed partial class MainWindow : Window
             count -= batch;
             var after = session.LatestSnapshot;
             if (recordConsole)
-                _nativeConsoleObservers.RemoveWhere(window => !window.RecordNativeCycle(after, before.Tick));
+                _nativeConsoleObservers.RemoveWhere(window => !window.RecordNativeCycle(after, before.Tick, terminalFrames));
             if (!deferRedraw && _lastAutomaticSaveTick != after.Tick
                 && CycleAutosavePolicy.IsDue(after.Tick, _safemodeBackup, interval, after.LocalMode, after.NativeCycle))
                 await SaveAutomaticCheckpointAsync();
@@ -4262,42 +4264,57 @@ public sealed partial class MainWindow : Window
             if (count > 0 && requiresOriginalSource)
                 requiresOriginalSource = await session.HasUnresolvedNativeRepopulationSourcesAsync();
 
-            Task StepBatchAsync(uint ticks, NativeRedrawCadence? redraw,
+            async Task StepBatchAsync(uint ticks, NativeRedrawCadence? redraw,
                 Action<IReadOnlyList<NativeGraphRecordingSample>>? graphSink)
             {
                 if (requiresOriginalSource)
-                    return StepResolvingNativeRepopulationSourcesAsync(session, cancellationToken,
-                        weight, recordDeaths, graphSink, redraw);
+                {
+                    terminalFrames = await StepResolvingNativeRepopulationSourcesAsync(session, cancellationToken,
+                        weight, recordDeaths, graphSink, redraw, consoleFocuses);
+                    return;
+                }
+                if (consoleFocuses is not null)
+                {
+                    terminalFrames = await session.StepWatchingNativeConsolesAsync(consoleFocuses, false, [],
+                        cancellationToken, weight, recordDeaths, graphSink, redraw);
+                    return;
+                }
                 if (graphSink is not null)
-                    return session.StepRecordingGraphsAsync(ticks, graphSink, cancellationToken: cancellationToken,
+                    await session.StepRecordingGraphsAsync(ticks, graphSink, cancellationToken: cancellationToken,
                         weightPercent: weight, onDeathsCommitted: recordDeaths, nativeRedraw: redraw);
-                if (recordDeaths is not null)
-                    return session.StepRecordingDeathsAsync(ticks, weight, recordDeaths, cancellationToken, redraw);
-                return redraw is { } cadenceValue
-                    ? session.StepAsync(ticks, cadenceValue, cancellationToken)
-                    : session.StepAsync(ticks, cancellationToken);
+                else if (recordDeaths is not null)
+                    await session.StepRecordingDeathsAsync(ticks, weight, recordDeaths, cancellationToken, redraw);
+                else if (redraw is { } cadenceValue)
+                    await session.StepAsync(ticks, cadenceValue, cancellationToken);
+                else
+                    await session.StepAsync(ticks, cancellationToken);
             }
         }
         var tick = session.LatestSnapshot.Tick;
         return (tick, tick >= startingTick ? tick - startingTick : 0);
     }
 
-    private async Task StepResolvingNativeRepopulationSourcesAsync(SimulationSession session, CancellationToken cancellationToken,
+    private async Task<IReadOnlyList<NativeConsoleActivationFrame>> StepResolvingNativeRepopulationSourcesAsync(
+        SimulationSession session, CancellationToken cancellationToken,
         int weightPercent = 100,
         Action<IReadOnlyList<DeathRecordSnapshot>>? onCommitted = null,
-        Action<IReadOnlyList<NativeGraphRecordingSample>>? recordGraphs = null, NativeRedrawCadence? nativeRedraw = null)
+        Action<IReadOnlyList<NativeGraphRecordingSample>>? recordGraphs = null, NativeRedrawCadence? nativeRedraw = null,
+        IReadOnlyList<OrganismKey>? consoleFocuses = null)
     {
         List<ulong> cancelledLineages = [];
         while (true)
         {
             try
             {
+                if (consoleFocuses is not null)
+                    return await session.StepWatchingNativeConsolesAsync(consoleFocuses, true, cancelledLineages,
+                        cancellationToken, weightPercent, onCommitted, recordGraphs, nativeRedraw);
                 if (recordGraphs is not null)
                     await session.StepRecordingGraphsAsync(1, recordGraphs, requireNativeRepopulationSource: true,
                         cancelledLineages, cancellationToken, weightPercent, onCommitted, nativeRedraw);
                 else
                     await session.StepRequiringNativeRepopulationSourceAsync(cancelledLineages, weightPercent, onCommitted, cancellationToken, nativeRedraw);
-                return;
+                return [];
             }
             catch (MissingNativeRepopulationSourceException error)
             {

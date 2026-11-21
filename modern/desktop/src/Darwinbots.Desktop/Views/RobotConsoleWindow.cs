@@ -134,26 +134,31 @@ public sealed class RobotConsoleWindow : Window
         return button;
     }
 
-    internal bool RecordNativeCycle(EngineSnapshot snapshot, ulong previousTick)
+    internal OrganismKey WatchedRobot => _focus;
+
+    internal bool RecordNativeCycle(EngineSnapshot snapshot, ulong previousTick,
+        IReadOnlyList<NativeConsoleActivationFrame> terminalFrames)
     {
         var organism = snapshot.Organisms.FirstOrDefault(actor =>
-            actor.Slot == _focus.Slot && actor.Generation == _focus.Generation
-            && (_uniqueId == 0 || actor.UniqueId == _uniqueId));
-        if (organism is not null)
+            actor.Slot == _focus.Slot && actor.Generation == _focus.Generation && actor.UniqueId == _uniqueId);
+        if (snapshot.Tick > previousTick)
         {
             // The DNA phase records the incremented internal tick. Earlier execrob
             // commands and skipped DNA phases cannot supply this cycle's frame.
-            if (snapshot.Tick > previousTick
-                && organism.ActivationHistory.LastOrDefault(frame => frame.Tick == snapshot.Tick) is { } frame)
+            var activations = organism is not null
+                ? organism.ActivationHistory.LastOrDefault(frame => frame.Tick == snapshot.Tick)?.Activations
+                : terminalFrames.LastOrDefault(frame => frame.Focus == _focus && frame.UniqueId == _uniqueId
+                    && frame.Tick == snapshot.Tick)?.Activations;
+            if (activations is not null)
             {
                 var output = new StringBuilder();
                 output.AppendLine().AppendLine("***ROBOT GENES EXECUTION***");
-                for (var gene = 1; gene < frame.Activations.Length; gene++)
-                    output.Append(gene).AppendLine(frame.Activations[gene] ? " executed" : " not executed");
+                for (var gene = 1; gene < activations.Length; gene++)
+                    output.Append(gene).AppendLine(activations[gene] ? " executed" : " not executed");
                 AppendNativeTranscript(output.ToString());
             }
-            return true;
         }
+        if (organism is not null) return true;
         AppendNativeTranscript("Robot has died.\n");
         return false;
     }

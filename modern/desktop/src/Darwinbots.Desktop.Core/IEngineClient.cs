@@ -50,6 +50,25 @@ public interface IEngineClient : IDisposable
         ReadNativeGraphSample();
     void TickRecordingDeaths(uint count, Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted,
         NativeRedrawCadence nativeRedraw) => TickRecordingDeaths(count, onCommitted);
+
+    IReadOnlyList<NativeConsoleActivationFrame> TickWatchingNativeConsoles(IReadOnlyList<OrganismKey> focuses,
+        bool requireNativeRepopulationSource, IReadOnlyList<ulong> cancelledLineages,
+        int weightPercent = 100, Action<IReadOnlyList<DeathRecordSnapshot>>? onDeathsCommitted = null,
+        Action<IReadOnlyList<NativeGraphRecordingSample>>? onGraphSamplesCommitted = null,
+        NativeRedrawCadence? nativeRedraw = null)
+    {
+        if (onGraphSamplesCommitted is not null)
+            TickRecordingGraphs(1, onGraphSamplesCommitted, requireNativeRepopulationSource, cancelledLineages,
+                weightPercent, onDeathsCommitted, nativeRedraw);
+        else if (onDeathsCommitted is not null && requireNativeRepopulationSource)
+            TickRecordingDeaths(1, weightPercent, cancelledLineages, onDeathsCommitted, nativeRedraw);
+        else if (onDeathsCommitted is not null)
+            TickRecordingDeaths(1, weightPercent, onDeathsCommitted, nativeRedraw);
+        else
+            Tick(1, requireNativeRepopulationSource, cancelledLineages, nativeRedraw);
+        return [];
+    }
+
     DnaImportReport ImportDna(string dna, float[]? position = null);
     int ImportOrganism(ReadOnlyMemory<byte> payload) => throw new NotSupportedException("This engine client does not support organism interchange.");
     DnaImportReport ImportSpecies(SpeciesImport species);

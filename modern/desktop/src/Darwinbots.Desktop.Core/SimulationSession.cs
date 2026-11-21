@@ -176,6 +176,25 @@ public sealed class SimulationSession : IAsyncDisposable
         }, cancellationToken, measureTicks: true,
             viewportFrame: snapshot => DesktopControlRules.IsViewportFrameDue(nativeRedraw, snapshot));
 
+    public async Task<IReadOnlyList<NativeConsoleActivationFrame>> StepWatchingNativeConsolesAsync(
+        IReadOnlyList<OrganismKey> focuses, bool requireNativeRepopulationSource, IReadOnlyList<ulong> cancelledLineages,
+        CancellationToken cancellationToken = default,
+        int weightPercent = 100, Action<IReadOnlyList<DeathRecordSnapshot>>? onDeathsCommitted = null,
+        Action<IReadOnlyList<NativeGraphRecordingSample>>? onGraphSamplesCommitted = null,
+        NativeRedrawCadence? nativeRedraw = null)
+    {
+        IReadOnlyList<NativeConsoleActivationFrame> reports = [];
+        await Enqueue(engine =>
+        {
+            ApplyPlayerBotPointer(engine);
+            reports = engine.TickWatchingNativeConsoles(focuses, requireNativeRepopulationSource, cancelledLineages,
+                weightPercent, onDeathsCommitted, onGraphSamplesCommitted, nativeRedraw);
+        }, cancellationToken, measureTicks: true,
+            viewportFrame: nativeRedraw is { } scheduled ? snapshot => DesktopControlRules.IsViewportFrameDue(scheduled, snapshot) : null)
+            .ConfigureAwait(false);
+        return reports;
+    }
+
     public async Task<OrganismKey?> FindBestRobotAsync(bool energyWeighting, CancellationToken cancellationToken = default)
         => await FindBestRobotAsync(energyWeighting ? 100 : 0, cancellationToken).ConfigureAwait(false);
 
