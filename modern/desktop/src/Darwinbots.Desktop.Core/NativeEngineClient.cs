@@ -346,6 +346,16 @@ public sealed partial class NativeEngineClient : IEngineClient
         return ReadKey(result.GetProperty("results")[0]);
     }
 
+    public OrganismKey? ReproduceNativeRobotInfo(OrganismKey parent)
+    {
+        var result = ExecuteBatchForResult(new
+        {
+            version = 1,
+            commands = new[] { new { type = "reproduce_native_robot_info", slot = parent.Slot, generation = parent.Generation } },
+        }, "reproduce from native Robot Info").GetProperty("results")[0];
+        return result.ValueKind == JsonValueKind.Null ? null : ReadKey(result);
+    }
+
     public void SwitchBackend(string backend)
     {
         EnsureAlive();
