@@ -1,4 +1,5 @@
 use super::*;
+use crate::native_random::NativeRandom;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum NativeStartBoundary {
@@ -8,6 +9,16 @@ pub(super) enum NativeStartBoundary {
 }
 
 impl Engine {
+    pub(crate) fn native_setup_uniform_state(&self) -> Option<u32> {
+        self.native_cycle?;
+        self.native_random.as_ref().map(NativeRandom::state)
+    }
+
+    pub(crate) fn native_setup_random(&mut self) -> Option<&mut NativeRandom> {
+        self.native_cycle?;
+        self.native_random.as_mut()
+    }
+
     /// Begin an original 2.48.32 new simulation, before placing any robots.
     /// `new` remains the bare seeded constructor used by legacy APIs.
     pub fn new_native(config: EngineConfig) -> Result<Self, EngineError> {

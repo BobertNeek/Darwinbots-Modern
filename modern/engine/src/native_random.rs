@@ -20,6 +20,13 @@ impl Default for NativeRandom {
 }
 
 impl NativeRandom {
+    pub(crate) fn from_uniform_state(state: u32) -> Option<Self> {
+        (state <= 0x00ff_ffff).then_some(Self {
+            state,
+            gaussian_spare: None,
+        })
+    }
+
     pub(crate) fn with_user_seed(seed: u64) -> Self {
         let mut random = Self::default();
         random.randomize(seed as f64 / 100.0);
