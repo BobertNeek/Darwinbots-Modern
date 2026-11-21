@@ -26,6 +26,14 @@ pub struct DbBuffer {
 }
 
 #[derive(Deserialize)]
+struct NativeSetupAppearanceRequest {
+    filename: Vec<u8>,
+    dna: String,
+    use_old_colors: bool,
+    cold_uniform_state: Option<u32>,
+}
+
+#[derive(Deserialize)]
 struct CommandBatch {
     version: u32,
     commands: Vec<EngineCommand>,
@@ -1605,6 +1613,87 @@ pub extern "C" fn db_engine_load(
 ) -> DbStatus {
     ffi_guard("load engine", || {
         db_engine_load_impl(engine, save_data, save_len)
+    })
+}
+
+/// Read the native uniform stream without consuming randomness. Minus one
+/// denotes an absent engine or a Portable world.
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
+#[unsafe(no_mangle)]
+pub extern "C" fn db_engine_native_setup_uniform_state(engine: *const Engine) -> i32 {
+    unsafe { engine.as_ref() }
+        .and_then(Engine::native_setup_uniform_state)
+        .map_or(-1, |state| state as i32)
+}
+
+/// Stage the original appearance using the caller's local Single Timer at
+/// the two source call sites. A null world means pre-start Setup. A Portable
+/// world or DNA that has no native LoadDNA image yields JSON null.
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
+#[unsafe(no_mangle)]
+pub extern "C" fn db_engine_stage_native_species_appearance(
+    engine: *mut Engine,
+    request: *const u8,
+    request_len: usize,
+    sample_timer: Option<extern "C" fn() -> f32>,
+    out: *mut DbBuffer,
+) -> DbStatus {
+    ffi_guard("stage native species appearance", || {
+        let (Some(sample_timer), Some(out)) = (sample_timer, unsafe { out.as_mut() }) else {
+            return DbStatus::NullPointer;
+        };
+        if request.is_null() || request_len == 0 {
+            return fail(DbStatus::InvalidCommand, "appearance request is empty");
+        }
+        if !out.data.is_null() {
+            return fail(DbStatus::EngineError, "output buffer must be empty");
+        }
+        let bytes = unsafe { slice::from_raw_parts(request, request_len) };
+        let request: NativeSetupAppearanceRequest = match serde_json::from_slice(bytes) {
+            Ok(request) => request,
+            Err(error) => return fail(DbStatus::InvalidCommand, error),
+        };
+        let mut cold_random;
+        let random = if let Some(engine) = unsafe { engine.as_mut() } {
+            match engine.native_setup_random() {
+                Some(random) => random,
+                None => return write_buffer(out, b"null".to_vec()),
+            }
+        } else {
+            cold_random = match request.cold_uniform_state {
+                Some(state) => {
+                    match crate::native_random::NativeRandom::from_uniform_state(state) {
+                        Some(random) => random,
+                        None => {
+                            return fail(DbStatus::InvalidCommand, "invalid native uniform state");
+                        }
+                    }
+                }
+                None => crate::native_random::NativeRandom::default(),
+            };
+            &mut cold_random
+        };
+        let result = crate::native_skin::assign_staged_species_appearance(
+            random,
+            &request.filename,
+            &request.dna,
+            request.use_old_colors,
+            || sample_timer(),
+        );
+        match result {
+            Ok(appearance) => write_buffer(
+                out,
+                serde_json::json!({
+                    "argb": appearance.argb,
+                    "skin": appearance.skin,
+                    "uniform_state": random.state(),
+                })
+                .to_string()
+                .into_bytes(),
+            ),
+            Err(EngineError::DnaParse { .. }) => write_buffer(out, b"null".to_vec()),
+            Err(error) => fail(DbStatus::EngineError, error),
+        }
     })
 }
 

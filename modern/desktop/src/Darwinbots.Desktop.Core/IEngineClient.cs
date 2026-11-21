@@ -147,6 +147,8 @@ public interface IEngineClient : IDisposable
     void Load(byte[] save);
     EngineSnapshot Snapshot();
     WorldConfiguration? ReadConfiguration() => null;
+    uint? ReadNativeSetupUniformState() => null;
+    NativeSpeciesAppearance? StageNativeSpeciesAppearance(string filename, string dna, bool useOldColors) => null;
     float? ReadNativeGaussianSpare() => null;
     byte ReadNativeSunChange() => 0;
     bool? ToggleNativeSun() => null;

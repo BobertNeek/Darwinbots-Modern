@@ -1225,6 +1225,77 @@ public sealed partial class NativeEngineClient : IEngineClient
             ?? throw new InvalidDataException("Native engine returned no robot tag information.");
     }
 
+    public uint? ReadNativeSetupUniformState()
+    {
+        EnsureAlive();
+        var state = NativeMethods.EngineNativeSetupUniformState(_engine);
+        return state < 0 ? null : (uint)state;
+    }
+
+    public NativeSpeciesAppearance? StageNativeSpeciesAppearance(string filename, string dna, bool useOldColors)
+    {
+        EnsureAlive();
+        return ReadStagedAppearance(_engine, filename, dna, useOldColors, null, _clock);
+    }
+
+    public static NativeSpeciesAppearance? StageNativeSetupAppearance(string filename, string dna, bool useOldColors,
+        uint? uniformState = null, TimeProvider? timeProvider = null) =>
+        ReadStagedAppearance(IntPtr.Zero, filename, dna, useOldColors, uniformState, timeProvider ?? TimeProvider.System);
+
+    private static NativeSpeciesAppearance? ReadStagedAppearance(IntPtr engine, string filename, string dna, bool useOldColors,
+        uint? uniformState, TimeProvider clock)
+    {
+        if (filename.Replace(".txt", string.Empty, StringComparison.Ordinal).Length == 0) return null;
+        byte[] name;
+        try { name = LegacyDnaText.Encode(filename); }
+        catch (InvalidDataException) { return null; }
+
+        var request = JsonSerializer.SerializeToUtf8Bytes(new
+        {
+            filename = name.Select(value => (int)value).ToArray(),
+            dna,
+            use_old_colors = useOldColors,
+            cold_uniform_state = uniformState,
+        });
+        Exception? timerError = null;
+        NativeSetupTimer callback = () =>
+        {
+            try { return (float)clock.GetLocalNow().TimeOfDay.TotalSeconds; }
+            catch (Exception error)
+            {
+                timerError = error;
+                return float.NaN;
+            }
+        };
+        var buffer = new NativeBuffer();
+        try
+        {
+            var status = NativeMethods.EngineStageNativeSpeciesAppearance(engine, request, (nuint)request.Length,
+                Marshal.GetFunctionPointerForDelegate(callback), ref buffer);
+            if (timerError is not null) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(timerError).Throw();
+            ThrowIfFailed(status, "stage native species appearance");
+            var draft = JsonSerializer.Deserialize<NativeSpeciesAppearanceWire>(CopyBuffer(buffer), NativeAppearanceJson);
+            if (draft is null) return null;
+            if (draft.Skin is not { Length: 8 }) throw new InvalidDataException("Native species appearance has an invalid skin.");
+            var points = new SkinPointSnapshot[4];
+            for (var i = 0; i < points.Length; i++)
+                points[i] = new SkinPointSnapshot(draft.Skin[2 * i] / 60f, 314 - 2 * draft.Skin[2 * i + 1]);
+            return new NativeSpeciesAppearance(draft.Argb, points, draft.UniformState);
+        }
+        finally
+        {
+            GC.KeepAlive(callback);
+            NativeMethods.BufferFree(ref buffer);
+        }
+    }
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate float NativeSetupTimer();
+
+    private static readonly JsonSerializerOptions NativeAppearanceJson = new() { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
+
+    private sealed record NativeSpeciesAppearanceWire(uint Argb, short[] Skin, uint UniformState);
+
     public float? ReadNativeGaussianSpare()
     {
         EnsureAlive();
@@ -1456,6 +1527,13 @@ public sealed partial class NativeEngineClient : IEngineClient
 
         [LibraryImport(LibraryName, EntryPoint = "db_engine_import_dna")]
         internal static partial DbStatus EngineImportDna(IntPtr engine, byte[] dna, nuint dnaLength);
+
+        [LibraryImport(LibraryName, EntryPoint = "db_engine_native_setup_uniform_state")]
+        internal static partial int EngineNativeSetupUniformState(IntPtr engine);
+
+        [LibraryImport(LibraryName, EntryPoint = "db_engine_stage_native_species_appearance")]
+        internal static partial DbStatus EngineStageNativeSpeciesAppearance(IntPtr engine, byte[] request, nuint requestLength,
+            IntPtr sampleTimer, ref NativeBuffer buffer);
 
         [LibraryImport(LibraryName, EntryPoint = "db_engine_command_batch")]
         internal static partial DbStatus EngineCommandBatch(IntPtr engine, byte[] commands, nuint commandLength, ref NativeBuffer buffer);

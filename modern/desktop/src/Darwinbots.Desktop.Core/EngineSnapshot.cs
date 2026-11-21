@@ -2,6 +2,8 @@ namespace Darwinbots.Desktop.Core;
 
 public sealed record SkinPointSnapshot(float Radius, int Angle);
 
+public sealed record NativeSpeciesAppearance(uint Argb, SkinPointSnapshot[] Skin, uint UniformState);
+
 public sealed record EyeSnapshot(
     int Direction,
     int Width,
