@@ -115,20 +115,43 @@ pub(super) enum NativeSlotNumbering {
 impl Engine {
     /// Export a specified robot group as a genuine native `.dbo` record stream.
     pub fn export_native_organisms(&self, members: &[OrganismId]) -> Result<Vec<u8>, EngineError> {
+        self.export_organism_file(members, NativeSlotNumbering::Packed)
+    }
+
+    /// The original Save Entire Organism writes each member's live slot.
+    pub(crate) fn export_original_organism_file(
+        &self,
+        members: &[OrganismId],
+    ) -> Result<Vec<u8>, EngineError> {
+        let numbering = if self.native_cycle.is_some() && self.has_native_random() {
+            NativeSlotNumbering::Runtime
+        } else {
+            NativeSlotNumbering::Packed
+        };
+        self.export_organism_file(members, numbering)
+    }
+
+    fn export_organism_file(
+        &self,
+        members: &[OrganismId],
+        numbering: NativeSlotNumbering,
+    ) -> Result<Vec<u8>, EngineError> {
         // HDRoutines.SaveOrganism/LoadOrganism use clist(50), including a sentinel.
         if members.is_empty() || members.len() > 50 {
             return Err(invalid(
                 "2.48.32 organism groups must contain 1..50 members",
             ));
         }
+        let slots = self.native_record_slots(members, numbering)?;
         NativeRecordFile {
-            robots: self.native_robot_records(members)?,
+            robots: self.native_robot_records_in_slots(members, &slots)?,
             tail: vec![],
         }
         .encode()
     }
 
-    pub(super) fn native_robot_records(
+    #[cfg(test)]
+    fn native_robot_records(
         &self,
         members: &[OrganismId],
     ) -> Result<Vec<NativeRobotRecord>, EngineError> {
@@ -748,6 +771,102 @@ mod tests {
             engine.dna(id).unwrap().native_user_variables()
         );
         assert_eq!(restored.user_variable("Zulu"), Some(903));
+    }
+
+    #[test]
+    fn native_dbo_menu_export_keeps_source_robot_and_tie_slots() {
+        use crate::ffi::{DbBuffer, DbStatus, db_buffer_free, db_engine_command_batch};
+
+        let config = EngineConfig::testing();
+        let dna = LegacyDna::parse("start stop").unwrap();
+        for (native, has_random) in [(true, true), (false, true), (false, false)] {
+            let mut engine = if native {
+                Engine::new_native(config.clone()).unwrap()
+            } else {
+                Engine::new(config.clone()).unwrap()
+            };
+            if !has_random {
+                engine.native_random = None;
+            }
+            assert_eq!(engine.native_cycle.is_some(), native);
+            assert_eq!(engine.has_native_random(), has_random);
+            let robots: Vec<_> = (0..6)
+                .map(|i| {
+                    engine
+                        .spawn_at(dna.clone(), [100.0 + (i as f32) * 120.0, 500.0])
+                        .unwrap()
+                })
+                .collect();
+            engine.remove(robots[4]).unwrap();
+            let members = [robots[3], robots[5]];
+            assert_eq!(members.map(|robot| robot.slot()), [3, 5]);
+            engine
+                .ties
+                .push(TieState::legacy(members[0], members[1], 240.0, 1, 1));
+            engine.refresh_tie_projections();
+
+            let packed = engine.export_native_organisms(&members).unwrap();
+            let packed_file = NativeRecordFile::decode(&packed).unwrap();
+            assert_eq!(slots_and_endpoints(&packed_file), ([1, 2], [2, 1]));
+
+            let command = serde_json::to_vec(&serde_json::json!({
+                "version": 1,
+                "commands": [{"type": "export_organism_group", "organisms": members}],
+            }))
+            .unwrap();
+            let mut result = DbBuffer::default();
+            assert_eq!(
+                db_engine_command_batch(&mut engine, command.as_ptr(), command.len(), &mut result),
+                DbStatus::Ok
+            );
+            let response: serde_json::Value = serde_json::from_slice(unsafe {
+                std::slice::from_raw_parts(result.data, result.len)
+            })
+            .unwrap();
+            assert_eq!(db_buffer_free(&mut result), DbStatus::Ok);
+            let bytes: Vec<u8> =
+                serde_json::from_value(response["results"][0]["payload"].clone()).unwrap();
+            if !native {
+                assert_eq!(bytes, packed);
+                continue;
+            }
+
+            let file = NativeRecordFile::decode(&bytes).unwrap();
+            let (old_slots, mut endpoints) = slots_and_endpoints(&file);
+            assert!(file.tail.is_empty());
+            assert_eq!(old_slots, [4, 6]);
+            assert_eq!(endpoints, [6, 4]);
+
+            let mut target = Engine::new_native(config.clone()).unwrap();
+            target.spawn_at(dna.clone(), [100.0, 500.0]).unwrap();
+            assert_eq!(target.import_native_organisms(&bytes, None).unwrap(), 2);
+            let ids = target.slots.ids_in_slot_order();
+            let [first, second] = [ids[1], ids[2]];
+            assert_eq!(target.ties.len(), 1);
+            assert!(target.ties[0].contains(first) && target.ties[0].contains(second));
+
+            // HDRoutines.RemapTies rewrites endpoints in place for each old slot.
+            for (old, new) in old_slots.into_iter().zip([2, 3]) {
+                for endpoint in &mut endpoints {
+                    if *endpoint == old {
+                        *endpoint = new;
+                    }
+                }
+            }
+            assert_eq!(endpoints, [3, 2]);
+        }
+
+        fn slots_and_endpoints(file: &NativeRecordFile) -> ([i16; 2], [i16; 2]) {
+            let robots: &[NativeRobotRecord; 2] = file.robots.as_slice().try_into().unwrap();
+            let [first, second] = robots.each_ref().map(|record| {
+                let ties = record.bytes("ties_core").unwrap();
+                (
+                    record.word("old_slot").unwrap(),
+                    i16::from_le_bytes(ties[40..42].try_into().unwrap()),
+                )
+            });
+            ([first.0, second.0], [first.1, second.1])
+        }
     }
 
     #[test]
