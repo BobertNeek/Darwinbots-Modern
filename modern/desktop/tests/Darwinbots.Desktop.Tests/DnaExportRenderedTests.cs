@@ -143,7 +143,7 @@ public sealed class DnaExportRenderedTests
         public MutationProfileUpdate? LastMutationProfile { get; private set; }
         public Exception? SaveError { get; set; }
 
-        public Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner, string? mainDirectory = null) =>
+        public Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner, string? mainDirectory = null, bool allowMultiple = true) =>
             Task.FromResult<IReadOnlyList<DesktopTextFile>>([]);
 
         public Task<DesktopSettings?> OpenSettingsAsync(TopLevel owner) =>

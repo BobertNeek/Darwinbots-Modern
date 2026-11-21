@@ -120,7 +120,9 @@ public sealed partial class SetupWindow : Window
         {
             var mainDirectory = (_speciesEditor ? _globalSettings : _profileSettings).Main.MainDirectory;
             var (count, energy) = _nativeSpeciesImport ? (5, 3_000) : (50, 1_000);
-            foreach (var file in await _storage.OpenDnaFilesAsync(this, _nativeSpeciesImport ? mainDirectory : null))
+            var files = await _storage.OpenDnaFilesAsync(this, _nativeSpeciesImport ? mainDirectory : null,
+                allowMultiple: !_nativeSpeciesImport);
+            foreach (var file in files)
             {
                 var name = _nativeSpeciesImport ? file.Name : Path.GetFileNameWithoutExtension(file.Name);
                 var color = (_nativeSpeciesImport, file.Name) switch
