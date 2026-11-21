@@ -136,6 +136,7 @@ public static class NativeSnapshotParser
             Width = value.Width is > 0f ? value.Width : null,
             Height = value.Height is > 0f ? value.Height : null,
             RandomDestination = value.RandomDestination,
+            NativeTopLeft = value.NativeTopLeft is { Length: 2 } ? value.NativeTopLeft : null,
             Mode = TeleporterMode(value),
             Color = value.Color ?? 0xffb9bdb6u,
             Velocity = value.Velocity is { Length: 2 } ? value.Velocity : [0f, 0f],
@@ -814,7 +815,8 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("capacity")] int? Capacity = null,
         [property: JsonPropertyName("poll_countdown")] uint? PollCountdown = null,
         [property: JsonPropertyName("backflow_limit")] uint? BackflowLimit = null,
-        [property: JsonPropertyName("random_destination")] bool RandomDestination = false);
+        [property: JsonPropertyName("random_destination")] bool RandomDestination = false,
+        [property: JsonPropertyName("native_top_left")] float[]? NativeTopLeft = null);
 
     private sealed record NativeFileTeleporter(
         [property: JsonPropertyName("id")] uint Id,

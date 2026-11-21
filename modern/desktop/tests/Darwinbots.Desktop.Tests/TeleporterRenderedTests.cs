@@ -150,6 +150,95 @@ public sealed class TeleporterRenderedTests
         finally { File.Delete(path); }
     }
 
+    [Fact]
+    public async Task NativeTeleporterDragsFromItsRectangleToThePointerBeforeRelease()
+    {
+        var setup = new WorldSetupOptions { Backend = "Cpu", WorldWidth = 4_000, WorldHeight = 2_000, PopulationCapacity = 16 };
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var player = new MainWindow([], setup, NativeEngineClientFactory.Instance, new AuditStorageService())
+            {
+                WindowState = WindowState.Normal, Width = 1_100, Height = 820,
+            };
+            player.Show();
+            try
+            {
+                var menu = player.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                var create = menu.FindCommandItem(LegacyCommandId.ObjectsNewTeleporter)!;
+                await WaitFor(() => Session(player) is not null && create.IsEnabled);
+                var session = Session(player)!;
+                create.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => player.OwnedWindows.OfType<NewTeleporterWindow>().Any());
+                var dialog = Assert.Single(player.OwnedWindows.OfType<NewTeleporterWindow>());
+                dialog.FindControl<NumericUpDown>("PortalSize")!.Value = 300m;
+                dialog.FindControl<CheckBox>("FixedPosition")!.IsChecked = true;
+                dialog.FindControl<CheckBox>("TeleportCorpses")!.IsChecked = false;
+                Click(dialog, dialog.FindControl<Button>("ApplyButton")!);
+                await WaitFor(() => !dialog.IsVisible && session.LatestSnapshot.Teleporters.Count == 1);
+
+                var viewport = player.FindControl<WorldViewport>("Viewport")!;
+                var edit = player.FindControl<Button>("EditTeleporterButton")!;
+                viewport.FixedRatio = false;
+                StabilizeForInput(player, viewport);
+                var before = session.LatestSnapshot;
+                var original = Assert.Single(before.Teleporters);
+                var originalTopLeft = Assert.IsType<float[]>(original.NativeTopLeft);
+                Assert.Equal(150f, original.Width);
+                Assert.Equal(300f, original.Height);
+                Assert.True(original.FixedPosition);
+                Assert.False(original.DriftHorizontal || original.DriftVertical);
+                Assert.False(original.TeleportCorpses);
+                Assert.False(edit.IsEnabled);
+
+                var world = before.WorldSize;
+                Point ViewportPoint(float x, float y) => new(
+                    (double)x / world[0] * viewport.Bounds.Width, (double)y / world[1] * viewport.Bounds.Height);
+                // This point is inside the native rectangle and outside the previous circular hit area.
+                var start = ViewportPoint(original.Center[0], original.Center[1] + 112.5f);
+                ClickAt(player, viewport, start);
+                Assert.True(edit.IsEnabled);
+                Assert.Equal(originalTopLeft, Assert.Single(session.LatestSnapshot.Teleporters).NativeTopLeft);
+
+                var targetX = world[0] * (original.Center[0] < world[0] / 2f ? 0.65f : 0.35f);
+                var targetY = world[1] * (original.Center[1] < world[1] / 2f ? 0.65f : 0.35f);
+                var press = viewport.TranslatePoint(start, player)!.Value;
+                var target = viewport.TranslatePoint(ViewportPoint(targetX, targetY), player)!.Value;
+                player.MouseDown(press, MouseButton.Left, RawInputModifiers.Shift);
+                player.MouseMove(target, RawInputModifiers.Shift | RawInputModifiers.LeftMouseButton);
+                player.MouseUp(target, MouseButton.Left, RawInputModifiers.Shift);
+                Assert.Equal(originalTopLeft, Assert.Single(session.LatestSnapshot.Teleporters).NativeTopLeft);
+
+                player.MouseDown(press, MouseButton.Left, RawInputModifiers.None);
+                player.MouseMove(target, RawInputModifiers.LeftMouseButton);
+                await WaitFor(() => !original.Center.SequenceEqual(Assert.Single(session.LatestSnapshot.Teleporters).Center));
+
+                var after = session.LatestSnapshot;
+                var moved = Assert.Single(after.Teleporters);
+                var movedTopLeft = Assert.IsType<float[]>(moved.NativeTopLeft);
+                var toleranceX = world[0] / (float)viewport.Bounds.Width;
+                var toleranceY = world[1] / (float)viewport.Bounds.Height;
+                Assert.InRange(moved.Center[0], targetX - toleranceX, targetX + toleranceX);
+                Assert.InRange(moved.Center[1], targetY - toleranceY, targetY + toleranceY);
+                Assert.Equal(moved.Center[0] - 75f, movedTopLeft[0]);
+                Assert.Equal(moved.Center[1] - 150f, movedTopLeft[1]);
+                Assert.Equal((original.Id, original.Width, original.Height, original.Radius),
+                    (moved.Id, moved.Width, moved.Height, moved.Radius));
+                Assert.Equal((original.FixedPosition, original.DriftHorizontal, original.DriftVertical),
+                    (moved.FixedPosition, moved.DriftHorizontal, moved.DriftVertical));
+                Assert.Equal((original.TeleportVegetables, original.TeleportCorpses, original.TeleportHeterotrophs),
+                    (moved.TeleportVegetables, moved.TeleportCorpses, moved.TeleportHeterotrophs));
+                Assert.Equal(before.Tick, after.Tick);
+                Assert.Equal(before.NativeCycle, after.NativeCycle);
+                player.MouseUp(target, MouseButton.Left, RawInputModifiers.None);
+            }
+            finally
+            {
+                foreach (var owned in player.OwnedWindows.ToArray()) owned.Close();
+                player.Close();
+            }
+        }, CancellationToken.None);
+    }
+
     private static void AssertRectangle(TeleporterSnapshot teleporter, float width, float height)
     {
         Assert.Equal([1_000f, 600f], teleporter.Center);

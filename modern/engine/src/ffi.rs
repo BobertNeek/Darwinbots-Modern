@@ -219,6 +219,10 @@ enum EngineCommand {
     AddNativeTeleporter {
         options: crate::NativeTeleporterOptions,
     },
+    DragNativeTeleporter {
+        id: u32,
+        center: [f32; 2],
+    },
     UpdateTeleporter {
         #[serde(flatten)]
         teleporter: crate::Teleporter,
@@ -992,6 +996,9 @@ fn db_engine_command_batch_impl(
             EngineCommand::AddNativeTeleporter { options } => engine
                 .add_native_teleporter(options)
                 .map(|id| serde_json::json!({ "id": id })),
+            EngineCommand::DragNativeTeleporter { id, center } => engine
+                .drag_native_teleporter(id, center)
+                .map(|_| serde_json::Value::Null),
             EngineCommand::UpdateTeleporter { teleporter } => engine
                 .update_teleporter(teleporter)
                 .map(|_| serde_json::Value::Null),
