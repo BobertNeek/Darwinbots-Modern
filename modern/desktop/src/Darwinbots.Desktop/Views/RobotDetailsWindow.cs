@@ -18,7 +18,10 @@ public enum RobotDetailsTab
 public sealed class RobotDetailsWindow : Window
 {
     private readonly SimulationSession? _session;
-    private readonly OrganismKey _focus;
+    private readonly Func<OrganismKey?>? _readFocus;
+    private OrganismKey? _focus;
+    private ulong _followedTick;
+    private long _dnaReadVersion;
     private readonly RobotDiagnosticModel _diagnostic = new();
     private readonly TextBlock _subtitle = new();
     private readonly TextBlock _facts = new();
@@ -33,16 +36,17 @@ public sealed class RobotDetailsWindow : Window
     public RobotDetailsWindow(EngineSnapshot snapshot, OrganismKey focus, string dna = "")
         : this(null, focus, RobotDetailsTab.Facts, dna)
     {
-        Update(snapshot);
+        SetSnapshot(snapshot);
     }
 
     public RobotDetailsWindow(
         SimulationSession session,
         OrganismKey focus,
-        RobotDetailsTab initialTab = RobotDetailsTab.Facts)
-        : this(session, focus, initialTab, string.Empty)
+        RobotDetailsTab initialTab = RobotDetailsTab.Facts,
+        Func<OrganismKey?>? readFocus = null)
+        : this(session, focus, initialTab, string.Empty, readFocus)
     {
-        Update(session.LatestSnapshot);
+        SetSnapshot(session.LatestSnapshot);
     }
 
     public string ActivationSummary => _diagnostic.ActivationSummary;
@@ -53,9 +57,11 @@ public sealed class RobotDetailsWindow : Window
         SimulationSession? session,
         OrganismKey focus,
         RobotDetailsTab initialTab,
-        string dna)
+        string dna,
+        Func<OrganismKey?>? readFocus = null)
     {
         _session = session;
+        _readFocus = readFocus;
         _focus = focus;
         Title = $"Darwinbots — Robot Details {focus.Slot}:{focus.Generation}";
         Width = 1_080;
@@ -199,23 +205,36 @@ public sealed class RobotDetailsWindow : Window
         Closed += Window_Closed;
     }
 
-    private async void Window_Opened(object? sender, EventArgs e)
+    private void Window_Opened(object? sender, EventArgs e)
     {
         if (_session is null)
         {
             return;
         }
 
+        _session.SnapshotPublished -= Session_SnapshotPublished;
         _session.SnapshotPublished += Session_SnapshotPublished;
-        Update(_session.LatestSnapshot);
+        SetSnapshot(_session.LatestSnapshot);
+        _ = RefreshDnaAsync();
+    }
+
+    private async Task RefreshDnaAsync()
+    {
+        var version = ++_dnaReadVersion;
+        if (_session is null || _focus is not { } focus) return;
         try
         {
-            _dna.Text = await _session.ExportDnaAsync(_focus.Slot, _focus.Generation);
-            SetSnapshot(_session.LatestSnapshot);
+            var dna = await _session.ExportDnaAsync(focus.Slot, focus.Generation);
+            if (version == _dnaReadVersion && IsVisible)
+            {
+                _dna.Text = dna;
+                SetSnapshot(_session.LatestSnapshot);
+            }
         }
         catch (Exception error)
         {
-            _status.Text = $"DNA READ FAILED · {error.Message}";
+            if (version == _dnaReadVersion && IsVisible)
+                _status.Text = $"DNA READ FAILED · {error.Message}";
         }
     }
 
@@ -229,20 +248,40 @@ public sealed class RobotDetailsWindow : Window
 
     private void Session_SnapshotPublished(EngineSnapshot snapshot)
     {
-        Avalonia.Threading.Dispatcher.UIThread.Post(() => Update(snapshot));
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            if (!IsVisible) return;
+            if (_readFocus is not null && snapshot.Tick != _followedTick)
+                SetFollowedSnapshot(snapshot);
+            else
+                SetSnapshot(snapshot);
+        });
     }
 
-    private void Update(EngineSnapshot snapshot) => SetSnapshot(snapshot);
+    internal void SetFollowedSnapshot(EngineSnapshot snapshot)
+    {
+        _followedTick = snapshot.Tick;
+        var focus = _readFocus?.Invoke();
+        if (focus != _focus)
+        {
+            _focus = focus;
+            Title = focus is { } key ? $"Darwinbots — Robot Details {key.Slot}:{key.Generation}" : "Darwinbots — Robot Details";
+            _dna.Text = string.Empty;
+            _status.Text = "Engine-owned values refresh each published cycle.";
+            _ = RefreshDnaAsync();
+        }
+        SetSnapshot(snapshot);
+    }
 
     public void SetSnapshot(EngineSnapshot snapshot)
     {
         _diagnostic.Update(snapshot, _focus);
-        var organism = snapshot.Organisms.FirstOrDefault(value =>
-            value.Slot == _focus.Slot && value.Generation == _focus.Generation);
+        var organism = _focus is { } focus ? snapshot.Organisms.FirstOrDefault(value =>
+            value.Slot == focus.Slot && value.Generation == focus.Generation) : null;
         if (organism is null)
         {
-            _subtitle.Text = $"ROBOT {_focus.Slot}:{_focus.Generation} · REMOVED";
-            _facts.Text = "The focused robot no longer exists in the live snapshot.";
+            _subtitle.Text = _focus is { } removed ? $"ROBOT {removed.Slot}:{removed.Generation} · REMOVED" : "NO ROBOT SELECTED";
+            _facts.Text = _focus is null ? "Select a robot in the simulation." : "The focused robot no longer exists in the live snapshot.";
             _factsTab.Text = _facts.Text;
             _memory.Text = string.Empty;
             _activationTimeline.Children.Clear();

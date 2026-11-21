@@ -217,6 +217,89 @@ public sealed class World09CommandsRenderedTests
         }, CancellationToken.None);
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task NativeRobotInfoFollowsTheNextCycleAndReopensTheSameModelessWindow(bool native)
+    {
+        var engine = new RecordingEngineClient(RecordingEngineClient.CreateSnapshot() with
+        {
+            NativeCycle = native ? 0 : null,
+            Population = 2,
+            WorldSize = [640f, 480f],
+            Organisms =
+            [
+                RecordingEngineClient.Organism with { Position = [300f, 225f], Memory = [new(81, 101)] },
+                new OrganismSnapshot(4, 1, [220f, 200f], [0f, 0f], 1_000, 10) { Memory = [new(81, 202)] },
+            ],
+        });
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], new WorldSetupOptions(), new World09EngineFactory(engine), new AuditStorageService())
+            {
+                WindowState = WindowState.Normal,
+                Width = 1280,
+                Height = 900,
+            };
+            try
+            {
+                window.Show();
+                var viewModel = ViewModel(window);
+                await WaitFor(() => viewModel.Population == 2);
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                var viewport = window.FindControl<WorldViewport>("Viewport")!;
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                var command = menu.FindCommandItem(LegacyCommandId.RobotShowInfo)!;
+                window.FindControl<Button>("PauseButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+                command.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => window.OwnedWindows.OfType<RobotDetailsWindow>().Any());
+                var info = Assert.Single(window.OwnedWindows.OfType<RobotDetailsWindow>());
+                Assert.Equal(native, info.Topmost);
+                info.SelectTab(RobotDetailsTab.Memory);
+                var memory = (TextBox)typeof(RobotDetailsWindow)
+                    .GetField("_memory", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(info)!;
+                Assert.Contains("101", memory.Text);
+
+                ClickWorld(window, viewport, 220, 200);
+                Assert.Equal(new OrganismKey(4, 1), viewModel.SelectedKey);
+                Assert.Contains("3:2", info.Title);
+                await Session(window)!.StepAsync();
+                if (native)
+                {
+                    await WaitFor(() => info.Title!.EndsWith("4:1", StringComparison.Ordinal)
+                        && memory.Text!.Contains("202", StringComparison.Ordinal) && engine.DnaExports.Contains((4u, 1u)));
+                    Assert.Same(info, Assert.Single(window.OwnedWindows.OfType<RobotDetailsWindow>()));
+                    ClickWorld(window, viewport, 560, 370);
+                    Assert.False(info.IsVisible);
+                    ClickWorld(window, viewport, 300, 225);
+                    command.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    await WaitFor(() => info.IsVisible && info.Title!.EndsWith("3:2", StringComparison.Ordinal));
+                    Assert.Same(info, Assert.Single(window.OwnedWindows.OfType<RobotDetailsWindow>()));
+                    Assert.Contains("101", memory.Text);
+
+                    window.FindControl<Button>("RunButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    ClickWorld(window, viewport, 220, 200);
+                    await WaitFor(() => info.Title!.EndsWith("4:1", StringComparison.Ordinal)
+                        && memory.Text!.Contains("202", StringComparison.Ordinal));
+                    ClickWorld(window, viewport, 560, 370);
+                    await WaitFor(() => memory.Text == string.Empty);
+                    Assert.True(info.IsVisible);
+                }
+                else
+                {
+                    Assert.Contains("3:2", info.Title);
+                    Assert.Contains("101", memory.Text);
+                    command.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    await WaitFor(() => window.OwnedWindows.OfType<RobotDetailsWindow>().Count() == 2);
+                    ClickWorld(window, viewport, 560, 370);
+                    Assert.True(info.IsVisible);
+                }
+            }
+            finally { window.Close(); }
+        }, CancellationToken.None);
+    }
+
     private static SimulationSession? Session(MainWindow window) =>
         typeof(MainWindow).GetField("_session", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(window) as SimulationSession;
 
