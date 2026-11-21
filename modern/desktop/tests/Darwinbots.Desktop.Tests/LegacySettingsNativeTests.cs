@@ -335,6 +335,22 @@ public sealed class LegacySettingsNativeTests
         Assert.Equal(snapshot.Population, engine.Snapshot().Population);
     }
 
+    [Fact]
+    public void CapturingASeedUsesTheNativeLongOrTimerWithoutChangingTheWorld()
+    {
+        var setup = new WorldSetupOptions
+        {
+            Backend = "Cpu",
+            Seed = 4_294_967_295,
+            GlobalSettings = new GlobalSettings { Main = new GlobalMainSettings { NewSeed = false } },
+        };
+        using var engine = new NativeEngineClient(setup, new ArchiveContinuationClock());
+        var before = engine.Save();
+        Assert.Equal(-1, engine.CaptureNativeLoadSeed(generateSeed: false));
+        Assert.Equal(125, engine.CaptureNativeLoadSeed(generateSeed: true));
+        Assert.Equal(before, engine.Save());
+    }
+
     private sealed class ArchiveContinuationClock : TimeProvider
     {
         public override DateTimeOffset GetUtcNow() => new(2026, 10, 17, 0, 0, 1, 250, TimeSpan.Zero);

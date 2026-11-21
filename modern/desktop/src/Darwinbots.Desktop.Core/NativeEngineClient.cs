@@ -951,12 +951,23 @@ public sealed partial class NativeEngineClient : IEngineClient
         finally { NativeMethods.BufferFree(ref buffer); }
     }
 
-    public void Load(byte[] save)
+    public int CaptureNativeLoadSeed(bool generateSeed)
+    {
+        EnsureAlive();
+        return generateSeed ? (int)NativeTimerSeed() : unchecked((int)ReadConfiguration().Seed.GetValueOrDefault());
+    }
+
+    public void Load(byte[] save) => LoadWithNativeSeed(save, 0);
+
+    public void LoadWithNativeSeed(byte[] save, int seed)
     {
         EnsureAlive();
         ArgumentNullException.ThrowIfNull(save);
         if (save.Length == 0) throw new InvalidDataException("Save data is empty.");
-        ThrowIfFailed(NativeMethods.EngineLoad(_engine, save, (nuint)save.Length), "load simulation");
+        var status = seed == 0
+            ? NativeMethods.EngineLoad(_engine, save, (nuint)save.Length)
+            : NativeMethods.EngineLoadWithNativeSeed(_engine, save, (nuint)save.Length, seed);
+        ThrowIfFailed(status, "load simulation");
         var loaded = Snapshot();
         _worldWidth = loaded.WorldSize[0];
         _worldHeight = loaded.WorldSize[1];
@@ -1137,6 +1148,9 @@ public sealed partial class NativeEngineClient : IEngineClient
 
         [LibraryImport(LibraryName, EntryPoint = "db_engine_load")]
         internal static partial DbStatus EngineLoad(IntPtr engine, byte[] save, nuint saveLength);
+
+        [LibraryImport(LibraryName, EntryPoint = "db_engine_load_with_native_seed")]
+        internal static partial DbStatus EngineLoadWithNativeSeed(IntPtr engine, byte[] save, nuint saveLength, int seed);
 
         [LibraryImport(LibraryName, EntryPoint = "db_engine_snapshot_json")]
         internal static partial DbStatus EngineSnapshotJson(IntPtr engine, ref NativeBuffer buffer);

@@ -390,18 +390,34 @@ public sealed class SimulationSession : IAsyncDisposable
         return save ?? throw new InvalidDataException("Engine returned no legacy save data.");
     }
 
-    public Task LoadAsync(byte[] save, CancellationToken cancellationToken = default)
+    public async Task<int> CaptureNativeLoadSeedAsync(bool generateSeed, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(save);
-        return Enqueue(engine => engine.Load(save), cancellationToken);
+        var seed = 0;
+        await Enqueue(engine => seed = engine.CaptureNativeLoadSeed(generateSeed),
+            cancellationToken, publishSnapshot: false).ConfigureAwait(false);
+        return seed;
     }
 
-    private Task Enqueue(Action<IEngineClient> action, CancellationToken cancellationToken, bool measureTicks = false)
+    public Task LoadAsync(byte[] save, CancellationToken cancellationToken = default) =>
+        LoadWithNativeSeedAsync(save, 0, cancellationToken);
+
+    public Task LoadWithNativeSeedAsync(byte[] save, int seed, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(save);
+        return Enqueue(engine =>
+        {
+            if (seed != 0 && !save.AsSpan().StartsWith("DB3S"u8)) engine.LoadWithNativeSeed(save, seed);
+            else engine.Load(save);
+        }, cancellationToken);
+    }
+
+    private Task Enqueue(Action<IEngineClient> action, CancellationToken cancellationToken, bool measureTicks = false,
+        bool publishSnapshot = true)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         cancellationToken.ThrowIfCancellationRequested();
         var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var command = new SessionCommand(action, completion, cancellationToken, measureTicks);
+        var command = new SessionCommand(action, completion, cancellationToken, measureTicks, publishSnapshot);
         _commands.Add(command, cancellationToken);
         return completion.Task;
     }
@@ -426,6 +442,11 @@ public sealed class SimulationSession : IAsyncDisposable
             try
             {
                 command.Action(_engine);
+                if (!command.PublishSnapshot)
+                {
+                    command.Completion.TrySetResult();
+                    continue;
+                }
                 var snapshot = _engine.Snapshot();
                 var elapsed = _performanceClock.Elapsed.TotalSeconds;
                 var advanced = command.MeasureTicks && _lastPublishedTick is { } previous && snapshot.Tick >= previous
@@ -468,5 +489,6 @@ public sealed class SimulationSession : IAsyncDisposable
         Action<IEngineClient> Action,
         TaskCompletionSource Completion,
         CancellationToken CancellationToken,
-        bool MeasureTicks);
+        bool MeasureTicks,
+        bool PublishSnapshot);
 }
