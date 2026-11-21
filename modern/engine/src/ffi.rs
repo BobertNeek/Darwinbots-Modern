@@ -116,6 +116,12 @@ enum EngineCommand {
     ConfigureGraphSampling {
         settings: crate::GraphSamplingSettings,
     },
+    ReadNativeGraphRecording,
+    UpdateNativeGraphRecording {
+        run_stamp: Option<String>,
+        #[serde(default)]
+        graphs: Vec<crate::world::native_graph_recording::NativeGraphRecordingRow>,
+    },
     UpdateCostSettings {
         costs: Option<crate::DnaCosts>,
         preset: Option<u8>,
@@ -750,6 +756,7 @@ fn db_engine_command_batch_impl(
                     | EngineCommand::ReadNativeProcessCaches
                     | EngineCommand::ReadRobotTagReport
                     | EngineCommand::ReadNativeRestartSources
+                    | EngineCommand::ReadNativeGraphRecording
                     | EngineCommand::HasUnresolvedNativeRepopulationSources
                     | EngineCommand::ExportSpeciesTemplateDna { .. }
                     | EngineCommand::FindBestRobot { .. }
@@ -787,6 +794,9 @@ fn db_engine_command_batch_impl(
                 EngineCommand::ReadNativeRestartSources => engine
                     .read_native_restart_sources()
                     .map(|sources| serde_json::json!(sources)),
+                EngineCommand::ReadNativeGraphRecording => engine
+                    .read_native_graph_recording()
+                    .map(|state| serde_json::json!(state)),
                 EngineCommand::HasUnresolvedNativeRepopulationSources => engine
                     .has_unresolved_native_repopulation_sources()
                     .map(serde_json::Value::Bool),
@@ -936,6 +946,12 @@ fn db_engine_command_batch_impl(
                 engine.configure_graph_sampling(settings);
                 Ok(serde_json::Value::Null)
             }
+            EngineCommand::ReadNativeGraphRecording => engine
+                .read_native_graph_recording()
+                .map(|state| serde_json::json!(state)),
+            EngineCommand::UpdateNativeGraphRecording { run_stamp, graphs } => engine
+                .update_native_graph_recording(run_stamp, graphs)
+                .map(|_| serde_json::Value::Null),
             EngineCommand::UpdateCostSettings { costs, preset } => engine
                 .update_cost_settings_with_preset(costs, preset)
                 .map(|_| serde_json::Value::Null),
@@ -2577,6 +2593,59 @@ mod tests {
         frame.extend_from_slice(&(payload.len() as u32).to_le_bytes());
         frame.extend_from_slice(&payload);
         SaveFile::decode(&frame).unwrap()
+    }
+
+    #[test]
+    fn native_graph_recording_commands_persist_counters_and_reject_bad_indices_atomically() {
+        use crate::native_binary::{NativeRecordFile, NativeSimulationTail};
+
+        let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+        let read = serde_json::json!([{"type": "read_native_graph_recording"}]);
+        let original = SaveFile::encode(&world).unwrap();
+        let (status, _) = classic_test_batch(&mut world, read.clone());
+        assert_eq!(status, DbStatus::Ok);
+        assert_eq!(SaveFile::encode(&world).unwrap(), original);
+
+        let row = serde_json::json!({"graph_index": 0, "enabled": true, "counter": 2});
+        let update = serde_json::json!({
+            "type": "update_native_graph_recording",
+            "run_stamp": "2026-11-21 06-01-02",
+            "graphs": [row],
+        });
+        let (status, _) = classic_test_batch(
+            &mut world,
+            serde_json::json!([update, {
+                "type": "update_native_graph_recording",
+                "graphs": [{"graph_index": 18, "enabled": true, "counter": 1}],
+            }]),
+        );
+        assert_eq!(status, DbStatus::EngineError);
+        assert_eq!(SaveFile::encode(&world).unwrap(), original);
+
+        let (status, _) = classic_test_batch(&mut world, serde_json::json!([update]));
+        assert_eq!(status, DbStatus::Ok);
+        let checkpoint = SaveFile::encode(&world).unwrap();
+        let native = NativeRecordFile::decode(&world.export_native_sim().unwrap()).unwrap();
+        let tail = NativeSimulationTail::decode(&native.tail).unwrap();
+        assert_eq!(tail.bytes("sim_start").unwrap(), b"2026-11-21 06-01-02");
+        assert_eq!(tail.integer("graph[0].counter").unwrap(), 2);
+        assert_eq!(tail.integer("graph[0].save").unwrap(), -1);
+
+        for mut restored in [
+            SaveFile::decode(&checkpoint).unwrap(),
+            SaveFile::decode(&native.encode().unwrap()).unwrap(),
+        ] {
+            let (status, response) = classic_test_batch(&mut restored, read.clone());
+            assert_eq!(status, DbStatus::Ok);
+            let result: serde_json::Value = serde_json::from_slice(&response).unwrap();
+            assert_eq!(
+                result["results"][0],
+                serde_json::json!({
+                    "run_stamp": "2026-11-21 06-01-02",
+                    "graphs": [row],
+                })
+            );
+        }
     }
 
     #[test]

@@ -1192,6 +1192,38 @@ public sealed partial class NativeEngineClient : IEngineClient
         } } },
     }, "configure graph sampling");
 
+    public NativeGraphRecordingState ReadNativeGraphRecording()
+    {
+        EnsureAlive();
+        var result = ExecuteBatchForResult(
+            new { version = 1, commands = new[] { new { type = "read_native_graph_recording" } } },
+            "read original graph recording").GetProperty("results")[0];
+        var graphs = result.GetProperty("graphs").EnumerateArray().Select(row => new NativeGraphRecordingRow(
+            row.GetProperty("graph_index").GetInt32(),
+            row.GetProperty("enabled").GetBoolean(),
+            row.GetProperty("counter").GetInt32())).ToArray();
+        return new(result.GetProperty("run_stamp").GetString() ?? string.Empty, graphs);
+    }
+
+    public void UpdateNativeGraphRecording(string? runStamp, IReadOnlyList<NativeGraphRecordingRow> graphs)
+    {
+        EnsureAlive();
+        ArgumentNullException.ThrowIfNull(graphs);
+        ExecuteBatch(new
+        {
+            version = 1,
+            commands = new[] { new
+            {
+                type = "update_native_graph_recording",
+                run_stamp = runStamp,
+                graphs = graphs.Select(row => new
+                {
+                    graph_index = row.GraphIndex, enabled = row.Enabled, counter = row.Counter,
+                }).ToArray(),
+            } },
+        }, "update original graph recording");
+    }
+
     public void UpdateEnvironment(EnvironmentUpdate update)
     {
         ArgumentNullException.ThrowIfNull(update);

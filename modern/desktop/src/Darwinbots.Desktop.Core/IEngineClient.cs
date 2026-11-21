@@ -176,6 +176,8 @@ public interface IEngineClient : IDisposable
         if (settings.Selective || settings.Generational || settings.Slow)
             throw new NotSupportedException("Native graph sampling is unavailable.");
     }
+    NativeGraphRecordingState? ReadNativeGraphRecording() => null;
+    void UpdateNativeGraphRecording(string? runStamp, IReadOnlyList<NativeGraphRecordingRow> graphs) { }
     byte[] Save();
     byte[] SaveWithoutRestartMode() => throw new NotSupportedException("This engine client cannot save without restart mode state.");
     byte[] SaveLegacy() => throw new NotSupportedException("This engine client does not support legacy simulation export.");

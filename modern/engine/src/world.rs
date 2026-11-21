@@ -107,6 +107,9 @@ mod native_corpses;
 mod death_recording;
 use death_recording::DeathRecording;
 
+#[path = "world/native_graph_recording.rs"]
+pub(crate) mod native_graph_recording;
+
 #[path = "world/native_graphs.rs"]
 mod native_graphs;
 
@@ -2413,6 +2416,9 @@ pub struct Engine {
     native_random: Option<crate::native_random::NativeRandom>,
     #[serde(default)]
     graph_sampling: crate::GraphSamplingSettings,
+    /// Authored graph-save values layered over untouched native archive metadata.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    native_graph_recording: Option<native_graph_recording::NativeGraphRecordingState>,
     #[serde(default)]
     dynamic_cost_state: DynamicCostRuntimeState,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -2777,6 +2783,7 @@ impl Engine {
             native_tie_index: None,
             native_random: None,
             graph_sampling: crate::GraphSamplingSettings::default(),
+            native_graph_recording: None,
             native_origin: None,
             native_f1: None,
             native_sim_guid: None,
@@ -3001,6 +3008,7 @@ impl Engine {
             native_tie_index: None,
             native_random: Some(native_random),
             graph_sampling: crate::GraphSamplingSettings::default(),
+            native_graph_recording: None,
             native_origin: None,
             native_f1: None,
             native_sim_guid: None,
@@ -6436,6 +6444,7 @@ impl Engine {
             native_tie_index: self.native_tie_index.clone(),
             native_random: self.native_random.clone(),
             graph_sampling: self.graph_sampling.clone(),
+            native_graph_recording: self.native_graph_recording.clone(),
             dynamic_cost_state: self.dynamic_cost_state.clone(),
             native_origin: self.native_origin.clone(),
             native_f1: self.native_f1,
@@ -14355,6 +14364,9 @@ impl Engine {
             return Err(EngineError::InvalidSave(
                 "invalid trash compactor walls".into(),
             ));
+        }
+        if let Some(recording) = &engine.native_graph_recording {
+            recording.validate()?;
         }
         // Reject process caches before migration or snapshot-derived ring indexing.
         engine.native_energy.validate().map_err(|error| {
