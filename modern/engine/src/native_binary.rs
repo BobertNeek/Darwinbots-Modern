@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 const RECORD_END: [u8; 3] = [254; 3];
 const MIN_RECORD_BYTES: usize = 9_321;
-const MAX_TEXT_BYTES: usize = 16 * 1024 * 1024;
+pub(crate) const MAX_TEXT_BYTES: usize = 16 * 1024 * 1024;
 
 /// Preserve floating point bit patterns and ANSI bytes without conversion.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

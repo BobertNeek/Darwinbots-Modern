@@ -15,19 +15,45 @@ pub(super) struct FileTransferTransaction {
     inputs: Vec<(PathBuf, PathBuf)>,
     published: usize,
     committed: bool,
+    defer_export_directories: bool,
 }
 
 impl FileTransferTransaction {
+    pub fn new(defer_export_directories: bool) -> Self {
+        Self {
+            exports: Vec::new(),
+            inputs: Vec::new(),
+            published: 0,
+            committed: false,
+            defer_export_directories,
+        }
+    }
+
     pub fn stage_export(&mut self, path: &Path, bytes: &[u8]) -> std::io::Result<()> {
         if path.try_exists()? || self.exports.iter().any(|(_, target)| target == path) {
             return Err(std::io::ErrorKind::AlreadyExists.into());
         }
-        let parent = path.parent().unwrap_or_else(|| Path::new("."));
-        fs::create_dir_all(parent)?;
+        let parent = path
+            .parent()
+            .filter(|path| !path.as_os_str().is_empty())
+            .unwrap_or_else(|| Path::new("."));
+        let mut staging = parent;
+        if self.defer_export_directories {
+            // An interactive source resolution can abort this cycle later.
+            // Stage on the same filesystem without creating target directories.
+            while !staging.try_exists()? {
+                staging = staging
+                    .parent()
+                    .filter(|path| !path.as_os_str().is_empty())
+                    .unwrap_or_else(|| Path::new("."));
+            }
+        } else {
+            fs::create_dir_all(parent)?;
+        }
         let mut staged = tempfile::Builder::new()
             .prefix(".db2-output-")
             .suffix(".pending")
-            .tempfile_in(parent)?;
+            .tempfile_in(staging)?;
         staged.write_all(bytes)?;
         staged.as_file().sync_all()?;
         self.exports
@@ -63,7 +89,15 @@ impl FileTransferTransaction {
 
     pub fn commit(&mut self) -> Result<(), EngineError> {
         for (staged, target) in &self.exports {
-            fs::hard_link(staged, target).map_err(|error| {
+            let publish = || {
+                if self.defer_export_directories
+                    && let Some(parent) = target.parent()
+                {
+                    fs::create_dir_all(parent)?;
+                }
+                fs::hard_link(staged, target)
+            };
+            publish().map_err(|error| {
                 EngineError::Invariant(format!(
                     "cannot publish file transfer {}: {error}",
                     target.display()
@@ -141,6 +175,23 @@ mod tests {
         assert_eq!(fs::read(&input).unwrap(), b"original robot");
         assert!(!output.exists());
         assert_eq!(fs::read_dir(root.path()).unwrap().count(), 1);
+    }
+
+    #[test]
+    fn interactive_transfer_creates_destination_only_after_commit() {
+        let root = tempfile::tempdir().unwrap();
+        let directory = root.path().join("new").join("nested");
+        let output = directory.join("output.dbo");
+        let mut abort = FileTransferTransaction::new(true);
+        abort.stage_export(&output, b"departing robot").unwrap();
+        assert!(!directory.exists());
+        abort.rollback().unwrap();
+        assert_eq!(fs::read_dir(root.path()).unwrap().count(), 0);
+
+        let mut commit = FileTransferTransaction::new(true);
+        commit.stage_export(&output, b"departing robot").unwrap();
+        commit.commit().unwrap();
+        assert_eq!(fs::read(&output).unwrap(), b"departing robot");
     }
 
     #[test]

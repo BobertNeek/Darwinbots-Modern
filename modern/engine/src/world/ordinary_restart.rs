@@ -6,6 +6,9 @@ use crate::native_binary::NativeSimulationTail;
 pub(crate) struct NativeRestartBinding {
     pub(crate) lineage_id: u64,
     pub(crate) dna: String,
+    // The interactive picker supplies a local directory. Automatic binding omits it.
+    #[serde(default)]
+    pub(crate) selected_directory: Option<String>,
 }
 
 #[derive(Default, Serialize)]
@@ -15,7 +18,7 @@ pub(crate) struct NativeRestartSources {
 }
 
 #[derive(Serialize)]
-struct NativeRestartSource {
+pub(super) struct NativeRestartSource {
     lineage_id: u64,
     filename: String,
     directory: String,
@@ -37,6 +40,12 @@ struct BoundRestartSource {
     start_energy: Option<i32>,
 }
 
+#[derive(Clone, Serialize, Deserialize)]
+struct SelectedNativeSourceDirectory {
+    filename: String,
+    directory: String,
+}
+
 #[derive(Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub(super) struct OrdinaryRestart {
@@ -47,8 +56,20 @@ pub(super) struct OrdinaryRestart {
     // Imported templates cloned from live genomes cannot authorize startup.
     #[serde(skip_serializing_if = "BTreeMap::is_empty")]
     imported_sources: BTreeMap<u64, BoundRestartSource>,
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    selected_source_directories: BTreeMap<u64, SelectedNativeSourceDirectory>,
     #[serde(skip_serializing_if = "Option::is_none")]
     imported_preference_override: Option<bool>,
+}
+
+impl NativeRestartSource {
+    pub(super) fn missing_error(self) -> EngineError {
+        EngineError::MissingNativeRepopulationSource {
+            lineage_id: self.lineage_id,
+            filename: self.filename,
+            directory: self.directory,
+        }
+    }
 }
 
 impl OrdinaryRestart {
@@ -58,7 +79,20 @@ impl OrdinaryRestart {
             && self.count == 0
             && self.starting_obstacles.is_empty()
             && self.imported_sources.is_empty()
+            && self.selected_source_directories.is_empty()
             && self.imported_preference_override.is_none()
+    }
+}
+
+fn valid_selected_directory(path: &str) -> bool {
+    if path.contains('\0') {
+        return false;
+    }
+    match path.as_bytes() {
+        [b'/', b'/' | b'\\', ..] => false,
+        [b'/', ..] => true,
+        [drive, b':', b'/' | b'\\', ..] => drive.is_ascii_alphabetic(),
+        _ => false,
     }
 }
 
@@ -132,10 +166,16 @@ impl Engine {
             if filename != definition.name {
                 continue;
             }
+            let directory =
+                if let Some(selected) = self.selected_native_source_directory(definition) {
+                    selected.to_owned()
+                } else {
+                    native_io::text(tail.bytes(&format!("{prefix}path"))?)
+                };
             sources.push(NativeRestartSource {
                 lineage_id: definition.lineage_id,
                 filename,
-                directory: native_io::text(tail.bytes(&format!("{prefix}path"))?),
+                directory,
                 species: SpeciesId(index as u32),
                 quantity: quantity.max(0) as usize,
                 start_energy: tail.integer(&format!("{prefix}start_energy"))?,
@@ -147,6 +187,7 @@ impl Engine {
     pub(crate) fn bind_native_restart_sources(
         &mut self,
         bindings: Vec<NativeRestartBinding>,
+        preserve_existing: bool,
     ) -> Result<usize, EngineError> {
         if self.native_origin.is_none() || !self.can_configure_ordinary_restart() {
             return Err(EngineError::Invariant(
@@ -161,6 +202,7 @@ impl Engine {
             .collect();
         let mut seen = HashSet::new();
         let mut sources = BTreeMap::new();
+        let mut selected_directories = BTreeMap::new();
         for binding in bindings {
             let Some(input) = by_lineage
                 .get(&binding.lineage_id)
@@ -174,6 +216,18 @@ impl Engine {
                 continue;
             }
             if let Ok(dna) = self.load_dna_source(&binding.dna) {
+                if let Some(directory) = binding
+                    .selected_directory
+                    .filter(|path| valid_selected_directory(path))
+                {
+                    selected_directories.insert(
+                        binding.lineage_id,
+                        SelectedNativeSourceDirectory {
+                            filename: input.filename.clone(),
+                            directory,
+                        },
+                    );
+                }
                 sources.insert(
                     binding.lineage_id,
                     BoundRestartSource {
@@ -186,13 +240,74 @@ impl Engine {
             }
         }
         let bound = sources.len();
-        self.ordinary_restart.imported_sources = sources;
+        if preserve_existing {
+            self.ordinary_restart.imported_sources.extend(sources);
+        } else {
+            self.ordinary_restart.imported_sources = sources;
+        }
+        self.ordinary_restart
+            .selected_source_directories
+            .extend(selected_directories);
         self.ordinary_restart.enabled = manifest.requested && self.ordinary_restart_available();
         if !self.ordinary_restart.enabled {
             self.ordinary_restart.pending = false;
         }
         self.publish_snapshot();
         Ok(bound)
+    }
+
+    pub(super) fn selected_native_source_directory(
+        &self,
+        species: &SpeciesDefinition,
+    ) -> Option<&str> {
+        self.ordinary_restart
+            .selected_source_directories
+            .get(&species.lineage_id)
+            .filter(|source| {
+                source.filename == species.name && valid_selected_directory(&source.directory)
+            })
+            .map(|source| source.directory.as_str())
+    }
+
+    pub(crate) fn has_unresolved_native_repopulation_sources(&self) -> Result<bool, EngineError> {
+        self.missing_native_repopulation_sources()
+            .map(|sources| !sources.is_empty())
+    }
+
+    pub(super) fn missing_native_repopulation_sources(
+        &self,
+    ) -> Result<BTreeMap<usize, NativeRestartSource>, EngineError> {
+        let needs_source = |index, species: &SpeciesDefinition| {
+            species.vegetable
+                && species.reseed
+                && self.active_startup_species(index)
+                && self.bound_native_repopulation_source(species).is_none()
+                && !self
+                    .species_templates
+                    .get(index)
+                    .and_then(Option::as_ref)
+                    .is_some_and(|template| template.source_text.is_some())
+        };
+        // Ordinary bound rosters and fresh worlds need no archive decoding.
+        if self.native_origin.is_none()
+            || !self.can_configure_ordinary_restart()
+            || !self
+                .species
+                .iter()
+                .enumerate()
+                .any(|(index, species)| needs_source(index, species))
+        {
+            return Ok(BTreeMap::new());
+        }
+        Ok(self
+            .native_species_sources(true)?
+            .sources
+            .into_iter()
+            .filter_map(|source| {
+                let index = source.species.0 as usize;
+                needs_source(index, &self.species[index]).then_some((index, source))
+            })
+            .collect())
     }
 
     pub(super) fn bound_native_repopulation_source(
@@ -368,6 +483,7 @@ mod tests {
         NativeRestartBinding {
             lineage_id,
             dna: dna.into(),
+            selected_directory: None,
         }
     }
 
@@ -385,7 +501,7 @@ mod tests {
         world.config.vegetation.repopulation_amount = 1;
         world.config.vegetation.repopulation_cooldown = 1;
         world.vegetation_runtime.set_native_repopulation_counter(0);
-        world.vegetation_repopulation_phase().unwrap();
+        world.vegetation_repopulation_phase(None).unwrap();
         let added = world
             .slots
             .ids_in_slot_order()
@@ -394,6 +510,171 @@ mod tests {
             .collect::<Vec<_>>();
         assert_eq!(added.len(), 1);
         added[0]
+    }
+
+    #[test]
+    fn cancelling_original_repopulation_consumes_failed_script_slots_and_random_draws() {
+        let mut world = Engine::from_native_sim(C281).unwrap();
+        for species in &mut world.species {
+            species.reseed = false;
+        }
+        for species in &mut world.species[..2] {
+            species.reseed = true;
+            species.vegetable = true;
+        }
+        world.config.vegetation.minimum_chloroplast_equivalents = 100;
+        world.config.vegetation.repopulation_amount = 3;
+        world.config.vegetation.repopulation_cooldown = 1;
+        world.vegetation_runtime.set_native_repopulation_counter(0);
+        let originals = world.slots.ids_in_slot_order();
+        let provisional_slot = world
+            .slots
+            .free_slots
+            .iter()
+            .copied()
+            .min()
+            .unwrap_or(world.slots.len() as u32);
+        let generation = world
+            .slots
+            .slots
+            .get(provisional_slot as usize)
+            .map_or(0, |slot| slot.generation);
+        let next_absolute_id = world.next_absolute_id;
+        let reseeds = world.stats.reseeds;
+
+        // VegsRepopulate evaluates the two caller arguments even after the
+        // last candidate fails, but Globals draws only for eligible species.
+        let mut expected = world.native_random.clone().unwrap();
+        let mut available = vec![0, 1];
+        for _ in 0..3 {
+            expected.unit();
+            expected.unit();
+            if available.is_empty() {
+                continue;
+            }
+            loop {
+                let selected = expected.integer(0, world.species.len() as i32 - 1);
+                if let Some(index) = available.iter().position(|index| *index == selected) {
+                    available.remove(index);
+                    break;
+                }
+            }
+            for _ in 0..8 {
+                expected.unit(); // two placement draws, six provisional preparation draws
+            }
+        }
+        world.vegetation_repopulation_phase(Some(&[1, 2])).unwrap();
+        assert_eq!(
+            world.native_random.as_ref().unwrap().state(),
+            expected.state()
+        );
+        assert_eq!(world.next_absolute_id, next_absolute_id + 2);
+        assert_eq!(world.slots.ids_in_slot_order(), originals);
+        assert_eq!(
+            world.slots[provisional_slot as usize].generation,
+            generation.wrapping_add(2)
+        );
+        assert!(world.slots[provisional_slot as usize].organism.is_none());
+        assert_eq!(world.stats.reseeds, reseeds);
+        assert!(!world.species[0].reseed && !world.species[1].reseed);
+        assert!(!world.has_unresolved_native_repopulation_sources().unwrap());
+
+        let exported = NativeRecordFile::decode(&world.export_native_sim().unwrap()).unwrap();
+        let tail = NativeSimulationTail::decode(&exported.tail).unwrap();
+        for index in 0..2 {
+            assert_eq!(
+                tail.integer(&format!("species[{index}].native")).unwrap(),
+                0
+            );
+        }
+    }
+
+    #[test]
+    fn picker_directory_round_trips_only_the_selected_native_roster_path() {
+        const REPLACEMENT: &str = r"C:\Relinked Robots\Café";
+        const UNENCODABLE: &str = "/home/player/ロボット";
+        let mut world = Engine::from_native_sim(C281).unwrap();
+        let archived = world.native_origin.as_ref().unwrap().tail.clone();
+        let baseline = world.export_native_sim().unwrap();
+        let mut expected = NativeRecordFile::decode(&baseline).unwrap();
+        let read_directory = |world: &Engine| {
+            world
+                .read_native_restart_sources()
+                .unwrap()
+                .sources
+                .into_iter()
+                .find(|source| source.lineage_id == 1)
+                .unwrap()
+                .directory
+        };
+        let original_directory = read_directory(&world);
+
+        let mut failed = binding(1, "def");
+        failed.selected_directory = Some(REPLACEMENT.into());
+        assert_eq!(
+            world
+                .bind_native_restart_sources(vec![failed], true)
+                .unwrap(),
+            0
+        );
+        let mut relative = binding(1, ALGA);
+        relative.selected_directory = Some("../Robots".into());
+        assert_eq!(
+            world
+                .bind_native_restart_sources(vec![relative], true)
+                .unwrap(),
+            1
+        );
+        assert_eq!(read_directory(&world), original_directory);
+        assert_eq!(world.export_native_sim().unwrap(), baseline);
+
+        let mut selected = binding(1, ALGA);
+        selected.selected_directory = Some(REPLACEMENT.into());
+        assert_eq!(
+            world
+                .bind_native_restart_sources(vec![selected], true)
+                .unwrap(),
+            1
+        );
+        assert_eq!(
+            world
+                .bind_native_restart_sources(vec![binding(2, ANIMAL)], false)
+                .unwrap(),
+            1
+        );
+        assert_eq!(read_directory(&world), REPLACEMENT);
+        assert_eq!(world.native_origin.as_ref().unwrap().tail, archived);
+
+        let mut projected = NativeSimulationTail::decode(&expected.tail).unwrap();
+        let bytes = crate::world::native_export::ansi(REPLACEMENT).unwrap();
+        projected
+            .set_value(
+                "species[0].path.length",
+                NativeValue::Long(bytes.len() as i32),
+            )
+            .unwrap();
+        projected
+            .set_value("species[0].path", NativeValue::Bytes(bytes))
+            .unwrap();
+        expected.tail = projected.encode().unwrap();
+        let restored = SaveFile::decode(&SaveFile::encode(&world).unwrap()).unwrap();
+        assert_eq!(read_directory(&restored), REPLACEMENT);
+        assert_eq!(
+            restored.export_native_sim().unwrap(),
+            expected.encode().unwrap()
+        );
+
+        let mut selected = binding(1, ALGA);
+        selected.selected_directory = Some(UNENCODABLE.into());
+        assert_eq!(
+            world
+                .bind_native_restart_sources(vec![selected], true)
+                .unwrap(),
+            1
+        );
+        let restored = SaveFile::decode(&SaveFile::encode(&world).unwrap()).unwrap();
+        assert_eq!(read_directory(&restored), UNENCODABLE);
+        assert_eq!(restored.export_native_sim().unwrap(), baseline);
     }
 
     #[test]
@@ -428,7 +709,7 @@ mod tests {
 
         assert_eq!(
             world
-                .bind_native_restart_sources(vec![binding(1, ALGA)])
+                .bind_native_restart_sources(vec![binding(1, ALGA)], false)
                 .unwrap(),
             1
         );
@@ -452,7 +733,7 @@ mod tests {
         let mut world = Engine::from_native_sim(C281).unwrap();
         assert_eq!(
             world
-                .bind_native_restart_sources(vec![binding(1, BOUND)])
+                .bind_native_restart_sources(vec![binding(1, BOUND)], false)
                 .unwrap(),
             1
         );
@@ -527,7 +808,7 @@ mod tests {
         );
         assert_eq!(
             world
-                .bind_native_restart_sources(vec![binding(1, ALGA)])
+                .bind_native_restart_sources(vec![binding(1, ALGA)], false)
                 .unwrap(),
             1
         );
@@ -587,7 +868,7 @@ mod tests {
         let old_rng = world.native_random.as_ref().unwrap().state();
         assert_eq!(
             world
-                .bind_native_restart_sources(vec![binding(2, ANIMAL), binding(1, ALGA)])
+                .bind_native_restart_sources(vec![binding(2, ANIMAL), binding(1, ALGA)], false)
                 .unwrap(),
             2
         );
@@ -646,7 +927,7 @@ mod tests {
         assert!(world.read_native_restart_sources().unwrap().requested);
         assert_eq!(
             world
-                .bind_native_restart_sources(vec![binding(1, "def")])
+                .bind_native_restart_sources(vec![binding(1, "def")], false)
                 .unwrap(),
             0
         );
@@ -657,7 +938,7 @@ mod tests {
 
         assert_eq!(
             world
-                .bind_native_restart_sources(vec![binding(2, ANIMAL)])
+                .bind_native_restart_sources(vec![binding(2, ANIMAL)], false)
                 .unwrap(),
             1
         );
