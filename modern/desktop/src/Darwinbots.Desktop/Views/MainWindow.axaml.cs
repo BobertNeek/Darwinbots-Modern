@@ -1005,12 +1005,14 @@ public sealed partial class MainWindow : Window
                 sunChange = context.SunChange;
                 caches = context.Caches;
             }
+            var highlightNativeTeleporters = Viewport.HighlightNativeTeleporters;
             if (openSetup)
             {
                 var setupWindow = new SetupWindow(_storage, spare, sunChange, caches);
                 setupWindow.WorldCreated += options =>
                 {
                     var replacement = new MainWindow(_startupArguments, options, _engineFactory, _storage);
+                    replacement.Viewport.HighlightNativeTeleporters = highlightNativeTeleporters;
                     SetApplicationMainWindow(replacement);
                     replacement.Show();
                     setupWindow.Close();
@@ -1022,6 +1024,7 @@ public sealed partial class MainWindow : Window
             {
                 var replacement = new MainWindow(_startupArguments,
                     (editedSetup ?? CreateNextWorldSetup()) with { NativeGaussianSpare = spare, NativeSunChange = sunChange, NativeProcessCaches = caches }, _engineFactory, _storage);
+                replacement.Viewport.HighlightNativeTeleporters = highlightNativeTeleporters;
                 SetApplicationMainWindow(replacement);
                 replacement.Show();
             }

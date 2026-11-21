@@ -35,7 +35,7 @@ public sealed class WorldViewport : Control
     private bool _showMovementVectors = true;
     private bool _showShotImpacts = true;
     private bool _showResourceGauges = true;
-    private bool _highlightTeleporters = true;
+    private bool _highlightPortableTeleporters = true;
     private bool _energyGridEnabled;
     private EnergyGridSize _energyGridSize = EnergyGridSize.Large;
     private bool _flickerMode;
@@ -81,7 +81,17 @@ public sealed class WorldViewport : Control
         _showShotImpacts,
         _showResourceGauges,
         HasBackgroundImage);
-    public bool HighlightTeleporters { get => _highlightTeleporters; set { _highlightTeleporters = value; InvalidateVisual(); } }
+    internal bool HighlightNativeTeleporters { get; set; } = true;
+    public bool HighlightTeleporters
+    {
+        get => _snapshot.NativeCycle.HasValue ? HighlightNativeTeleporters : _highlightPortableTeleporters;
+        set
+        {
+            if (_snapshot.NativeCycle.HasValue) HighlightNativeTeleporters = value;
+            else _highlightPortableTeleporters = value;
+            InvalidateVisual();
+        }
+    }
     public bool EnergyGridEnabled { get => _energyGridEnabled; set { _energyGridEnabled = value; InvalidateVisual(); } }
     public EnergyGridSize EnergyGridSize { get => _energyGridSize; set { _energyGridSize = value; InvalidateVisual(); } }
     public bool FlickerMode { get => _flickerMode; set { _flickerMode = value; InvalidateVisual(); } }
@@ -750,18 +760,21 @@ public sealed class WorldViewport : Control
             var selected = _selectedFeature is { Kind: WorldFeatureKind.Obstacle } feature && feature.Id == obstacle.Id;
             context.DrawRectangle(null, new Pen(new SolidColorBrush(Color.Parse(selected ? "#202725" : "#69716D")), selected ? 2.4 : 1.2), rectangle);
         }
+        var native = _snapshot.NativeCycle.HasValue;
         foreach (var teleporter in _snapshot.Teleporters)
         {
             var center = new Point(teleporter.Center[0] * scaleX + _pan.X, teleporter.Center[1] * scaleY + _pan.Y);
             var radius = Math.Max(4.0, teleporter.Radius * Math.Min(scaleX, scaleY));
             var selected = _selectedFeature is { Kind: WorldFeatureKind.Teleporter } feature && feature.Id == teleporter.Id;
-            var highlighted = selected || HighlightTeleporters;
+            var highlighted = !native && (selected || HighlightTeleporters);
             context.DrawEllipse(
-                new SolidColorBrush(Color.Parse(HighlightTeleporters ? "#55239AC0" : "#35239AC0")),
+                new SolidColorBrush(Color.Parse(!native && HighlightTeleporters ? "#55239AC0" : "#35239AC0")),
                 new Pen(new SolidColorBrush(Color.Parse(highlighted ? "#E26722" : "#239AC0")), highlighted ? 3 : 2),
                 center,
                 radius,
                 radius);
+            if (_snapshot.NativeCycle is >= 0 && !teleporter.Internet)
+                DrawNativeTeleporterMarks(context, teleporter, center, scaleX, scaleY, selected);
         }
         foreach (var teleporter in _snapshot.FileTeleporters)
         {
@@ -794,6 +807,32 @@ public sealed class WorldViewport : Control
                 radius,
                 radius);
         }
+    }
+
+    private void DrawNativeTeleporterMarks(
+        DrawingContext context,
+        TeleporterSnapshot teleporter,
+        Point center,
+        double scaleX,
+        double scaleY,
+        bool selected)
+    {
+        var width = teleporter.Width is { } w && w > 0 ? w : teleporter.Radius * 2;
+        var height = teleporter.Height is { } h && h > 0 ? h : teleporter.Radius * 2;
+        // VB uses the rectangle's width midpoint and one third of its height.
+        var markCenter = new Point(center.X, center.Y - height * scaleY / 6);
+        var penWidth = 1 / RenderScale;
+        if (HighlightNativeTeleporters)
+        {
+            var mark = teleporter.Local ? Brushes.Yellow
+                : teleporter.Outbound ? Brushes.Red
+                : teleporter.Inbound ? Brushes.Lime
+                : null;
+            if (mark is not null)
+                context.DrawEllipse(null, new Pen(mark, penWidth), markCenter, width * 0.6 * scaleX, width * 0.6 * scaleY);
+        }
+        if (selected)
+            context.DrawEllipse(null, new Pen(Brushes.White, penWidth), markCenter, width * 0.7 * scaleX, width * 0.7 * scaleY);
     }
 
     private Color ShotOwnerColor(OrganismKey owner)
