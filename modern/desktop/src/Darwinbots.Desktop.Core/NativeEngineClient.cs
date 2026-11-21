@@ -277,6 +277,10 @@ public sealed partial class NativeEngineClient : IEngineClient
     public void SetDeathPoffsEnabled(bool enabled) => ExecuteBatch(
         NativeCommandSerializer.CreateDeathPoffsBatch(enabled), "change death-particle creation");
 
+    public void SetNativeTeleporterHighlights(bool enabled) => ExecuteBatch(
+        new { version = 1, commands = new[] { new { type = "set_native_teleporter_highlights", enabled } } },
+        "change native teleporter highlights");
+
     public void Move(uint slot, uint generation, float[] position)
     {
         ValidatePosition(position);

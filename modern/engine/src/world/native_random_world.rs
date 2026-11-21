@@ -138,6 +138,7 @@ impl Engine {
                 self.vegetation_runtime = VegetationRuntime::fresh_native_process();
                 self.reset_native_energy_process();
                 self.set_death_poffs_enabled(true);
+                self.native_teleporter_highlight_slots = None;
             }
         }
         self.initialize_native_start();

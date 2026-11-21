@@ -2323,6 +2323,7 @@ struct EngineCycleCheckpoint {
     native_loaded_census_stage: Option<native_reproduction::NativeLoadedCensusStage>,
     native_energy: native_energy::NativeEnergyRuntime,
     native_skin_timer_seconds: Option<[f32; 2]>,
+    native_teleporter_highlight_slots: Option<[bool; 10]>,
     death_poffs_enabled: bool,
 }
 
@@ -2364,6 +2365,8 @@ pub struct Engine {
     native_energy: native_energy::NativeEnergyRuntime,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     native_skin_timer_seconds: Option<[f32; 2]>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    native_teleporter_highlight_slots: Option<[bool; 10]>,
     #[serde(default = "default_true", skip_serializing_if = "is_true")]
     death_poffs_enabled: bool,
     config: EngineConfig,
@@ -2660,6 +2663,7 @@ impl Engine {
             native_loaded_census_stage: None,
             native_energy: native_energy::NativeEnergyRuntime::default(),
             native_skin_timer_seconds: None,
+            native_teleporter_highlight_slots: None,
             death_poffs_enabled: true,
         })
     }
@@ -2873,6 +2877,7 @@ impl Engine {
             native_loaded_census_stage: None,
             native_energy: native_energy::NativeEnergyRuntime::default(),
             native_skin_timer_seconds: None,
+            native_teleporter_highlight_slots: None,
             death_poffs_enabled: true,
         };
         // Match restore publication without advancing a cycle or publishing a snapshot.
@@ -5574,6 +5579,7 @@ impl Engine {
             native_loaded_census_stage: self.native_loaded_census_stage,
             native_energy: self.native_energy.clone(),
             native_skin_timer_seconds: self.native_skin_timer_seconds,
+            native_teleporter_highlight_slots: self.native_teleporter_highlight_slots,
             death_poffs_enabled: self.death_poffs_enabled,
         }
     }
@@ -5592,6 +5598,7 @@ impl Engine {
         self.native_loaded_census_stage = checkpoint.native_loaded_census_stage;
         self.native_energy = checkpoint.native_energy;
         self.native_skin_timer_seconds = checkpoint.native_skin_timer_seconds;
+        self.native_teleporter_highlight_slots = checkpoint.native_teleporter_highlight_slots;
         self.death_poffs_enabled = checkpoint.death_poffs_enabled;
         let checkpoint = checkpoint.checkpoint;
         self.config = checkpoint.config;
@@ -5927,6 +5934,7 @@ impl Engine {
             native_loaded_census_stage: self.native_loaded_census_stage,
             native_energy: self.native_energy.clone(),
             native_skin_timer_seconds: self.native_skin_timer_seconds,
+            native_teleporter_highlight_slots: self.native_teleporter_highlight_slots,
             death_poffs_enabled: self.death_poffs_enabled,
             config: self.config.clone(),
             slots: self.slots.clone(),
@@ -6112,6 +6120,9 @@ impl Engine {
         teleporter.poll_interval = teleporter.poll_interval.max(1);
         teleporter.capacity = teleporter.capacity.max(1);
         teleporter.poll_countdown = teleporter.poll_countdown.min(teleporter.poll_interval);
+        if self.native_cycle.is_some() && !teleporter.internet {
+            teleporter.highlight = self.next_native_teleporter_highlight();
+        }
         self.teleporters.push(teleporter);
         self.publish_snapshot();
         Ok(())
@@ -6225,15 +6236,60 @@ impl Engine {
     }
 
     pub fn remove_teleporter(&mut self, id: u32) -> Result<(), EngineError> {
-        let previous = self.teleporters.len();
-        self.teleporters.retain(|value| value.id != id);
-        if self.teleporters.len() == previous {
+        let Some(index) = self.teleporters.iter().position(|value| value.id == id) else {
             return Err(EngineError::Invariant(format!(
                 "teleporter {id} does not exist"
             )));
+        };
+        if self.native_cycle.is_some() && !self.teleporters[index].internet {
+            // Removing an original slot shifts the active records but leaves the tail's bit.
+            self.native_teleporter_highlight_slots =
+                self.current_native_teleporter_highlight_slots();
         }
+        self.teleporters.retain(|teleporter| teleporter.id != id);
         self.publish_snapshot();
         Ok(())
+    }
+
+    fn next_native_teleporter_highlight(&self) -> bool {
+        let count = self
+            .teleporters
+            .iter()
+            .filter(|teleporter| !teleporter.internet)
+            .count();
+        self.native_teleporter_highlight_slots
+            .and_then(|slots| slots.get(count).copied())
+            .unwrap_or(true)
+    }
+
+    fn current_native_teleporter_highlight_slots(&self) -> Option<[bool; 10]> {
+        if self.native_cycle.is_none() {
+            return None;
+        }
+        let mut slots = self.native_teleporter_highlight_slots.unwrap_or([true; 10]);
+        for (slot, teleporter) in slots.iter_mut().zip(
+            self.teleporters
+                .iter()
+                .filter(|teleporter| !teleporter.internet),
+        ) {
+            *slot = teleporter.highlight;
+        }
+        (slots != [true; 10]).then_some(slots)
+    }
+
+    pub fn set_native_teleporter_highlights(&mut self, enabled: bool) {
+        if self.native_cycle.is_none() {
+            return;
+        }
+        self.native_teleporter_highlight_slots = (!enabled).then_some([false; 10]);
+        for teleporter in self
+            .teleporters
+            .iter_mut()
+            .filter(|teleporter| !teleporter.internet)
+        {
+            teleporter.highlight = enabled;
+        }
+        self.publish_snapshot();
     }
 
     pub fn capabilities(&self) -> &BackendCapabilities {

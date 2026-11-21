@@ -721,10 +721,9 @@ public sealed partial class MainWindow : Window
         handlers[LegacyCommandId.ObjectsDeleteAllTeleporters] = Handler(
             EngineState,
             async _ => await DeleteAllTeleportersCommandAsync());
-        handlers[LegacyCommandId.ObjectsHilightTeleporters] = ViewportToggle(
-            () => Viewport.HighlightTeleporters,
-            value => Viewport.HighlightTeleporters = value,
-            "TELEPORTER HIGHLIGHT");
+        handlers[LegacyCommandId.ObjectsHilightTeleporters] = Handler(
+            () => new LegacyCommandState(true, Viewport.HighlightTeleporters),
+            async _ => await ToggleTeleporterHighlightsAsync());
         handlers[LegacyCommandId.ObjectsDontDecayNrgShots] = Handler(
             () => new LegacyCommandState(_session is not null, _liveEnvironment.Shots.EnergyShotsDoNotDecay),
             async _ => await ToggleShotDecayAsync(true));
@@ -1773,12 +1772,28 @@ public sealed partial class MainWindow : Window
         return LegacyCommandResult.Success($"{feature.Kind.ToString().ToUpperInvariant()} {feature.Id} REMOVED");
     }
 
+    private async Task<LegacyCommandResult> ToggleTeleporterHighlightsAsync()
+    {
+        await _advanceGate.WaitAsync();
+        try
+        {
+            var enabled = !Viewport.HighlightTeleporters;
+            if (_session is { LatestSnapshot.NativeCycle: not null } session)
+                await session.SetNativeTeleporterHighlightsAsync(enabled);
+            Viewport.HighlightTeleporters = enabled;
+            return LegacyCommandResult.Success($"TELEPORTER HIGHLIGHT · {(enabled ? "ON" : "OFF")}");
+        }
+        finally { _advanceGate.Release(); }
+    }
+
     private async Task<LegacyCommandResult> DeleteAllTeleportersCommandAsync()
     {
         if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
         var teleporters = _session.LatestSnapshot.Teleporters.ToArray();
         var fileTeleporters = _session.LatestSnapshot.FileTeleporters.ToArray();
-        foreach (var teleporter in teleporters) await _session.RemoveTeleporterAsync(teleporter.Id);
+        // The original bulk delete keeps each vacant slot's former highlight bit.
+        var removalOrder = _session.LatestSnapshot.NativeCycle.HasValue ? teleporters.Reverse() : teleporters;
+        foreach (var teleporter in removalOrder) await _session.RemoveTeleporterAsync(teleporter.Id);
         foreach (var teleporter in fileTeleporters) await _session.RemoveFileTeleporterAsync(teleporter.Id);
         return LegacyCommandResult.Success($"DELETED {teleporters.Length + fileTeleporters.Length} TELEPORTER(S)");
     }

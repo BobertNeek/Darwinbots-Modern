@@ -23,9 +23,9 @@ public sealed class NativeTeleporterHighlightsRenderedTests
                 WorldSize = [600, 360],
                 Teleporters =
                 [
-                    new TeleporterSnapshot(1, [110, 140], 35, [0, 0]) { Width = 70, Height = 60, Outbound = true },
-                    new TeleporterSnapshot(2, [250, 140], 35, [0, 0]) { Width = 70, Height = 60, Local = false },
-                    new TeleporterSnapshot(3, [390, 140], 35, [0, 0]) { Width = 70, Height = 60, Local = false, Outbound = true },
+                    new TeleporterSnapshot(1, [110, 140], 35, [0, 0]) { Width = 70, Height = 60, Outbound = true, Highlight = true },
+                    new TeleporterSnapshot(2, [250, 140], 35, [0, 0]) { Width = 70, Height = 60, Local = false, Highlight = true },
+                    new TeleporterSnapshot(3, [390, 140], 35, [0, 0]) { Width = 70, Height = 60, Local = false, Outbound = true, Highlight = true },
                 ],
             };
             var viewport = new WorldViewport { OldColors = true, ToroidalWorld = false };
@@ -43,6 +43,11 @@ public sealed class NativeTeleporterHighlightsRenderedTests
                 Assert.True(HasPaint(nativePixels, 159, 130, IsWhite), "Missing larger white focus mark.");
 
                 viewport.HighlightTeleporters = false;
+                Assert.True(HasPaint(Capture(window), 152, 130, IsYellow), "The checkbox erased a loaded slot bit.");
+                viewport.SetSnapshot(native with
+                {
+                    Teleporters = [.. native.Teleporters.Select(teleporter => teleporter with { Highlight = false })],
+                });
                 var disabledPixels = Capture(window);
                 Assert.False(HasPaint(disabledPixels, 152, 130, IsYellow));
                 Assert.False(HasPaint(disabledPixels, 292, 130, IsGreen));

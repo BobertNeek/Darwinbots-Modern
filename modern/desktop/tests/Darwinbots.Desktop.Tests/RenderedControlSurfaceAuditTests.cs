@@ -387,6 +387,9 @@ public sealed class RenderedControlSurfaceAuditTests
                 ActivateMenu(command);
                 await WaitFor(() => !command.IsChecked);
                 Assert.False(Named<WorldViewport>(original, "Viewport").HighlightTeleporters);
+                Assert.Contains("NativeTeleporterHighlights:False", factory.Clients.Single().Calls);
+                Assert.All(Field<SimulationSession>(original, "_session").LatestSnapshot.Teleporters,
+                    teleporter => Assert.False(teleporter.Highlight));
 
                 Named<Button>(original, "ResetButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 await WaitFor(() => factory.Clients.Count == 2 && windows.OfType<MainWindow>().Count() == 2);
@@ -2292,6 +2295,14 @@ internal sealed class AuditEngineClient : IEngineClient
     {
         NativeProcessCaches = NativeProcessCaches with { DeathPoffsEnabled = enabled };
         Calls.Enqueue($"DeathPoffs:{enabled}");
+    }
+    public void SetNativeTeleporterHighlights(bool enabled)
+    {
+        _snapshot = _snapshot with
+        {
+            Teleporters = [.. _snapshot.Teleporters.Select(value => value.Internet ? value : value with { Highlight = enabled })],
+        };
+        Calls.Enqueue($"NativeTeleporterHighlights:{enabled}");
     }
     public void Move(uint slot, uint generation, float[] position) => Calls.Enqueue($"Move:{slot}:{generation}:{position[0]:0}:{position[1]:0}");
     public OrganismKey CloneOrganism(uint slot, uint generation, float[] position) { Calls.Enqueue($"Clone:{slot}:{generation}"); return new OrganismKey(40, 0); }

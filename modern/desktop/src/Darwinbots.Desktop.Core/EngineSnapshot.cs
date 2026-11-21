@@ -143,6 +143,10 @@ public sealed record NativeProcessCachesSnapshot(
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public int? RepopulationCounter { get; init; }
 
+    [System.Text.Json.Serialization.JsonPropertyName("teleporter_highlight_slots")]
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public bool[]? TeleporterHighlightSlots { get; init; }
+
     public static NativeProcessCachesSnapshot Empty => new(0, NativeEnergyContextSnapshot.Empty);
 }
 

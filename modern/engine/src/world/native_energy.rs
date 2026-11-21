@@ -79,6 +79,8 @@ pub(crate) struct NativeProcessCaches {
     pub(crate) shots_this_cycle: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) repopulation_counter: Option<i32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) teleporter_highlight_slots: Option<[bool; 10]>,
 }
 
 impl Engine {
@@ -144,6 +146,7 @@ impl Engine {
             } else {
                 None
             },
+            teleporter_highlight_slots: self.current_native_teleporter_highlight_slots(),
         })
     }
 
@@ -169,6 +172,9 @@ impl Engine {
                 .set_native_repopulation_counter(counter);
         }
         self.set_death_poffs_enabled(caches.death_poffs_enabled);
+        if self.native_cycle.is_some() {
+            self.native_teleporter_highlight_slots = caches.teleporter_highlight_slots;
+        }
         self.set_native_light_availability(caches.light_availability);
         self.native_energy = caches.energy;
         self.stats.native_shots_visited = self
@@ -256,6 +262,7 @@ mod tests {
         for invalid in [
             NativeProcessCaches {
                 repopulation_counter: original.repopulation_counter,
+                teleporter_highlight_slots: None,
                 death_poffs_enabled: true,
                 shots_this_cycle: 0,
                 light_availability: f64::NAN,
@@ -263,6 +270,7 @@ mod tests {
             },
             NativeProcessCaches {
                 repopulation_counter: original.repopulation_counter,
+                teleporter_highlight_slots: None,
                 death_poffs_enabled: true,
                 shots_this_cycle: 0,
                 light_availability: -0.1,
@@ -270,6 +278,7 @@ mod tests {
             },
             NativeProcessCaches {
                 repopulation_counter: original.repopulation_counter,
+                teleporter_highlight_slots: None,
                 death_poffs_enabled: true,
                 shots_this_cycle: 0,
                 light_availability: 1.1,
@@ -277,6 +286,7 @@ mod tests {
             },
             NativeProcessCaches {
                 repopulation_counter: original.repopulation_counter,
+                teleporter_highlight_slots: None,
                 death_poffs_enabled: true,
                 shots_this_cycle: 0,
                 light_availability: 0.75,
@@ -287,6 +297,7 @@ mod tests {
             },
             NativeProcessCaches {
                 repopulation_counter: original.repopulation_counter,
+                teleporter_highlight_slots: None,
                 death_poffs_enabled: true,
                 shots_this_cycle: 0,
                 light_availability: 0.75,
@@ -297,6 +308,7 @@ mod tests {
             },
             NativeProcessCaches {
                 repopulation_counter: original.repopulation_counter,
+                teleporter_highlight_slots: None,
                 death_poffs_enabled: true,
                 shots_this_cycle: i32::MAX as u64 + 1,
                 light_availability: 0.75,
@@ -450,6 +462,7 @@ mod tests {
                 death_poffs_enabled: true,
                 shots_this_cycle: 0,
                 repopulation_counter: Some(0),
+                teleporter_highlight_slots: None,
                 light_availability: 0.0,
                 energy: NativeEnergyRuntime::default()
             }

@@ -19,6 +19,8 @@ public interface IEngineClient : IDisposable
     }
     void SetDeathPoffsEnabled(bool enabled) =>
         throw new NotSupportedException("This engine client does not support changing death-particle creation.");
+    void SetNativeTeleporterHighlights(bool enabled) =>
+        throw new NotSupportedException("This engine client does not support changing native teleporter highlights.");
     void Move(uint slot, uint generation, float[] position);
     OrganismKey CloneOrganism(uint slot, uint generation, float[] position);
     void ReplaceDna(uint slot, uint generation, string dna);
