@@ -1,5 +1,37 @@
 //! Same-process extinction restart for a world with its original startup roster.
 use super::*;
+use crate::native_binary::NativeSimulationTail;
+
+#[derive(Deserialize)]
+pub(crate) struct NativeRestartBinding {
+    pub(crate) lineage_id: u64,
+    pub(crate) dna: String,
+}
+
+#[derive(Default, Serialize)]
+pub(crate) struct NativeRestartSources {
+    requested: bool,
+    sources: Vec<NativeRestartSource>,
+}
+
+#[derive(Serialize)]
+struct NativeRestartSource {
+    lineage_id: u64,
+    filename: String,
+    directory: String,
+    #[serde(skip_serializing)]
+    species: SpeciesId,
+    #[serde(skip_serializing)]
+    quantity: usize,
+    #[serde(skip_serializing)]
+    start_energy: i32,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+struct BoundRestartSource {
+    filename: String,
+    dna: LegacyDna,
+}
 
 #[derive(Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
@@ -8,21 +40,155 @@ pub(super) struct OrdinaryRestart {
     pub(super) pending: bool,
     pub(super) count: u64,
     starting_obstacles: Vec<Obstacle>,
+    // Imported templates cloned from live genomes cannot authorize startup.
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    imported_sources: BTreeMap<u64, BoundRestartSource>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    imported_preference_override: Option<bool>,
 }
 
 impl OrdinaryRestart {
     pub(super) fn is_default(&self) -> bool {
-        !self.enabled && !self.pending && self.count == 0 && self.starting_obstacles.is_empty()
+        !self.enabled
+            && !self.pending
+            && self.count == 0
+            && self.starting_obstacles.is_empty()
+            && self.imported_sources.is_empty()
+            && self.imported_preference_override.is_none()
     }
 }
 
 impl Engine {
-    pub(super) fn ordinary_restart_available(&self) -> bool {
+    fn can_configure_ordinary_restart(&self) -> bool {
         self.native_random.is_some()
-            && self.native_origin.is_none()
             && !self.native_f1_enabled()
             && self.local_mode.config.is_none()
             && self.local_mode.status == LocalModeStatus::Idle
+    }
+
+    pub(super) fn ordinary_restart_available(&self) -> bool {
+        self.can_configure_ordinary_restart()
+            && (self.native_origin.is_none()
+                || self.species.iter().enumerate().any(|(index, definition)| {
+                    self.ordinary_restart
+                        .imported_sources
+                        .get(&definition.lineage_id)
+                        .is_some_and(|source| source.filename == definition.name)
+                        && self.active_startup_species(index)
+                }))
+    }
+
+    fn active_startup_species(&self, index: usize) -> bool {
+        !self
+            .species_templates
+            .get(index)
+            .and_then(Option::as_ref)
+            .is_some_and(|template| template.retired)
+    }
+
+    pub(crate) fn read_native_restart_sources(&self) -> Result<NativeRestartSources, EngineError> {
+        if !self.can_configure_ordinary_restart() {
+            return Ok(NativeRestartSources::default());
+        }
+        self.native_restart_sources()
+    }
+
+    fn native_restart_sources(&self) -> Result<NativeRestartSources, EngineError> {
+        let Some(origin) = self
+            .native_origin
+            .as_ref()
+            .filter(|origin| !origin.tail.is_empty())
+        else {
+            return Ok(NativeRestartSources::default());
+        };
+        let tail = NativeSimulationTail::decode(&origin.tail)?;
+        let count = tail.integer("species_count")? as u64;
+        let requested = self
+            .ordinary_restart
+            .imported_preference_override
+            .unwrap_or(tail.integer("restart")? != 0);
+        let mut sources = Vec::new();
+        for (index, definition) in self.species.iter().enumerate() {
+            if !(1..=count).contains(&definition.lineage_id) || !self.active_startup_species(index)
+            {
+                continue;
+            }
+            let prefix = format!("species[{}].", definition.lineage_id - 1);
+            let quantity = tail.integer(&format!("{prefix}quantity"))?;
+            if quantity <= 0 {
+                continue;
+            }
+            let filename = native_io::text(tail.bytes(&format!("{prefix}name"))?);
+            if filename != definition.name {
+                continue;
+            }
+            sources.push(NativeRestartSource {
+                lineage_id: definition.lineage_id,
+                filename,
+                directory: native_io::text(tail.bytes(&format!("{prefix}path"))?),
+                species: SpeciesId(index as u32),
+                quantity: quantity as usize,
+                start_energy: tail.integer(&format!("{prefix}start_energy"))?,
+            });
+        }
+        Ok(NativeRestartSources { requested, sources })
+    }
+
+    pub(crate) fn bind_native_restart_sources(
+        &mut self,
+        bindings: Vec<NativeRestartBinding>,
+    ) -> Result<usize, EngineError> {
+        if self.native_origin.is_none() || !self.can_configure_ordinary_restart() {
+            return Err(EngineError::Invariant(
+                "No original startup roster can be bound.".into(),
+            ));
+        }
+        let manifest = self.native_restart_sources()?;
+        let by_lineage: BTreeMap<_, _> = manifest
+            .sources
+            .into_iter()
+            .map(|source| (source.lineage_id, source))
+            .collect();
+        let mut seen = HashSet::new();
+        let mut sources = BTreeMap::new();
+        for binding in bindings {
+            let Some(input) = by_lineage
+                .get(&binding.lineage_id)
+                .filter(|_| seen.insert(binding.lineage_id))
+            else {
+                return Err(EngineError::Invariant(
+                    "Unknown or duplicate native restart species.".into(),
+                ));
+            };
+            if binding.dna.trim().is_empty() {
+                continue;
+            }
+            if let Ok(dna) = self.load_dna_source(&binding.dna) {
+                sources.insert(
+                    binding.lineage_id,
+                    BoundRestartSource {
+                        filename: input.filename.clone(),
+                        dna,
+                    },
+                );
+            }
+        }
+        let bound = sources.len();
+        self.ordinary_restart.imported_sources = sources;
+        self.ordinary_restart.enabled = manifest.requested && bound != 0;
+        if !self.ordinary_restart.enabled {
+            self.ordinary_restart.pending = false;
+        }
+        self.publish_snapshot();
+        Ok(bound)
+    }
+
+    pub(super) fn native_restart_export_override(&self) -> Option<bool> {
+        if self.native_origin.is_some() {
+            self.ordinary_restart.imported_preference_override
+        } else {
+            Some(self.ordinary_restart.enabled)
+        }
     }
 
     pub(crate) fn set_ordinary_restart(&mut self, enabled: bool) -> Result<(), EngineError> {
@@ -32,15 +198,22 @@ impl Engine {
                     .into(),
             ));
         }
-        if self.ordinary_restart.enabled != enabled {
-            self.ordinary_restart = OrdinaryRestart {
-                enabled,
-                starting_obstacles: if enabled {
-                    self.obstacles.clone()
-                } else {
-                    Vec::new()
-                },
-                ..OrdinaryRestart::default()
+        if self.native_origin.is_some() {
+            self.ordinary_restart.imported_preference_override = Some(enabled);
+            self.ordinary_restart.enabled = enabled;
+            if !enabled {
+                self.ordinary_restart.pending = false;
+            }
+            self.publish_snapshot();
+        } else if self.ordinary_restart.enabled != enabled {
+            self.ordinary_restart = if enabled {
+                OrdinaryRestart {
+                    enabled: true,
+                    starting_obstacles: self.obstacles.clone(),
+                    ..OrdinaryRestart::default()
+                }
+            } else {
+                OrdinaryRestart::default()
             };
             self.publish_snapshot();
         }
@@ -95,21 +268,61 @@ impl Engine {
         self.pending_gpu_render_instances = None;
         self.pending_gpu_collision_pairs = None;
 
-        for (index, template) in self.species_templates.clone().into_iter().enumerate() {
-            let Some(template) = template.filter(|template| !template.retired) else {
-                continue;
-            };
-            let species = SpeciesId(index as u32);
-            for _ in 0..template.initial_population {
+        if self.native_origin.is_some() {
+            for entry in self.native_restart_sources()?.sources {
                 if self.available_robot_capacity() == 0 {
-                    return Ok(());
+                    break;
                 }
-                let id = self.spawn_native_start_robot(template.dna.clone(), species, 0, None)?;
-                let robot = self.slots.get_mut(id)?;
-                robot.materials.energy = template.initial_energy as f32;
-                robot.materials.synchronize_energy();
-                robot.program.memory.write(MEM_NRG, template.initial_energy);
+                if let Some(source) = self
+                    .ordinary_restart
+                    .imported_sources
+                    .get(&entry.lineage_id)
+                {
+                    self.spawn_restart_species(
+                        entry.species,
+                        &source.dna.clone(),
+                        entry.quantity,
+                        entry.start_energy,
+                    )?;
+                    self.species[entry.species.0 as usize].reseed = true;
+                } else {
+                    // RobScriptLoad calls preparerob before attempting LoadDNA.
+                    if let Some(random) = self.native_random.as_mut() {
+                        for _ in 0..6 {
+                            random.unit();
+                        }
+                    }
+                    self.species[entry.species.0 as usize].reseed = false;
+                }
             }
+        } else {
+            for (index, template) in self.species_templates.clone().into_iter().enumerate() {
+                if let Some(template) = template.filter(|template| !template.retired) {
+                    self.spawn_restart_species(
+                        SpeciesId(index as u32),
+                        &template.dna,
+                        template.initial_population,
+                        template.initial_energy,
+                    )?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn spawn_restart_species(
+        &mut self,
+        species: SpeciesId,
+        dna: &LegacyDna,
+        quantity: usize,
+        energy: i32,
+    ) -> Result<(), EngineError> {
+        for _ in 0..quantity.min(self.available_robot_capacity()) {
+            let id = self.spawn_native_start_robot(dna.clone(), species, 0, None)?;
+            let robot = self.slots.get_mut(id)?;
+            robot.materials.energy = energy as f32;
+            robot.materials.synchronize_energy();
+            robot.program.memory.write(MEM_NRG, energy);
         }
         Ok(())
     }
@@ -119,6 +332,156 @@ impl Engine {
 mod tests {
     use super::*;
     use crate::SaveFile;
+    use crate::native_binary::{NativeRecordFile, NativeValue};
+
+    const C281: &[u8] = include_bytes!("../../tests/fixtures/db24832-original-user.sim");
+    const ALGA: &str = include_str!("../../../../Installer/bots/Alga_Minimalis_Chloroplastus.txt");
+    const ANIMAL: &str = include_str!("../../../../Installer/bots/The One (1G)(Shen)-23.04.05.txt");
+
+    fn binding(lineage_id: u64, dna: &str) -> NativeRestartBinding {
+        NativeRestartBinding {
+            lineage_id,
+            dna: dna.into(),
+        }
+    }
+
+    fn native_restart_flag(save: &[u8]) -> i32 {
+        let file = NativeRecordFile::decode(save).unwrap();
+        NativeSimulationTail::decode(&file.tail)
+            .unwrap()
+            .integer("restart")
+            .unwrap()
+    }
+
+    #[test]
+    fn original_c281_binds_restart_files_without_changing_live_genomes() {
+        let mut world = Engine::from_native_sim(C281).unwrap();
+        let manifest = world.read_native_restart_sources().unwrap();
+        assert!(!manifest.requested);
+        assert_eq!(
+            manifest
+                .sources
+                .iter()
+                .map(|row| (
+                    row.lineage_id,
+                    row.filename.as_str(),
+                    row.quantity,
+                    row.start_energy
+                ))
+                .collect::<Vec<_>>(),
+            [
+                (1, "Alga_Minimalis_Chloroplastus.txt", 5, 3000),
+                (2, "The One (1G)(Shen)-23.04.05.txt", 5, 3000)
+            ]
+        );
+        assert!(
+            manifest
+                .sources
+                .iter()
+                .all(|row| row.directory.ends_with(r"\oracle-run\Robots"))
+        );
+
+        let animals = world
+            .slots
+            .ids_in_slot_order()
+            .into_iter()
+            .filter(|id| !world.slots.get(*id).unwrap().flags.vegetable)
+            .collect::<Vec<_>>();
+        assert_eq!(world.population(), 196);
+        let edited = world.load_dna_source("start 41 700 store stop").unwrap();
+        world.replace_dna(animals[0], edited.clone()).unwrap();
+        let old_snapshot = world.snapshot().organisms.clone();
+        let old_rng = world.native_random.as_ref().unwrap().state();
+        assert_eq!(
+            world
+                .bind_native_restart_sources(vec![binding(2, ANIMAL), binding(1, ALGA)])
+                .unwrap(),
+            2
+        );
+        assert!(world.snapshot().ordinary_restart_available);
+        assert!(!world.snapshot().ordinary_restart_on_extinction);
+        assert_eq!(world.snapshot().organisms, old_snapshot);
+        assert_eq!(
+            world.slots.get(animals[0]).unwrap().program.dna.blocks(),
+            edited.blocks()
+        );
+        assert_eq!(world.native_random.as_ref().unwrap().state(), old_rng);
+        assert_eq!(native_restart_flag(&world.export_native_sim().unwrap()), 0);
+
+        world.set_ordinary_restart(true).unwrap();
+        assert_eq!(native_restart_flag(&world.export_native_sim().unwrap()), -1);
+        world.remove_many(&animals).unwrap();
+        world.tick().unwrap();
+        assert_eq!(world.snapshot().native_cycle, Some(282));
+        assert!(world.snapshot().ordinary_restart_pending);
+        let mut restored = SaveFile::decode(&SaveFile::encode(&world).unwrap()).unwrap();
+        let expected_dna = [
+            world.load_dna_source(ALGA).unwrap(),
+            world.load_dna_source(ANIMAL).unwrap(),
+        ];
+        for world in [&mut world, &mut restored] {
+            assert!(world.finish_ordinary_restart().unwrap());
+            assert_eq!(world.snapshot().ordinary_restart_count, 1);
+            assert_eq!(world.snapshot().native_cycle, Some(282));
+            assert_eq!(world.population(), 10);
+            for (index, id) in world.slots.ids_in_slot_order().into_iter().enumerate() {
+                let robot = world.slots.get(id).unwrap();
+                assert!(robot.identity.absolute_id > 294);
+                assert_eq!(robot.materials.energy, 3000.0);
+                assert_eq!(robot.materials.body, 1000.0);
+                assert_eq!(robot.flags.vegetable, index < 5);
+                assert_eq!(robot.program.dna.blocks(), expected_dna[index / 5].blocks());
+            }
+        }
+        assert_eq!(
+            SaveFile::encode(&world).unwrap(),
+            SaveFile::encode(&restored).unwrap()
+        );
+        world.set_ordinary_restart(false).unwrap();
+        assert!(world.snapshot().ordinary_restart_available);
+        assert_eq!(native_restart_flag(&world.export_native_sim().unwrap()), 0);
+    }
+
+    #[test]
+    fn original_requested_restart_skips_missing_sources_independently() {
+        let mut file = NativeRecordFile::decode(C281).unwrap();
+        let mut tail = NativeSimulationTail::decode(&file.tail).unwrap();
+        tail.set_value("restart", NativeValue::Word(-1)).unwrap();
+        file.tail = tail.encode().unwrap();
+        let save = file.encode().unwrap();
+        let mut world = Engine::from_native_sim(&save).unwrap();
+        assert!(world.read_native_restart_sources().unwrap().requested);
+        assert_eq!(
+            world
+                .bind_native_restart_sources(vec![binding(1, "def")])
+                .unwrap(),
+            0
+        );
+        assert!(!world.snapshot().ordinary_restart_available);
+        assert!(!world.snapshot().ordinary_restart_on_extinction);
+        assert!(world.set_ordinary_restart(true).is_err());
+        assert_eq!(native_restart_flag(&world.export_native_sim().unwrap()), -1);
+
+        assert_eq!(
+            world
+                .bind_native_restart_sources(vec![binding(2, ANIMAL)])
+                .unwrap(),
+            1
+        );
+        assert!(world.snapshot().ordinary_restart_on_extinction);
+        world.remove_many(&world.slots.ids_in_slot_order()).unwrap();
+        world.tick().unwrap();
+        assert!(world.snapshot().ordinary_restart_pending);
+        assert!(world.finish_ordinary_restart().unwrap());
+        assert_eq!(world.population(), 5);
+        assert!(
+            world
+                .snapshot()
+                .organisms
+                .iter()
+                .all(|robot| !robot.vegetable)
+        );
+    }
 
     #[test]
     fn census_waits_for_the_next_cycle_and_recovery_preserves_the_restart_boundary() {
