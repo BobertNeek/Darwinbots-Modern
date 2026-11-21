@@ -13,21 +13,26 @@ pub(crate) struct StagedSpeciesAppearance {
     pub skin: [i16; 8],
 }
 
-/// Prepare AddItem's appearance from the original basename bytes and DNA text.
-/// Validation precedes all draws. Only the supplied uniform stream is advanced.
+/// Prepare AddItem's appearance at the original two clock reads.
+/// A failed file or timer leaves the supplied stream unchanged.
 pub(crate) fn assign_staged_species_appearance(
     random: &mut NativeRandom,
     filename: &[u8],
     source_text: &str,
     use_old_colors: bool,
-    color_timer_seconds: f32,
-    skin_timer_seconds: f32,
+    mut sample_timer: impl FnMut() -> f32,
 ) -> Result<StagedSpeciesAppearance, EngineError> {
-    validate_timer(color_timer_seconds, "native color")?;
-    validate_timer(skin_timer_seconds, "native skin")?;
+    let mut candidate = random.clone();
+    let color_timer = sample_timer();
+    validate_timer(color_timer, "native color")?;
+    let argb = add_item_color(&mut candidate, filename, use_old_colors, color_timer);
     let (name, dna) = skin_source(filename, source_text)?;
-    let argb = add_item_color(random, filename, use_old_colors, color_timer_seconds);
-    let skin = assign_skin_from_image(random, &name, dna, skin_timer_seconds);
+    let skin = assign_skin_from_image(&mut candidate, &name, dna, || {
+        let timer = sample_timer();
+        validate_timer(timer, "native skin")?;
+        Ok(timer)
+    })?;
+    *random = candidate;
     Ok(StagedSpeciesAppearance { argb, skin })
 }
 
@@ -43,12 +48,9 @@ pub(crate) fn assign_skin(
         ));
     }
     let (name, dna) = skin_source(alias.as_bytes(), source_text)?;
-    Ok(assign_skin_from_image(
-        &mut NativeRandom::default(),
-        &name,
-        dna,
-        timer_seconds,
-    ))
+    assign_skin_from_image(&mut NativeRandom::default(), &name, dna, || {
+        Ok(timer_seconds)
+    })
 }
 
 fn validate_timer(seconds: f32, operation: &str) -> Result<(), EngineError> {
@@ -128,8 +130,8 @@ fn assign_skin_from_image(
     random: &mut NativeRandom,
     name: &[u8],
     dna: Vec<DnaBlock>,
-    timer_seconds: f32,
-) -> [i16; 8] {
+    sample_timer: impl FnOnce() -> Result<f32, EngineError>,
+) -> Result<[i16; 8], EngineError> {
     random.randomize(0.0);
     let name_draws: Vec<_> = name
         .iter()
@@ -164,10 +166,10 @@ fn assign_skin_from_image(
         }
         skin[index + 1] = scale_skin_draw(random.unit(), 629);
     }
-    random.randomize_timer(timer_seconds);
+    random.randomize_timer(sample_timer()?);
     let radius = scale_skin_draw(random.unit(), 61);
     skin[6] = (f32::from(skin[6] + radius * 2) / 3.0_f32).round_ties_even() as i16;
-    skin
+    Ok(skin)
 }
 
 fn scale_skin_draw(draw: f32, scale: u16) -> i16 {
@@ -248,15 +250,12 @@ mod tests {
         ];
         for &(name, argb, skin) in cases {
             let mut random = appearance_random();
-            let appearance = assign_staged_species_appearance(
-                &mut random,
-                name,
-                "start stop",
-                true,
-                1.25,
-                12_345.5,
-            )
-            .unwrap();
+            let mut timers = [1.25, 12_345.5].into_iter();
+            let appearance =
+                assign_staged_species_appearance(&mut random, name, "start stop", true, || {
+                    timers.next().unwrap()
+                })
+                .unwrap();
             assert_eq!(appearance, StagedSpeciesAppearance { argb, skin });
             assert_eq!(random.state(), 0x31_2200);
             assert_eq!(random.gaussian_spare(), Some(0.125));
@@ -274,15 +273,11 @@ mod tests {
         ];
         for &(name, source, color_timer, skin_timer) in cases {
             let mut random = original.clone();
+            let mut timers = [color_timer, skin_timer].into_iter();
             assert!(
-                assign_staged_species_appearance(
-                    &mut random,
-                    name,
-                    source,
-                    false,
-                    color_timer,
-                    skin_timer
-                )
+                assign_staged_species_appearance(&mut random, name, source, false, || timers
+                    .next()
+                    .unwrap())
                 .is_err()
             );
             assert_eq!(random, original);
