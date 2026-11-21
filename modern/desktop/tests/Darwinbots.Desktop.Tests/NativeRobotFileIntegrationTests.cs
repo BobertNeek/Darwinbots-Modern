@@ -74,7 +74,9 @@ public sealed class NativeRobotFileIntegrationTests
                 await session.StepAsync();
                 Assert.Equal(first, session.LatestSnapshot.NativePostDnaMemory?.Focus);
                 watch.IsChecked = false;
-                var tick = session.LatestSnapshot.Tick;
+                var queuedSnapshot = session.LatestSnapshot;
+                var tick = queuedSnapshot.Tick;
+                await WaitFor(() => Field<ulong>(info, "_followedTick") == tick);
                 var kill = menu.FindCommandItem(LegacyCommandId.RobotKillEntireOrganism)!;
                 Assert.True(kill.IsEnabled);
                 const string killed = "ORGANISM KILLED · 1 BOT(S)";
@@ -96,8 +98,13 @@ public sealed class NativeRobotFileIntegrationTests
                 Assert.Null(session.LatestSnapshot.NativePostDnaMemory);
                 await WaitFor(() => memory.Text == "This robot is dead");
                 Assert.True(info.IsVisible);
+                Assert.Equal(first, Field<OrganismKey?>(info, "_focus"));
+                info.SetSnapshot(queuedSnapshot);
+                var memoryBeforeNextStep = memory.Text;
                 await session.StepAsync();
+                await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
                 Assert.Equal("This robot is dead", memory.Text);
+                Assert.Equal("This robot is dead", memoryBeforeNextStep);
 
                 var restore = typeof(MainWindow).GetMethod("LoadSimulationAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
                 await Assert.IsAssignableFrom<Task>(restore.Invoke(window, [save, false]));
