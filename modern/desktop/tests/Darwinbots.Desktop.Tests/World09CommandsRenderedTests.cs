@@ -3,7 +3,9 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
+using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
+using Avalonia.VisualTree;
 using Darwinbots.Desktop.Controls;
 using Darwinbots.Desktop.Core;
 using Darwinbots.Desktop.Core.LegacyMenus;
@@ -298,6 +300,97 @@ public sealed class World09CommandsRenderedTests
             }
             finally { window.Close(); }
         }, CancellationToken.None);
+    }
+
+    [Theory]
+    [InlineData(true, true)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public async Task RobotInfoDoubleClickCopiesOnlyTheDisplayedNativeFounderFilename(bool native, bool hasFounderName)
+    {
+        const string firstName = "First, Mixed Case.TXT";
+        const string secondName = "Second-Founder.txt";
+        const string previousClipboard = "Previous clipboard contents";
+        var first = RecordingEngineClient.Organism with { Position = [300f, 225f], FounderName = hasFounderName ? firstName : null };
+        var second = new OrganismSnapshot(4, 1, [220f, 200f], [0f, 0f], 1_000, 10)
+        {
+            FounderName = hasFounderName ? secondName : null,
+        };
+        var engine = new RecordingEngineClient(RecordingEngineClient.CreateSnapshot() with
+        {
+            NativeCycle = native ? 0 : null,
+            Population = 2,
+            WorldSize = [640f, 480f],
+            Organisms = [first, second],
+        });
+
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], new WorldSetupOptions(), new World09EngineFactory(engine), new AuditStorageService())
+            {
+                WindowState = WindowState.Normal,
+                Width = 1280,
+                Height = 900,
+            };
+            try
+            {
+                window.Show();
+                var viewModel = ViewModel(window);
+                await WaitFor(() => viewModel.Population == 2);
+                var viewport = window.FindControl<WorldViewport>("Viewport")!;
+                var command = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!
+                    .FindCommandItem(LegacyCommandId.RobotShowInfo)!;
+                window.FindControl<Button>("PauseButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                command.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => window.OwnedWindows.OfType<RobotDetailsWindow>().Any());
+                var info = Assert.Single(window.OwnedWindows.OfType<RobotDetailsWindow>());
+                var labels = info.GetVisualDescendants().OfType<TextBlock>().ToArray();
+                var founder = Assert.Single(labels, label => label.Name == "RobotFounderFilename");
+                var subtitle = Assert.Single(labels, label => label.Text?.StartsWith("LIVE ROBOT 3:2", StringComparison.Ordinal) == true);
+                var clipboard = Assert.IsAssignableFrom<IClipboard>(info.Clipboard);
+                await clipboard.SetTextAsync(previousClipboard);
+
+                if (!native || !hasFounderName)
+                {
+                    Assert.False(founder.IsVisible);
+                    Assert.Contains("ANIMAL MINIMALIS", subtitle.Text);
+                    DoubleClickLabel(info, subtitle);
+                    Assert.Equal(previousClipboard, await clipboard.TryGetTextAsync());
+                    return;
+                }
+
+                Assert.True(founder.IsVisible);
+                Assert.Equal(firstName, founder.Text);
+                DoubleClickLabel(info, subtitle);
+                Assert.Equal(previousClipboard, await clipboard.TryGetTextAsync());
+
+                ClickWorld(window, viewport, 220, 200);
+                Assert.Equal(new OrganismKey(second.Slot, second.Generation), viewModel.SelectedKey);
+                Assert.Equal(firstName, founder.Text);
+                DoubleClickLabel(info, founder);
+                Assert.Equal(firstName, await clipboard.TryGetTextAsync());
+
+                await Session(window)!.StepAsync();
+                await WaitFor(() => founder.Text == secondName && info.Title!.EndsWith("4:1", StringComparison.Ordinal));
+                DoubleClickLabel(info, subtitle);
+                Assert.Equal(firstName, await clipboard.TryGetTextAsync());
+                DoubleClickLabel(info, founder);
+                Assert.Equal(secondName, await clipboard.TryGetTextAsync());
+            }
+            finally { window.Close(); }
+        }, CancellationToken.None);
+    }
+
+    private static void DoubleClickLabel(Window window, TextBlock label)
+    {
+        window.UpdateLayout();
+        AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+        var point = label.TranslatePoint(new Point(label.Bounds.Width / 2, label.Bounds.Height / 2), window);
+        Assert.True(point.HasValue);
+        window.MouseDown(point.Value, MouseButton.Left, RawInputModifiers.None);
+        window.MouseUp(point.Value, MouseButton.Left, RawInputModifiers.None);
+        window.MouseDown(point.Value, MouseButton.Left, RawInputModifiers.None);
+        window.MouseUp(point.Value, MouseButton.Left, RawInputModifiers.None);
     }
 
     private static SimulationSession? Session(MainWindow window) =>
