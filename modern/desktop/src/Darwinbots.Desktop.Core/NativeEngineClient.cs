@@ -118,11 +118,15 @@ public sealed partial class NativeEngineClient : IEngineClient
         Advance(count, requireNativeRepopulationSource, cancelledLineages, onCommitted);
     }
 
-    public NativeGraphRecordingSample? ReadNativeGraphSample()
+    public NativeGraphRecordingSample? ReadNativeGraphSample() => ReadNativeGraphSample("read_native_graph_sample");
+
+    public NativeGraphRecordingSample? ReadNativeGraphResetSample() => ReadNativeGraphSample("read_native_graph_reset_sample");
+
+    private NativeGraphRecordingSample? ReadNativeGraphSample(string command)
     {
         EnsureAlive();
         var result = ExecuteBatchForResult(
-            new { version = 1, commands = new[] { new { type = "read_native_graph_sample" } } },
+            new { version = 1, commands = new[] { new { type = command } } },
             "sample original graphs").GetProperty("results")[0];
         return result.Deserialize<NativeGraphRecordingSample>(NativeRecordingJson);
     }

@@ -166,7 +166,13 @@ public sealed class RenderedWorldToolsCausalTests
                 Assert.Contains("JOINED", graphWindow.ViewModel.Status, StringComparison.Ordinal);
 
                 graphView.FindControl<Button>("ResetGraphsButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                Assert.All(graphWindow.ViewModel.RunningGraphs, graph => Assert.Empty(graph.Samples));
+                var resetPrompt = Assert.Single(graphWindow.OwnedWindows.OfType<LegacyConfirmationWindow>());
+                resetPrompt.GetVisualDescendants().OfType<Button>().Single(button => Equals(button.Content, "OK"))
+                    .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(
+                    () => graphWindow.ViewModel.Status == "ALL GRAPHS RESET"
+                        && graphWindow.ViewModel.RunningGraphs.All(graph => graph.Samples.Count == 1),
+                    () => "Reset All did not seed one point for each active graph.");
 
                 AvaloniaHeadlessPlatform.ForceRenderTimerTick();
                 using var frame = window.CaptureRenderedFrame();

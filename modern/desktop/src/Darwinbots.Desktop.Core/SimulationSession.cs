@@ -56,6 +56,14 @@ public sealed class SimulationSession : IAsyncDisposable
         return sample;
     }
 
+    public async Task<NativeGraphRecordingSample?> ReadNativeGraphResetSampleAsync(CancellationToken cancellationToken = default)
+    {
+        NativeGraphRecordingSample? sample = null;
+        await Enqueue(engine => sample = engine.ReadNativeGraphResetSample(), cancellationToken, publishSnapshot: false)
+            .ConfigureAwait(false);
+        return sample;
+    }
+
     public async Task<NativeGraphRecordingSample?> FeedNativeGraphSampleAsync(GraphSamplingSettings settings,
         bool dueOnly = false, CancellationToken cancellationToken = default)
     {

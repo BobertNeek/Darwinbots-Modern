@@ -7,7 +7,7 @@ namespace Darwinbots.Desktop.Views;
 
 public sealed class LegacyConfirmationWindow : Window
 {
-    public LegacyConfirmationWindow(string title, string question, bool informationOnly = false)
+    public LegacyConfirmationWindow(string title, string question, bool informationOnly = false, bool okCancel = false)
     {
         Title = $"Darwinbots — {title}";
         Width = informationOnly ? 480 : 400;
@@ -17,7 +17,7 @@ public sealed class LegacyConfirmationWindow : Window
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         Background = Brush.Parse("#F4F0E6");
         var prompt = new TextBlock { Text = question, TextWrapping = TextWrapping.Wrap };
-        var accept = new Button { Content = informationOnly ? "OK" : "YES", IsDefault = true, IsCancel = informationOnly };
+        var accept = new Button { Content = informationOnly || okCancel ? "OK" : "YES", IsDefault = true, IsCancel = informationOnly };
         accept.Click += (_, _) => Close(true);
         var actions = new StackPanel
         {
@@ -28,7 +28,7 @@ public sealed class LegacyConfirmationWindow : Window
         };
         if (!informationOnly)
         {
-            var no = new Button { Content = "NO", IsCancel = true };
+            var no = new Button { Content = okCancel ? "CANCEL" : "NO", IsCancel = true };
             no.Click += (_, _) => Close(false);
             actions.Children.Add(no);
         }
