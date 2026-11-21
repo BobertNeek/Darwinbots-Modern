@@ -14,16 +14,18 @@ public interface IDesktopStorageService
         string suggestedFileName,
         Func<Stream, Task> writeAsync) => Task.FromResult(false);
     Task<bool> AppendDeadSnapshotAsync(Func<Stream, Task> writeAsync) => Task.FromResult(false);
-    Task<byte[]?> OpenOrganismAsync(TopLevel owner) => Task.FromResult<byte[]?>(null);
+    Task<byte[]?> OpenOrganismAsync(TopLevel owner, string? mainDirectory = null) => Task.FromResult<byte[]?>(null);
     Task<DesktopSettings?> OpenSettingsAsync(TopLevel owner);
     Task<string?> PickSimulationPathAsync(TopLevel owner);
     Task<byte[]?> OpenSimulationAsync(TopLevel owner);
     Task<bool> SaveSettingsAsync(TopLevel owner, DesktopSettings settings);
     Task<bool> SaveSimulationAsync(TopLevel owner, ReadOnlyMemory<byte> save);
     Task<bool> SaveLegacySimulationAsync(TopLevel owner, ReadOnlyMemory<byte> save) => Task.FromResult(false);
-    Task<bool> SaveDnaAsync(TopLevel owner, string suggestedFileName, string dna, MutationProfileUpdate? mutationProfile);
+    Task<bool> SaveDnaAsync(TopLevel owner, string suggestedFileName, string dna, MutationProfileUpdate? mutationProfile,
+        string? mainDirectory = null);
     Task<string?> PickPopulationSeedDirectoryAsync(TopLevel owner) => Task.FromResult<string?>(null);
-    Task<bool> SaveOrganismAsync(TopLevel owner, string suggestedFileName, Func<Stream, Task> writeAsync);
+    Task<bool> SaveOrganismAsync(TopLevel owner, string suggestedFileName, Func<Stream, Task> writeAsync,
+        string? mainDirectory = null);
     string? FindLatestAutosave();
     Task SaveAutosaveAsync(ReadOnlyMemory<byte> save);
     bool IsFirstRun => false;

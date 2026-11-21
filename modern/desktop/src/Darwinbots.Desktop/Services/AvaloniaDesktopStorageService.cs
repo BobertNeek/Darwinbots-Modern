@@ -37,11 +37,13 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         return result;
     }
 
-    public async Task<byte[]?> OpenOrganismAsync(TopLevel owner)
+    public async Task<byte[]?> OpenOrganismAsync(TopLevel owner, string? mainDirectory = null)
     {
+        using var folder = await NativeRobotFolderAsync(owner.StorageProvider, mainDirectory);
         var files = await owner.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
             Title = "Import Darwinbots organism",
+            SuggestedStartLocation = folder,
             AllowMultiple = false,
             FileTypeFilter = [OrganismFileType()],
         });
@@ -132,11 +134,14 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         return true;
     }
 
-    public async Task<bool> SaveDnaAsync(TopLevel owner, string suggestedFileName, string dna, MutationProfileUpdate? mutationProfile)
+    public async Task<bool> SaveDnaAsync(TopLevel owner, string suggestedFileName, string dna, MutationProfileUpdate? mutationProfile,
+        string? mainDirectory = null)
     {
+        using var folder = mainDirectory is null ? null : await NativeRobotFolderAsync(owner.StorageProvider, mainDirectory);
         var file = await owner.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
             Title = "Export Darwinbots robot DNA",
+            SuggestedStartLocation = folder,
             SuggestedFileName = suggestedFileName,
             FileTypeChoices = [RobotFileType()],
         });
@@ -188,11 +193,14 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
     public async Task<bool> SaveOrganismAsync(
         TopLevel owner,
         string suggestedFileName,
-        Func<Stream, Task> writeAsync)
+        Func<Stream, Task> writeAsync,
+        string? mainDirectory = null)
     {
+        using var folder = await NativeRobotFolderAsync(owner.StorageProvider, mainDirectory);
         var file = await owner.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
             Title = "Save entire organism",
+            SuggestedStartLocation = folder,
             SuggestedFileName = suggestedFileName,
             DefaultExtension = "dbo",
             FileTypeChoices = [OrganismSaveFileType()],
@@ -202,6 +210,18 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         stream.SetLength(0);
         await writeAsync(stream);
         return true;
+    }
+
+    private static async Task<IStorageFolder?> NativeRobotFolderAsync(IStorageProvider storage, string? mainDirectory)
+    {
+        var root = string.IsNullOrWhiteSpace(mainDirectory) ? AppContext.BaseDirectory : mainDirectory;
+        foreach (var name in new[] { "robots", "Robots" })
+        {
+            var path = Path.Combine(root, name);
+            if (Directory.Exists(path))
+                return await storage.TryGetFolderFromPathAsync(new Uri(Path.GetFullPath(path)));
+        }
+        return null;
     }
 
     public async Task<bool> SaveLivingSnapshotAsync(

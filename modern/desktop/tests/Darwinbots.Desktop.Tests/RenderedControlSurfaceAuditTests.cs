@@ -2084,7 +2084,8 @@ internal sealed class AuditStorageService : IDesktopStorageService
 
     public MutationProfileUpdate? SavedDnaMutationProfile { get; private set; }
 
-    public Task<bool> SaveDnaAsync(TopLevel owner, string suggestedFileName, string dna, MutationProfileUpdate? mutationProfile)
+    public Task<bool> SaveDnaAsync(TopLevel owner, string suggestedFileName, string dna, MutationProfileUpdate? mutationProfile,
+            string? mainDirectory = null)
     {
         SavedDna = dna;
         SavedDnaMutationProfile = mutationProfile;
@@ -2107,7 +2108,8 @@ internal sealed class AuditStorageService : IDesktopStorageService
         return true;
     }
 
-    public async Task<bool> SaveOrganismAsync(TopLevel owner, string suggestedFileName, Func<Stream, Task> writeAsync)
+    public async Task<bool> SaveOrganismAsync(TopLevel owner, string suggestedFileName, Func<Stream, Task> writeAsync,
+            string? mainDirectory = null)
     {
         SavedOrganismSuggestedFileName = suggestedFileName;
         if (!AcceptOrganismSave) return false;
