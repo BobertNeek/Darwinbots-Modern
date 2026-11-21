@@ -2968,7 +2968,7 @@ public sealed partial class MainWindow : Window
         if (_session is null) return;
         try
         {
-            await AdvanceSimulationCoreAsync(1);
+            await AdvanceSimulationCoreAsync(1, redrawNative: true);
         }
         catch (Exception error)
         {
@@ -3948,7 +3948,7 @@ public sealed partial class MainWindow : Window
 
     private async Task<(ulong Tick, ulong Advanced)> AdvanceSimulationCoreAsync(uint count,
         SimulationSession? expectedSession = null, int? expectedGeneration = null, CancellationToken cancellationToken = default,
-        bool continuous = false)
+        bool continuous = false, bool redrawNative = false)
     {
         await _advanceGate.WaitAsync(cancellationToken);
         try
@@ -3959,93 +3959,101 @@ public sealed partial class MainWindow : Window
             if (_windowClosed || _session is not { } session || count == 0 || _savingLastExit)
                 return (_session?.LatestSnapshot.Tick ?? 0, 0);
 
-            var startingTick = session.LatestSnapshot.Tick;
-            // A recovered pending checkpoint already contains the completed cycle.
-            if (session.LatestSnapshot.OrdinaryRestartPending)
-                await session.FinishOrdinaryRestartAsync();
-            var requiresOriginalSource = session.LatestSnapshot.NativeCycle.HasValue
-                && await session.HasUnresolvedNativeRepopulationSourcesAsync();
-            while (count > 0)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                var before = session.LatestSnapshot;
-                if (_lastAutomaticSaveTick is { } savedTick && before.Tick < savedTick)
-                    _lastAutomaticSaveTick = null;
-                var interval = _liveEnvironment.Recording?.AutosaveInterval ?? 0;
-                var checkpointBoundary = CycleAutosavePolicy.LimitBatch(before.Tick, uint.MaxValue, _safemodeBackup,
-                    interval, before.LocalMode, before.NativeCycle);
-                // With restart enabled, let the host retain the completed cycle
-                // before another engine tick can consume the pending restart.
-                var observesOrdinaryRestart = before.OrdinaryRestartAvailable && before.OrdinaryRestartOnExtinction;
-                var batch = observesOrdinaryRestart || requiresOriginalSource
-                    ? 1u : Math.Min(count, checkpointBoundary);
-                var recordingGeneration = _graphRecording.Generation;
-                List<NativeGraphRecordingSample>? graphSamples = continuous && before.NativeCycle.HasValue
-                    && _toolWindows.WantsNativeGraphSamples ? [] : null;
-                Action<IReadOnlyList<NativeGraphRecordingSample>>? recordGraphs =
-                    graphSamples is null ? null : graphSamples.AddRange;
-                // The original UpdateSim checkpoints before the outer loop feeds charts.
-                var deferGraphFeed = recordGraphs is not null && batch == checkpointBoundary;
-                var tickBeforeBoundary = before.Tick;
-                List<DeathRecordSnapshot>? deaths = _deadRecordingEnabled ? [] : null;
-                Action<IReadOnlyList<DeathRecordSnapshot>>? recordDeaths = deaths is null ? null : deaths.AddRange;
-                var weight = _globalSettings.Main.EffectiveFindBestWeight;
-                try
-                {
-                    if (requiresOriginalSource)
-                        await StepResolvingNativeRepopulationSourcesAsync(session, cancellationToken,
-                            weight, recordDeaths, deferGraphFeed ? null : recordGraphs);
-                    else
-                    {
-                        if (recordGraphs is not null)
-                        {
-                            var streamCount = deferGraphFeed ? batch - 1 : batch;
-                            if (streamCount > 0)
-                                await session.StepRecordingGraphsAsync(streamCount, recordGraphs,
-                                    cancellationToken: cancellationToken, weightPercent: weight, onDeathsCommitted: recordDeaths);
-                        }
-                        if (recordGraphs is null || deferGraphFeed)
-                        {
-                            tickBeforeBoundary = session.LatestSnapshot.Tick;
-                            var remaining = deferGraphFeed ? 1u : batch;
-                            if (recordDeaths is not null)
-                                await session.StepRecordingDeathsAsync(remaining, weight, recordDeaths, cancellationToken);
-                            else
-                                await session.StepAsync(remaining, cancellationToken);
-                        }
-                    }
-                }
-                catch (MissingNativeRepopulationSourceException)
-                {
-                    _runTimer.Stop();
-                    break;
-                }
-                finally
-                {
-                    if (deaths is not null)
-                        await RecordSimulationDeathsAsync(deaths);
-                }
-                count -= batch;
-                var after = session.LatestSnapshot;
-                if (_lastAutomaticSaveTick != after.Tick
-                    && CycleAutosavePolicy.IsDue(after.Tick, _safemodeBackup, interval, after.LocalMode, after.NativeCycle))
-                    await SaveAutomaticCheckpointAsync();
-                if (deferGraphFeed && after.Tick != tickBeforeBoundary && _toolWindows.WantsNativeGraphSamples
-                    && await session.FeedNativeGraphSampleAsync(_toolWindows.GraphSampling, dueOnly: true,
-                        cancellationToken: cancellationToken) is { } boundarySample)
-                    graphSamples!.Add(boundarySample);
-                if (graphSamples is { Count: > 0 } && _session == session
-                    && _graphRecording.Generation == recordingGeneration && !_windowClosed)
-                    _toolWindows.PublishNativeGraphSamples(graphSamples, recordingGeneration);
-                if (after.OrdinaryRestartPending)
-                    await session.FinishOrdinaryRestartAsync();
-                if (count > 0 && requiresOriginalSource)
-                    requiresOriginalSource = await session.HasUnresolvedNativeRepopulationSourcesAsync();
-            }
-            var tick = session.LatestSnapshot.Tick;
-            return (tick, tick >= startingTick ? tick - startingTick : 0);
+            return redrawNative && session.LatestSnapshot.NativeCycle.HasValue
+                ? await session.AdvanceWithNativeRedrawAsync(() => AdvanceCyclesAsync(session, count, continuous, cancellationToken))
+                : await AdvanceCyclesAsync(session, count, continuous, cancellationToken);
         }
         finally { _advanceGate.Release(); }
+    }
+
+    private async Task<(ulong Tick, ulong Advanced)> AdvanceCyclesAsync(
+        SimulationSession session, uint count, bool continuous, CancellationToken cancellationToken)
+    {
+        var startingTick = session.LatestSnapshot.Tick;
+        // A recovered pending checkpoint already contains the completed cycle.
+        if (session.LatestSnapshot.OrdinaryRestartPending)
+            await session.FinishOrdinaryRestartAsync();
+        var requiresOriginalSource = session.LatestSnapshot.NativeCycle.HasValue
+            && await session.HasUnresolvedNativeRepopulationSourcesAsync();
+        while (count > 0)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var before = session.LatestSnapshot;
+            if (_lastAutomaticSaveTick is { } savedTick && before.Tick < savedTick)
+                _lastAutomaticSaveTick = null;
+            var interval = _liveEnvironment.Recording?.AutosaveInterval ?? 0;
+            var checkpointBoundary = CycleAutosavePolicy.LimitBatch(before.Tick, uint.MaxValue, _safemodeBackup,
+                interval, before.LocalMode, before.NativeCycle);
+            // With restart enabled, let the host retain the completed cycle
+            // before another engine tick can consume the pending restart.
+            var observesOrdinaryRestart = before.OrdinaryRestartAvailable && before.OrdinaryRestartOnExtinction;
+            var batch = observesOrdinaryRestart || requiresOriginalSource
+                ? 1u : Math.Min(count, checkpointBoundary);
+            var recordingGeneration = _graphRecording.Generation;
+            List<NativeGraphRecordingSample>? graphSamples = continuous && before.NativeCycle.HasValue
+                && _toolWindows.WantsNativeGraphSamples ? [] : null;
+            Action<IReadOnlyList<NativeGraphRecordingSample>>? recordGraphs =
+                graphSamples is null ? null : graphSamples.AddRange;
+            // The original UpdateSim checkpoints before the outer loop feeds charts.
+            var deferGraphFeed = recordGraphs is not null && batch == checkpointBoundary;
+            var tickBeforeBoundary = before.Tick;
+            List<DeathRecordSnapshot>? deaths = _deadRecordingEnabled ? [] : null;
+            Action<IReadOnlyList<DeathRecordSnapshot>>? recordDeaths = deaths is null ? null : deaths.AddRange;
+            var weight = _globalSettings.Main.EffectiveFindBestWeight;
+            try
+            {
+                if (requiresOriginalSource)
+                    await StepResolvingNativeRepopulationSourcesAsync(session, cancellationToken,
+                        weight, recordDeaths, deferGraphFeed ? null : recordGraphs);
+                else
+                {
+                    if (recordGraphs is not null)
+                    {
+                        var streamCount = deferGraphFeed ? batch - 1 : batch;
+                        if (streamCount > 0)
+                            await session.StepRecordingGraphsAsync(streamCount, recordGraphs,
+                                cancellationToken: cancellationToken, weightPercent: weight, onDeathsCommitted: recordDeaths);
+                    }
+                    if (recordGraphs is null || deferGraphFeed)
+                    {
+                        tickBeforeBoundary = session.LatestSnapshot.Tick;
+                        var remaining = deferGraphFeed ? 1u : batch;
+                        if (recordDeaths is not null)
+                            await session.StepRecordingDeathsAsync(remaining, weight, recordDeaths, cancellationToken);
+                        else
+                            await session.StepAsync(remaining, cancellationToken);
+                    }
+                }
+            }
+            catch (MissingNativeRepopulationSourceException)
+            {
+                _runTimer.Stop();
+                break;
+            }
+            finally
+            {
+                if (deaths is not null)
+                    await RecordSimulationDeathsAsync(deaths);
+            }
+            count -= batch;
+            var after = session.LatestSnapshot;
+            if (_lastAutomaticSaveTick != after.Tick
+                && CycleAutosavePolicy.IsDue(after.Tick, _safemodeBackup, interval, after.LocalMode, after.NativeCycle))
+                await SaveAutomaticCheckpointAsync();
+            if (deferGraphFeed && after.Tick != tickBeforeBoundary && _toolWindows.WantsNativeGraphSamples
+                && await session.FeedNativeGraphSampleAsync(_toolWindows.GraphSampling, dueOnly: true,
+                    cancellationToken: cancellationToken) is { } boundarySample)
+                graphSamples!.Add(boundarySample);
+            if (graphSamples is { Count: > 0 } && _session == session
+                && _graphRecording.Generation == recordingGeneration && !_windowClosed)
+                _toolWindows.PublishNativeGraphSamples(graphSamples, recordingGeneration);
+            if (after.OrdinaryRestartPending)
+                await session.FinishOrdinaryRestartAsync();
+            if (count > 0 && requiresOriginalSource)
+                requiresOriginalSource = await session.HasUnresolvedNativeRepopulationSourcesAsync();
+        }
+        var tick = session.LatestSnapshot.Tick;
+        return (tick, tick >= startingTick ? tick - startingTick : 0);
     }
 
     private async Task StepResolvingNativeRepopulationSourcesAsync(SimulationSession session, CancellationToken cancellationToken,

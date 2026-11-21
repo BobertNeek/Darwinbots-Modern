@@ -2319,6 +2319,7 @@ internal sealed class AuditEngineClient : IEngineClient
     public WorldConfiguration? ReadConfiguration() => ConfigurationForRead;
     public int? NativeCycle { get; set; }
     public Func<uint, int?, int?>? AdvanceNativeCycle { get; set; }
+    public Action? OnNativeRedraw { get; set; }
     public bool RejectLoads { get; set; }
     public Func<int, RobotSelectionResult>? SelectBestOverride { get; set; }
     public LocalModeSnapshot? LocalModeForRead { get; set; }
@@ -2384,6 +2385,11 @@ internal sealed class AuditEngineClient : IEngineClient
             && !CommittedCancelledRepopulationLineages.Contains(source.LineageId)
             && !cancelledLineages.Contains(source.LineageId));
 
+    public void RedrawNative()
+    {
+        Calls.Enqueue("RedrawNative");
+        OnNativeRedraw?.Invoke();
+    }
     public DnaImportReport ImportDna(string dna, float[]? position = null) { Calls.Enqueue("ImportDna"); return DnaImportReport.Compatible; }
     public DnaImportReport ImportSpecies(SpeciesImport species) { Calls.Enqueue($"ImportSpecies:{species.Name}"); return DnaImportReport.Compatible; }
     public DnaImportReport InsertSpeciesAt(SpeciesImport species, float[] position)

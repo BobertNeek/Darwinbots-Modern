@@ -9,6 +9,7 @@ public sealed class SimulationSession : IAsyncDisposable
     private readonly BlockingCollection<SessionCommand> _commands = new();
     private readonly Thread _worker;
     private bool _disposed;
+    private volatile bool _deferSnapshotPublication;
     private readonly Stopwatch _performanceClock = Stopwatch.StartNew();
     private ulong? _lastPublishedTick;
     private float[]? _pendingPlayerBotPointer;
@@ -61,6 +62,23 @@ public sealed class SimulationSession : IAsyncDisposable
             return;
         engine.SetPlayerBotPointer(position);
         _appliedPlayerBotPointer = position;
+    }
+
+    // The caller holds its advance gate across the tick, checkpoint and redraw.
+    // Checkpoint logic can read LatestSnapshot before the rendered state is published.
+    public async Task<(ulong Tick, ulong Advanced)> AdvanceWithNativeRedrawAsync(
+        Func<Task<(ulong Tick, ulong Advanced)>> advance)
+    {
+        ArgumentNullException.ThrowIfNull(advance);
+        _deferSnapshotPublication = true;
+        try
+        {
+            var progress = await advance().ConfigureAwait(false);
+            await Enqueue(engine => engine.RedrawNative(), CancellationToken.None, completesNativeStep: true)
+                .ConfigureAwait(false);
+            return progress;
+        }
+        finally { _deferSnapshotPublication = false; }
     }
 
     public Task StepRecordingDeathsAsync(
@@ -924,12 +942,12 @@ public sealed class SimulationSession : IAsyncDisposable
     }
 
     private Task Enqueue(Action<IEngineClient> action, CancellationToken cancellationToken, bool measureTicks = false,
-        bool publishSnapshot = true)
+        bool publishSnapshot = true, bool completesNativeStep = false)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         cancellationToken.ThrowIfCancellationRequested();
         var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var command = new SessionCommand(action, completion, cancellationToken, measureTicks, publishSnapshot);
+        var command = new SessionCommand(action, completion, cancellationToken, measureTicks, publishSnapshot, completesNativeStep);
         _commands.Add(command, cancellationToken);
         return completion.Task;
     }
@@ -967,13 +985,16 @@ public sealed class SimulationSession : IAsyncDisposable
                     : 0;
                 if (elapsed > 0)
                     snapshot = snapshot with {
-                        TicksPerSecond = advanced / elapsed,
+                        TicksPerSecond = _deferSnapshotPublication && !command.MeasureTicks
+                            ? LatestSnapshot.TicksPerSecond
+                            : advanced / elapsed,
                         SnapshotsPerSecond = 1.0 / elapsed,
                     };
                 _lastPublishedTick = snapshot.Tick;
                 _performanceClock.Restart();
                 LatestSnapshot = snapshot;
-                SnapshotPublished?.Invoke(snapshot);
+                if (command.CompletesNativeStep) _deferSnapshotPublication = false;
+                if (!_deferSnapshotPublication) SnapshotPublished?.Invoke(snapshot);
                 command.Completion.TrySetResult();
             }
             catch (Exception error)
@@ -1003,5 +1024,5 @@ public sealed class SimulationSession : IAsyncDisposable
         TaskCompletionSource Completion,
         CancellationToken CancellationToken,
         bool MeasureTicks,
-        bool PublishSnapshot);
+        bool PublishSnapshot, bool CompletesNativeStep);
 }

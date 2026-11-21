@@ -5,6 +5,7 @@ public interface IEngineClient : IDisposable
     string Backend { get; }
     EngineCapabilities Capabilities();
     void Tick(uint count = 1);
+    void RedrawNative() { }
     void TickRecordingDeaths(uint count, Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted) => Tick(count);
     void TickRecordingDeaths(uint count, int weightPercent, Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted) =>
         TickRecordingDeaths(count, onCommitted);

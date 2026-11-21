@@ -111,6 +111,9 @@ public sealed partial class NativeEngineClient : IEngineClient
     public void Tick(uint count, bool requireNativeRepopulationSource, IReadOnlyList<ulong> cancelledLineages) =>
         Advance(count, 100, null, requireNativeRepopulationSource, cancelledLineages);
 
+    public void RedrawNative() =>
+        ExecuteBatch(new { version = 1, commands = new[] { new { type = "native_redraw" } } }, "redraw native simulation");
+
     public void TickRecordingDeaths(uint count, Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted) =>
         TickRecordingDeaths(count, 100, onCommitted);
 
