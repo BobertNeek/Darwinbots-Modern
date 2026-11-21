@@ -1097,14 +1097,15 @@ public sealed partial class MainWindow : Window
             };
         });
 
-    private async Task<LegacyCommandResult> SaveNativeSimulationCommandAsync()
-    {
-        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        var bytes = await _session.SaveLegacyAsync();
-        return await _storage.SaveLegacySimulationAsync(this, bytes)
-            ? LegacyCommandResult.Success("DARWINBOTS 2 SIMULATION EXPORTED")
-            : LegacyCommandResult.Cancel();
-    }
+    private Task<LegacyCommandResult> SaveNativeSimulationCommandAsync() =>
+        WithPausedSimulationFileDialogAsync(async session =>
+        {
+            var bytes = await session.SaveLegacyAsync();
+            if (!OwnsSimulationFileCommand(session)) return LegacyCommandResult.Cancel();
+            return await _storage.SaveLegacySimulationAsync(this, bytes)
+                ? LegacyCommandResult.Success("DARWINBOTS 2 SIMULATION EXPORTED")
+                : LegacyCommandResult.Cancel();
+        });
 
     private Task<LegacyCommandResult> LoadSimulationCommandAsync() =>
         WithPausedSimulationFileDialogAsync(async session =>
@@ -2944,8 +2945,19 @@ public sealed partial class MainWindow : Window
     private async void Save_Click(object? sender, RoutedEventArgs e)
     {
         if (_session is null) return;
-        if (await _storage.SaveSimulationAsync(this, await _session.SaveAsync()))
-            _viewModel.Status = "SAVED";
+        try
+        {
+            var result = await WithPausedSimulationFileDialogAsync(async session =>
+            {
+                var bytes = await session.SaveAsync();
+                if (!OwnsSimulationFileCommand(session)) return LegacyCommandResult.Cancel();
+                return await _storage.SaveSimulationAsync(this, bytes)
+                    ? LegacyCommandResult.Success("SAVED")
+                    : LegacyCommandResult.Cancel();
+            });
+            if (!result.Canceled) _viewModel.Status = result.Status;
+        }
+        catch (Exception error) { _viewModel.Status = $"SAVE FAILED · {error.Message}"; }
     }
 
     private async void Load_Click(object? sender, RoutedEventArgs e)

@@ -20,6 +20,83 @@ public sealed class HistoricSimulationSaveRenderedTests
     private const BindingFlags WindowFields = BindingFlags.Instance | BindingFlags.NonPublic;
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ModernSavePickersPauseAndDrainTheActiveStepBeforeSerializing(bool exportNative)
+    {
+        var timeout = TimeSpan.FromSeconds(8);
+        var tickStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var completeTick = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var engine = new AuditEngineClient
+        {
+            EncodeTickInSave = true,
+            NativeCycle = 0,
+            AdvanceNativeCycle = (count, cycle) =>
+            {
+                tickStarted.TrySetResult();
+                completeTick.Task.WaitAsync(timeout).GetAwaiter().GetResult();
+                return cycle + checked((int)count);
+            },
+        };
+        await using var session = new SimulationSession(engine);
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var pickerRequested = new TaskCompletionSource<FilePickerSaveOptions>();
+            var selection = new TaskCompletionSource<IStorageFile?>();
+            using var output = new MemoryStream();
+            var window = OpenRunningFilePickerWindow(session, StorageProxy.Create<IStorageProvider>((method, args) =>
+            {
+                Assert.Equal(nameof(IStorageProvider.SaveFilePickerAsync), method.Name);
+                pickerRequested.SetResult((FilePickerSaveOptions)args![0]!);
+                return selection.Task;
+            }));
+            try
+            {
+                var timer = WindowField<DispatcherTimer>(window, "_runTimer");
+                engine.Calls.Clear();
+                window.FindControl<Button>("StepButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await tickStarted.Task.WaitAsync(timeout);
+
+                if (exportNative)
+                    window.FindControl<LegacyMenuBar>("HistoricMenuBar")!
+                        .FindCommandItem(LegacyCommandId.FileSaveNativeSimulation)!
+                        .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                else
+                    window.FindControl<Button>("SaveButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+                Assert.False(pickerRequested.Task.IsCompleted);
+                Assert.False(timer.IsEnabled);
+                completeTick.SetResult();
+                var options = await pickerRequested.Task.WaitAsync(timeout);
+                var extension = exportNative ? ".sim" : ".db3s";
+                Assert.Equal("simulation" + extension, options.SuggestedFileName);
+                Assert.Equal(["*" + extension], Assert.Single(options.FileTypeChoices!).Patterns);
+                var saveCall = exportNative ? "SaveLegacy" : "Save";
+                Assert.Equal(["Tick:1", saveCall],
+                    engine.Calls.Where(call => call is "Tick:1" or "Save" or "SaveLegacy"));
+                await AssertOwnerIsPausedAsync(window, session);
+
+                selection.SetResult(StorageProxy.Create<IStorageFile>((method, _) =>
+                {
+                    Assert.Equal(nameof(IStorageFile.OpenWriteAsync), method.Name);
+                    return Task.FromResult<Stream>(output);
+                }));
+                await WaitForStatusAsync(Assert.IsType<MainWindowViewModel>(window.DataContext),
+                    exportNative ? "DARWINBOTS 2 SIMULATION EXPORTED" : "SAVED");
+                Assert.Equal(1ul, BitConverter.ToUInt64(output.ToArray()));
+                Assert.Equal(1ul, session.LatestSnapshot.Tick);
+                Assert.True(timer.IsEnabled);
+            }
+            finally
+            {
+                completeTick.TrySetResult();
+                selection.TrySetResult(null);
+                CloseFilePickerWindow(window);
+            }
+        }, CancellationToken.None);
+    }
+
+    [Theory]
     [InlineData(LegacyCommandId.FileSaveSimulation)]
     [InlineData(LegacyCommandId.FileSaveWithoutMutations)]
     public async Task OriginalSaveCommandsSuspendTheOwnerDuringThePickerAndWrite(LegacyCommandId command)
