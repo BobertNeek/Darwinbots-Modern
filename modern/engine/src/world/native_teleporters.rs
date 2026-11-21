@@ -77,6 +77,37 @@ impl Engine {
         Ok(id)
     }
 
+    /// Change only the drawn position, as in the original Form_MouseMove.
+    pub fn drag_native_teleporter(&mut self, id: u32, center: [f32; 2]) -> Result<(), EngineError> {
+        let teleporter = self
+            .teleporters
+            .iter_mut()
+            .find(|value| value.id == id && value.native_top_left.is_some() && !value.internet)
+            .ok_or_else(|| {
+                EngineError::Invariant(format!("no offline native teleporter has ID {id}"))
+            })?;
+        let half_size = [teleporter.width / 2.0, teleporter.height / 2.0];
+        let top_left = [center[0] - half_size[0], center[1] - half_size[1]];
+        let visible_center = [top_left[0] + half_size[0], top_left[1] + half_size[1]];
+        if top_left
+            .into_iter()
+            .chain(visible_center)
+            .any(|value| !value.is_finite())
+        {
+            return Err(EngineError::Invariant(
+                "native teleporter drag position is invalid".into(),
+            ));
+        }
+        // Before the next MoveTeleporter, contacts still use the previous center.
+        // Preserve the fallback reconstructed from the old anchor in early DB3S files.
+        teleporter.native_contact_center =
+            teleporter.native_contact().map(|contact| contact.center);
+        teleporter.native_top_left = Some(top_left);
+        teleporter.center = visible_center;
+        self.publish_snapshot();
+        Ok(())
+    }
+
     pub(super) fn move_native_teleporters(&mut self) {
         if self.native_cycle.is_some_and(|cycle| cycle < 0) {
             return;
@@ -285,6 +316,68 @@ mod tests {
             fixed_position: drift == [false; 2],
             ..Teleporter::new(id, center, size[0] / 2.0, center)
         }
+    }
+
+    #[test]
+    fn native_teleporter_drag_moves_only_geometry_until_the_next_contact_refresh() {
+        let mut engine = Engine::new_native(EngineConfig {
+            world_width: 400.0,
+            world_height: 300.0,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        engine.native_cycle = Some(0);
+        let mut teleporter = native_portal(1, [90.0, 60.0], [20.0, 100.0], [2.0, -3.0], [false; 2]);
+        teleporter.inbound = false;
+        teleporter.poll_interval = 3;
+        teleporter.capacity = 12;
+        teleporter.poll_countdown = 12;
+        teleporter.sent = 4;
+        teleporter.received = 5;
+        teleporter.filters.teleport_vegetables = false;
+        teleporter.filters.teleport_corpses = false;
+        teleporter.backflow_limit = 9;
+        teleporter.file_backflow_guard = Some("keep-this-path".into());
+        // Older checkpoints reconstructed this contact from the pre-drag anchor.
+        assert_eq!(teleporter.native_contact_center, None);
+        engine.teleporters.push(teleporter.clone());
+        let starting_rng = engine.native_random.clone();
+        let starting_tick = engine.tick;
+        let old_contact = [100.0, 90.0];
+        let new_contact = [200.0, 120.0];
+
+        assert!(engine.drag_native_teleporter(1, [f32::NAN, 140.0]).is_err());
+        assert_eq!(engine.teleporters[0], teleporter);
+        engine.drag_native_teleporter(1, [200.0, 140.0]).unwrap();
+        let expected = Teleporter {
+            center: [200.0, 140.0],
+            native_top_left: Some([190.0, 90.0]),
+            native_contact_center: Some(old_contact),
+            ..teleporter
+        };
+        assert_eq!(engine.snapshot().teleporters[0], expected);
+        assert_eq!(engine.tick, starting_tick);
+        assert_eq!(engine.native_random, starting_rng);
+        assert!(inside_teleporter(&engine.teleporters[0], old_contact, 0.0));
+        assert!(!inside_teleporter(&engine.teleporters[0], new_contact, 0.0));
+
+        let mut resumed = SaveFile::decode(&SaveFile::encode(&engine).unwrap()).unwrap();
+        assert_eq!(resumed.teleporters[0], expected);
+        resumed.tick().unwrap();
+        assert_eq!(
+            resumed.teleporters[0].native_top_left,
+            expected.native_top_left
+        );
+        assert_eq!(
+            resumed.teleporters[0].native_contact_center,
+            Some(new_contact)
+        );
+        assert!(!inside_teleporter(
+            &resumed.teleporters[0],
+            old_contact,
+            0.0
+        ));
+        assert!(inside_teleporter(&resumed.teleporters[0], new_contact, 0.0));
     }
 
     #[test]

@@ -199,6 +199,7 @@ public sealed record TeleporterSnapshot(uint Id, float[] Center, float Radius, f
     public float? Width { get; init; }
     public float? Height { get; init; }
     public bool RandomDestination { get; init; }
+    public float[]? NativeTopLeft { get; init; }
     public string Mode { get; init; } = "intrasim";
     public uint Color { get; init; } = 0xffb9bdb6u;
     public float[] Velocity { get; init; } = [0f, 0f];

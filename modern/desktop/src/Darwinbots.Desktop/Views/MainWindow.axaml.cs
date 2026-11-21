@@ -95,6 +95,9 @@ public sealed partial class MainWindow : Window
     private EnvironmentPlacement _environmentPlacement;
     private float[]? _placementOrigin;
     private WorldFeatureSelection? _selectedFeature;
+    private (SimulationSession Session, WorldFeatureSelection Selection, float[] Center)? _pendingTeleporterDrag;
+    private bool _sendingTeleporterDrag;
+    private int _teleporterDeletionsInFlight;
     private readonly ZerobotProgressionController? _zerobotProgression;
     private bool _progressionInFlight;
     private const string EnergyOnlyFeederDna = "cond\r\nstart\r\n-2 .shoot store\r\n50 .shootval store\r\n314 rnd .aimdx store\r\nstop";
@@ -282,6 +285,8 @@ public sealed partial class MainWindow : Window
             _placementOrigin = null;
             _environmentPlacement = EnvironmentPlacement.None;
         };
+        Viewport.CanDragNativeTeleporter = CanDragNativeTeleporter;
+        Viewport.NativeTeleporterDragMoved += (feature, center) => _ = ApplyNativeTeleporterDragAsync(feature, center);
         Viewport.WorldFeatureSelected += feature =>
         {
             _selectedFeature = feature;
@@ -1804,8 +1809,7 @@ public sealed partial class MainWindow : Window
                 return LegacyCommandResult.Failure("DELETION CANCELLED");
             await _session.RemoveObstacleAsync(feature.Id);
         }
-        else if (_session.LatestSnapshot.FileTeleporters.Any(value => value.Id == feature.Id)) await _session.RemoveFileTeleporterAsync(feature.Id);
-        else await _session.RemoveTeleporterAsync(feature.Id);
+        else await DeleteSelectedTeleporterAsync(_session, feature.Id);
         _selectedFeature = null;
         Viewport.SelectFeature(null);
         RefreshFeatureEditorButtons();
@@ -1814,12 +1818,30 @@ public sealed partial class MainWindow : Window
 
     private async Task<LegacyCommandResult> DeleteAllTeleportersCommandAsync()
     {
-        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        var teleporters = _session.LatestSnapshot.Teleporters.ToArray();
-        var fileTeleporters = _session.LatestSnapshot.FileTeleporters.ToArray();
-        foreach (var teleporter in teleporters) await _session.RemoveTeleporterAsync(teleporter.Id);
-        foreach (var teleporter in fileTeleporters) await _session.RemoveFileTeleporterAsync(teleporter.Id);
-        return LegacyCommandResult.Success($"DELETED {teleporters.Length + fileTeleporters.Length} TELEPORTER(S)");
+        if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        var snapshot = session.LatestSnapshot;
+        var teleporterIds = snapshot.Teleporters.Select(teleporter => teleporter.Id).ToArray();
+        var fileTeleporterIds = snapshot.FileTeleporters.Select(teleporter => teleporter.Id).ToArray();
+        await DeleteTeleportersAsync(session, teleporterIds, fileTeleporterIds);
+        return LegacyCommandResult.Success($"DELETED {teleporterIds.Length + fileTeleporterIds.Length} TELEPORTER(S)");
+    }
+
+    private Task DeleteSelectedTeleporterAsync(SimulationSession session, uint id) =>
+        session.LatestSnapshot.FileTeleporters.Any(teleporter => teleporter.Id == id)
+            ? DeleteTeleportersAsync(session, [], [id])
+            : DeleteTeleportersAsync(session, [id], []);
+
+    private async Task DeleteTeleportersAsync(SimulationSession session, IReadOnlyList<uint> teleporterIds,
+        IReadOnlyList<uint> fileTeleporterIds)
+    {
+        _teleporterDeletionsInFlight++;
+        try
+        {
+            InvalidateTeleporterDrag();
+            foreach (var id in teleporterIds) await session.RemoveTeleporterAsync(id);
+            foreach (var id in fileTeleporterIds) await session.RemoveFileTeleporterAsync(id);
+        }
+        finally { _teleporterDeletionsInFlight--; }
     }
 
     private async Task<LegacyCommandResult> DeleteAllObstaclesCommandAsync()
@@ -2517,8 +2539,7 @@ public sealed partial class MainWindow : Window
             }
             await _session.RemoveObstacleAsync(feature.Id);
         }
-        else if (_session.LatestSnapshot.FileTeleporters.Any(value => value.Id == feature.Id)) await _session.RemoveFileTeleporterAsync(feature.Id);
-        else await _session.RemoveTeleporterAsync(feature.Id);
+        else await DeleteSelectedTeleporterAsync(_session, feature.Id);
         _selectedFeature = null;
         Viewport.SelectFeature(null);
         RefreshFeatureEditorButtons();
@@ -2958,6 +2979,52 @@ public sealed partial class MainWindow : Window
         finally { _tickInFlight = false; }
     }
 
+    private bool CanDragNativeTeleporter() => _session is not null && IsVisible && !_loadingSimulation
+        && !_navigationInFlight && _teleporterDeletionsInFlight == 0 && !RecoveryPanel.IsVisible
+        && _insertion?.IsActive != true && _moveOrganism is null && _environmentPlacement == EnvironmentPlacement.None;
+
+    private void InvalidateTeleporterDrag()
+    {
+        _pendingTeleporterDrag = null;
+        Viewport.CancelNativeTeleporterDrag();
+    }
+
+    private async Task ApplyNativeTeleporterDragAsync(WorldFeatureSelection selection, float[] center)
+    {
+        if (!CanDragNativeTeleporter() || _session is not { } session) return;
+        _pendingTeleporterDrag = (session, selection, center);
+        if (_sendingTeleporterDrag) return;
+        _sendingTeleporterDrag = true;
+        try
+        {
+            // Read the newest sample only after taking the gate, so a load can discard pending input.
+            while (_pendingTeleporterDrag is not null)
+            {
+                await _advanceGate.WaitAsync();
+                try
+                {
+                    var pending = _pendingTeleporterDrag;
+                    _pendingTeleporterDrag = null;
+                    if (pending is not { } move || !CanDragNativeTeleporter()
+                        || _session != move.Session || !ReferenceEquals(_selectedFeature, move.Selection)) continue;
+                    if (!move.Session.LatestSnapshot.Teleporters.Any(portal =>
+                            portal.Id == move.Selection.Id && portal.NativeTopLeft is not null && !portal.Internet)) continue;
+                    await move.Session.DragNativeTeleporterAsync(move.Selection.Id, move.Center);
+                }
+                finally { _advanceGate.Release(); }
+            }
+        }
+        catch (Exception error)
+        {
+            await HandleEngineErrorAsync(error, attemptRecovery: false);
+        }
+        finally
+        {
+            _pendingTeleporterDrag = null;
+            _sendingTeleporterDrag = false;
+        }
+    }
+
     private async Task LoadSimulationAsync(byte[] save)
     {
         _runTimer.Stop();
@@ -2966,6 +3033,7 @@ public sealed partial class MainWindow : Window
         {
             if (_session is null) return;
             _loadingSimulation = true;
+            InvalidateTeleporterDrag();
             await _session.LoadAsync(save);
             _toolWindows.Close(NewTeleporterToolKey);
             // A rejected load publishes no snapshot and must keep user-closed
@@ -3020,6 +3088,7 @@ public sealed partial class MainWindow : Window
 
     private async void Window_Closed(object? sender, EventArgs e)
     {
+        InvalidateTeleporterDrag();
         _runTimer.Stop();
         _runtimeClock.Stop();
         _toolWindows.CloseAll();

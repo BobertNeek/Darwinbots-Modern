@@ -42,6 +42,8 @@ public interface IEngineClient : IDisposable
     void AddTeleporter(TeleporterSnapshot teleporter);
     void AddNativeTeleporter(NativeTeleporterOptions options) =>
         throw new NotSupportedException("Original teleporter creation is unavailable in this engine client.");
+    void DragNativeTeleporter(uint id, float[] center) =>
+        throw new NotSupportedException("Original teleporter dragging is unavailable in this engine client.");
     void UpdateTeleporter(TeleporterSnapshot teleporter);
     void RemoveTeleporter(uint id);
     void AddFileTeleporter(FileTeleporterSnapshot teleporter);
