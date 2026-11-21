@@ -243,7 +243,7 @@ public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWi
     private void AppendChartPoints(GraphMetric metric, RecordingChart chart, IReadOnlyList<GraphMetricSample> samples)
     {
         var before = ViewModel.RunningGraphs.Count;
-        ViewModel.AppendChartPoints(metric, samples);
+        ViewModel.AppendChartPoints(metric, samples, chart.Save);
         if (ViewModel.RunningGraphs.Count == before) return;
         RefreshChartSeries(chart);
         GraphView.RefreshChart();
