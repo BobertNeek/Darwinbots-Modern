@@ -37,8 +37,26 @@ impl Engine {
             if let Some(profile) = &entry.definition.mutation_profile {
                 profile.validate()?;
             }
-            let dna = self.load_dna_source(&entry.dna)?;
-            prepared.push((entry, dna));
+            // The editor shows the imported survivor's DNA for a roster row
+            // without authored text. Returning it unchanged does not replace
+            // the source file used for native repopulation.
+            let fallback = entry
+                .species_id
+                .map(|id| id.0 as usize)
+                .filter(|&index| {
+                    self.native_origin.is_some()
+                        && self.native_random.is_some()
+                        && self.species[index].name == entry.definition.name
+                })
+                .and_then(|index| self.species_templates[index].as_ref())
+                .filter(|template| {
+                    template.source_text.is_none() && template.dna.to_source() == entry.dna
+                });
+            let dna = match fallback {
+                Some(template) => template.dna.clone(),
+                None => self.load_dna_source(&entry.dna)?,
+            };
+            prepared.push((entry, dna, fallback.is_some()));
         }
         // A removed startup species can still have living descendants. Retain
         // their registry identity and export source; stop future repopulation.
@@ -52,7 +70,7 @@ impl Engine {
                 }
             }
         }
-        for (entry, dna) in prepared {
+        for (entry, dna, retained_fallback) in prepared {
             let mut definition = entry.definition;
             let id = if let Some(id) = entry.species_id {
                 definition.lineage_id = self.species[id.0 as usize].lineage_id;
@@ -65,7 +83,7 @@ impl Engine {
                 retired: false,
                 comment: entry.comment,
                 dna,
-                source_text: Some(entry.dna),
+                source_text: (!retained_fallback).then_some(entry.dna),
                 initial_energy: entry.initial_energy,
                 initial_population: entry.initial_count,
             });
