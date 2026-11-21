@@ -15,6 +15,7 @@ public interface IEngineClient : IDisposable
         bool requireNativeRepopulationSource, IReadOnlyList<ulong> cancelledLineages) =>
         Tick(count, requireNativeRepopulationSource, cancelledLineages);
     NativeGraphRecordingSample? ReadNativeGraphSample() => null;
+    NativeGraphRecordingSample? ReadNativeGraphResetSample() => ReadNativeGraphSample();
     NativeGraphRecordingSample? FeedNativeGraphSample(GraphSamplingSettings settings, bool dueOnly = false) =>
         ReadNativeGraphSample();
     DnaImportReport ImportDna(string dna, float[]? position = null);

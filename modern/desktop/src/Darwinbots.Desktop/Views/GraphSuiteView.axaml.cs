@@ -35,8 +35,13 @@ public sealed partial class GraphSuiteView : UserControl
         RefreshChart();
     }
 
-    private void OpenGraph_Click(object? sender, RoutedEventArgs e)
+    private async void OpenGraph_Click(object? sender, RoutedEventArgs e)
     {
+        if (_viewModel.SelectedChoice.Action == GraphMenuAction.ResetAllGraphs)
+        {
+            await ConfirmResetGraphsAsync();
+            return;
+        }
         if (_viewModel.SelectedChoice.Metric is { } metric && ReopenGraphRequested?.Invoke(metric) is { } existing)
         {
             _displayedSeries = existing;
@@ -52,8 +57,13 @@ public sealed partial class GraphSuiteView : UserControl
         RefreshChart();
     }
 
-    private void ResetGraphs_Click(object? sender, RoutedEventArgs e)
+    private async void ResetGraphs_Click(object? sender, RoutedEventArgs e) => await ConfirmResetGraphsAsync();
+
+    private async Task ConfirmResetGraphsAsync()
     {
+        if (TopLevel.GetTopLevel(this) is not Window owner) return;
+        var dialog = new LegacyConfirmationWindow("Graph", "Are you sure you want to reset all graphs?", okCancel: true);
+        if (!await dialog.ShowDialog<bool>(owner)) return;
         _viewModel.ResetAllGraphs();
         RefreshChart();
     }

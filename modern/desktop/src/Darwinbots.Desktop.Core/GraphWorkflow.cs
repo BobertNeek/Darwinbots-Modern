@@ -77,7 +77,10 @@ public sealed record GraphMetricSample(
     ulong Tick,
     IReadOnlyDictionary<GraphMetric, double> Values,
     IReadOnlyList<SpeciesGraphSampleSnapshot>? SpeciesGraphs = null,
-    IReadOnlyList<double>? DynamicCostSeries = null);
+    IReadOnlyList<double>? DynamicCostSeries = null)
+{
+    public bool NativeResetSweep { get; init; }
+}
 
 public sealed record GraphSample(ulong Tick, double Value);
 
@@ -436,6 +439,8 @@ public sealed class GraphSuiteViewModel : INotifyPropertyChanged
                 _reusedNativeCharts[metric] = recorder;
                 ReconcileReusedNativeColumns(metric, recorder);
             }
+            else if (recorder is not null && samples.Any(sample => sample.NativeResetSweep))
+                ReconcileReusedNativeColumns(metric, recorder);
             else AddNativeSpeciesSeries(metric, samples);
         }
         foreach (var graph in ProjectedGraphs.Where(graph => graph.Metric == metric))
@@ -569,6 +574,7 @@ public sealed class GraphSuiteViewModel : INotifyPropertyChanged
         _chartPoints.TryGetValue(metric, out var points);
         if (_usesNativeFeed)
         {
+            if (speciesName is null && dynamicCostIndex is null) return [];
             if (points is not null && _reusedNativeCharts.TryGetValue(metric, out var recorder))
                 return speciesName is null ? [] : recorder.ReadLiveSamples(speciesName, points);
             return points is null ? [] : GraphMetricSampleProjector.Project(points, metric, custom, speciesName,
@@ -659,6 +665,8 @@ public static class GraphMetricSampleProjector
         SpeciesGraphSampleSnapshot? species = null)
     {
         if (species is not null) sample = sample with { Values = SpeciesValues(species) };
+        if (sample.NativeResetSweep && (custom is not null || metric is GraphMetric.AverageChloroplasts
+            or GraphMetric.SelectiveGeneticDistance or GraphMetric.SlowGeneticDistance)) return 0;
         return custom is null ? sample.Values.GetValueOrDefault(metric) : GraphExpressionEvaluator.Evaluate(custom.Expression, sample);
     }
 

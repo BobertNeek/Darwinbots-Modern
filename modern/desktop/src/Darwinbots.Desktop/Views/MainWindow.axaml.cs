@@ -3220,7 +3220,7 @@ public sealed partial class MainWindow : Window
             {
                 var window = new GraphSuiteWindow(_session?.LatestSnapshot ?? EngineSnapshot.Empty, _graphRecording,
                     () => _liveEnvironment.AutoSpeciation, consumeNativeSample: CaptureCurrentGraphSampleAsync,
-                    keepUpdatingOnClose: _keepGraphsUpdatingOnClose);
+                    keepUpdatingOnClose: _keepGraphsUpdatingOnClose, consumeNativeResetSample: CaptureGraphResetSampleAsync);
                 window.SetNativeLayout(_nativeGraphLayout);
                 window.NativeLayoutEdited += PersistGraphLayout;
                 window.SamplingChanged += ConfigureGraphSampling;
@@ -3249,7 +3249,14 @@ public sealed partial class MainWindow : Window
         suite.OpenEvolutionGraphs();
     }
 
-    private async Task CaptureCurrentGraphSampleAsync(GraphSamplingSettings? feed,
+    private Task CaptureCurrentGraphSampleAsync(GraphSamplingSettings? feed, Action<NativeGraphRecordingSample?> consume) =>
+        CaptureGraphSampleAsync(session => feed is null ? session.ReadNativeGraphSampleAsync()
+            : session.FeedNativeGraphSampleAsync(feed), consume);
+
+    private Task CaptureGraphResetSampleAsync(Action<NativeGraphRecordingSample?> consume) =>
+        CaptureGraphSampleAsync(session => session.ReadNativeGraphResetSampleAsync(), consume);
+
+    private async Task CaptureGraphSampleAsync(Func<SimulationSession, Task<NativeGraphRecordingSample?>> read,
         Action<NativeGraphRecordingSample?> consume)
     {
         if (_session is not { } session)
@@ -3265,11 +3272,7 @@ public sealed partial class MainWindow : Window
             if (!_windowClosed && !_loadingSimulation && _session == session
                 && _graphRecording.Generation == recordingGeneration && session.LatestSnapshot.NativeCycle.HasValue)
             {
-                try
-                {
-                    sample = feed is null ? await session.ReadNativeGraphSampleAsync()
-                        : await session.FeedNativeGraphSampleAsync(feed);
-                }
+                try { sample = await read(session); }
                 catch (Exception error)
                 {
                     if (!_windowClosed && _session == session && _graphRecording.Generation == recordingGeneration)

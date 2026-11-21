@@ -5,6 +5,7 @@ using Avalonia.Headless;
 using Avalonia.Interactivity;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using Darwinbots.Desktop.Controls;
 using Darwinbots.Desktop.Core;
 using Darwinbots.Desktop.Views;
@@ -72,6 +73,89 @@ public sealed class NativeGraphPlotRenderedTests
 
                     graph.Close();
                     Assert.Empty(suite.ViewModel.RunningGraphs);
+                }
+                finally { suite.Close(); }
+            }, CancellationToken.None);
+        }
+        finally { root.Delete(recursive: true); }
+    }
+
+    [Fact]
+    public async Task ResetAllPromptsAndFeedsOneSharedPointWhileIndividualResetOnlyClears()
+    {
+        var root = Directory.CreateTempSubdirectory("darwinbots-native-graph-reset-");
+        try
+        {
+            await DesktopTestApplication.Session.Dispatch(async () =>
+            {
+                const ulong tick = 8;
+                const int cycle = 7;
+                const uint color = 0xff324fbdu;
+                var first = new SpeciesGraphSampleSnapshot("Zulu.txt", color,
+                    new Dictionary<string, double> { ["population"] = 1, ["species_diversity"] = 2 });
+                var second = new SpeciesGraphSampleSnapshot("Alpha.txt", color,
+                    new Dictionary<string, double> { ["population"] = 1, ["species_diversity"] = 3 });
+                var openingSample = new NativeGraphRecordingSample(tick, cycle, [first, second], []);
+                var snapshot = EngineSnapshot.Empty with { Tick = tick, NativeCycle = cycle, Population = 2 };
+                var run = new LegacyGraphRecordingRun(root.FullName, "native-run");
+                var resetFeeds = 0;
+                var suite = new GraphSuiteWindow(snapshot, run,
+                    readNativeSample: () => Task.FromResult<NativeGraphRecordingSample?>(openingSample),
+                    consumeNativeResetSample: consume =>
+                    {
+                        resetFeeds++;
+                        consume(openingSample);
+                        return Task.CompletedTask;
+                    });
+                try
+                {
+                    suite.Show();
+                    suite.ViewModel.ConfigureCustomMetric(1, "Custom test", "7");
+                    var view = suite.FindControl<GraphSuiteView>("GraphView")!;
+                    var open = view.FindControl<Button>("OpenGraphButton")!;
+                    suite.ViewModel.SelectedChoice = GraphCatalog.For(GraphMetric.Population);
+                    open.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    var populationChart = Assert.Single(suite.OwnedWindows.OfType<GraphSeriesWindow>());
+                    var populationSeries = Assert.Single(suite.ViewModel.RunningGraphs,
+                        series => series.Metric == GraphMetric.Population && series.SpeciesName == first.Name);
+                    foreach (var metric in new[] { GraphMetric.SpeciesDiversity, GraphMetric.CustomizableGraph1 })
+                    {
+                        suite.ViewModel.SelectedChoice = GraphCatalog.For(metric);
+                        open.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    }
+
+                    populationChart.FindControl<Button>("UpdateGraphNowButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    Assert.Equal(2, populationSeries.Samples.Count);
+
+                    view.FindControl<Button>("ResetGraphsButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    var prompt = Assert.Single(suite.OwnedWindows.OfType<LegacyConfirmationWindow>());
+                    Assert.Contains(prompt.GetVisualDescendants().OfType<TextBlock>(),
+                        text => text.Text == "Are you sure you want to reset all graphs?");
+                    prompt.GetVisualDescendants().OfType<Button>().Single(button => Equals(button.Content, "CANCEL"))
+                        .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
+                    Assert.Equal(0, resetFeeds);
+                    Assert.Equal(2, populationSeries.Samples.Count);
+
+                    suite.ViewModel.SelectedChoice = suite.ViewModel.Choices.Single(choice => choice.Action == GraphMenuAction.ResetAllGraphs);
+                    open.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    prompt = Assert.Single(suite.OwnedWindows.OfType<LegacyConfirmationWindow>());
+                    prompt.GetVisualDescendants().OfType<Button>().Single(button => Equals(button.Content, "OK"))
+                        .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
+
+                    Assert.Equal(1, resetFeeds);
+                    Assert.Equal(new GraphSample(tick, 1), Assert.Single(populationSeries.Samples));
+                    var diversity = Assert.Single(suite.ViewModel.RunningGraphs.Where(series => series.Metric == GraphMetric.SpeciesDiversity));
+                    Assert.Equal(first.Name, diversity.SpeciesName);
+                    Assert.Equal(new GraphSample(tick, 2), Assert.Single(diversity.Samples));
+                    var custom = Assert.Single(suite.ViewModel.RunningGraphs.Where(series => series.Metric == GraphMetric.CustomizableGraph1));
+                    Assert.Null(custom.SpeciesName);
+                    Assert.Empty(custom.Samples);
+
+                    populationChart.FindControl<Button>("ResetGraphButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    Assert.Empty(populationSeries.Samples);
+                    Assert.Equal(1, resetFeeds);
                 }
                 finally { suite.Close(); }
             }, CancellationToken.None);

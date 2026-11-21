@@ -98,6 +98,7 @@ enum EngineCommand {
     },
     ReadNativeGraphRecording,
     ReadNativeGraphSample,
+    ReadNativeGraphResetSample,
     FeedNativeGraphSample {
         #[serde(default)]
         selective: bool,
@@ -676,6 +677,7 @@ fn db_engine_command_batch_impl(
                     | EngineCommand::ReadNativeRestartSources
                     | EngineCommand::ReadNativeGraphRecording
                     | EngineCommand::ReadNativeGraphSample
+                    | EngineCommand::ReadNativeGraphResetSample
                     | EngineCommand::FeedNativeGraphSample {
                         selective: false,
                         ..
@@ -718,6 +720,9 @@ fn db_engine_command_batch_impl(
                     .map(|state| serde_json::json!(state)),
                 EngineCommand::ReadNativeGraphSample => {
                     Ok(serde_json::json!(engine.read_native_graph_sample()))
+                }
+                EngineCommand::ReadNativeGraphResetSample => {
+                    Ok(serde_json::json!(engine.read_native_graph_reset_sample()))
                 }
                 EngineCommand::FeedNativeGraphSample {
                     selective: false,
@@ -869,6 +874,9 @@ fn db_engine_command_batch_impl(
                 .map(|state| serde_json::json!(state)),
             EngineCommand::ReadNativeGraphSample => {
                 Ok(serde_json::json!(engine.read_native_graph_sample()))
+            }
+            EngineCommand::ReadNativeGraphResetSample => {
+                Ok(serde_json::json!(engine.read_native_graph_reset_sample()))
             }
             EngineCommand::FeedNativeGraphSample {
                 selective,
@@ -2323,6 +2331,19 @@ mod tests {
         assert_eq!(status, DbStatus::Ok);
         let output: serde_json::Value = serde_json::from_slice(&output).unwrap();
         assert_eq!(output["results"][0]["native_cycle"], -1);
+        assert_eq!(SaveFile::encode(&world).unwrap(), original);
+
+        let (status, reset) = classic_test_batch(
+            &mut world,
+            serde_json::json!([{"type": "read_native_graph_reset_sample"}]),
+        );
+        assert_eq!(status, DbStatus::Ok);
+        let reset: serde_json::Value = serde_json::from_slice(&reset).unwrap();
+        assert_eq!(reset["results"][0]["native_cycle"], -1);
+        assert_eq!(
+            reset["results"][0]["species_graphs"][0]["values"]["population"],
+            1.0,
+        );
         assert_eq!(SaveFile::encode(&world).unwrap(), original);
 
         let (status, before_first_due) = classic_test_batch(
