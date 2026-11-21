@@ -15,10 +15,10 @@ public interface IDesktopStorageService
         Func<Stream, Task> writeAsync) => Task.FromResult(false);
     Task<bool> AppendDeadSnapshotAsync(Func<Stream, Task> writeAsync) => Task.FromResult(false);
     Task<byte[]?> OpenOrganismAsync(TopLevel owner) => Task.FromResult<byte[]?>(null);
-    Task<DesktopSettings?> OpenSettingsAsync(TopLevel owner);
+    Task<DesktopSettings?> OpenSettingsAsync(TopLevel owner, string? mainDirectory = null);
     Task<string?> PickSimulationPathAsync(TopLevel owner);
     Task<byte[]?> OpenSimulationAsync(TopLevel owner);
-    Task<bool> SaveSettingsAsync(TopLevel owner, DesktopSettings settings);
+    Task<bool> SaveSettingsAsync(TopLevel owner, DesktopSettings settings, string? mainDirectory = null);
     Task<bool> SaveSimulationAsync(TopLevel owner, ReadOnlyMemory<byte> save);
     Task<bool> SaveLegacySimulationAsync(TopLevel owner, ReadOnlyMemory<byte> save) => Task.FromResult(false);
     Task<bool> SaveDnaAsync(TopLevel owner, string suggestedFileName, string dna, MutationProfileUpdate? mutationProfile);

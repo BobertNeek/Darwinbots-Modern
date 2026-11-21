@@ -146,7 +146,7 @@ public sealed class DnaExportRenderedTests
         public Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner) =>
             Task.FromResult<IReadOnlyList<DesktopTextFile>>([]);
 
-        public Task<DesktopSettings?> OpenSettingsAsync(TopLevel owner) =>
+        public Task<DesktopSettings?> OpenSettingsAsync(TopLevel owner, string? mainDirectory = null) =>
             Task.FromResult<DesktopSettings?>(null);
 
         public Task<string?> PickSimulationPathAsync(TopLevel owner) =>
@@ -155,7 +155,7 @@ public sealed class DnaExportRenderedTests
         public Task<byte[]?> OpenSimulationAsync(TopLevel owner) =>
             Task.FromResult<byte[]?>(null);
 
-        public Task<bool> SaveSettingsAsync(TopLevel owner, DesktopSettings settings) =>
+        public Task<bool> SaveSettingsAsync(TopLevel owner, DesktopSettings settings, string? mainDirectory = null) =>
             Task.FromResult(false);
 
         public Task<bool> SaveSimulationAsync(TopLevel owner, ReadOnlyMemory<byte> save) =>

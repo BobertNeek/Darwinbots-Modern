@@ -330,7 +330,7 @@ public sealed partial class SetupWindow : Window
         try
         {
             var settings = ReadDesktopSettings();
-            SetupStatus.Text = await _storage.SaveSettingsAsync(this, settings)
+            SetupStatus.Text = await _storage.SaveSettingsAsync(this, settings, _profileSettings.Main.MainDirectory)
                 ? "SETTINGS SAVED"
                 : "SETTINGS SAVE CANCELLED";
         }
@@ -344,7 +344,7 @@ public sealed partial class SetupWindow : Window
     {
         try
         {
-            var settings = await _storage.OpenSettingsAsync(this);
+            var settings = await _storage.OpenSettingsAsync(this, _profileSettings.Main.MainDirectory);
             if (settings is null)
             {
                 SetupStatus.Text = "SETTINGS LOAD CANCELLED";
