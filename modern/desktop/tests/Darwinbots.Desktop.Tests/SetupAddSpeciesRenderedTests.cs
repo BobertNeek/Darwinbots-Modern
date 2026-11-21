@@ -65,6 +65,42 @@ public sealed class SetupAddSpeciesRenderedTests
     }
 
     [Theory]
+    [InlineData("Base.txt", 0xff0000ffu)]
+    [InlineData("Mutate.txt", 0xffff0000u)]
+    [InlineData("Test.txt", 0xffff0000u)]
+    [InlineData("robotA.txt", 0xffff8000u)]
+    [InlineData("robotB.txt", 0xff0080ffu)]
+    [InlineData("base.txt", 0xffd07a2du)]
+    [InlineData("Base.TXT", 0xffd07a2du)]
+    [InlineData("Other.txt", 0xffd07a2du)]
+    public async Task NativeSetupUsesSpecialColorsOnlyForExactPickerFilenames(string filename, uint expected)
+    {
+        var temporary = Directory.CreateTempSubdirectory("darwinbots-add-species-color-");
+        try
+        {
+            var path = Path.Combine(temporary.FullName, "Picker storage path.txt");
+            await File.WriteAllTextAsync(path, Dna);
+            var storage = new AvaloniaDesktopStorageService(Path.Combine(temporary.FullName, "profile"));
+            await DesktopTestApplication.Session.Dispatch(async () =>
+            {
+                var window = new SetupWindow(storage);
+                try
+                {
+                    _ = new DnaPicker(window, path, filename);
+                    window.Show();
+                    var starterColors = window.Species.Select(row => row.Color).ToArray();
+
+                    var added = await AddSpeciesAsync(window, 5, 3_000, Path.GetFileNameWithoutExtension(filename));
+                    Assert.Equal(expected, added.ToImport(0).Color);
+                    Assert.Equal(starterColors, window.Species.Take(starterColors.Length).Select(row => row.Color));
+                }
+                finally { window.Close(); }
+            }, CancellationToken.None);
+        }
+        finally { temporary.Delete(recursive: true); }
+    }
+
+    [Theory]
     [InlineData(true)]
     [InlineData(false)]
     public async Task EditSpeciesMenuUsesTheDefaultsForTheActiveWorld(bool native)
@@ -74,7 +110,7 @@ public sealed class SetupAddSpeciesRenderedTests
         {
             var main = temporary.CreateSubdirectory("Original Darwinbots");
             var robots = main.CreateSubdirectory("robots");
-            var file = Path.Combine(temporary.FullName, "Added Species.txt");
+            var file = Path.Combine(temporary.FullName, "Base.txt");
             await File.WriteAllTextAsync(file, Dna);
             var storage = new AvaloniaDesktopStorageService(Path.Combine(temporary.FullName, "profile"));
             var existing = new SpeciesImport("Existing", "start stop", false, 0xff239ac0, 50, 1_000, 0, false, 0)
@@ -104,7 +140,8 @@ public sealed class SetupAddSpeciesRenderedTests
                     await WaitForAsync(() => world.OwnedWindows.OfType<SetupWindow>().Any(), "Edit Species did not open.");
                     var editor = Assert.Single(world.OwnedWindows.OfType<SetupWindow>());
                     var picker = new DnaPicker(editor, file);
-                    var added = await AddSpeciesAsync(editor, native ? 5 : 50, native ? 3_000 : 1_000);
+                    var added = await AddSpeciesAsync(editor, native ? 5 : 50, native ? 3_000 : 1_000, "Base");
+                    Assert.Equal(native ? 0xff0000ffu : 0xffd07a2du, added.Color);
                     picker.AssertStartedIn(native ? robots.FullName : null);
                     editor.UpdateLayout();
                     var details = Assert.Single(editor.GetVisualDescendants().OfType<Expander>(), control => control.DataContext == added);
@@ -117,6 +154,7 @@ public sealed class SetupAddSpeciesRenderedTests
                     Assert.Equal(existing.InitialCount, prior.InitialCount);
                     Assert.Equal(existing.InitialEnergy, prior.InitialEnergy);
                     Assert.Equal(existing.Comment, prior.Comment);
+                    Assert.Equal(existing.Color, prior.Color);
 
                     Click(editor, "SpeciesCancelButton");
                     await WaitForAsync(() => !editor.IsVisible, "Edit Species did not close after Cancel.");
@@ -141,12 +179,13 @@ public sealed class SetupAddSpeciesRenderedTests
     private static void Click(Window window, string button) =>
         window.FindControl<Button>(button)!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
-    private static async Task<SetupSpeciesRow> AddSpeciesAsync(SetupWindow window, int count, float energy)
+    private static async Task<SetupSpeciesRow> AddSpeciesAsync(SetupWindow window, int count, float energy,
+        string name = "Added Species")
     {
         Click(window, "AddDnaButton");
-        await WaitForAsync(() => window.Species.Any(row => row.Name == "Added Species"),
+        await WaitForAsync(() => window.Species.Any(row => row.Name == name),
             $"Add Species did not add the picked DNA. {window.FindControl<TextBlock>("SetupStatus")!.Text}");
-        var row = Assert.Single(window.Species, row => row.Name == "Added Species");
+        var row = Assert.Single(window.Species, row => row.Name == name);
         Assert.Equal(count, row.InitialCount);
         Assert.Equal(energy, row.InitialEnergy);
         return row;
@@ -166,13 +205,13 @@ public sealed class SetupAddSpeciesRenderedTests
         private string? _lookup;
         private FilePickerOpenOptions? _open;
 
-        public DnaPicker(Window window, string path)
+        public DnaPicker(Window window, string path, string? filename = null)
         {
             _folder = PickerProxy.CreateFor<IStorageFolder>((method, _) =>
                 method.Name == nameof(IDisposable.Dispose) ? null : throw new NotSupportedException(method.Name));
             var file = PickerProxy.CreateFor<IStorageFile>((method, _) => method.Name switch
             {
-                "get_Name" => Path.GetFileName(path),
+                "get_Name" => filename ?? Path.GetFileName(path),
                 "get_Path" => new Uri(path),
                 nameof(IStorageFile.OpenReadAsync) => Task.FromResult<Stream>(File.OpenRead(path)),
                 _ => throw new NotSupportedException(method.Name),
