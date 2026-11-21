@@ -2616,10 +2616,8 @@ mod tests {
         let entered = format!("Café ÿ\r{}", "Z".repeat(60));
         let normalized = format!("Caf? ÿ?{}", "Z".repeat(38));
         let stale = OrganismId::new(focused.slot(), focused.generation() + 1);
-        let (status, _) = classic_test_batch(
-            &mut world,
-            serde_json::json!([set(&entered), read(stale)]),
-        );
+        let (status, _) =
+            classic_test_batch(&mut world, serde_json::json!([set(&entered), read(stale)]));
         assert_ne!(status, DbStatus::Ok);
         assert_eq!(SaveFile::encode(&world).unwrap(), before);
 
@@ -2629,9 +2627,10 @@ mod tests {
         );
         assert_eq!(status, DbStatus::Ok);
         let reply: serde_json::Value = serde_json::from_slice(&reply).unwrap();
-        assert_eq!(reply["results"], serde_json::json!([
-            normalized, normalized, "Original description"
-        ]));
+        assert_eq!(
+            reply["results"],
+            serde_json::json!([normalized, normalized, "Original description"])
+        );
         assert_eq!(world.snapshot().tick, 0);
 
         let mut resumed = SaveFile::decode(&SaveFile::encode(&world).unwrap()).unwrap();
@@ -2642,10 +2641,15 @@ mod tests {
         let sim = resumed.export_native_sim().unwrap();
         let records = NativeRecordFile::decode(&sim).unwrap();
         assert_eq!(records.robots[0].bytes("tag").unwrap(), native_tag);
-        assert_eq!(records.robots[1].bytes("tag").unwrap(), retained_tag.as_bytes());
+        assert_eq!(
+            records.robots[1].bytes("tag").unwrap(),
+            retained_tag.as_bytes()
+        );
         let reopened = Engine::from_native_sim(&sim).unwrap();
         assert_eq!(
-            reopened.read_robot_tag(reopened.snapshot().organisms[0].id).unwrap(),
+            reopened
+                .read_robot_tag(reopened.snapshot().organisms[0].id)
+                .unwrap(),
             normalized
         );
 
@@ -2655,7 +2659,9 @@ mod tests {
         let mut imported = Engine::new_native(EngineConfig::testing()).unwrap();
         assert_eq!(imported.import_native_organisms(&dbo, None).unwrap(), 1);
         assert_eq!(
-            imported.read_robot_tag(imported.snapshot().organisms[0].id).unwrap(),
+            imported
+                .read_robot_tag(imported.snapshot().organisms[0].id)
+                .unwrap(),
             normalized
         );
 
@@ -2666,7 +2672,10 @@ mod tests {
         );
         assert_eq!(status, DbStatus::Ok);
         let reply: serde_json::Value = serde_json::from_slice(&reply).unwrap();
-        assert_eq!(reply["results"], serde_json::json!(["", "", "Original description"]));
+        assert_eq!(
+            reply["results"],
+            serde_json::json!(["", "", "Original description"])
+        );
         let packed = resumed.export_native_organisms(&[focused]).unwrap();
         let records = NativeRecordFile::decode(&packed).unwrap();
         assert_eq!(records.robots[0].bytes("tag").unwrap(), &[b' '; 50]);
