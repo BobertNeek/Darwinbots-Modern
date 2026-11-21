@@ -641,7 +641,7 @@ public sealed partial class MainWindow : Window
             _ => Task.FromResult(QuitApplication()));
         handlers[LegacyCommandId.EditInsertOrganism] = Handler(
             EngineState,
-            async _ => await ImportOrganismsCommandAsync());
+            async _ => await ImportOrganismCommandAsync());
         handlers[LegacyCommandId.EditRestartAndLeagues] = Handler(
             () => new LegacyCommandState(true, false),
             _ => Task.FromResult(OpenLeagueTab()));
@@ -1096,37 +1096,21 @@ public sealed partial class MainWindow : Window
         return LegacyCommandResult.Success("LOADED");
     }
 
-    private async Task<LegacyCommandResult> ImportOrganismsCommandAsync()
+    private async Task<LegacyCommandResult> ImportOrganismCommandAsync()
     {
-        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        if (await _storage.OpenOrganismAsync(this) is { } organismPayload)
+        if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        if (await _storage.OpenOrganismAsync(this) is not { } organismPayload)
+            return LegacyCommandResult.Cancel();
+        try
         {
-            try
-            {
-                var imported = await _session.ImportOrganismAsync(organismPayload);
-                return LegacyCommandResult.Success($"IMPORTED ORGANISM · {imported:N0} BOT(S)");
-            }
-            catch (Exception error)
-            {
-                await HandleEngineErrorAsync(error, attemptRecovery: false);
-                return LegacyCommandResult.Failure(_viewModel.Status);
-            }
+            var imported = await session.ImportOrganismAsync(organismPayload);
+            return LegacyCommandResult.Success($"IMPORTED ORGANISM · {imported:N0} BOT(S)");
         }
-        var files = await _storage.OpenDnaFilesAsync(this);
-        if (files.Count == 0) return LegacyCommandResult.Cancel();
-        var warnings = new List<string>();
-        foreach (var file in files)
+        catch (Exception error)
         {
-            var species = new SpeciesImport(
-                Path.GetFileNameWithoutExtension(file.Name), file.Content, false, 0xffd07a2d,
-                1, 1_000, 0, false, 1f) { MutationProfile = file.MutationProfile, DnaPath = file.LocalPath };
-            var report = await _session.ImportSpeciesAsync(species);
-            RegisterInsertionSpecies(species);
-            warnings.AddRange(report.CompatibilityWarnings);
+            await HandleEngineErrorAsync(error, attemptRecovery: false);
+            return LegacyCommandResult.Failure(_viewModel.Status);
         }
-        return warnings.Count == 0
-            ? LegacyCommandResult.Success($"IMPORTED {files.Count} BOT FILE(S)")
-            : LegacyCommandResult.Success($"DNA COMPATIBILITY · {string.Join(" · ", warnings.Distinct())}");
     }
 
     private async Task<LegacyCommandResult> ToggleLegacyRestrictionAsync(bool fixing)
