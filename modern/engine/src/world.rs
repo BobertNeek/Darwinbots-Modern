@@ -5180,6 +5180,30 @@ impl Engine {
         Ok(())
     }
 
+    pub fn read_robot_tag(&self, id: OrganismId) -> Result<String, EngineError> {
+        let robot = self.slots.get(id)?;
+        if !robot.flags.exists {
+            return Err(EngineError::StaleOrganismId);
+        }
+        // The original label excludes the last five bytes of the native tag.
+        let visible: String = effective_robot_tag(robot).chars().take(45).collect();
+        Ok(visible.trim_end_matches(['\0', ' ']).to_owned())
+    }
+
+    pub fn set_robot_tag(&mut self, id: OrganismId, tag: &str) -> Result<String, EngineError> {
+        let robot = self.slots.get_mut(id)?;
+        if !robot.flags.exists {
+            return Err(EngineError::StaleOrganismId);
+        }
+        let tag = normalize_robot_tag(tag);
+        // Assigning the original 50-character String overwrites any saved
+        // signature and leaves space padding, even when an InputBox clears it.
+        robot.identity.tag = format!("{tag:<50}");
+        synchronize_robot_dna_tag(robot, &tag);
+        self.publish_snapshot();
+        Ok(tag)
+    }
+
     pub fn export_dna(&self, id: OrganismId) -> Result<String, EngineError> {
         let organism = self.slots.get(id)?;
         let dna = &organism.program.dna;
@@ -5192,9 +5216,7 @@ impl Engine {
             .metadata()
             .mutations
             .saturating_add(organism.program.mutation_metadata.total_mutations);
-        let tag = (!organism.identity.tag.is_empty())
-            .then_some(organism.identity.tag.as_str())
-            .or_else(|| (!dna.metadata().tag.is_empty()).then_some(dna.metadata().tag.as_str()));
+        let tag = effective_robot_tag(organism).trim_end_matches(' ');
         let mut exported = dna.clone();
         if self
             .config
@@ -5222,7 +5244,7 @@ impl Engine {
                 );
             }
         }
-        Ok(exported.to_source_with_runtime_metadata(generation, mutations, tag))
+        Ok(exported.to_source_with_runtime_metadata(generation, mutations, Some(tag)))
     }
 
     /// Export the retained startup genome even if no living candidate remains.
@@ -13100,6 +13122,32 @@ impl Engine {
         engine.physics = physics;
         engine.publish_snapshot();
         Ok(engine)
+    }
+}
+
+fn normalize_robot_tag(tag: &str) -> String {
+    // VB6 replacechars replaces ANSI bytes 0–31 and 127–254, retaining byte 255.
+    tag.chars()
+        .take(45)
+        .map(|ch| match ch {
+            ' '..='~' | 'ÿ' => ch,
+            _ => '?',
+        })
+        .collect()
+}
+
+fn synchronize_robot_dna_tag(robot: &mut RobotState, tag: &str) {
+    // Clearing the live description must also clear the DNA metadata fallback.
+    let dna = &mut robot.program.dna;
+    let (generation, mutations) = (dna.metadata().generation, dna.metadata().mutations);
+    dna.synchronize_runtime_metadata(generation, mutations, tag);
+}
+
+fn effective_robot_tag(robot: &RobotState) -> &str {
+    if robot.identity.tag.is_empty() {
+        &robot.program.dna.metadata().tag
+    } else {
+        &robot.identity.tag
     }
 }
 
