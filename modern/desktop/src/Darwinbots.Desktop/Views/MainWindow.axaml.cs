@@ -1457,7 +1457,9 @@ public sealed partial class MainWindow : Window
         {
             var configuration = await _session.ReadConfigurationAsync();
             if (configuration is null) return LegacyCommandResult.Failure("SPECIES SETTINGS UNAVAILABLE");
-            var dialog = new SetupWindow(_storage, speciesEditor: CreateNextWorldSetup() with { Species = configuration.Species });
+            var dialog = new SetupWindow(_storage,
+                speciesEditor: CreateNextWorldSetup() with { Species = configuration.Species },
+                nativeSpeciesImport: _session.LatestSnapshot.NativeCycle.HasValue);
             await dialog.ShowDialog(this);
             if (dialog.EditedOptions is not { } edited) return LegacyCommandResult.Cancel();
             if (dialog.StartNewRequested) startNew = edited;
