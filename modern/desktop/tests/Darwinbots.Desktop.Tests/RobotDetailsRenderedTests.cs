@@ -11,6 +11,55 @@ namespace Darwinbots.Desktop.Tests;
 public sealed class RobotDetailsRenderedTests
 {
     [Fact]
+    public async Task NativeRobotDetailsRendersAllMemoryAddressesInOriginalRows()
+    {
+        var robot = new OrganismSnapshot(7, 3, [100f, 200f], [0f, 0f], 875, 19)
+        {
+            Memory = [new(1, 32767), new(10, -5), new(11, 42), new(1000, -32768)],
+            DebugText = "console diagnostic",
+        };
+        var snapshot = new EngineSnapshot(12, 1, "CPU", [robot]) { NativeCycle = 12 };
+
+        await DesktopTestApplication.Session.Dispatch(() =>
+        {
+            var window = new RobotDetailsWindow(snapshot, new OrganismKey(7, 3));
+            try
+            {
+                window.Show();
+                window.SelectTab(RobotDetailsTab.Memory);
+                window.UpdateLayout();
+                var memory = Assert.Single(window.GetVisualDescendants().OfType<TextBox>());
+                var rows = Assert.IsType<string>(memory.Text).Split("\r\n", StringSplitOptions.None);
+                Assert.Equal(101, rows.Length);
+                Assert.Empty(rows[^1]);
+                for (var row = 0; row < 100; row++)
+                {
+                    Assert.StartsWith($" {row * 10 + 1}:\t", rows[row], StringComparison.Ordinal);
+                    Assert.Equal(10, rows[row].Count(character => character == '\t'));
+                }
+                Assert.Equal(" 1:\t 32767\t 0\t 0\t 0\t 0\t 0\t 0\t 0\t 0\t-5", rows[0]);
+                Assert.Equal(" 11:\t 42\t 0\t 0\t 0\t 0\t 0\t 0\t 0\t 0\t 0", rows[1]);
+                Assert.Equal(" 991:\t 0\t 0\t 0\t 0\t 0\t 0\t 0\t 0\t 0\t-32768", rows[99]);
+                Assert.DoesNotContain("console diagnostic", memory.Text, StringComparison.Ordinal);
+                Assert.Contains(window.GetVisualDescendants().OfType<TextBlock>(),
+                    block => block.Text?.Contains("MEMORY VIEW    1, 10, 11, 1000", StringComparison.Ordinal) == true);
+
+                window.SetSnapshot(snapshot with { Organisms = [robot with { Memory = [] }] });
+                Assert.DoesNotContain("-32768", memory.Text, StringComparison.Ordinal);
+                Assert.EndsWith(" 991:\t 0\t 0\t 0\t 0\t 0\t 0\t 0\t 0\t 0\t 0\r\n", memory.Text, StringComparison.Ordinal);
+
+                window.SetSnapshot(snapshot with { NativeCycle = null });
+                Assert.StartsWith("   1       32767", memory.Text, StringComparison.Ordinal);
+                Assert.Contains($"{Environment.NewLine}DEBUG{Environment.NewLine}console diagnostic", memory.Text, StringComparison.Ordinal);
+            }
+            finally
+            {
+                if (window.IsVisible) window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
     public async Task RobotDetailsRendersLiveFactsMemoryAndActivationTimeline()
     {
         var organism = new OrganismSnapshot(

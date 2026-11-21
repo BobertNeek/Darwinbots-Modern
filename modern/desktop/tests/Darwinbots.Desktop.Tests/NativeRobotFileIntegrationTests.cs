@@ -197,16 +197,17 @@ public sealed class NativeRobotFileIntegrationTests
                 var watch = Field<CheckBox>(info, "_postDnaMemory");
                 Assert.True(watch.IsVisible);
                 Assert.False(watch.IsChecked);
+                Assert.EndsWith(" 991:\t 0\t 0\t 0\t 0\t 0\t 0\t 0\t 0\t 0\t 0\r\n", memory.Text);
 
                 await session.StepAsync();
-                await WaitFor(() => memory.Text?.Contains("-3000", StringComparison.Ordinal) == true);
+                await WaitFor(() => memory.Text?.Contains("\t-3000\t", StringComparison.Ordinal) == true);
                 Assert.Null(session.LatestSnapshot.NativePostDnaMemory);
                 await session.SetOrganismMemoryAsync(second.Slot, second.Generation, address, -4321);
                 var save = await session.SaveAsync();
                 watch.IsChecked = true;
-                Assert.Contains("-3000", memory.Text);
+                Assert.Contains("\t-3000\t", memory.Text);
                 await session.StepAsync();
-                await WaitFor(() => memory.Text?.Contains("12345", StringComparison.Ordinal) == true);
+                await WaitFor(() => memory.Text?.Contains("\t 12345\t", StringComparison.Ordinal) == true);
                 Assert.Equal(-3000, session.LatestSnapshot.Organisms[0].Memory.Single(cell => cell.Address == address).Value);
                 Assert.Equal(first, session.LatestSnapshot.NativePostDnaMemory!.Focus);
 
@@ -224,24 +225,24 @@ public sealed class NativeRobotFileIntegrationTests
                 Assert.Contains($"ENERGY         {early.Energy:N0}", facts.Text);
                 info.SelectTab(RobotDetailsTab.Memory);
                 Assert.True(watch.IsChecked);
-                Assert.Contains("-3000", memory.Text);
+                Assert.Contains("\t-3000\t", memory.Text);
                 Assert.Contains($"AGE / GENER.   {early.Age:N0} /", facts.Text);
                 await session.StepAsync();
-                await WaitFor(() => memory.Text?.Contains("12345", StringComparison.Ordinal) == true);
+                await WaitFor(() => memory.Text?.Contains("\t 12345\t", StringComparison.Ordinal) == true);
 
                 viewModel.Select(second);
-                Assert.DoesNotContain("12345", memory.Text);
+                Assert.DoesNotContain("\t 12345\t", memory.Text);
                 await session.StepAsync();
-                await WaitFor(() => memory.Text?.Contains("23456", StringComparison.Ordinal) == true);
+                await WaitFor(() => memory.Text?.Contains("\t 23456\t", StringComparison.Ordinal) == true);
                 Assert.Equal(second, session.LatestSnapshot.NativePostDnaMemory!.Focus);
 
                 var load = (Task)typeof(MainWindow).GetMethod("LoadSimulationAsync", BindingFlags.Instance | BindingFlags.NonPublic)!
                     .Invoke(window, [save, false])!;
                 await load;
                 Assert.Null(session.LatestSnapshot.NativePostDnaMemory);
-                Assert.Contains("-4321", memory.Text);
+                Assert.Contains("\t-4321\t", memory.Text);
                 await session.StepAsync();
-                await WaitFor(() => memory.Text?.Contains("23456", StringComparison.Ordinal) == true);
+                await WaitFor(() => memory.Text?.Contains("\t 23456\t", StringComparison.Ordinal) == true);
 
                 info.Hide();
                 await session.StepAsync();
