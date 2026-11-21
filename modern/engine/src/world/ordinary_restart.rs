@@ -31,6 +31,10 @@ struct NativeRestartSource {
 struct BoundRestartSource {
     filename: String,
     dna: LegacyDna,
+    #[serde(default, skip_serializing_if = "is_false")]
+    repopulation_only: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    start_energy: Option<i32>,
 }
 
 #[derive(Clone, Default, Serialize, Deserialize)]
@@ -73,7 +77,9 @@ impl Engine {
                     self.ordinary_restart
                         .imported_sources
                         .get(&definition.lineage_id)
-                        .is_some_and(|source| source.filename == definition.name)
+                        .is_some_and(|source| {
+                            !source.repopulation_only && source.filename == definition.name
+                        })
                         && self.active_startup_species(index)
                 }))
     }
@@ -90,10 +96,13 @@ impl Engine {
         if !self.can_configure_ordinary_restart() {
             return Ok(NativeRestartSources::default());
         }
-        self.native_restart_sources()
+        self.native_species_sources(true)
     }
 
-    fn native_restart_sources(&self) -> Result<NativeRestartSources, EngineError> {
+    fn native_species_sources(
+        &self,
+        include_repopulation: bool,
+    ) -> Result<NativeRestartSources, EngineError> {
         let Some(origin) = self
             .native_origin
             .as_ref()
@@ -115,7 +124,8 @@ impl Engine {
             }
             let prefix = format!("species[{}].", definition.lineage_id - 1);
             let quantity = tail.integer(&format!("{prefix}quantity"))?;
-            if quantity <= 0 {
+            if quantity <= 0 && !(include_repopulation && definition.vegetable && definition.reseed)
+            {
                 continue;
             }
             let filename = native_io::text(tail.bytes(&format!("{prefix}name"))?);
@@ -127,7 +137,7 @@ impl Engine {
                 filename,
                 directory: native_io::text(tail.bytes(&format!("{prefix}path"))?),
                 species: SpeciesId(index as u32),
-                quantity: quantity as usize,
+                quantity: quantity.max(0) as usize,
                 start_energy: tail.integer(&format!("{prefix}start_energy"))?,
             });
         }
@@ -143,7 +153,7 @@ impl Engine {
                 "No original startup roster can be bound.".into(),
             ));
         }
-        let manifest = self.native_restart_sources()?;
+        let manifest = self.native_species_sources(true)?;
         let by_lineage: BTreeMap<_, _> = manifest
             .sources
             .into_iter()
@@ -169,18 +179,34 @@ impl Engine {
                     BoundRestartSource {
                         filename: input.filename.clone(),
                         dna,
+                        repopulation_only: input.quantity == 0,
+                        start_energy: Some(input.start_energy),
                     },
                 );
             }
         }
         let bound = sources.len();
         self.ordinary_restart.imported_sources = sources;
-        self.ordinary_restart.enabled = manifest.requested && bound != 0;
+        self.ordinary_restart.enabled = manifest.requested && self.ordinary_restart_available();
         if !self.ordinary_restart.enabled {
             self.ordinary_restart.pending = false;
         }
         self.publish_snapshot();
         Ok(bound)
+    }
+
+    pub(super) fn bound_native_repopulation_source(
+        &self,
+        species: &SpeciesDefinition,
+    ) -> Option<(&LegacyDna, Option<i32>)> {
+        if self.native_random.is_none() {
+            return None;
+        }
+        self.ordinary_restart
+            .imported_sources
+            .get(&species.lineage_id)
+            .filter(|source| source.filename == species.name)
+            .map(|source| (&source.dna, source.start_energy))
     }
 
     pub(super) fn native_restart_export_override(&self) -> Option<bool> {
@@ -269,7 +295,7 @@ impl Engine {
         self.pending_gpu_collision_pairs = None;
 
         if self.native_origin.is_some() {
-            for entry in self.native_restart_sources()?.sources {
+            for entry in self.native_species_sources(false)?.sources {
                 if self.available_robot_capacity() == 0 {
                     break;
                 }
@@ -351,6 +377,116 @@ mod tests {
             .unwrap()
             .integer("restart")
             .unwrap()
+    }
+
+    fn trigger_one_repopulation_birth(world: &mut Engine) -> OrganismId {
+        let existing = world.slots.ids_in_slot_order();
+        world.config.vegetation.minimum_chloroplast_equivalents = 100;
+        world.config.vegetation.repopulation_amount = 1;
+        world.config.vegetation.repopulation_cooldown = 1;
+        world.vegetation_runtime.set_native_repopulation_counter(0);
+        world.vegetation_repopulation_phase().unwrap();
+        let added = world
+            .slots
+            .ids_in_slot_order()
+            .into_iter()
+            .filter(|id| !existing.contains(id))
+            .collect::<Vec<_>>();
+        assert_eq!(added.len(), 1);
+        added[0]
+    }
+
+    #[test]
+    fn native_repopulation_uses_bound_file_instead_of_imported_survivor() {
+        let mut file = NativeRecordFile::decode(C281).unwrap();
+        let survivor = file
+            .robots
+            .iter_mut()
+            .find(|robot| {
+                robot.bytes("species_name").unwrap() == b"Alga_Minimalis_Chloroplastus.txt"
+            })
+            .unwrap();
+        let mut dna = survivor.bytes("dna").unwrap().to_vec();
+        assert_eq!(&dna[22..24], &160_i16.to_le_bytes());
+        dna[22..24].copy_from_slice(&159_i16.to_le_bytes());
+        survivor.set_value("dna", NativeValue::Bytes(dna)).unwrap();
+
+        let mut world = Engine::from_native_sim(&file.encode().unwrap()).unwrap();
+        let original = world.load_dna_source(ALGA).unwrap();
+        let survivor = world
+            .slots
+            .ids_in_slot_order()
+            .into_iter()
+            .find(|id| world.slots.get(*id).unwrap().flags.vegetable)
+            .unwrap();
+        let changed = world.slots.get(survivor).unwrap().program.dna.clone();
+        assert_ne!(changed.blocks(), original.blocks());
+        assert_eq!(
+            world.repopulation_source(0).unwrap().0.blocks(),
+            changed.blocks()
+        );
+
+        assert_eq!(
+            world
+                .bind_native_restart_sources(vec![binding(1, ALGA)])
+                .unwrap(),
+            1
+        );
+        let mut restored = SaveFile::decode(&SaveFile::encode(&world).unwrap()).unwrap();
+        for world in [&mut world, &mut restored] {
+            let newborn = trigger_one_repopulation_birth(world);
+            let newborn = world.slots.get(newborn).unwrap();
+            assert_eq!(newborn.program.dna.blocks(), original.blocks());
+            assert_eq!(newborn.materials.energy, 3000.0);
+            assert_eq!(
+                world.slots.get(survivor).unwrap().program.dna.blocks(),
+                changed.blocks()
+            );
+        }
+    }
+
+    #[test]
+    fn native_repopulation_binds_zero_quantity_without_enabling_restart() {
+        let mut file = NativeRecordFile::decode(C281).unwrap();
+        file.robots.clear();
+        let mut tail = NativeSimulationTail::decode(&file.tail).unwrap();
+        for (field, value) in [
+            ("species[0].quantity", 0),
+            ("species[0].start_energy", 2750),
+            ("restart", -1),
+        ] {
+            tail.set_value(field, NativeValue::Word(value)).unwrap();
+        }
+        file.tail = tail.encode().unwrap();
+        let mut world = Engine::from_native_sim(&file.encode().unwrap()).unwrap();
+        assert!(world.species_templates[0].is_none());
+        let manifest = world.read_native_restart_sources().unwrap();
+        assert!(manifest.requested);
+        assert!(
+            manifest
+                .sources
+                .iter()
+                .any(|source| source.lineage_id == 1 && source.quantity == 0)
+        );
+        assert_eq!(
+            world
+                .bind_native_restart_sources(vec![binding(1, ALGA)])
+                .unwrap(),
+            1
+        );
+        assert!(!world.snapshot().ordinary_restart_available);
+        assert!(!world.snapshot().ordinary_restart_on_extinction);
+        assert_eq!(native_restart_flag(&world.export_native_sim().unwrap()), -1);
+        let mut world = SaveFile::decode(&SaveFile::encode(&world).unwrap()).unwrap();
+        let newborn = trigger_one_repopulation_birth(&mut world);
+        let newborn = world.slots.get(newborn).unwrap();
+        assert!(newborn.flags.vegetable);
+        assert_eq!(newborn.materials.energy, 2750.0);
+        assert_eq!(
+            newborn.program.dna.blocks(),
+            world.load_dna_source(ALGA).unwrap().blocks()
+        );
+        assert!(!world.snapshot().ordinary_restart_available);
     }
 
     #[test]
