@@ -50,7 +50,7 @@ impl Engine {
             metadata.detailed_log.truncate(128);
         }
         let species = robot.identity.species;
-        publish_reproductive_readbacks(robot);
+        publish_reproductive_readbacks(robot, self.native_cycle.is_some());
         let subspecies = self.next_subspecies(species);
         self.slots[target]
             .organism
@@ -251,7 +251,7 @@ impl Engine {
             robot
                 .materials
                 .publish_for_profile(&mut robot.program.memory, self.native_random.is_some());
-            publish_reproductive_readbacks(robot);
+            publish_reproductive_readbacks(robot, self.native_cycle.is_some());
         }
         for (id, action) in disqualified {
             self.native_disqualify_action(id, action);

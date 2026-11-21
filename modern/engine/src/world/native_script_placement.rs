@@ -54,10 +54,13 @@ impl Engine {
             .program
             .memory
             .write(MEM_DNA_LENGTH, robot.program.dna.blocks().len() as i32);
-        robot
-            .program
-            .memory
-            .write(MEM_GENES, robot.program.dna.gene_count());
+        robot.program.memory.write(
+            MEM_GENES,
+            robot
+                .program
+                .dna
+                .gene_count_for_world(self.native_cycle.is_some()),
+        );
         // Senses.makeoccurrlist explicitly republishes ownvars 721..731.
         robot.refresh_occurrence_census();
         robot.program.rng_state = state;
