@@ -46,7 +46,7 @@ impl DisqualificationAction {
 
 impl Engine {
     /// Effective SimOpts.F1, independent of the external x_restartmode byte.
-    pub(super) fn native_f1_enabled(&self) -> bool {
+    pub(crate) fn native_f1_enabled(&self) -> bool {
         self.local_mode.config.as_ref().map_or_else(
             || self.native_f1.unwrap_or(false),
             |config| {

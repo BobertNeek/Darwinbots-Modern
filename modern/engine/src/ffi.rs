@@ -1267,18 +1267,7 @@ pub extern "C" fn db_engine_capabilities_json(
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[unsafe(no_mangle)]
 pub extern "C" fn db_engine_save(engine: *const Engine, out_buffer: *mut DbBuffer) -> DbStatus {
-    let (Some(engine), Some(out_buffer)) =
-        (unsafe { engine.as_ref() }, unsafe { out_buffer.as_mut() })
-    else {
-        return DbStatus::NullPointer;
-    };
-    if !out_buffer.data.is_null() {
-        return fail(DbStatus::EngineError, "output buffer must be empty");
-    }
-    match SaveFile::encode(engine) {
-        Ok(bytes) => write_buffer(out_buffer, bytes),
-        Err(error) => fail(DbStatus::EngineError, error),
-    }
+    save_db3s(engine, out_buffer, SaveFile::encode)
 }
 
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
@@ -1287,7 +1276,26 @@ pub extern "C" fn db_engine_save_without_restart_mode(
     engine: *const Engine,
     out_buffer: *mut DbBuffer,
 ) -> DbStatus {
-    save_legacy(engine, out_buffer, SaveFile::encode_without_restart_mode)
+    save_db3s(engine, out_buffer, SaveFile::encode_without_restart_mode)
+}
+
+fn save_db3s(
+    engine: *const Engine,
+    out_buffer: *mut DbBuffer,
+    encode: fn(&Engine) -> Result<Vec<u8>, EngineError>,
+) -> DbStatus {
+    let (Some(engine), Some(out_buffer)) =
+        (unsafe { engine.as_ref() }, unsafe { out_buffer.as_mut() })
+    else {
+        return DbStatus::NullPointer;
+    };
+    if !out_buffer.data.is_null() {
+        return fail(DbStatus::EngineError, "output buffer must be empty");
+    }
+    match encode(engine) {
+        Ok(bytes) => write_buffer(out_buffer, bytes),
+        Err(error) => fail(DbStatus::EngineError, error),
+    }
 }
 
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
