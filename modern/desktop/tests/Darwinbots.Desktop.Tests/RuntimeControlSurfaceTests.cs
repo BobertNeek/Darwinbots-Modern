@@ -2148,6 +2148,7 @@ internal sealed class RecordingEngineClient : IEngineClient
         Calls.Enqueue($"CaptureNativeLoadSeed:{generateSeed}");
         return seed;
     }
+    public void SetNativeSeedMetadata(int seed) => Calls.Enqueue($"SetNativeSeedMetadata:{seed}");
     public void Load(byte[] save) => _tick = BitConverter.ToUInt64(save);
     public void LoadWithNativeSeed(byte[] save, int seed)
     {
