@@ -13126,15 +13126,6 @@ fn native_cached_voluntary_movement(
         *vector = (*vector).map(|value| value.clamp(-32_000.0, 32_000.0));
         [vector[0] * scale, vector[1] * scale]
     };
-    let magnitude = |vector: [f32; 2]| {
-        let minimum = vector[0].abs().min(vector[1].abs());
-        let maximum = vector[0].abs().max(vector[1].abs());
-        if maximum < 0.00001 {
-            0.0
-        } else {
-            (f64::from(maximum) * (1.0 + f64::from(minimum / maximum).powi(2)).sqrt()) as f32
-        }
-    };
     let mut direction = [
         (i64::from(input.up) - i64::from(input.down)) as f32,
         (i64::from(input.left) - i64::from(input.right)) as f32,
@@ -13144,13 +13135,13 @@ fn native_cached_voluntary_movement(
     let cross =
         f64::from(aim[0]) * f64::from(direction[1]) - f64::from(aim[1]) * f64::from(direction[0]);
     let mut acceleration = [crate::physics::native_dot(aim, direction), cross as f32];
-    let speed = magnitude(acceleration);
+    let speed = crate::physics::native_full_magnitude(acceleration);
     if speed > settings.max_velocity {
         acceleration = scalar(&mut acceleration, settings.max_velocity / speed);
     }
     // This ByRef call also clamps acceleration before the energy calculation.
     let impulse = scalar(&mut acceleration, settings.movement_efficiency);
-    (impulse, magnitude(acceleration))
+    (impulse, crate::physics::native_full_magnitude(acceleration))
 }
 
 fn apply_restriction_column(robot: &mut RobotState, column: &RestrictionColumn) {
@@ -15026,6 +15017,26 @@ mod native_publication55_tests {
             let (impulse, _) = native_cached_voluntary_movement(input, aim, mass, &settings);
             assert_eq!(impulse.map(f32::to_bits), expected);
         }
+    }
+
+    #[test]
+    fn native_cached_movement_rounds_original_clipping_magnitude() {
+        let settings = PhysicsSettings {
+            max_velocity: 60.0,
+            movement_efficiency: 0.66,
+            ..PhysicsSettings::default()
+        };
+        // Original 2.48.32, robot 151's cached aim and thrust at cycle 299.
+        let input = MovementInput {
+            up: 98,
+            ..MovementInput::default()
+        };
+        let aim = [f32::from_bits(0x3f24_1ab6), f32::from_bits(0x3f44_7bc6)];
+        let mass = f32::from_bits(0x3f93_5d30);
+        let (impulse, cost_magnitude) =
+            native_cached_voluntary_movement(input, aim, mass, &settings);
+        assert_eq!(impulse.map(f32::to_bits), [0x41cb_1442, 0xc1f3_25fb]);
+        assert_eq!(cost_magnitude.to_bits(), 0x4270_0001);
     }
 
     #[test]
