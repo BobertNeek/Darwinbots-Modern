@@ -237,6 +237,10 @@ impl Engine {
                         // Importing into a candidate must preserve the active
                         // backend, including its runtime failure state.
                         std::mem::swap(&mut candidate.physics, &mut self.physics);
+                        std::mem::swap(
+                            &mut candidate.native_console_gene_capture,
+                            &mut self.native_console_gene_capture,
+                        );
                         *self = candidate;
                         received = received.saturating_add(1);
                     }

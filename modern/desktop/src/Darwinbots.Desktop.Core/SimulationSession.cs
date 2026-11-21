@@ -38,6 +38,16 @@ public sealed class SimulationSession : IAsyncDisposable
         Enqueue(engine => engine.Tick(1, requireNativeRepopulationSource: true, cancelledLineages),
             cancellationToken, measureTicks: true);
 
+    public async Task<IReadOnlyList<NativeConsoleActivationFrame>> StepWatchingNativeConsolesAsync(
+        IReadOnlyList<OrganismKey> focuses, bool requireNativeRepopulationSource, IReadOnlyList<ulong> cancelledLineages,
+        CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<NativeConsoleActivationFrame> reports = [];
+        await Enqueue(engine => reports = engine.TickWatchingNativeConsoles(focuses, requireNativeRepopulationSource,
+            cancelledLineages), cancellationToken, measureTicks: true).ConfigureAwait(false);
+        return reports;
+    }
+
     public async Task<OrganismKey?> FindBestRobotAsync(bool energyWeighting, CancellationToken cancellationToken = default)
         => await FindBestRobotAsync(energyWeighting ? 100 : 0, cancellationToken).ConfigureAwait(false);
 

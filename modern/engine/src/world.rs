@@ -78,6 +78,9 @@ mod player_insertion;
 
 #[path = "world/file_teleporters.rs"]
 mod file_teleporters;
+#[path = "world/native_console_gene_reports.rs"]
+mod native_console_gene_reports;
+use native_console_gene_reports::NativeConsoleGeneCapture;
 mod species_settings;
 
 #[path = "world/file_transfer_transaction.rs"]
@@ -2354,6 +2357,8 @@ struct EngineCycleCheckpoint {
 
 #[derive(Serialize, Deserialize)]
 pub struct Engine {
+    #[serde(skip)]
+    native_console_gene_capture: Option<NativeConsoleGeneCapture>,
     #[serde(default)]
     native_buckets: native_collisions::NativeBuckets,
     #[serde(skip, default)]
@@ -2673,6 +2678,7 @@ impl Engine {
             pending_gpu_collision_pairs: None,
             snapshot_publication_count: 0,
             dynamic_cost_state: DynamicCostRuntimeState::default(),
+            native_console_gene_capture: None,
             native_buckets: native_collisions::NativeBuckets::default(),
             native_phase: None,
             pending_disqualifications: Vec::new(),
@@ -2891,6 +2897,7 @@ impl Engine {
             pending_gpu_collision_pairs: None,
             snapshot_publication_count: 0,
             dynamic_cost_state: DynamicCostRuntimeState::default(),
+            native_console_gene_capture: None,
             native_buckets: native_collisions::NativeBuckets::default(),
             native_phase: None,
             pending_disqualifications: Vec::new(),
@@ -5556,6 +5563,7 @@ impl Engine {
             )
             .and_then(|trace| {
                 transfers.commit()?;
+                self.finish_native_console_gene_cycle();
                 Ok(trace)
             }) {
             Ok(trace) => Ok(trace),
@@ -5972,6 +5980,7 @@ impl Engine {
         }
         self.validate_invariants()?;
         Ok(Some(Self {
+            native_console_gene_capture: None,
             native_buckets: self.native_buckets.clone(),
             native_phase: self.native_phase.as_ref().map(|phase| {
                 native_pipeline::NativeRobotPhase {
@@ -6718,6 +6727,14 @@ impl Engine {
             organism.program.current_gene = u32::from(report.current_gene);
             organism.program.condition_count = report.conditions_evaluated;
             organism.program.activation_bitmap = report.activations.clone();
+            if let Some(capture) = self.native_console_gene_capture.as_mut() {
+                capture.record(
+                    OrganismId::new(slot_index as u32, generation),
+                    organism.identity.absolute_id,
+                    self.tick,
+                    &report.activations,
+                );
+            }
             organism.program.activation_history.push(ActivationFrame {
                 tick: self.tick,
                 activations: report.activations,
