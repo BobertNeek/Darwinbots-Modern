@@ -141,6 +141,9 @@ mod staged_evolution;
 #[path = "world/native_random_world.rs"]
 mod native_random_world;
 use native_random_world::NativeStartBoundary;
+#[path = "world/native_scene_palette.rs"]
+mod native_scene_palette;
+pub use native_scene_palette::NativeScenePalette;
 #[path = "world/native_script_placement.rs"]
 mod native_script_placement;
 
@@ -541,6 +544,9 @@ pub struct Snapshot {
     /// Original signed SimOpts.TotRunCycle, separate from the monotonic API tick.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub native_cycle: Option<i32>,
+    /// Seeded chart and arena colors before the original global Old Colors override.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub native_scene_palette: Option<NativeScenePalette>,
     #[serde(default = "default_true")]
     pub death_poffs_enabled: bool,
     #[serde(default = "default_world_size")]
@@ -592,6 +598,7 @@ impl Default for Snapshot {
             schema_version: 0,
             tick: 0,
             native_cycle: None,
+            native_scene_palette: None,
             death_poffs_enabled: true,
             world_size: [0.0; 2],
             organisms: Vec::new(),
@@ -623,6 +630,7 @@ impl PartialEq for Snapshot {
     fn eq(&self, other: &Self) -> bool {
         self.tick == other.tick
             && self.native_cycle == other.native_cycle
+            && self.native_scene_palette == other.native_scene_palette
             && self.death_poffs_enabled == other.death_poffs_enabled
             && self.schema_version == other.schema_version
             && self.world_size == other.world_size
@@ -1976,6 +1984,7 @@ impl From<Db3sV2Snapshot> for Snapshot {
             schema_version: default_snapshot_schema_version(),
             tick: value.tick,
             native_cycle: None,
+            native_scene_palette: None,
             death_poffs_enabled: true,
             world_size: value.world_size,
             organisms: value.organisms.into_iter().map(Into::into).collect(),
@@ -2317,6 +2326,7 @@ struct EngineCycleCheckpoint {
     native_buckets: native_collisions::NativeBuckets,
     dynamic_cost_state: DynamicCostRuntimeState,
     native_sim_guid: Option<i32>,
+    native_scene_palette: Option<NativeScenePalette>,
     native_cycle: Option<i32>,
     native_population_census: Option<[usize; 2]>,
     native_senses_census: Option<NativeSensesCensus>,
@@ -2349,6 +2359,8 @@ pub struct Engine {
     native_f1: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     native_sim_guid: Option<i32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    native_scene_palette: Option<NativeScenePalette>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     native_cycle: Option<i32>,
     /// Original mode1 UpdateCounters census and its one-cycle delayed display.
@@ -2654,6 +2666,7 @@ impl Engine {
             native_origin: None,
             native_f1: None,
             native_sim_guid: None,
+            native_scene_palette: None,
             native_cycle: None,
             native_population_census: None,
             native_senses_census: None,
@@ -2794,6 +2807,7 @@ impl Engine {
                 schema_version: default_snapshot_schema_version(),
                 tick: 0,
                 native_cycle: None,
+                native_scene_palette: None,
                 death_poffs_enabled: true,
                 world_size,
                 organisms: Vec::new(),
@@ -2867,6 +2881,7 @@ impl Engine {
             native_origin: None,
             native_f1: None,
             native_sim_guid: None,
+            native_scene_palette: None,
             native_cycle: None,
             native_population_census: None,
             native_senses_census: None,
@@ -5568,6 +5583,7 @@ impl Engine {
             native_random: self.native_random.clone(),
             native_buckets: self.native_buckets.clone(),
             native_sim_guid: self.native_sim_guid,
+            native_scene_palette: self.native_scene_palette,
             native_cycle: self.native_cycle,
             native_population_census: self.native_population_census,
             native_senses_census: self.native_senses_census.clone(),
@@ -5586,6 +5602,7 @@ impl Engine {
         self.native_random = checkpoint.native_random;
         self.native_buckets = checkpoint.native_buckets;
         self.native_sim_guid = checkpoint.native_sim_guid;
+        self.native_scene_palette = checkpoint.native_scene_palette;
         self.native_cycle = checkpoint.native_cycle;
         self.native_population_census = checkpoint.native_population_census;
         self.native_senses_census = checkpoint.native_senses_census;
@@ -5921,6 +5938,7 @@ impl Engine {
             native_origin: self.native_origin.clone(),
             native_f1: self.native_f1,
             native_sim_guid: self.native_sim_guid,
+            native_scene_palette: self.native_scene_palette,
             native_cycle: self.native_cycle,
             native_population_census: self.native_population_census,
             native_senses_census: self.native_senses_census.clone(),
@@ -12939,6 +12957,7 @@ impl Engine {
             schema_version: default_snapshot_schema_version(),
             tick: self.tick,
             native_cycle: self.native_cycle,
+            native_scene_palette: self.native_scene_palette,
             death_poffs_enabled: self.death_poffs_enabled,
             world_size: [self.config.world_width, self.config.world_height],
             organisms,
@@ -12997,6 +13016,7 @@ impl Engine {
                 "native cycle cannot precede -1".into(),
             ));
         }
+        engine.recover_older_native_scene_palette();
         if engine
             .native_population_census
             .is_some_and(|census| census.into_iter().any(|count| count > MAX_ROBOTS))
