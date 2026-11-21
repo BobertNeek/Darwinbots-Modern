@@ -45,7 +45,7 @@ public sealed class RobotDetailsWindow : Window
     private OrganismKey? _postDnaMemoryFocus;
     private bool _capturePostDnaMemory;
     private ulong _readPostDnaMemoryAfterTick;
-    private bool _nativeMemoryActorDied;
+    private OrganismKey? _nativeMemoryRemovedFocus;
     private bool _closed;
     private readonly RobotDiagnosticModel _diagnostic = new();
     private readonly TextBlock _subtitle = new();
@@ -626,6 +626,8 @@ public sealed class RobotDetailsWindow : Window
         if (focusChanged)
         {
             _focus = focus;
+            if (focus.HasValue && focus != _nativeMemoryRemovedFocus)
+                _nativeMemoryRemovedFocus = null;
             Title = focus is { } key ? $"Darwinbots — Robot Details {key.Slot}:{key.Generation}" : "Darwinbots — Robot Details";
         }
         if (focusChanged || consoleDnaFacts.HasValue || refreshDna)
@@ -644,15 +646,15 @@ public sealed class RobotDetailsWindow : Window
         if (!IsVisible || _focus != focus || _tabs.SelectedIndex != (int)RobotDetailsTab.Memory)
             return;
 
-        _nativeMemoryActorDied = true;
+        _nativeMemoryRemovedFocus = focus;
         _memory.Text = NativeDeadMemory;
     }
 
     internal void ClearNativeMemoryDeath()
     {
-        if (!_nativeMemoryActorDied) return;
+        if (_nativeMemoryRemovedFocus is null) return;
 
-        _nativeMemoryActorDied = false;
+        _nativeMemoryRemovedFocus = null;
         _memory.Text = string.Empty;
     }
 
@@ -661,7 +663,9 @@ public sealed class RobotDetailsWindow : Window
         _snapshot = snapshot;
         _nativeFactsActions.IsVisible = snapshot.NativeCycle.HasValue;
         _diagnostic.Update(snapshot, _focus);
-        var selected = FindActor(_focus);
+        // Keep removal feedback when an earlier queued snapshot still lists the robot.
+        var removedFocus = snapshot.NativeCycle.HasValue ? _nativeMemoryRemovedFocus : null;
+        var selected = _focus == removedFocus ? null : FindActor(_focus);
         if (_markDnaLocation is not null)
         {
             _markDnaLocation.IsVisible = snapshot.NativeCycle.HasValue;
@@ -671,7 +675,7 @@ public sealed class RobotDetailsWindow : Window
         RefreshMutationDetails();
         SynchronizeShortDescription(snapshot, selected);
         // Console showdna initially displays its actor's facts alongside the selected actor's DNA.
-        var consoleActor = snapshot.Tick == _followedTick ? FindActor(_consoleDnaFacts) : null;
+        var consoleActor = snapshot.Tick == _followedTick ? FindActor(_consoleDnaFacts == removedFocus ? null : _consoleDnaFacts) : null;
         var organism = consoleActor ?? selected;
         _reproduce.IsVisible = _reproduceNative is not null && snapshot.NativeCycle.HasValue;
         _reproduceParent = _reproduce.IsVisible ? organism : null;
@@ -681,8 +685,7 @@ public sealed class RobotDetailsWindow : Window
             SetSubtitle(_focus is { } removed ? $"ROBOT {removed.Slot}:{removed.Generation} · REMOVED" : "NO ROBOT SELECTED");
             _facts.Text = _focus is null ? "Select a robot in the simulation." : "The focused robot no longer exists in the live snapshot.";
             _factsTab.Text = _facts.Text;
-            _memory.Text = _nativeMemoryActorDied && snapshot.NativeCycle.HasValue
-                ? NativeDeadMemory : string.Empty;
+            _memory.Text = removedFocus.HasValue ? NativeDeadMemory : string.Empty;
             _activationTimeline.Children.Clear();
             _activationSummary.Text = _diagnostic.ActivationSummary;
             return;
@@ -698,7 +701,6 @@ public sealed class RobotDetailsWindow : Window
         organism = early?.Facts ?? organism;
 
         var factFocus = new OrganismKey(organism.Slot, organism.Generation);
-        _nativeMemoryActorDied = false;
         var species = snapshot.Species.ElementAtOrDefault((int)organism.Species)?.Name ?? "UNASSIGNED";
         var dnaSummary = string.IsNullOrWhiteSpace(_dna.Text)
             ? "UNAVAILABLE"
