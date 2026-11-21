@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Text.Json.Nodes;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
@@ -10,6 +11,9 @@ using Avalonia.Platform;
 using Avalonia.Threading;
 using Darwinbots.Desktop.Controls;
 using Darwinbots.Desktop.Core;
+using Darwinbots.Desktop.Core.LegacyMenus;
+using Darwinbots.Desktop.Services;
+using Darwinbots.Desktop.ViewModels;
 using Darwinbots.Desktop.Views;
 using Xunit;
 
@@ -29,6 +33,116 @@ public sealed class NativeScenePaletteRenderedTests
     {
         NativeScenePalette = new(0xffd1eaf5, 0xff123154),
     };
+
+    [Fact]
+    public async Task ExplicitFalseOverridesTheOriginalOldColorsRecordAndPreservesOtherPreferences()
+    {
+        var profile = Directory.CreateTempSubdirectory("darwinbots-old-colors-profile-");
+        try
+        {
+            var legacy = profile.CreateSubdirectory("Original install");
+            var records = new string[8];
+            Array.Fill(records, "#FALSE#");
+            records[7] = "#TRUE#";
+            var legacyPath = Path.Combine(legacy.FullName, "Global.gset");
+            await File.WriteAllLinesAsync(legacyPath, records);
+            var profilePath = Path.Combine(profile.FullName, "global-settings.json");
+            var initial = new JsonObject
+            {
+                ["main"] = new JsonObject { ["mainDirectory"] = legacy.FullName, ["keepGraphsUpdatingOnClose"] = true },
+            };
+            await File.WriteAllTextAsync(profilePath, initial.ToJsonString());
+            var storage = new AvaloniaDesktopStorageService(profile.FullName);
+            Assert.True(storage.LoadOldColorsPreference());
+
+            await storage.SaveOldColorsPreferenceAsync(false);
+            Assert.False(storage.LoadOldColorsPreference());
+            var saved = JsonNode.Parse(await File.ReadAllTextAsync(profilePath))!.AsObject();
+            Assert.False(saved["main"]!["oldColors"]!.GetValue<bool>());
+            saved["main"]!.AsObject().Remove("oldColors");
+            Assert.True(JsonNode.DeepEquals(initial, saved));
+            Assert.Equal(records, await File.ReadAllLinesAsync(legacyPath));
+        }
+        finally { profile.Delete(recursive: true); }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SavingOldColorsUpdatesPortableImmediatelyAndNativeOnRelaunch(bool native)
+    {
+        var profile = Directory.CreateTempSubdirectory("darwinbots-old-colors-runtime-");
+        try
+        {
+            await DesktopTestApplication.Session.Dispatch(async () =>
+            {
+                var storage = new AvaloniaDesktopStorageService(profile.FullName);
+                IEngineClientFactory factory = native ? NativeEngineClientFactory.Instance : new AuditEngineClientFactory();
+                var world = new WorldSetupOptions
+                {
+                    Backend = "Cpu", Seed = 44, PopulationCapacity = 64, WorldWidth = 1_600, WorldHeight = 1_200,
+                    Species = [new("Color probe", "start\nstop", false, 0xff239ac0, 1, 1_000, 0, false, 0)],
+                };
+                var windows = new List<Window>();
+                using var opened = Window.WindowOpenedEvent.AddClassHandler<Window>((window, _) => windows.Add(window));
+                var runtime = new MainWindow([], world, factory, storage);
+                try
+                {
+                    runtime.Show();
+                    await WaitFor(() => Model(runtime).Status.StartsWith("WORLD READY", StringComparison.Ordinal));
+                    Assert.Equal(native, Model(runtime).NativeCycle.HasValue);
+                    Assert.Equal(native, runtime.FindControl<WorldViewport>("Viewport")!.OldColors);
+                    runtime.FindControl<LegacyMenuBar>("HistoricMenuBar")!
+                        .FindCommandItem(LegacyCommandId.EditGlobalSettings)!
+                        .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    await WaitFor(() => runtime.OwnedWindows.OfType<GlobalSettingsWindow>().Any());
+                    var dialog = Assert.Single(runtime.OwnedWindows.OfType<GlobalSettingsWindow>());
+                    var oldColors = dialog.FindControl<CheckBox>("OldColors")!;
+                    Assert.Equal(native, oldColors.IsChecked);
+                    oldColors.IsChecked = !native;
+                    Click(dialog, "ApplyButton");
+                    await WaitFor(() => Model(runtime).Status == "GLOBAL SETTINGS SAVED");
+                    Assert.Equal(!native, storage.LoadOldColorsPreference());
+                    Assert.True(runtime.FindControl<WorldViewport>("Viewport")!.OldColors);
+                    if (!native) return;
+
+                    Click(runtime, "ResetButton");
+                    await WaitFor(() => windows.OfType<MainWindow>().Count() == 2);
+                    var replacement = Assert.Single(windows.OfType<MainWindow>(), window => window != runtime);
+                    await WaitFor(() => Model(replacement).NativeCycle.HasValue);
+                    Assert.True(replacement.FindControl<WorldViewport>("Viewport")!.OldColors);
+
+                    var setup = new SetupWindow(new AvaloniaDesktopStorageService(profile.FullName));
+                    WorldSetupOptions? reopened = null;
+                    setup.WorldCreated += options => reopened = options;
+                    Click(setup, "CreateWorldButton");
+                    Assert.False(Assert.IsType<WorldSetupOptions>(reopened).GlobalSettings.Main.OldColors);
+                    setup.Close();
+                    var relaunched = new MainWindow([], world with { GlobalSettings = reopened!.GlobalSettings }, factory, storage);
+                    relaunched.Show();
+                    await WaitFor(() => Model(relaunched).NativeCycle.HasValue);
+                    Assert.False(relaunched.FindControl<WorldViewport>("Viewport")!.OldColors);
+                }
+                finally
+                {
+                    foreach (var window in windows.Where(window => window.IsVisible).Reverse().ToArray())
+                        window.Close();
+                }
+            }, CancellationToken.None);
+        }
+        finally { profile.Delete(recursive: true); }
+
+        static MainWindowViewModel Model(MainWindow window) => Assert.IsType<MainWindowViewModel>(window.DataContext);
+        static void Click(Window window, string name) =>
+            window.FindControl<Button>(name)!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+        static async Task WaitFor(Func<bool> condition)
+        {
+            var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(8);
+            while (!condition() && DateTime.UtcNow < deadline) await Task.Delay(10);
+            Assert.True(condition());
+        }
+    }
 
     [Theory]
     [InlineData(false)]
