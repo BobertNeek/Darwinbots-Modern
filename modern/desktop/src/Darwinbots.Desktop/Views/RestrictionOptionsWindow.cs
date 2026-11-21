@@ -11,6 +11,7 @@ public sealed class RestrictionOptionsWindow : Window
 {
     private readonly CheckBox[] _nonRepopulating;
     private readonly CheckBox[] _repopulating;
+    private readonly bool _nativeOverwrites;
     private readonly TextBlock _status = new() { Foreground = Brush.Parse("#9A4A31"), FontSize = 11 };
 
     private static readonly string[] Labels =
@@ -29,8 +30,9 @@ public sealed class RestrictionOptionsWindow : Window
 
     public bool Accepted { get; private set; }
 
-    public RestrictionOptionsWindow(RestrictionOptions options)
+    public RestrictionOptionsWindow(RestrictionOptions options, bool nativeOverwrites = false, bool allowMutationChange = true)
     {
+        _nativeOverwrites = nativeOverwrites;
         Title = "Darwinbots — Restriction Options";
         Width = 760;
         Height = 560;
@@ -40,6 +42,9 @@ public sealed class RestrictionOptionsWindow : Window
         Background = Brush.Parse("#F4F0E6");
         _nonRepopulating = CreateChecks(options.NonRepopulating);
         _repopulating = CreateChecks(options.Repopulating);
+        _repopulating[2].IsVisible = !nativeOverwrites;
+        _nonRepopulating[8].IsVisible = allowMutationChange;
+        _repopulating[8].IsVisible = allowMutationChange;
 
         var columns = new Grid { ColumnDefinitions = new ColumnDefinitions("*,*") };
         var left = Column("NON-REPOPULATING", _nonRepopulating);
@@ -75,7 +80,15 @@ public sealed class RestrictionOptionsWindow : Window
         Content = root;
     }
 
-    public RestrictionOptions Options => new(Column(_nonRepopulating), Column(_repopulating));
+    public RestrictionOptions Options
+    {
+        get
+        {
+            var repopulating = Column(_repopulating);
+            if (_nativeOverwrites) repopulating = repopulating with { DisableChloroplasts = false };
+            return new(Column(_nonRepopulating), repopulating);
+        }
+    }
 
     private static Border Column(string title, CheckBox[] checks)
     {

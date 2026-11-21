@@ -245,6 +245,22 @@ impl Default for LocalModeState {
 }
 
 impl LocalModeState {
+    pub(crate) fn has_active_restart_mode(&self) -> bool {
+        match self.status {
+            LocalModeStatus::Running | LocalModeStatus::RoundComplete => {
+                self.evolution.is_some()
+                    || (self.series.workflow != crate::LeagueWorkflow::Direct
+                        && (self.series.active_match.is_some()
+                            || self.series.active_seed.is_some()))
+            }
+            LocalModeStatus::Completed => self.evolution.as_ref().is_some_and(|state| {
+                state.config.mode == crate::EvolutionMode::Zerobot
+                    && state.phase == crate::EvolutionPhase::Complete
+            }),
+            _ => false,
+        }
+    }
+
     pub(crate) fn presentation(&self) -> Self {
         Self {
             config: self.config.clone(),

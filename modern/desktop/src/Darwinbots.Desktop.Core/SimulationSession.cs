@@ -305,6 +305,12 @@ public sealed class SimulationSession : IAsyncDisposable
         return Enqueue(engine => engine.UpdateRestrictionOptions(options), cancellationToken);
     }
 
+    public Task ApplyNativeRestrictionOverwritesAsync(RestrictionOptions options, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        return Enqueue(engine => engine.ApplyNativeRestrictionOverwrites(options), cancellationToken);
+    }
+
     public Task ConfigureLocalModeAsync(LocalModeConfig config, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(config);
