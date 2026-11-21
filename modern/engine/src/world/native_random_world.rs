@@ -16,6 +16,7 @@ impl Engine {
         engine.snapshot.native_cycle = Some(-1);
         engine.vegetation_runtime = VegetationRuntime::fresh_native_process();
         engine.initialize_native_start();
+        engine.snapshot.native_sun_on = engine.native_sun_on();
         Ok(engine)
     }
 
@@ -37,6 +38,9 @@ impl Engine {
             self.config.vegetation.sun_on_random || self.config.vegetation.weather_enabled,
             random,
         );
+        let daytime = self.config.vegetation.daytime;
+        self.vegetation_runtime
+            .set_native_sun_indicator(daytime, daytime);
         // SimGUID is assigned after optional random sunlight, before placement.
         self.native_sim_guid = Some(random.unit().round_ties_even() as i32);
     }
@@ -78,6 +82,24 @@ impl Engine {
     /// Inspect VB6's process-global SunChange byte without drawing randomness.
     pub fn read_native_sun_change(&self) -> u8 {
         self.vegetation_runtime.sun_change()
+    }
+
+    pub(super) fn native_sun_on(&self) -> Option<bool> {
+        self.native_cycle.map(|_| {
+            self.vegetation_runtime
+                .native_sun_on(self.config.vegetation.daytime)
+        })
+    }
+
+    pub(crate) fn toggle_native_sun(&mut self) -> Option<bool> {
+        // SunButton_Click uses the new button state. FeedVeg can have set
+        // the indicator from a temporary threshold without changing Daytime.
+        let enabled = !self.native_sun_on()?;
+        self.config.vegetation.daytime = enabled;
+        self.vegetation_runtime
+            .set_native_sun_indicator(enabled, enabled);
+        self.snapshot.native_sun_on = Some(enabled);
+        Some(enabled)
     }
 
     /// Transfer only SunChange; native save loads retain their own weather state.

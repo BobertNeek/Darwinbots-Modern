@@ -349,6 +349,71 @@ public sealed class RuntimeControlSurfaceTests
         }, CancellationToken.None);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SunToolbarFollowsNativeFeedingAndChangesOnlyDaytime(bool temporaryThreshold)
+    {
+        var setup = new WorldSetupOptions
+        {
+            Backend = "Cpu",
+            PopulationCapacity = 16,
+            WorldWidth = 8_000,
+            WorldHeight = 6_000,
+            BrownianMotion = 0,
+            Vegetation = Db2VegetationOptions.Default with
+            {
+                Daytime = !temporaryThreshold,
+                DayNightEnabled = true,
+                CycleLength = 1,
+                SunUpEnabled = temporaryThreshold,
+                SunUpThreshold = 500_000,
+                SunThresholdMode = 0,
+            },
+            Species = [new("Sun Watch", "start stop", false, 0xff123456, 1, 1_000, 0, false, 0)],
+        };
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], setup, NativeEngineClientFactory.Instance, new AuditStorageService());
+            SimulationSession? session = null;
+            try
+            {
+                window.Show();
+                var model = Field<MainWindowViewModel>(window, "_viewModel");
+                await WaitFor(() => model.Status.StartsWith("WORLD READY", StringComparison.Ordinal), () => model.Status);
+                var button = window.FindControl<Button>("SunButton")!;
+                var initialLabel = temporaryThreshold ? "SUN OFF" : "SUN ON";
+                var feedingLabel = temporaryThreshold ? "SUN ON" : "SUN OFF";
+                await WaitFor(() => Equals(button.Content, initialLabel));
+
+                session = Field<SimulationSession>(window, "_session");
+                await session.StepAsync(2);
+                var before = Assert.IsType<WorldConfiguration>(await session.ReadConfigurationAsync());
+                Assert.False(before.Environment.Vegetation.Daytime);
+                Assert.Equal(temporaryThreshold, session.LatestSnapshot.NativeSunOn);
+                await WaitFor(() => Equals(button.Content, feedingLabel));
+
+                button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => Equals(button.Content, initialLabel) && model.Status == initialLabel);
+                Assert.Equal(initialLabel, AutomationProperties.GetName(button));
+                Assert.Equal(!temporaryThreshold, session.LatestSnapshot.NativeSunOn);
+                Assert.Equal(2ul, session.LatestSnapshot.Tick);
+                var after = Assert.IsType<WorldConfiguration>(await session.ReadConfigurationAsync());
+                var expected = before.Environment with
+                {
+                    Vegetation = before.Environment.Vegetation with { Daytime = !temporaryThreshold },
+                };
+                Assert.Equal(JsonSerializer.Serialize(expected), JsonSerializer.Serialize(after.Environment));
+            }
+            finally
+            {
+                if (session is not null) SetField(window, "_session", null);
+                window.Close();
+                if (session is not null) await session.DisposeAsync();
+            }
+        }, CancellationToken.None);
+    }
+
     [Fact]
     public async Task DisplayOnlyBackgroundAndOverlayTogglesLeaveCanonicalSessionSaveUnchanged()
     {
