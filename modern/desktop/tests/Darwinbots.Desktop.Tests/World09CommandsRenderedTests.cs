@@ -17,6 +17,49 @@ namespace Darwinbots.Desktop.Tests;
 public sealed class World09CommandsRenderedTests
 {
     [Theory]
+    [InlineData(null)]
+    [InlineData(12)]
+    public async Task FindBestWithNoCandidateClearsOnlyNativeFocusAndKeepsNativeMarks(int? nativeCycle)
+    {
+        var robot = RecordingEngineClient.Organism;
+        var key = new OrganismKey(robot.Slot, robot.Generation);
+        var engine = new RecordingEngineClient(RecordingEngineClient.CreateSnapshot() with
+        {
+            NativeCycle = nativeCycle,
+            Organisms = [robot with { Vegetable = true }],
+        });
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], new WorldSetupOptions(),
+                new World09EngineFactory(engine), new AuditStorageService());
+            try
+            {
+                window.Show();
+                var model = ViewModel(window);
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                var viewport = window.FindControl<WorldViewport>("Viewport")!;
+                var info = menu.FindCommandItem(LegacyCommandId.RobotShowInfo)!;
+                await WaitFor(() => model.SelectedKey == key && info.IsEnabled);
+                menu.FindCommandItem(LegacyCommandId.RobotSelectEntireOrganism)!
+                    .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => model.Status == "ORGANISM SELECTED · 1 BOT(S)");
+
+                menu.FindCommandItem(LegacyCommandId.RobotFindBest)!
+                    .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => model.Status == "NO LIVING ROBOTS");
+
+                Assert.Equal(nativeCycle is null ? key : (OrganismKey?)null, model.SelectedKey);
+                Assert.Equal(nativeCycle is null, info.IsEnabled);
+                Assert.Equal(nativeCycle, model.NativeCycle);
+                var marks = (HashSet<OrganismKey>)typeof(WorldViewport)
+                    .GetField("_selectedKeys", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(viewport)!;
+                Assert.Equal(key, Assert.Single(marks));
+            }
+            finally { window.Close(); }
+        }, CancellationToken.None);
+    }
+
+    [Theory]
     [InlineData(false, false)]
     [InlineData(true, false)]
     [InlineData(false, true)]
