@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Reflection;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
@@ -9,6 +11,50 @@ namespace Darwinbots.Desktop.Tests;
 
 public sealed class SafeModeArchiveBackupTests
 {
+    [Theory]
+    [InlineData("Darwinbots.Desktop", false)]
+    [InlineData("Darwinbots.Desktop.exe", false)]
+    [InlineData("dotnet", true)]
+    [InlineData("dotnet.exe", true)]
+    public void HelperUsesTheCurrentHostAndExactAutosaveLocation(string host, bool requiresAssembly)
+    {
+        var root = Path.Combine(Path.GetTempPath(), "Darwinbots test profile");
+        var executable = Path.Combine(root, host);
+        var assembly = Path.Combine(root, "Darwinbots.Desktop.dll");
+        var autosaves = Path.Combine(root, "Scratch", "..", "Autosaves");
+        var launcher = typeof(App).Assembly.GetType("Darwinbots.Desktop.Services.SafeModeBackupProcess", throwOnError: true)!;
+        var start = Assert.IsType<ProcessStartInfo>(launcher.GetMethod("CreateStartInfo", BindingFlags.Static | BindingFlags.NonPublic)!
+            .Invoke(null, [executable, assembly, autosaves]));
+
+        Assert.False(start.UseShellExecute);
+        Assert.Equal(executable, start.FileName);
+        string[] arguments = requiresAssembly ? [assembly, "--safemode-backup-viewer"] : ["--safemode-backup-viewer"];
+        Assert.Equal(arguments, start.ArgumentList);
+        Assert.Equal(Path.Combine(root, "Autosaves"), start.Environment["DARWINBOTS_AUTOSAVE_DIRECTORY"]);
+    }
+
+    [Fact]
+    public async Task ViewerStartupOpensAnUnownedWindowWithoutLoadingAWorld()
+    {
+        await DesktopTestApplication.Session.Dispatch(() =>
+        {
+            var createViewer = typeof(App).GetMethod("CreateSafeModeBackupWindow", BindingFlags.Static | BindingFlags.NonPublic)!;
+            var storage = new AuditStorageService();
+            Assert.Null(createViewer.Invoke(null, [new[] { "--bot", "--safemode-backup-viewer" }, storage]));
+            var window = Assert.IsType<SafeModeBackupWindow>(createViewer.Invoke(null,
+                [new[] { "--safemode-backup-viewer" }, storage]));
+            try
+            {
+                window.Show();
+                Assert.Null(window.Owner);
+                Assert.Empty(window.OwnedWindows);
+                Assert.Contains(window.GetVisualDescendants().OfType<TextBlock>(),
+                    label => label.Text?.StartsWith("Next backup in ", StringComparison.Ordinal) == true);
+            }
+            finally { window.Close(); }
+        }, CancellationToken.None);
+    }
+
     [Fact]
     public async Task DisposableProfileArchivesTheLatestCheckpointOnceAndKeepsItOutOfRecovery()
     {

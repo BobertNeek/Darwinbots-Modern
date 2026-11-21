@@ -229,7 +229,9 @@ public sealed class SafeModeAutosaveRenderedTests
         await DesktopTestApplication.Session.Dispatch(async () =>
         {
             var factory = new AuditEngineClientFactory();
-            var window = new MainWindow([], Setup(false), factory, new AuditStorageService());
+            var backupLaunches = 0;
+            var window = new MainWindow([], Setup(false), factory, new AuditStorageService(),
+                launchSafeModeBackup: () => backupLaunches++);
             try
             {
                 Show(window);
@@ -237,11 +239,10 @@ public sealed class SafeModeAutosaveRenderedTests
                 var engine = factory.Clients.Single();
                 var menu = Named<LegacyMenuBar>(window, "HistoricMenuBar");
                 Activate(menu, LegacyCommandId.RecordingSafemodeBackup);
-                await WaitFor(() => window.OwnedWindows.OfType<SafeModeBackupWindow>().Any());
-                var archive = Assert.Single(window.OwnedWindows.OfType<SafeModeBackupWindow>());
+                await WaitFor(() => backupLaunches == 1);
                 Activate(menu, LegacyCommandId.RecordingSafemodeBackup);
-                Assert.Same(archive, Assert.Single(window.OwnedWindows.OfType<SafeModeBackupWindow>()));
-                archive.Close();
+                await WaitFor(() => backupLaunches == 2);
+                Assert.Empty(window.OwnedWindows.OfType<SafeModeBackupWindow>());
                 Assert.False(Field<GlobalSettings>(window, "_globalSettings").Main.SafeMode);
 
                 Activate(menu, LegacyCommandId.EditGlobalSettings);

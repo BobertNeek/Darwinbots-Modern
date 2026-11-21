@@ -1,9 +1,11 @@
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using Avalonia.Styling;
 using Darwinbots.Desktop.Core;
+using Darwinbots.Desktop.Services;
 using Darwinbots.Desktop.Views;
 
 namespace Darwinbots.Desktop;
@@ -23,18 +25,30 @@ public sealed partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            var setup = new SetupWindow();
-            setup.WorldCreated += options =>
+            if (CreateSafeModeBackupWindow(desktop.Args, AvaloniaDesktopStorageService.Instance) is { } viewer)
             {
-                var simulation = new MainWindow(desktop.Args ?? [], options);
-                desktop.MainWindow = simulation;
-                simulation.Show();
-                setup.Close();
-            };
-            desktop.MainWindow = setup;
+                desktop.MainWindow = viewer;
+            }
+            else
+            {
+                var setup = new SetupWindow();
+                setup.WorldCreated += options =>
+                {
+                    var simulation = new MainWindow(desktop.Args ?? [], options);
+                    desktop.MainWindow = simulation;
+                    simulation.Show();
+                    setup.Close();
+                };
+                desktop.MainWindow = setup;
+            }
         }
         base.OnFrameworkInitializationCompleted();
     }
+
+    private static SafeModeBackupWindow? CreateSafeModeBackupWindow(string[]? arguments, IDesktopStorageService storage) =>
+        arguments is [SafeModeBackupProcess.StartupSwitch]
+            ? new SafeModeBackupWindow(storage) { WindowStartupLocation = WindowStartupLocation.CenterScreen }
+            : null;
 
     private void ApplyUiPreferences()
     {
