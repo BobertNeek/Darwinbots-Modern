@@ -179,6 +179,11 @@ enum EngineCommand {
         slot: u32,
         generation: u32,
     },
+    RenameRobotFounder {
+        slot: u32,
+        generation: u32,
+        name: String,
+    },
     ExportSpeciesTemplateDna {
         species: u32,
     },
@@ -922,6 +927,13 @@ fn db_engine_command_batch_impl(
             EngineCommand::ExportDna { slot, generation } => engine
                 .export_dna(OrganismId::new(slot, generation))
                 .map(|dna| serde_json::json!({ "dna": dna })),
+            EngineCommand::RenameRobotFounder {
+                slot,
+                generation,
+                name,
+            } => Ok(serde_json::json!(
+                engine.rename_robot_founder(OrganismId::new(slot, generation), name)
+            )),
             EngineCommand::ExportSpeciesTemplateDna { species } => engine
                 .export_species_template_dna(crate::SpeciesId(species))
                 .map(|dna| serde_json::json!({ "dna": dna })),
@@ -1942,6 +1954,87 @@ mod tests {
             assert_eq!(db_buffer_free(&mut buffer), DbStatus::Ok);
         }
         (status, result)
+    }
+
+    #[test]
+    fn rename_robot_founder_changes_only_the_native_actor_and_returns_a_boolean() {
+        let name = "Oracle,movement.txt";
+        for native in [false, true] {
+            let mut engine = source_fixture_engine(native);
+            let dna = LegacyDna::parse("start 10 .up store stop").unwrap();
+            let selected = engine.spawn_at(dna.clone(), [500.0, 500.0]).unwrap();
+            let peer = engine.spawn_at(dna, [700.0, 500.0]).unwrap();
+            let mut expected = engine.organism(selected).unwrap();
+            let other = engine.organism(peer).unwrap();
+            let species = engine.snapshot().species.clone();
+            assert!(
+                serde_json::to_value(&expected)
+                    .unwrap()
+                    .get("founder_name")
+                    .is_none()
+            );
+            let command = |slot, generation, filename: &str| {
+                serde_json::json!({
+                    "type": "rename_robot_founder", "slot": slot, "generation": generation, "name": filename
+                })
+            };
+            let (status, response) = classic_test_batch(
+                &mut engine,
+                serde_json::json!([
+                    command(selected.slot(), selected.generation(), name),
+                    command(selected.slot(), selected.generation(), name),
+                    command(peer.slot(), peer.generation() + 1, name),
+                    command(u32::MAX, 0, name),
+                    command(selected.slot(), selected.generation(), ""),
+                    command(selected.slot(), selected.generation(), "C:\\bots\\name.txt"),
+                    command(selected.slot(), selected.generation(), "bad\nname.txt")
+                ]),
+            );
+            assert_eq!(status, DbStatus::Ok);
+            let data: serde_json::Value = serde_json::from_slice(&response).unwrap();
+            assert_eq!(
+                data["results"],
+                serde_json::json!([native, false, false, false, false, false, false])
+            );
+            if native {
+                expected.founder_name = name.to_owned();
+            }
+            assert_eq!(engine.organism(selected).unwrap(), expected);
+            assert_eq!(engine.organism(peer).unwrap(), other);
+            assert_eq!(engine.snapshot().species, species);
+            assert!(engine.snapshot().organisms.contains(&expected));
+
+            let resumed = SaveFile::decode(&SaveFile::encode(&engine).unwrap()).unwrap();
+            assert_eq!(
+                resumed.organism(selected).unwrap().founder_name,
+                expected.founder_name
+            );
+            assert_eq!(
+                resumed.organism(peer).unwrap().founder_name,
+                other.founder_name
+            );
+            if native {
+                let simulation = engine.export_native_sim().unwrap();
+                let file = crate::native_binary::NativeRecordFile::decode(&simulation).unwrap();
+                let tail = crate::native_binary::NativeSimulationTail::decode(&file.tail).unwrap();
+                assert_eq!(
+                    tail.integer("species_count").unwrap() as usize,
+                    species.len()
+                );
+                assert_eq!(
+                    file.robots[0].bytes("species_name").unwrap(),
+                    name.as_bytes()
+                );
+                let resumed_native = Engine::from_native_sim(&simulation).unwrap();
+                let renamed = resumed_native
+                    .snapshot()
+                    .organisms
+                    .iter()
+                    .find(|robot| robot.unique_id == expected.unique_id)
+                    .unwrap();
+                assert_eq!(renamed.founder_name, name);
+            }
+        }
     }
 
     fn populated_native_cpu_candidate_fixture() -> Engine {

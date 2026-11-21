@@ -257,7 +257,8 @@ public sealed class RobotDetailsWindow : Window
         var memorySummary = organism.Memory.Count == 0
             ? "NONE"
             : string.Join(", ", organism.Memory.Select(cell => cell.Address.ToString(CultureInfo.InvariantCulture)));
-        _subtitle.Text = $"LIVE ROBOT {organism.Slot}:{organism.Generation} · {species.ToUpperInvariant()} · TICK {snapshot.Tick:N0}";
+        var founder = snapshot.NativeCycle is not null ? organism.FounderName : null;
+        _subtitle.Text = $"LIVE ROBOT {organism.Slot}:{organism.Generation} · {founder ?? species.ToUpperInvariant()} · TICK {snapshot.Tick:N0}";
         _facts.Text = string.Join(Environment.NewLine,
             $"ARRAY ID       {organism.Slot:N0}",
             $"UNIQUE ID      {organism.UniqueId:N0}",

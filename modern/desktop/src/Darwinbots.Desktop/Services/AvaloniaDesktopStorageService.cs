@@ -138,7 +138,18 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         return true;
     }
 
-    public async Task<bool> SaveDnaAsync(TopLevel owner, string suggestedFileName, string dna, MutationProfileUpdate? mutationProfile)
+    public async Task<bool> SaveDnaAsync(TopLevel owner, string suggestedFileName, string dna, MutationProfileUpdate? mutationProfile) =>
+        await PickAndWriteDnaAsync(owner, suggestedFileName, dna, mutationProfile) is not null;
+
+    public async Task<SavedRobotDna?> SaveDnaWithNameAsync(TopLevel owner, string suggestedFileName, string dna,
+        MutationProfileUpdate? mutationProfile)
+    {
+        var file = await PickAndWriteDnaAsync(owner, suggestedFileName, dna, mutationProfile);
+        return file is null ? null : new(Path.GetFileName(LocalPath(file)) ?? file.Name);
+    }
+
+    private static async Task<IStorageFile?> PickAndWriteDnaAsync(TopLevel owner, string suggestedFileName, string dna,
+        MutationProfileUpdate? mutationProfile)
     {
         var file = await owner.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
@@ -146,9 +157,8 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
             SuggestedFileName = suggestedFileName,
             FileTypeChoices = [RobotFileType()],
         });
-        if (file is null) return false;
-        await WriteDnaFileAsync(file, dna, mutationProfile);
-        return true;
+        if (file is not null) await WriteDnaFileAsync(file, dna, mutationProfile);
+        return file;
     }
 
     public static async Task WriteDnaFileAsync(

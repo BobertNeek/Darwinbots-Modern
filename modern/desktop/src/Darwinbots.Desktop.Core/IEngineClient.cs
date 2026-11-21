@@ -54,6 +54,7 @@ public interface IEngineClient : IDisposable
         throw new NotSupportedException("Species settings are unavailable in this engine client.");
     void SetSpeciesColor(uint species, uint color);
     void MakeNewSpecies(uint slot, uint generation, string name, uint color);
+    bool RenameRobotFounder(uint slot, uint generation, string name) => false;
     void UpdateLegacyRestrictions(bool robotFixingAllowed, bool asexualReproductionAllowed);
     void ConfigurePlayerBot(PlayerBotConfig config);
     void SetPlayerBotKey(uint slot, uint generation, int keyCode, bool pressed);

@@ -71,6 +71,7 @@ public static class NativeSnapshotParser
             Descendants = organism.Descendants,
             SimulationId = organism.SimulationId,
             UniqueId = organism.UniqueId,
+            FounderName = organism.FounderName,
             VirusTimer = organism.VirusTimer,
             Touch = organism.Touch,
             Taste = organism.Taste,
@@ -930,7 +931,8 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("mutation_profile")] NativeMutationProfile? MutationProfile,
         [property: JsonPropertyName("dna_length")] uint DnaLength,
         [property: JsonPropertyName("gene_count")] uint GeneCount,
-        [property: JsonPropertyName("flags")] NativeOrganismFlags? Flags);
+        [property: JsonPropertyName("flags")] NativeOrganismFlags? Flags,
+        [property: JsonPropertyName("founder_name")] string? FounderName);
 
     private sealed record NativeOrganismFlags([property: JsonPropertyName("corpse")] bool Corpse,
         [property: JsonPropertyName("hidden")] bool Hidden);
