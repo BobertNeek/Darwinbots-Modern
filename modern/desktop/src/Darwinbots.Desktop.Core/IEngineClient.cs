@@ -190,6 +190,9 @@ public interface IEngineClient : IDisposable
     }
     NativeGraphRecordingState? ReadNativeGraphRecording() => null;
     void UpdateNativeGraphRecording(string? runStamp, IReadOnlyList<NativeGraphRecordingRow> graphs) { }
+    NativeGraphLayoutState? ReadNativeGraphLayout() => null;
+    void UpdateNativeGraphLayout(IReadOnlyList<NativeGraphLayoutRow> graphs,
+        IReadOnlyList<NativeGraphCustomQuery>? customQueries = null) { }
     byte[] Save();
     byte[] SaveWithoutRestartMode() => throw new NotSupportedException("This engine client cannot save without restart mode state.");
     byte[] SaveLegacy() => throw new NotSupportedException("This engine client does not support legacy simulation export.");

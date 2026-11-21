@@ -656,6 +656,24 @@ public sealed class SimulationSession : IAsyncDisposable
         CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.UpdateNativeGraphRecording(runStamp, graphs), cancellationToken, publishSnapshot: false);
 
+    public async Task<NativeGraphLayoutState?> ReadNativeGraphLayoutAsync(CancellationToken cancellationToken = default)
+    {
+        NativeGraphLayoutState? layout = null;
+        await Enqueue(engine => layout = engine.ReadNativeGraphLayout(), cancellationToken, publishSnapshot: false)
+            .ConfigureAwait(false);
+        return layout;
+    }
+
+    public Task UpdateNativeGraphLayoutAsync(IReadOnlyList<NativeGraphLayoutRow> graphs,
+        IReadOnlyList<NativeGraphCustomQuery>? customQueries = null, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(graphs);
+        var stableGraphs = graphs.ToArray();
+        var stableQueries = customQueries?.ToArray();
+        return Enqueue(engine => engine.UpdateNativeGraphLayout(stableGraphs, stableQueries), cancellationToken,
+            publishSnapshot: false);
+    }
+
     public Task UpdateEnvironmentAsync(EnvironmentUpdate update, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.UpdateEnvironment(update), cancellationToken);
 

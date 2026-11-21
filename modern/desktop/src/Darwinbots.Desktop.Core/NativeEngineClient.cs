@@ -1247,6 +1247,36 @@ public sealed partial class NativeEngineClient : IEngineClient
         }, "update original graph recording");
     }
 
+    public NativeGraphLayoutState ReadNativeGraphLayout()
+    {
+        EnsureAlive();
+        var result = ExecuteBatchForResult(
+            new { version = 1, commands = new[] { new { type = "read_native_graph_layout" } } },
+            "read original graph layout").GetProperty("results")[0];
+        return result.Deserialize<NativeGraphLayoutState>(NativeRecordingJson)
+            ?? throw new InvalidDataException("The original graph layout result is missing.");
+    }
+
+    public void UpdateNativeGraphLayout(IReadOnlyList<NativeGraphLayoutRow> graphs,
+        IReadOnlyList<NativeGraphCustomQuery>? customQueries = null)
+    {
+        EnsureAlive();
+        ArgumentNullException.ThrowIfNull(graphs);
+        ExecuteBatch(new
+        {
+            version = 1,
+            commands = new[] { new
+            {
+                type = "update_native_graph_layout",
+                graphs = graphs.Select(row => new
+                {
+                    graph_index = row.GraphIndex, visible = row.Visible, left = row.Left, top = row.Top,
+                }).ToArray(),
+                custom_queries = customQueries?.Select(query => new { slot = query.Slot, expression = query.Expression }).ToArray() ?? [],
+            } },
+        }, "update original graph layout");
+    }
+
     public void UpdateEnvironment(EnvironmentUpdate update)
     {
         ArgumentNullException.ThrowIfNull(update);
