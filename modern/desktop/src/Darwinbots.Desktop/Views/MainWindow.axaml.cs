@@ -75,6 +75,7 @@ public sealed partial class MainWindow : Window
     private readonly IDesktopStorageService _storage;
     private bool _tickInFlight;
     private bool _navigationInFlight;
+    private int _worldLoadGeneration;
     private readonly SemaphoreSlim _advanceGate = new(1, 1);
     private volatile bool _loadingSimulation;
     private OrganismKey? _moveOrganism;
@@ -1592,7 +1593,8 @@ public sealed partial class MainWindow : Window
         if (session.LatestSnapshot.NativeCycle.HasValue && tab is RobotDetailsTab.Facts or RobotDetailsTab.Dna)
         {
             var info = _toolWindows.ShowOrActivate(NativeRobotInfoKey,
-                () => new RobotDetailsWindow(session, focus, tab, SelectedRobotKey) { Topmost = true });
+                () => new RobotDetailsWindow(session, focus, tab, SelectedRobotKey,
+                    parent => ReproduceFromNativeRobotInfoAsync(session, parent)) { Topmost = true });
             if (tab == RobotDetailsTab.Dna) info.SelectTab(tab);
             info.SetFollowedSnapshot(session.LatestSnapshot, tab == RobotDetailsTab.Dna ? focus : null);
             return info;
@@ -1605,6 +1607,26 @@ public sealed partial class MainWindow : Window
         window.SelectTab(tab);
         window.SetSnapshot(session.LatestSnapshot);
         return window;
+    }
+
+    private async Task<OrganismKey?> ReproduceFromNativeRobotInfoAsync(SimulationSession session, OrganismSnapshot displayed)
+    {
+        var generation = _worldLoadGeneration;
+        await _advanceGate.WaitAsync();
+        try
+        {
+            if (!IsVisible || _loadingSimulation || _session != session || _worldLoadGeneration != generation)
+                throw new InvalidOperationException("The simulation changed before reproduction.");
+
+            var snapshot = session.LatestSnapshot;
+            if (!snapshot.NativeCycle.HasValue || !snapshot.Organisms.Any(robot => robot.Slot == displayed.Slot
+                && robot.Generation == displayed.Generation && robot.UniqueId == displayed.UniqueId
+                && robot.SimulationId == displayed.SimulationId))
+                throw new InvalidOperationException("The displayed robot is no longer available.");
+
+            return await session.ReproduceNativeRobotInfoAsync(new(displayed.Slot, displayed.Generation));
+        }
+        finally { _advanceGate.Release(); }
     }
 
     private Task<LegacyCommandResult> ShowSelectedPhylogenyAsync()
@@ -2958,6 +2980,7 @@ public sealed partial class MainWindow : Window
             if (_session is null) return;
             _loadingSimulation = true;
             await _session.LoadAsync(save);
+            _worldLoadGeneration++;
             _safeModeRecoveryWorld = isSafeModeRecovery;
             Viewport.SelectKey(_viewModel.SelectedKey);
             // A rejected load publishes no snapshot and must keep user-closed

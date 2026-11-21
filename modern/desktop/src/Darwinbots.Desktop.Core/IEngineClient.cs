@@ -35,6 +35,8 @@ public interface IEngineClient : IDisposable
             request.SecondParent?.Slot,
             request.SecondParent?.Generation,
             request.Position);
+    OrganismKey? ReproduceNativeRobotInfo(OrganismKey parent) =>
+        throw new NotSupportedException("Native Robot Info reproduction is unavailable in this engine client.");
     void SwitchBackend(string backend);
     void AddObstacle(ObstacleSnapshot obstacle);
     void UpdateObstacle(ObstacleSnapshot obstacle);

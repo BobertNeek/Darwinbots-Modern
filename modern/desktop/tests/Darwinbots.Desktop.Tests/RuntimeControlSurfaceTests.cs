@@ -2003,6 +2003,8 @@ internal sealed class RecordingEngineClient : IEngineClient
     public ConcurrentQueue<LocalModeConfig> LocalModeConfigs { get; } = [];
     public ConcurrentQueue<(uint Slot, uint Generation, string Dna)> DnaReplacements { get; } = [];
     public ConcurrentQueue<(uint Slot, uint Generation)> DnaExports { get; } = [];
+    public ConcurrentQueue<(OrganismKey Parent, ulong Tick, int? NativeCycle)> NativeRobotInfoReproductions { get; } = [];
+    public OrganismKey? NativeRobotInfoResult { get; set; }
     public ConcurrentQueue<OrganismKey[]> ExportedGroups { get; } = [];
     public ConcurrentQueue<bool> RemoveManySuppressions { get; } = [];
     public byte[] ExportedOrganismPayload { get; } = Encoding.ASCII.GetBytes("engine-owned organism fixture");
@@ -2073,6 +2075,11 @@ internal sealed class RecordingEngineClient : IEngineClient
     {
         Calls.Enqueue($"Reproduce:{firstSlot}:{firstGeneration}:{secondSlot?.ToString() ?? "none"}");
         return new OrganismKey(41, 0);
+    }
+    public OrganismKey? ReproduceNativeRobotInfo(OrganismKey parent)
+    {
+        NativeRobotInfoReproductions.Enqueue((parent, _tick, _snapshot.NativeCycle));
+        return NativeRobotInfoResult;
     }
     public void SwitchBackend(string backend) { Backend = backend.ToUpperInvariant(); Calls.Enqueue($"Switch:{backend}"); }
     public void AddObstacle(ObstacleSnapshot obstacle) => Calls.Enqueue($"AddObstacle:{obstacle.Id}");
