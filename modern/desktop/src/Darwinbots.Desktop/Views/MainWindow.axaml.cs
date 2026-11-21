@@ -77,6 +77,8 @@ public sealed partial class MainWindow : Window
     private bool _navigationInFlight;
     private bool _windowClosed;
     private int _worldLoadGeneration;
+    private readonly HashSet<RobotConsoleWindow> _nativeConsoleObservers = [];
+    private bool _recordNativeConsolePlay;
     private readonly SemaphoreSlim _advanceGate = new(1, 1);
     private volatile bool _loadingSimulation;
     private OrganismKey? _moveOrganism;
@@ -935,6 +937,7 @@ public sealed partial class MainWindow : Window
 
     private LegacyCommandResult PauseSimulation()
     {
+        _recordNativeConsolePlay = false;
         _runTimer.Stop();
         return LegacyCommandResult.Success("PAUSED");
     }
@@ -1641,23 +1644,43 @@ public sealed partial class MainWindow : Window
         if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
         var focus = new OrganismKey(organism.Slot, organism.Generation);
         var generation = _worldLoadGeneration;
+        var native = session.LatestSnapshot.NativeCycle.HasValue;
         _toolWindows.ShowOrActivate(
             $"robot-console:{generation}:{focus.Slot}:{focus.Generation}",
-            () => new RobotConsoleWindow(
-                session,
-                focus,
-                () =>
+            () =>
+            {
+                var window = new RobotConsoleWindow(
+                    session,
+                    focus,
+                    () =>
+                    {
+                        ValidateNativeConsole();
+                        Run_Click(this, new RoutedEventArgs());
+                        _recordNativeConsolePlay = native;
+                        return Task.CompletedTask;
+                    },
+                    () =>
+                    {
+                        ValidateNativeConsole();
+                        Pause_Click(this, new RoutedEventArgs());
+                        return Task.CompletedTask;
+                    },
+                    (count, cancellationToken) => AdvanceSimulationCoreAsync(count, session, generation,
+                        cancellationToken, consoleStep: native), organism.UniqueId);
+                if (native)
                 {
-                    Run_Click(this, new RoutedEventArgs());
-                    return Task.CompletedTask;
-                },
-                () =>
-                {
-                    Pause_Click(this, new RoutedEventArgs());
-                    return Task.CompletedTask;
-                },
-                (count, cancellationToken) => AdvanceSimulationCoreAsync(count, session, generation, cancellationToken)));
+                    _nativeConsoleObservers.Add(window);
+                    window.Closed += (_, _) => _nativeConsoleObservers.Remove(window);
+                }
+                return window;
+            });
         return LegacyCommandResult.Success("ROBOT CONSOLE OPEN");
+
+        void ValidateNativeConsole()
+        {
+            if (native && (_windowClosed || _session != session || _worldLoadGeneration != generation))
+                throw new InvalidOperationException("This console belongs to a previous simulation.");
+        }
     }
 
     private async Task<LegacyCommandResult> ShowSelectedGeneActivationsAsync()
@@ -2201,6 +2224,7 @@ public sealed partial class MainWindow : Window
 
     private async void Step_Click(object? sender, RoutedEventArgs e)
     {
+        _recordNativeConsolePlay = false;
         if (_session is null) return;
         try
         {
@@ -2318,6 +2342,7 @@ public sealed partial class MainWindow : Window
 
     private void Run_Click(object? sender, RoutedEventArgs e)
     {
+        _recordNativeConsolePlay = false;
         _runTimer.Start();
         _viewModel.Status = "RUNNING";
     }
@@ -2974,6 +2999,8 @@ public sealed partial class MainWindow : Window
             await _session.LoadWithNativeRestartSourcesAsync(save,
                 source => SetupStorageService.ResolveNativeRestartSource(source, sourcePath, mainDirectory));
             _worldLoadGeneration++;
+            _nativeConsoleObservers.Clear();
+            _recordNativeConsolePlay = false;
             // A rejected load publishes no snapshot and must keep user-closed
             // graphs closed. Loading publications defer this until success.
             _automaticEvolutionGraphBoundary = null;
@@ -2990,7 +3017,8 @@ public sealed partial class MainWindow : Window
     private Task AdvanceSimulationAsync(uint count) => AdvanceSimulationCoreAsync(count);
 
     private async Task<(ulong Tick, ulong Advanced)> AdvanceSimulationCoreAsync(uint count,
-        SimulationSession? expectedSession = null, int? expectedGeneration = null, CancellationToken cancellationToken = default)
+        SimulationSession? expectedSession = null, int? expectedGeneration = null, CancellationToken cancellationToken = default,
+        bool consoleStep = false)
     {
         await _advanceGate.WaitAsync(cancellationToken);
         try
@@ -3017,7 +3045,9 @@ public sealed partial class MainWindow : Window
                 // With restart enabled, let the host retain the completed cycle
                 // before another engine tick can consume the pending restart.
                 var observesOrdinaryRestart = before.OrdinaryRestartAvailable && before.OrdinaryRestartOnExtinction;
-                var batch = observesOrdinaryRestart || requiresOriginalSource
+                var recordConsole = before.NativeCycle.HasValue && _nativeConsoleObservers.Count > 0
+                    && (consoleStep || _recordNativeConsolePlay);
+                var batch = observesOrdinaryRestart || requiresOriginalSource || recordConsole
                     ? 1u
                     : CycleAutosavePolicy.LimitBatch(before.Tick, count, _safemodeBackup, interval, before.LocalMode, before.NativeCycle);
                 if (requiresOriginalSource)
@@ -3035,6 +3065,8 @@ public sealed partial class MainWindow : Window
                 else await session.StepAsync(batch, cancellationToken);
                 count -= batch;
                 var after = session.LatestSnapshot;
+                if (recordConsole)
+                    _nativeConsoleObservers.RemoveWhere(window => !window.RecordNativeCycle(after, before.Tick));
                 if (after.OrdinaryRestartPending)
                     await RecordDeadSnapshotAsync(after);
                 if (_lastAutomaticSaveTick != after.Tick
@@ -3042,13 +3074,18 @@ public sealed partial class MainWindow : Window
                     await SaveAutomaticCheckpointAsync();
                 if (after.OrdinaryRestartPending)
                     await session.FinishOrdinaryRestartAsync();
+                if (recordConsole && !consoleStep && !_runTimer.IsEnabled) break;
                 if (count > 0 && requiresOriginalSource)
                     requiresOriginalSource = await session.HasUnresolvedNativeRepopulationSourcesAsync();
             }
             var tick = session.LatestSnapshot.Tick;
             return (tick, tick >= startingTick ? tick - startingTick : 0);
         }
-        finally { _advanceGate.Release(); }
+        finally
+        {
+            if (consoleStep) _recordNativeConsolePlay = false;
+            _advanceGate.Release();
+        }
     }
 
     private async Task StepResolvingNativeRepopulationSourcesAsync(SimulationSession session)
