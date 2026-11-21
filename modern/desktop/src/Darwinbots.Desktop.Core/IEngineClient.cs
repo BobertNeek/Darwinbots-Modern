@@ -11,6 +11,12 @@ public interface IEngineClient : IDisposable
             throw new NotSupportedException("Original repopulation sources are unavailable in this engine client.");
         Tick(count);
     }
+    IReadOnlyList<NativeConsoleActivationFrame> TickWatchingNativeConsoles(IReadOnlyList<OrganismKey> focuses,
+        bool requireNativeRepopulationSource, IReadOnlyList<ulong> cancelledLineages)
+    {
+        Tick(1, requireNativeRepopulationSource, cancelledLineages);
+        return [];
+    }
     DnaImportReport ImportDna(string dna, float[]? position = null);
     int ImportOrganism(ReadOnlyMemory<byte> payload) => throw new NotSupportedException("This engine client does not support organism interchange.");
     DnaImportReport ImportSpecies(SpeciesImport species);

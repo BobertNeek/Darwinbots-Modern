@@ -3047,6 +3047,8 @@ public sealed partial class MainWindow : Window
                 var observesOrdinaryRestart = before.OrdinaryRestartAvailable && before.OrdinaryRestartOnExtinction;
                 var recordConsole = before.NativeCycle.HasValue && _nativeConsoleObservers.Count > 0
                     && (consoleStep || _recordNativeConsolePlay);
+                var consoleFocuses = recordConsole ? _nativeConsoleObservers.Select(window => window.WatchedRobot).ToArray() : null;
+                IReadOnlyList<NativeConsoleActivationFrame> terminalFrames = [];
                 var batch = observesOrdinaryRestart || requiresOriginalSource || recordConsole
                     ? 1u
                     : CycleAutosavePolicy.LimitBatch(before.Tick, count, _safemodeBackup, interval, before.LocalMode, before.NativeCycle);
@@ -3054,7 +3056,7 @@ public sealed partial class MainWindow : Window
                 {
                     try
                     {
-                        await StepResolvingNativeRepopulationSourcesAsync(session);
+                        terminalFrames = await StepResolvingNativeRepopulationSourcesAsync(session, consoleFocuses);
                     }
                     catch (MissingNativeRepopulationSourceException)
                     {
@@ -3062,11 +3064,14 @@ public sealed partial class MainWindow : Window
                         break;
                     }
                 }
+                else if (consoleFocuses is not null)
+                    terminalFrames = await session.StepWatchingNativeConsolesAsync(consoleFocuses,
+                        requireNativeRepopulationSource: false, [], cancellationToken);
                 else await session.StepAsync(batch, cancellationToken);
                 count -= batch;
                 var after = session.LatestSnapshot;
                 if (recordConsole)
-                    _nativeConsoleObservers.RemoveWhere(window => !window.RecordNativeCycle(after, before.Tick));
+                    _nativeConsoleObservers.RemoveWhere(window => !window.RecordNativeCycle(after, before.Tick, terminalFrames));
                 if (after.OrdinaryRestartPending)
                     await RecordDeadSnapshotAsync(after);
                 if (_lastAutomaticSaveTick != after.Tick
@@ -3088,15 +3093,19 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private async Task StepResolvingNativeRepopulationSourcesAsync(SimulationSession session)
+    private async Task<IReadOnlyList<NativeConsoleActivationFrame>> StepResolvingNativeRepopulationSourcesAsync(
+        SimulationSession session, IReadOnlyList<OrganismKey>? consoleFocuses)
     {
         List<ulong> cancelledLineages = [];
         while (true)
         {
             try
             {
+                if (consoleFocuses is not null)
+                    return await session.StepWatchingNativeConsolesAsync(consoleFocuses,
+                        requireNativeRepopulationSource: true, cancelledLineages);
                 await session.StepRequiringNativeRepopulationSourceAsync(cancelledLineages);
-                return;
+                return [];
             }
             catch (MissingNativeRepopulationSourceException error)
             {

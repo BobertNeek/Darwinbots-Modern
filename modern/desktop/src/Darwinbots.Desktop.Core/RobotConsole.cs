@@ -1,5 +1,7 @@
 namespace Darwinbots.Desktop.Core;
 
+public sealed record NativeConsoleActivationFrame(OrganismKey Focus, ulong UniqueId, ulong Tick, bool[] Activations);
+
 public sealed record RobotConsoleCommand(string Name, IReadOnlyList<string> Arguments)
 {
     public static RobotConsoleCommand Parse(string input)

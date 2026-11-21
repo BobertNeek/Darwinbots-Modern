@@ -7,6 +7,10 @@ namespace Darwinbots.Desktop.Core;
 public sealed partial class NativeEngineClient : IEngineClient
 {
     private const string LibraryName = "darwinbots_engine";
+    private static readonly JsonSerializerOptions NativeConsoleJson = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+    };
     private IntPtr _engine;
     private float _worldWidth;
     private float _worldHeight;
@@ -104,10 +108,18 @@ public sealed partial class NativeEngineClient : IEngineClient
 
     public void Tick(uint count = 1) => Tick(count, requireNativeRepopulationSource: false, []);
 
-    public void Tick(uint count, bool requireNativeRepopulationSource, IReadOnlyList<ulong> cancelledLineages)
+    public void Tick(uint count, bool requireNativeRepopulationSource, IReadOnlyList<ulong> cancelledLineages) =>
+        Advance(count, requireNativeRepopulationSource, cancelledLineages);
+
+    public IReadOnlyList<NativeConsoleActivationFrame> TickWatchingNativeConsoles(IReadOnlyList<OrganismKey> focuses,
+        bool requireNativeRepopulationSource, IReadOnlyList<ulong> cancelledLineages) =>
+        Advance(1, requireNativeRepopulationSource, cancelledLineages, focuses);
+
+    private IReadOnlyList<NativeConsoleActivationFrame> Advance(uint count, bool requireNativeRepopulationSource,
+        IReadOnlyList<ulong> cancelledLineages, IReadOnlyList<OrganismKey>? consoleFocuses = null)
     {
         EnsureAlive();
-        if (count == 0) return;
+        if (count == 0) return [];
         if (requireNativeRepopulationSource && count != 1)
             throw new ArgumentOutOfRangeException(nameof(count), "Missing native sources must be resolved one cycle at a time.");
         if (_sampleRestartClockPerCycle && count is > 1 and <= 1_000_000)
@@ -115,7 +127,22 @@ public sealed partial class NativeEngineClient : IEngineClient
             // External league/staged restarts take a new Timer sample for each
             // original cycle. Each successful cycle commits before the next begins.
             for (uint cycle = 0; cycle < count; cycle++) Tick(1);
-            return;
+            return [];
+        }
+        if (consoleFocuses is { Count: > 0 })
+        {
+            var watchedTick = new
+            {
+                type = "tick", count,
+                require_native_repopulation_source = requireNativeRepopulationSource,
+                cancelled_native_repopulation_lineages = cancelledLineages,
+                console_focuses = consoleFocuses.Select(focus => new { slot = focus.Slot, generation = focus.Generation }).ToArray(),
+            };
+            var result = ExecuteBatchForResult(new { version = 1, commands = new object[] { NativeRestartSeedCommand(), watchedTick } },
+                "advance simulation with robot consoles").GetProperty("results")[1];
+            return result.ValueKind == JsonValueKind.Object && result.TryGetProperty("console_activations", out var activations)
+                ? activations.Deserialize<NativeConsoleActivationFrame[]>(NativeConsoleJson) ?? []
+                : [];
         }
         object command = requireNativeRepopulationSource
             ? new
@@ -127,6 +154,7 @@ public sealed partial class NativeEngineClient : IEngineClient
             }
             : new { type = "tick", count };
         ExecuteBatch(new { version = 1, commands = new[] { NativeRestartSeedCommand(), command } }, "advance simulation");
+        return [];
     }
 
     public DnaImportReport ImportDna(string dna, float[]? position = null)
