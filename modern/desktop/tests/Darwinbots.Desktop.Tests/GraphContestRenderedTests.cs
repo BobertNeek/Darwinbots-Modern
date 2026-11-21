@@ -174,6 +174,18 @@ public sealed class GraphContestRenderedTests
                     suite.RecordNativeSamples([new NativeGraphRecordingSample(2_004, 2_004, [], [])], run.Generation);
                     Assert.Equal(1_000, series.Samples.Count);
                     Assert.Equal(new GraphSample(2_004, 0), series.Samples[^1]);
+
+                    suite.ViewModel.SelectedChoice = GraphCatalog.For(GraphMetric.CustomizableGraph1);
+                    suite.FindControl<GraphSuiteView>("GraphView")!.FindControl<Button>("OpenGraphButton")!
+                        .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    var custom = Assert.Single(suite.ViewModel.RunningGraphs.Where(value => value.UsesSampleOrder
+                        && value.Metric == imported.Metric));
+                    run.BeginRun("new-native-run");
+                    probe = Sample(1, 42);
+                    suite.SetSnapshot(opening);
+                    Assert.Equal(new GraphSample(1, 42), Assert.Single(series.Samples));
+                    Assert.Equal(new GraphSample(1, 42), Assert.Single(custom.Samples));
+                    Assert.Equal(Enumerable.Range(1, 999).Select(value => (double)value), imported.Samples.Select(sample => sample.Value));
                 }
                 finally { suite.Close(); }
 
