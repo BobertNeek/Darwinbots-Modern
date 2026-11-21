@@ -12576,11 +12576,7 @@ impl Engine {
                     && classic_table.as_ref().map_or(species.reseed, |table| {
                         table.contains(&SpeciesId(index as u32))
                     })
-                    && self
-                        .species_templates
-                        .get(index)
-                        .and_then(Option::as_ref)
-                        .is_some())
+                    && self.repopulation_source(index).is_some())
                 .then_some(index)
             })
             .collect();
@@ -12647,30 +12643,39 @@ impl Engine {
             } else {
                 eligible[random as usize % eligible.len()]
             };
-            let template = self.species_templates[species_index]
-                .as_ref()
-                .unwrap()
-                .clone();
-            let position = self
-                .native_placement_position(SpeciesId(species_index as u32), advance_random(random));
-            let dna =
-                self.classic_native_start_dna(SpeciesId(species_index as u32), template.dna)?;
-            let id = self.spawn_native_script_robot(
-                dna,
-                SpeciesId(species_index as u32),
-                position,
-                origin.as_ref(),
-            )?;
-            self.apply_classic_start_actor(id, SpeciesId(species_index as u32))?;
+            let species = SpeciesId(species_index as u32);
+            let (dna, initial_energy) = self.repopulation_source(species_index).unwrap();
+            let dna = dna.clone();
+            let position = self.native_placement_position(species, advance_random(random));
+            let dna = self.classic_native_start_dna(species, dna)?;
+            let id = self.spawn_native_script_robot(dna, species, position, origin.as_ref())?;
+            self.apply_classic_start_actor(id, species)?;
             let robot = self.slots.get_mut(id)?;
-            robot.materials.energy = template.initial_energy as f32;
+            robot.materials.energy = initial_energy as f32;
             robot.materials.synchronize_energy();
             if self.native_random.is_none() {
-                robot.program.memory.write(MEM_NRG, template.initial_energy);
+                robot.program.memory.write(MEM_NRG, initial_energy);
             }
             self.stats.reseeds = self.stats.reseeds.saturating_add(1);
         }
         Ok(())
+    }
+
+    fn repopulation_source(&self, index: usize) -> Option<(&LegacyDna, i32)> {
+        let bound = self.bound_native_repopulation_source(self.species.get(index)?);
+        if let Some(template) = self.species_templates.get(index).and_then(Option::as_ref) {
+            // Original aggiungirob loads the species' file. Imported templates
+            // without source text were cloned from a live genome. A later
+            // explicit roster edit supplies its own authoritative source.
+            let dna = if template.source_text.is_some() {
+                &template.dna
+            } else {
+                bound.map_or(&template.dna, |(dna, _)| dna)
+            };
+            return Some((dna, template.initial_energy));
+        }
+        let (dna, start_energy) = bound?;
+        Some((dna, start_energy?))
     }
 
     fn decay_corpses_phase(&mut self) -> Result<(), EngineError> {
