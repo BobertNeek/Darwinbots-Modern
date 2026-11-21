@@ -56,6 +56,7 @@ public interface IEngineClient : IDisposable
     void MakeNewSpecies(uint slot, uint generation, string name, uint color);
     void UpdateLegacyRestrictions(bool robotFixingAllowed, bool asexualReproductionAllowed);
     void ConfigurePlayerBot(PlayerBotConfig config);
+    void ConfigureNativePostDnaMemoryWatch(ulong requestId, OrganismKey? focus) { }
     void SetPlayerBotKey(uint slot, uint generation, int keyCode, bool pressed);
     void SetOrganismMemory(uint slot, uint generation, ushort address, int value);
     ushort ResolveMemoryAddress(string name) => ushort.TryParse(name, out var address) && address is >= 1 and <= 1000

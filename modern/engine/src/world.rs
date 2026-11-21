@@ -73,7 +73,10 @@ mod player_insertion;
 
 #[path = "world/file_teleporters.rs"]
 mod file_teleporters;
+mod native_post_dna_memory;
 mod species_settings;
+pub(crate) use native_post_dna_memory::NativePostDnaMemorySample;
+use native_post_dna_memory::NativePostDnaMemoryView;
 
 #[path = "world/file_transfer_transaction.rs"]
 mod file_transfer_transaction;
@@ -2324,10 +2327,13 @@ struct EngineCycleCheckpoint {
     native_energy: native_energy::NativeEnergyRuntime,
     native_skin_timer_seconds: Option<[f32; 2]>,
     death_poffs_enabled: bool,
+    post_dna_memory: NativePostDnaMemoryView,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct Engine {
+    #[serde(skip)]
+    post_dna_memory: NativePostDnaMemoryView,
     #[serde(default)]
     native_buckets: native_collisions::NativeBuckets,
     #[serde(skip, default)]
@@ -2624,6 +2630,7 @@ impl Engine {
             robot_fixing_allowed: legacy.robot_fixing_allowed,
             asexual_reproduction_allowed: legacy.asexual_reproduction_allowed,
             player_bot: PlayerBotState::default(),
+            post_dna_memory: NativePostDnaMemoryView::default(),
             restriction_options: RestrictionOptions::default(),
             local_mode: LocalModeState::default(),
             next_lineage_id: legacy.next_lineage_id,
@@ -2837,6 +2844,7 @@ impl Engine {
             robot_fixing_allowed: true,
             asexual_reproduction_allowed: true,
             player_bot: PlayerBotState::default(),
+            post_dna_memory: NativePostDnaMemoryView::default(),
             restriction_options: RestrictionOptions::default(),
             local_mode: LocalModeState::default(),
             next_lineage_id: 2,
@@ -5575,6 +5583,7 @@ impl Engine {
             native_energy: self.native_energy.clone(),
             native_skin_timer_seconds: self.native_skin_timer_seconds,
             death_poffs_enabled: self.death_poffs_enabled,
+            post_dna_memory: self.post_dna_memory.clone(),
         }
     }
 
@@ -5593,6 +5602,7 @@ impl Engine {
         self.native_energy = checkpoint.native_energy;
         self.native_skin_timer_seconds = checkpoint.native_skin_timer_seconds;
         self.death_poffs_enabled = checkpoint.death_poffs_enabled;
+        self.post_dna_memory = checkpoint.post_dna_memory;
         let checkpoint = checkpoint.checkpoint;
         self.config = checkpoint.config;
         self.slots = checkpoint.slots;
@@ -5694,6 +5704,7 @@ impl Engine {
         self.execute_dna_phase(&mut trace)?;
         self.phase_timings.dna = elapsed_ms(started);
         trace.phase(CyclePhase::DebuggerView);
+        self.capture_native_post_dna_memory();
         trace.phase(CyclePhase::AfterDna);
         self.clear_after_dna_phase();
         trace.phase(CyclePhase::PlayerBot);
@@ -5951,6 +5962,7 @@ impl Engine {
             robot_fixing_allowed: self.robot_fixing_allowed,
             asexual_reproduction_allowed: self.asexual_reproduction_allowed,
             player_bot: self.player_bot.clone(),
+            post_dna_memory: self.post_dna_memory.clone(),
             restriction_options: self.restriction_options.clone(),
             local_mode: self.local_mode.clone(),
             next_lineage_id: self.next_lineage_id,
@@ -6008,6 +6020,9 @@ impl Engine {
         };
         self.capabilities = capabilities;
         self.physics = physics;
+        if self.backend() != BackendKind::Cpu {
+            self.post_dna_memory = NativePostDnaMemoryView::default();
+        }
         self.pending_gpu_render_instances = None;
         self.pending_gpu_collision_pairs = None;
         self.publish_snapshot();

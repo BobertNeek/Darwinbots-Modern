@@ -77,6 +77,7 @@ public sealed partial class MainWindow : Window
     private bool _navigationInFlight;
     private readonly SemaphoreSlim _advanceGate = new(1, 1);
     private volatile bool _loadingSimulation;
+    private RobotDetailsWindow? _nativeRobotInfoWindow;
     private OrganismKey? _moveOrganism;
     private WorldInsertionController? _insertion;
     private bool _turbo;
@@ -1591,8 +1592,24 @@ public sealed partial class MainWindow : Window
         var focus = new OrganismKey(organism.Slot, organism.Generation);
         if (tab == RobotDetailsTab.Facts && session.LatestSnapshot.NativeCycle.HasValue)
         {
-            var info = _toolWindows.ShowOrActivate(NativeRobotInfoKey,
-                () => new RobotDetailsWindow(session, focus, tab, SelectedRobotKey) { Topmost = true });
+            var info = _toolWindows.ShowOrActivate(NativeRobotInfoKey, () =>
+            {
+                var viewer = new RobotDetailsWindow(session, focus, tab, SelectedRobotKey) { Topmost = true };
+                _nativeRobotInfoWindow = viewer;
+                void FollowSelection(object? sender, System.ComponentModel.PropertyChangedEventArgs change)
+                {
+                    if (change.PropertyName == nameof(MainWindowViewModel.SelectedId) && !_loadingSimulation)
+                        viewer.SynchronizePostDnaMemoryWatch();
+                }
+
+                _viewModel.PropertyChanged += FollowSelection;
+                viewer.Closed += (_, _) =>
+                {
+                    _viewModel.PropertyChanged -= FollowSelection;
+                    if (_nativeRobotInfoWindow == viewer) _nativeRobotInfoWindow = null;
+                };
+                return viewer;
+            });
             info.SetFollowedSnapshot(session.LatestSnapshot);
             return info;
         }
@@ -2946,6 +2963,7 @@ public sealed partial class MainWindow : Window
             _automaticEvolutionGraphBoundary = null;
             SynchronizeAutomaticEvolutionGraphs(_session.LatestSnapshot);
             await SynchronizeLoadedWorldAsync();
+            _nativeRobotInfoWindow?.SynchronizePostDnaMemoryWatch(reset: true);
         }
         finally
         {

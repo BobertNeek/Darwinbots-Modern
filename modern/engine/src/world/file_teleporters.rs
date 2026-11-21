@@ -207,6 +207,7 @@ impl Engine {
                     // apply to departures. Claim the input under a recovery name
                     // before accepting it; finish only after the cycle succeeds.
                     let mut candidate = SaveFile::decode(&SaveFile::encode(self)?)?;
+                    candidate.inherit_native_post_dna_memory_watch(self);
                     let imported = if bytes.starts_with(b"DB2S") {
                         LegacySimulationFile::decode(&bytes).and_then(|transfer| {
                             for organism in &transfer.organisms {

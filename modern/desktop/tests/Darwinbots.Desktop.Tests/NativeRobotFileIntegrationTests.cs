@@ -1,7 +1,9 @@
 using System.Reflection;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Darwinbots.Desktop.Controls;
 using Darwinbots.Desktop.Core;
+using Darwinbots.Desktop.Core.LegacyMenus;
 using Darwinbots.Desktop.Services;
 using Darwinbots.Desktop.ViewModels;
 using Darwinbots.Desktop.Views;
@@ -11,6 +13,90 @@ namespace Darwinbots.Desktop.Tests;
 
 public sealed class NativeRobotFileIntegrationTests
 {
+    [Fact]
+    public async Task NativeRobotInfoShowsWatchedPostDnaMemoryAndClearsItOnFocusLoadAndHide()
+    {
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            const ushort address = 772;
+            var setup = new WorldSetupOptions
+            {
+                Backend = "Cpu",
+                MutationSettings = MutationSettingsUpdate.Default with { Enabled = false },
+            };
+            using var engine = new NativeEngineClient(setup);
+            engine.ImportDna($"start 12345 {address} store stop", [500f, 500f]);
+            engine.ImportDna($"start 23456 {address} store stop", [900f, 500f]);
+            await using var session = new SimulationSession(engine);
+            var window = new MainWindow([], setup, new FixedFactory(engine), new AuditStorageService());
+            try
+            {
+                DesktopTestApplication.UseSession(window, session);
+                window.Show();
+                var robots = session.LatestSnapshot.Organisms;
+                Assert.Equal(2, robots.Count);
+                var first = new OrganismKey(robots[0].Slot, robots[0].Generation);
+                var second = new OrganismKey(robots[1].Slot, robots[1].Generation);
+                await session.ConfigurePlayerBotAsync(new(true, first, [new(65, address, -3000, Invert: true)]));
+                var viewModel = Field<MainWindowViewModel>(window, "_viewModel");
+                viewModel.Select(first);
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                menu.FindCommandItem(LegacyCommandId.RobotShowInfo)!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => window.OwnedWindows.OfType<RobotDetailsWindow>().Any());
+                var info = Assert.Single(window.OwnedWindows.OfType<RobotDetailsWindow>());
+                info.SelectTab(RobotDetailsTab.Memory);
+                var memory = Field<TextBox>(info, "_memory");
+                var watch = Field<CheckBox>(info, "_postDnaMemory");
+                Assert.True(watch.IsVisible);
+                Assert.False(watch.IsChecked);
+
+                await session.StepAsync();
+                await WaitFor(() => memory.Text?.Contains("-3000", StringComparison.Ordinal) == true);
+                Assert.Null(session.LatestSnapshot.NativePostDnaMemory);
+                await session.SetOrganismMemoryAsync(second.Slot, second.Generation, address, -4321);
+                var save = await session.SaveAsync();
+                watch.IsChecked = true;
+                Assert.Contains("-3000", memory.Text);
+                await session.StepAsync();
+                await WaitFor(() => memory.Text?.Contains("12345", StringComparison.Ordinal) == true);
+                Assert.Equal(-3000, session.LatestSnapshot.Organisms[0].Memory.Single(cell => cell.Address == address).Value);
+                Assert.Equal(first, session.LatestSnapshot.NativePostDnaMemory!.Focus);
+
+                info.SelectTab(RobotDetailsTab.Dna);
+                await session.StepAsync();
+                Assert.Null(session.LatestSnapshot.NativePostDnaMemory);
+                info.SelectTab(RobotDetailsTab.Memory);
+                Assert.True(watch.IsChecked);
+                Assert.Contains("-3000", memory.Text);
+                await session.StepAsync();
+                await WaitFor(() => memory.Text?.Contains("12345", StringComparison.Ordinal) == true);
+
+                viewModel.Select(second);
+                Assert.DoesNotContain("12345", memory.Text);
+                await session.StepAsync();
+                await WaitFor(() => memory.Text?.Contains("23456", StringComparison.Ordinal) == true);
+                Assert.Equal(second, session.LatestSnapshot.NativePostDnaMemory!.Focus);
+
+                var load = (Task)typeof(MainWindow).GetMethod("LoadSimulationAsync", BindingFlags.Instance | BindingFlags.NonPublic)!
+                    .Invoke(window, [save, false])!;
+                await load;
+                Assert.Null(session.LatestSnapshot.NativePostDnaMemory);
+                Assert.Contains("-4321", memory.Text);
+                await session.StepAsync();
+                await WaitFor(() => memory.Text?.Contains("23456", StringComparison.Ordinal) == true);
+
+                info.Hide();
+                await session.StepAsync();
+                Assert.Null(session.LatestSnapshot.NativePostDnaMemory);
+            }
+            finally
+            {
+                SetField(window, "_session", null);
+                if (window.IsVisible) window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
     [Fact]
     public async Task PickedSidecarProfileReachesOnlyItsActualNativeSpeciesAndSelectedExport()
     {

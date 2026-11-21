@@ -249,6 +249,10 @@ public static class NativeSnapshotParser
             RobotFixingAllowed = native.RobotFixingAllowed ?? true,
             AsexualReproductionAllowed = native.AsexualReproductionAllowed ?? true,
             PlayerBot = playerBot,
+            NativePostDnaMemory = native.NativePostDnaMemory is { Focus: { } watched } sample
+                ? new(sample.RequestId, sample.Tick, new(watched.Slot, watched.Generation),
+                    (sample.Memory ?? []).Select(cell => new MemoryCellSnapshot(cell.Address, cell.Value)).ToArray())
+                : null,
             RestrictionOptions = restrictionOptions,
             Stats = stats,
             WorldSize = native.WorldSize is { Length: 2 } ? native.WorldSize : [16_000f, 12_000f],
@@ -535,6 +539,7 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("robot_fixing_allowed")] bool? RobotFixingAllowed,
         [property: JsonPropertyName("asexual_reproduction_allowed")] bool? AsexualReproductionAllowed,
         [property: JsonPropertyName("player_bot")] NativePlayerBot? PlayerBot,
+        [property: JsonPropertyName("native_post_dna_memory")] NativePostDnaMemory? NativePostDnaMemory,
         [property: JsonPropertyName("restriction_options")] NativeRestrictionOptions? RestrictionOptions,
         [property: JsonPropertyName("stats")] NativeStats? Stats,
         [property: JsonPropertyName("obstacles")] NativeObstacle[]? Obstacles,
@@ -547,6 +552,12 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("phase_timings")] NativePhaseTimings? PhaseTimings,
         [property: JsonPropertyName("local_mode")] NativeLocalMode? LocalMode,
         [property: JsonPropertyName("death_poffs_enabled")] bool? DeathPoffsEnabled = null);
+
+    private sealed record NativePostDnaMemory(
+        [property: JsonPropertyName("request_id")] ulong RequestId,
+        [property: JsonPropertyName("tick")] ulong Tick,
+        [property: JsonPropertyName("focus")] NativeId? Focus,
+        [property: JsonPropertyName("memory")] NativeMemoryCell[]? Memory);
 
     private sealed record NativePlayerBot(
         [property: JsonPropertyName("enabled")] bool Enabled,

@@ -17,17 +17,27 @@ public enum RobotDetailsTab
 
 public sealed class RobotDetailsWindow : Window
 {
+    private static long _nextPostDnaMemoryRequestId;
     private readonly SimulationSession? _session;
     private readonly Func<OrganismKey?>? _readFocus;
     private OrganismKey? _focus;
     private ulong _followedTick;
     private long _dnaReadVersion;
+    private ulong _postDnaMemoryRequestId;
+    private OrganismKey? _postDnaMemoryFocus;
+    private bool _closed;
     private readonly RobotDiagnosticModel _diagnostic = new();
     private readonly TextBlock _subtitle = new();
     private readonly TextBlock _facts = new();
     private readonly TextBlock _factsTab = new();
     private readonly TextBox _dna = new();
     private readonly TextBox _memory = new();
+    private readonly CheckBox _postDnaMemory = new()
+    {
+        Name = "PostDnaMemory",
+        Content = "Display memory after DNA execution, before physics",
+        IsVisible = false,
+    };
     private readonly TextBlock _activationSummary = new();
     private readonly StackPanel _activationTimeline = new();
     private readonly TextBlock _status = new();
@@ -131,7 +141,10 @@ public sealed class RobotDetailsWindow : Window
             Content = new Border
             {
                 Padding = new Thickness(12),
-                Child = _memory,
+                Child = new DockPanel
+                {
+                    Children = { _postDnaMemory, _memory },
+                },
             },
         });
         _tabs.Items.Add(new TabItem
@@ -152,6 +165,13 @@ public sealed class RobotDetailsWindow : Window
             },
         });
         _tabs.SelectedIndex = (int)initialTab;
+        DockPanel.SetDock(_postDnaMemory, Dock.Top);
+        _postDnaMemory.IsCheckedChanged += (_, _) => SynchronizePostDnaMemoryWatch();
+        _tabs.SelectionChanged += (_, _) => SynchronizePostDnaMemoryWatch();
+        PropertyChanged += (_, change) =>
+        {
+            if (change.Property == IsVisibleProperty) SynchronizePostDnaMemoryWatch();
+        };
 
         var root = new Grid { RowDefinitions = new RowDefinitions("76,*,42") };
         root.Children.Add(new Border
@@ -240,6 +260,8 @@ public sealed class RobotDetailsWindow : Window
 
     private void Window_Closed(object? sender, EventArgs e)
     {
+        _closed = true;
+        SynchronizePostDnaMemoryWatch();
         if (_session is not null)
         {
             _session.SnapshotPublished -= Session_SnapshotPublished;
@@ -251,11 +273,38 @@ public sealed class RobotDetailsWindow : Window
         Avalonia.Threading.Dispatcher.UIThread.Post(() =>
         {
             if (!IsVisible) return;
+            SynchronizePostDnaMemoryWatch();
             if (_readFocus is not null && snapshot.Tick != _followedTick)
                 SetFollowedSnapshot(snapshot);
             else
                 SetSnapshot(snapshot);
         });
+    }
+
+    internal void SynchronizePostDnaMemoryWatch(bool reset = false)
+    {
+        if (_session is null || _readFocus is null) return;
+        var snapshot = _session.LatestSnapshot;
+        _postDnaMemory.IsVisible = snapshot.NativeCycle.HasValue
+            && string.Equals(snapshot.Backend, "CPU", StringComparison.OrdinalIgnoreCase);
+        var focus = !_closed && IsVisible && _postDnaMemory.IsVisible && _postDnaMemory.IsChecked == true
+            && _tabs.SelectedIndex == (int)RobotDetailsTab.Memory ? _readFocus() : null;
+        if (focus == _postDnaMemoryFocus && (!reset || focus is null)) return;
+        _postDnaMemoryFocus = focus;
+        var requestId = (ulong)Interlocked.Increment(ref _nextPostDnaMemoryRequestId);
+        _postDnaMemoryRequestId = requestId;
+        _ = ConfigurePostDnaMemoryWatchAsync(_session, requestId, focus);
+        if (!_closed) SetSnapshot(snapshot);
+    }
+
+    private async Task ConfigurePostDnaMemoryWatchAsync(SimulationSession session, ulong requestId, OrganismKey? focus)
+    {
+        try { await session.ConfigureNativePostDnaMemoryWatchAsync(requestId, focus); }
+        catch (Exception error)
+        {
+            if (IsVisible && requestId == _postDnaMemoryRequestId && focus.HasValue)
+                _memory.Text = $"POST-DNA MEMORY UNAVAILABLE · {error.Message}";
+        }
     }
 
     internal void SetFollowedSnapshot(EngineSnapshot snapshot)
@@ -331,12 +380,18 @@ public sealed class RobotDetailsWindow : Window
             $"DNA VIEW       {dnaSummary}",
             $"MEMORY VIEW    {memorySummary}");
         _factsTab.Text = _facts.Text;
-        _memory.Text = organism.Memory.Count == 0
-            ? "No non-zero public memory cells were published."
-            : string.Join(Environment.NewLine,
-                organism.Memory.Select(cell => $"{cell.Address,4}  {cell.Value,10}"));
-        if (!string.IsNullOrWhiteSpace(organism.DebugText))
-            _memory.Text += $"{Environment.NewLine}{Environment.NewLine}DEBUG{Environment.NewLine}{organism.DebugText}";
+        if (_postDnaMemory.IsVisible && _postDnaMemory.IsChecked == true
+            && snapshot.NativePostDnaMemory is { } sample && sample.RequestId == _postDnaMemoryRequestId
+            && sample.Tick == snapshot.Tick && sample.Focus == _focus)
+        {
+            _memory.Text = FormatMemory(sample.Memory);
+        }
+        else
+        {
+            _memory.Text = FormatMemory(organism.Memory);
+            if (!string.IsNullOrWhiteSpace(organism.DebugText))
+                _memory.Text += $"{Environment.NewLine}{Environment.NewLine}DEBUG{Environment.NewLine}{organism.DebugText}";
+        }
 
         _activationSummary.Text = _diagnostic.ActivationSummary;
         _activationTimeline.Children.Clear();
@@ -357,6 +412,10 @@ public sealed class RobotDetailsWindow : Window
             });
         }
     }
+
+    private static string FormatMemory(IReadOnlyList<MemoryCellSnapshot> memory) =>
+        memory.Count == 0 ? "No non-zero public memory cells were published."
+            : string.Join(Environment.NewLine, memory.Select(cell => $"{cell.Address,4}  {cell.Value,10}"));
 
     private static string FormatParent(OrganismKey?[]? parents, int index) =>
         parents is { Length: > 0 } && parents.ElementAtOrDefault(index) is { } parent
