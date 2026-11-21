@@ -7,6 +7,7 @@ use crate::modes::{
     LocalModeAdjudication, LocalModeConfig, LocalModeKind, LocalModeResult, LocalModeState,
     LocalModeStatus,
 };
+use crate::native_precision::store_scaled_sum;
 use crate::robot_state::{
     RobotArena, RobotCounters, RobotFlags, RobotPhysicsBatch, RobotSlot, RobotState,
     TieEndpointState,
@@ -7603,6 +7604,7 @@ impl Engine {
     }
 
     fn upkeep_phase(&mut self) {
+        let native = self.native_random.is_some();
         let metabolism = self.config.metabolism_cost.max(0);
         let population = self.cost_population();
         let costs = self.active_dna_costs();
@@ -7627,7 +7629,7 @@ impl Engine {
                 * multiplier) as f32;
             robot.materials.energy -= dna_cost;
             settle_simulation_cost(robot, f64::from(metabolism) * multiplier);
-            robot.materials.decay_slime_and_poison();
+            robot.materials.decay_slime_and_poison(native);
             robot
                 .program
                 .memory
@@ -14507,11 +14509,9 @@ fn credit_tied_energy(receiver: &mut BiologyState, amount: f32, native: bool) {
     if native {
         // Update_Ties uses Double factors and rounds each complete sum to Single.
         let amount = f64::from(amount);
-        receiver.energy =
-            native_tie_sharing::store_scaled_credit(receiver.energy, amount, 0.7).min(32_000.0);
-        receiver.body =
-            native_tie_sharing::store_scaled_credit(receiver.body, amount, 0.029).min(32_000.0);
-        receiver.waste = native_tie_sharing::store_scaled_credit(receiver.waste, amount, 0.01);
+        receiver.energy = store_scaled_sum(receiver.energy, amount, 0.7).min(32_000.0);
+        receiver.body = store_scaled_sum(receiver.body, amount, 0.029).min(32_000.0);
+        receiver.waste = store_scaled_sum(receiver.waste, amount, 0.01);
         return;
     }
     add_tie_store(&mut receiver.energy, scale_tie_amount(amount, 0.70), true);
