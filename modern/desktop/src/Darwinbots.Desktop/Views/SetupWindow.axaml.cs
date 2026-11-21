@@ -30,12 +30,15 @@ public sealed partial class SetupWindow : Window
     public ObservableCollection<SetupSpeciesRow> Species { get; } = [];
     public event Action<WorldSetupOptions>? WorldCreated;
     internal bool InitialKeepGraphsUpdatingOnClose { get; }
+    internal bool InitialOldColors { get; }
 
     public SetupWindow() : this(AvaloniaDesktopStorageService.Instance)
     {
     }
 
-    public SetupWindow(IDesktopStorageService storage, float? nativeGaussianSpare = null, byte? nativeSunChange = null, NativeProcessCachesSnapshot? nativeProcessCaches = null, WorldSetupOptions? speciesEditor = null)
+    public SetupWindow(IDesktopStorageService storage, float? nativeGaussianSpare = null, byte? nativeSunChange = null,
+        NativeProcessCachesSnapshot? nativeProcessCaches = null, WorldSetupOptions? speciesEditor = null,
+        bool? nativeOldColors = null)
     {
         _speciesEditor = speciesEditor is not null;
         _storage = storage ?? throw new ArgumentNullException(nameof(storage));
@@ -69,6 +72,7 @@ public sealed partial class SetupWindow : Window
                 SetupStatus.Text = $"GRAPH PREFERENCE LOAD FAILED · {error.Message}";
             }
         }
+        InitialOldColors = nativeOldColors ?? (speciesEditor?.GlobalSettings ?? _globalSettings).Main.EffectiveOldColors;
         _workflow.Reset(ReadSetupOptions());
         OnboardingPanel.IsVisible = !_speciesEditor && _storage.IsFirstRun;
         if (speciesEditor is not null)
