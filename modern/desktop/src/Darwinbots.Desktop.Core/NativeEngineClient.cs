@@ -693,7 +693,13 @@ public sealed partial class NativeEngineClient : IEngineClient
             commands = new[] { new { type = "set_organism_energy", slot, generation, energy } },
         }, "set organism energy");
 
-    public void UpdateRestrictionOptions(RestrictionOptions options) => ExecuteBatch(
+    public void UpdateRestrictionOptions(RestrictionOptions options) =>
+        SendRestrictionOptions(options, "update_restriction_options", "update restriction options");
+
+    public void ApplyNativeRestrictionOverwrites(RestrictionOptions options) =>
+        SendRestrictionOptions(options, "apply_native_restriction_overwrites", "apply native restriction overwrites");
+
+    private void SendRestrictionOptions(RestrictionOptions options, string command, string operation) => ExecuteBatch(
         new
         {
             version = 1,
@@ -701,7 +707,7 @@ public sealed partial class NativeEngineClient : IEngineClient
             {
                 new
                 {
-                    type = "update_restriction_options",
+                    type = command,
                     options = new
                     {
                         non_repopulating = RestrictionColumnPayload(options.NonRepopulating),
@@ -709,7 +715,7 @@ public sealed partial class NativeEngineClient : IEngineClient
                     },
                 },
             },
-        }, "update restriction options");
+        }, operation);
 
     public void ConfigureLocalMode(LocalModeConfig config)
     {

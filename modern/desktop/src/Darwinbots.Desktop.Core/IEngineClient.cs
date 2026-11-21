@@ -71,6 +71,7 @@ public interface IEngineClient : IDisposable
     void UpdateRecognitionFudging(int mode) { }
     void SetOrganismEnergy(uint slot, uint generation, int energy);
     void UpdateRestrictionOptions(RestrictionOptions options);
+    void ApplyNativeRestrictionOverwrites(RestrictionOptions options) => UpdateRestrictionOptions(options);
     void ConfigureLocalMode(LocalModeConfig config);
     void StartLocalMode();
     void RestartLocalMode();
