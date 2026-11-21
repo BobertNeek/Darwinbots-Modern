@@ -957,6 +957,12 @@ public sealed partial class NativeEngineClient : IEngineClient
         return generateSeed ? (int)NativeTimerSeed() : unchecked((int)ReadConfiguration().Seed.GetValueOrDefault());
     }
 
+    public void SetNativeSeedMetadata(int seed)
+    {
+        EnsureAlive();
+        ThrowIfFailed(NativeMethods.EngineSetNativeSeedMetadata(_engine, seed), "set native load seed");
+    }
+
     public void Load(byte[] save) => LoadWithNativeSeed(save, 0);
 
     public void LoadWithNativeSeed(byte[] save, int seed)
@@ -1151,6 +1157,9 @@ public sealed partial class NativeEngineClient : IEngineClient
 
         [LibraryImport(LibraryName, EntryPoint = "db_engine_load_with_native_seed")]
         internal static partial DbStatus EngineLoadWithNativeSeed(IntPtr engine, byte[] save, nuint saveLength, int seed);
+
+        [LibraryImport(LibraryName, EntryPoint = "db_engine_set_native_seed_metadata")]
+        internal static partial DbStatus EngineSetNativeSeedMetadata(IntPtr engine, int seed);
 
         [LibraryImport(LibraryName, EntryPoint = "db_engine_snapshot_json")]
         internal static partial DbStatus EngineSnapshotJson(IntPtr engine, ref NativeBuffer buffer);

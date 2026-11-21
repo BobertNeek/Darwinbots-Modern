@@ -119,6 +119,7 @@ public sealed class HistoricSimulationSaveRenderedTests
             {
                 Assert.Equal(nameof(IStorageProvider.OpenFilePickerAsync), method.Name);
                 Assert.Contains($"CaptureNativeLoadSeed:{generateSeed != false}", engine.Calls);
+                Assert.Equal(generateSeed != false, engine.Calls.Contains($"SetNativeSeedMetadata:{seed}"));
                 pickerRequested.SetResult();
                 return selection.Task;
             }), newSeedOnLoad: generateSeed);
@@ -163,6 +164,76 @@ public sealed class HistoricSimulationSaveRenderedTests
                 readStream.TrySetCanceled();
                 CloseFilePickerWindow(window);
             }
+        }, CancellationToken.None);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ToolbarNativeLoadUsesTheLastF2SeedEvenIfTheMenuLoadDidNotComplete(bool reject)
+    {
+        var engine = new RecordingEngineClient { NativeLoadSeed = 734 };
+        await using var session = new SimulationSession(engine);
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            byte[]? selected = null;
+            MainWindow? owner = null;
+            var provider = StorageProxy.Create<IStorageProvider>((method, _) =>
+            {
+                Assert.Equal(nameof(IStorageProvider.OpenFilePickerAsync), method.Name);
+                Assert.False(WindowField<DispatcherTimer>(owner!, "_runTimer").IsEnabled);
+                var files = selected is { } data ? new[]
+                {
+                    StorageProxy.Create<IStorageFile>((itemMethod, _) => itemMethod.Name switch
+                    {
+                        nameof(IStorageFile.OpenReadAsync) => Task.FromResult<Stream>(new MemoryStream(data)),
+                        _ => throw new NotSupportedException(itemMethod.Name),
+                    }),
+                } : [];
+                return Task.FromResult<IReadOnlyList<IStorageFile>>(files);
+            });
+            var window = owner = OpenRunningFilePickerWindow(session, provider);
+            try
+            {
+                var commands = WindowField<LegacyCommandRouter>(window, "_legacyCommands");
+                var timer = WindowField<DispatcherTimer>(window, "_runTimer");
+                var model = Assert.IsType<MainWindowViewModel>(window.DataContext);
+                await LoadFromToolbar(BitConverter.GetBytes(20ul));
+                Assert.DoesNotContain("LoadWithNativeSeed:734", engine.Calls);
+
+                timer.Start();
+                selected = reject ? [1] : null;
+                var first = await commands.ExecuteAsync(LegacyCommandId.FileLoadSimulation);
+                Assert.False(first.Succeeded);
+                Assert.Equal(!reject, first.Canceled);
+                Assert.True(timer.IsEnabled);
+                Assert.Contains("SetNativeSeedMetadata:734", engine.Calls);
+
+                await LoadFromToolbar("DB3S\0\0\0\0"u8.ToArray());
+                Assert.DoesNotContain("LoadWithNativeSeed:734", engine.Calls);
+                await LoadFromToolbar(BitConverter.GetBytes(21ul));
+                Assert.Single(engine.Calls, call => call == "LoadWithNativeSeed:734");
+                Assert.Single(engine.Calls, call => call == "CaptureNativeLoadSeed:True");
+
+                engine.NativeLoadSeed = 0;
+                selected = null;
+                Assert.True((await commands.ExecuteAsync(LegacyCommandId.FileLoadSimulation)).Canceled);
+                Assert.Contains("SetNativeSeedMetadata:0", engine.Calls);
+                await LoadFromToolbar(BitConverter.GetBytes(22ul));
+                Assert.Single(engine.Calls, call => call.StartsWith("LoadWithNativeSeed:", StringComparison.Ordinal));
+
+                async Task LoadFromToolbar(byte[] data)
+                {
+                    timer.Start();
+                    selected = data;
+                    model.Status = "WAITING";
+                    window.FindControl<Button>("LoadButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    await WaitForStatusAsync(model, "LOADED");
+                    Assert.Equal(BitConverter.ToUInt64(data), session.LatestSnapshot.Tick);
+                    Assert.False(timer.IsEnabled);
+                }
+            }
+            finally { CloseFilePickerWindow(window); }
         }, CancellationToken.None);
     }
 

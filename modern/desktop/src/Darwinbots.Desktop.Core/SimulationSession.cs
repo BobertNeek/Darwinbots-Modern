@@ -390,11 +390,21 @@ public sealed class SimulationSession : IAsyncDisposable
         return save ?? throw new InvalidDataException("Engine returned no legacy save data.");
     }
 
-    public async Task<int> CaptureNativeLoadSeedAsync(bool generateSeed, CancellationToken cancellationToken = default)
+    public Task<int> CaptureNativeLoadSeedAsync(bool generateSeed, CancellationToken cancellationToken = default) =>
+        CaptureNativeLoadSeedAsync(generateSeed, recordMetadata: false, cancellationToken);
+
+    public Task<int> BeginNativeMenuLoadAsync(bool generateSeed, CancellationToken cancellationToken = default) =>
+        CaptureNativeLoadSeedAsync(generateSeed, recordMetadata: true, cancellationToken);
+
+    private async Task<int> CaptureNativeLoadSeedAsync(bool generateSeed, bool recordMetadata,
+        CancellationToken cancellationToken)
     {
         var seed = 0;
-        await Enqueue(engine => seed = engine.CaptureNativeLoadSeed(generateSeed),
-            cancellationToken, publishSnapshot: false).ConfigureAwait(false);
+        await Enqueue(engine =>
+        {
+            seed = engine.CaptureNativeLoadSeed(generateSeed);
+            if (generateSeed && recordMetadata) engine.SetNativeSeedMetadata(seed);
+        }, cancellationToken, publishSnapshot: false).ConfigureAwait(false);
         return seed;
     }
 
