@@ -469,6 +469,8 @@ pub struct OrganismSnapshot {
     pub species: SpeciesId,
     pub vegetable: bool,
     pub parents: [Option<OrganismId>; 2],
+    #[serde(default)]
+    pub parent_absolute_id: u64,
     pub body: i32,
     #[serde(default)]
     pub mass: f32,
@@ -1634,6 +1636,7 @@ impl From<Db3sV2OrganismSnapshot> for OrganismSnapshot {
             species: value.species.into(),
             vegetable: value.vegetable,
             parents: value.parents.map(|parent| parent.map(Into::into)),
+            parent_absolute_id: 0,
             body: value.body,
             mass: 0.0,
             radius: 0.0,
@@ -4889,12 +4892,22 @@ impl Engine {
     }
 
     pub fn organism(&self, id: OrganismId) -> Result<OrganismSnapshot, EngineError> {
+        let organism = self.slots.get(id)?;
         Ok(snapshot_organism(
             id,
-            self.slots.get(id)?,
-            &self.species,
+            organism,
+            self.absolute_parent_id(organism),
             &self.config,
         ))
+    }
+
+    fn absolute_parent_id(&self, organism: &RobotState) -> u64 {
+        if organism.identity.parent_absolute_id != 0 {
+            return organism.identity.parent_absolute_id;
+        }
+        organism.identity.parents[0]
+            .and_then(|parent| self.slots.get(parent).ok())
+            .map_or(0, |parent| parent.identity.absolute_id)
     }
 
     /// DB2 main.fittest: living animal families, up to ten descendant levels.
@@ -12879,7 +12892,7 @@ impl Engine {
                     snapshot_organism(
                         OrganismId::new(index as u32, slot.generation),
                         organism,
-                        &self.species,
+                        self.absolute_parent_id(organism),
                         &self.config,
                     )
                 })
@@ -13613,7 +13626,7 @@ impl RuntimePhysics {
 fn snapshot_organism(
     id: OrganismId,
     organism: &RobotState,
-    _species: &[SpeciesDefinition],
+    parent_absolute_id: u64,
     config: &EngineConfig,
 ) -> OrganismSnapshot {
     OrganismSnapshot {
@@ -13643,6 +13656,7 @@ fn snapshot_organism(
         species: organism.identity.species,
         vegetable: organism.flags.vegetable,
         parents: organism.identity.parents,
+        parent_absolute_id,
         body: resource_readback(organism.materials.body),
         mass: organism.materials.mass,
         radius: organism.materials.radius,
