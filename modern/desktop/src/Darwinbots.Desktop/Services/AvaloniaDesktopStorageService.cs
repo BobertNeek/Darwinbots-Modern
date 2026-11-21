@@ -13,6 +13,7 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
     internal const string ProfileDirectoryVariable = "DARWINBOTS_PROFILE_DIRECTORY";
     internal const string AutosaveDirectoryVariable = "DARWINBOTS_AUTOSAVE_DIRECTORY";
     private const string GraphClosePreferenceKey = "keepGraphsUpdatingOnClose";
+    private const string OldColorsPreferenceKey = "oldColors";
     private readonly string? _profileDirectory;
 
     public bool IsFirstRun => !File.Exists(FirstRunMarkerPath());
@@ -570,17 +571,24 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         await File.WriteAllTextAsync(FirstRunMarkerPath(), "completed");
     }
 
-    public bool? LoadGraphClosePreference()
+    public bool? LoadGraphClosePreference() => LoadGlobalBooleanPreference(GraphClosePreferenceKey, 50);
+
+    public bool? LoadOldColorsPreference() => LoadGlobalBooleanPreference(OldColorsPreferenceKey, 7);
+
+    private bool? LoadGlobalBooleanPreference(string key, int legacyRecord)
     {
         var main = ReadGlobalProfile()["main"] as JsonObject;
-        if (main?[GraphClosePreferenceKey] is JsonValue preference && preference.TryGetValue<bool>(out var keepUpdating))
-            return keepUpdating;
+        if (main?[key] is JsonValue preference && preference.TryGetValue<bool>(out var value))
+            return value;
         var directory = main?["mainDirectory"] is JsonValue path && path.TryGetValue<string>(out var configured)
             && !string.IsNullOrWhiteSpace(configured) ? configured : AppContext.BaseDirectory;
-        return SetupStorageService.ReadNativeGraphClosePreference(directory);
+        return SetupStorageService.ReadNativeGlobalBoolean(directory, legacyRecord);
     }
 
-    public async Task SaveGraphClosePreferenceAsync(bool? keepUpdating)
+    public Task SaveGraphClosePreferenceAsync(bool? keepUpdating) =>
+        SaveGlobalBooleanPreferenceAsync(GraphClosePreferenceKey, keepUpdating);
+
+    private async Task SaveGlobalBooleanPreferenceAsync(string key, bool? value)
     {
         var profile = ReadGlobalProfile();
         var main = profile["main"] as JsonObject;
@@ -589,8 +597,8 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
             if (profile["main"] is not null) throw new InvalidDataException("Global settings main section must be an object.");
             profile["main"] = main = new JsonObject();
         }
-        if (keepUpdating is { } value) main[GraphClosePreferenceKey] = value;
-        else main.Remove(GraphClosePreferenceKey);
+        if (value is { } enabled) main[key] = enabled;
+        else main.Remove(key);
 
         var path = GlobalSettingsPath();
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);

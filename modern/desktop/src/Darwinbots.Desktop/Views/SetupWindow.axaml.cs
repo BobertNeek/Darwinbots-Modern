@@ -110,6 +110,8 @@ public sealed partial class SetupWindow : Window
             var settings = storage.LoadGlobalSettings() ?? new();
             if (settings.Main.KeepGraphsUpdatingOnClose is null && storage.LoadGraphClosePreference() is { } keepUpdating)
                 settings = settings with { Main = settings.Main with { KeepGraphsUpdatingOnClose = keepUpdating } };
+            if (settings.Main.OldColors is null && storage.LoadOldColorsPreference() is { } oldColors)
+                settings = settings with { Main = settings.Main with { OldColors = oldColors } };
             return settings;
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException
@@ -224,7 +226,7 @@ public sealed partial class SetupWindow : Window
             {
                 var name = _nativeSpeciesImport ? file.Name : Path.GetFileNameWithoutExtension(file.Name);
                 var appearance = _nativeSpeciesImport && _stageNativeAppearance is not null
-                    ? await _stageNativeAppearance(file.Name, file.Content, main.OldColors)
+                    ? await _stageNativeAppearance(file.Name, file.Content, main.EffectiveOldColors)
                     : null;
                 var color = appearance?.Argb ?? ((_nativeSpeciesImport, file.Name) switch
                 {

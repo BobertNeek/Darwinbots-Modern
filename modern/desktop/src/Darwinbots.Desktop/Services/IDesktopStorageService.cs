@@ -78,4 +78,5 @@ public interface IDesktopStorageService
     Task SaveGlobalSettingsAsync(GlobalSettings settings) => Task.CompletedTask;
     bool? LoadGraphClosePreference() => null;
     Task SaveGraphClosePreferenceAsync(bool? keepUpdating) => Task.CompletedTask;
+    bool? LoadOldColorsPreference() => null;
 }
