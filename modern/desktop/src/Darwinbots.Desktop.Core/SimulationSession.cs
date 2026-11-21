@@ -357,6 +357,15 @@ public sealed class SimulationSession : IAsyncDisposable
         return result ?? throw new InvalidDataException("Engine returned no DNA.");
     }
 
+    public async Task<string> ReadRobotDnaAsync(OrganismKey focus, uint? markerPosition = null,
+        CancellationToken cancellationToken = default)
+    {
+        string? result = null;
+        await Enqueue(engine => result = engine.ReadRobotDna(focus.Slot, focus.Generation, markerPosition),
+            cancellationToken, publishSnapshot: false).ConfigureAwait(false);
+        return result ?? throw new InvalidDataException("Engine returned no Robot Info DNA.");
+    }
+
     public async Task<Db2RobotFile> ExportRobotFileAsync(
         uint slot, uint generation, CancellationToken cancellationToken = default)
     {

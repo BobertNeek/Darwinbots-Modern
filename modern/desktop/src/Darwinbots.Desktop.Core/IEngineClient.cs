@@ -47,6 +47,7 @@ public interface IEngineClient : IDisposable
     string SetRobotTag(OrganismKey focus, string tag) =>
         throw new NotSupportedException("Robot descriptions are unavailable in this engine client.");
     string ExportDna(uint slot, uint generation);
+    string ReadRobotDna(uint slot, uint generation, uint? markerPosition = null) => ExportDna(slot, generation);
     string ExportSpeciesTemplateDna(uint species) =>
         throw new NotSupportedException("This engine client does not support startup species DNA export.");
     IReadOnlyList<OrganismKey> ListLegacyOrganismGroup(OrganismKey seed) =>

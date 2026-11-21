@@ -300,6 +300,8 @@ public sealed partial class MainWindow : Window
             _viewModel.Select(key);
             Viewport.SelectKeys(_playerBotHighlights, key);
             var result = await _legacyCommands.ExecuteAsync(LegacyCommandId.RobotShowInfo);
+            if (result.Succeeded && _session is { } session)
+                _nativeRobotInfoWindow?.SetFollowedSnapshot(session.LatestSnapshot, refreshDna: true);
             _viewModel.Status = result.Status;
             RefreshLegacyMenuStates();
         };
@@ -3893,6 +3895,7 @@ public sealed partial class MainWindow : Window
             _automaticEvolutionGraphBoundary = null;
             SynchronizeAutomaticEvolutionGraphs(_session.LatestSnapshot);
             await SynchronizeLoadedWorldAsync();
+            _nativeRobotInfoWindow?.SetFollowedSnapshot(_session.LatestSnapshot, refreshDna: true);
             _nativeRobotInfoWindow?.SynchronizePostDnaMemoryWatch(reset: true);
         }
         finally
