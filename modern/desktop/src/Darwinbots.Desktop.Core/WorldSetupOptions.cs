@@ -36,6 +36,7 @@ public sealed record WorldSetupOptions
     public int VegetablePopulationCap { get; init; } = 500;
     public float WorldWidth { get; init; } = 16_000f;
     public float WorldHeight { get; init; } = 12_000f;
+    public int? NativeFieldSize { get; init; }
     public int MetabolismCost { get; init; }
     public int VegetableEnergyPerTick { get; init; }
     public int SunlightEnergy { get; init; } = 100;

@@ -195,6 +195,9 @@ fn configuration(t: &NativeSimulationTail) -> Result<EngineConfig, EngineError> 
         seed: t.integer("seed")? as u32 as u64,
         world_width: n("field_width")?,
         world_height: n("field_height")?,
+        native_field_size: u8::try_from(t.integer("field_size")?)
+            .ok()
+            .filter(|preset| crate::config::native_field_dimensions(*preset).is_some()),
         toroidal_world: b("toroidal")?,
         axis_topology: Some([b("wrap_x")?, b("wrap_y")?]),
         vegetable_population_cap: u("max_population")? as usize,

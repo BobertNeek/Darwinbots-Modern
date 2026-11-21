@@ -8,6 +8,22 @@ namespace Darwinbots.Desktop.Core.Tests;
 
 public sealed class LegacySettingsImportTests
 {
+    [Fact]
+    public void NativeFieldSizeRoundTripsInThePositionalFieldAndModernSettings()
+    {
+        var settings = new DesktopSettings { NativeFieldSize = 25, WorldWidth = 2_496_000, WorldHeight = 1_872_000 };
+        var encoded = Db2SettingsCodec.Encode(settings);
+        var text = LegacyDnaText.Decode(encoded);
+        const string marker = "#DARWINBOTS_MODERN_SETTINGS_V1#";
+        var bare = text[..text.IndexOf(marker, StringComparison.Ordinal)];
+        Assert.Equal("25", bare.Split("\r\n")[4]);
+        var imported = Db2SettingsCodec.Decode(LegacyDnaText.Encode(bare)).ToWorldSetup();
+        Assert.Equal(settings.NativeFieldSize, imported.NativeFieldSize);
+        Assert.Equal(settings.WorldWidth, imported.WorldWidth);
+        Assert.Equal(settings.WorldHeight, imported.WorldHeight);
+        Assert.Equal(settings.ToJson(), Db2SettingsCodec.Decode(encoded).ToJson());
+    }
+
     [Theory]
     [InlineData(false, false)]
     [InlineData(true, false)]

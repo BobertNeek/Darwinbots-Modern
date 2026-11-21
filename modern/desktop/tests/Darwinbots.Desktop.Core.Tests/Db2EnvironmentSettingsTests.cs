@@ -6,6 +6,27 @@ namespace Darwinbots.Desktop.Core.Tests;
 
 public sealed class Db2EnvironmentSettingsTests
 {
+    [Theory]
+    [InlineData(1, 9_237, 6_928)]
+    [InlineData(2, 16_000, 12_000)]
+    [InlineData(12, 96_000, 72_000)]
+    [InlineData(13, 192_000, 144_000)]
+    [InlineData(25, 2_496_000, 1_872_000)]
+    public void OriginalFieldSizePresetsHaveTheOriginalDimensions(int preset, int width, int height)
+    {
+        Assert.Equal((width, height), Db2FieldSize.Dimensions(preset));
+    }
+
+    [Fact]
+    public void EnvironmentCommandsPayloadOmitsUntouchedFieldSize()
+    {
+        using var untouched = JsonDocument.Parse(NativeCommandSerializer.SerializeEnvironment(EnvironmentUpdate.Default));
+        Assert.False(untouched.RootElement.GetProperty("commands")[0].TryGetProperty("field_size", out _));
+        using var resize = JsonDocument.Parse(NativeCommandSerializer.SerializeEnvironment(
+            EnvironmentUpdate.Default with { FieldSize = 25 }));
+        Assert.Equal(25, resize.RootElement.GetProperty("commands")[0].GetProperty("field_size").GetInt32());
+    }
+
     [Fact]
     public void ShapeVisibilitySurvivesSettingsAndEnvironmentCommandsIndependentlyOfOpacity()
     {

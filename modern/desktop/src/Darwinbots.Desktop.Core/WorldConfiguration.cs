@@ -16,6 +16,7 @@ public sealed record WorldConfiguration(
     public bool GreedyReproduction { get; init; }
     public int DisqualificationRule { get; init; }
     public int RecognitionFudging { get; init; }
+    public int? NativeFieldSize { get; init; }
 }
 
 internal static class NativeConfigurationParser
@@ -109,6 +110,8 @@ internal static class NativeConfigurationParser
             GreedyReproduction = Read<bool>("greedy_reproduction"),
             DisqualificationRule = config.TryGetProperty("disqualification", out var rule) ? rule.GetInt32() : 0,
             RecognitionFudging = config.TryGetProperty("recognition_fudging", out var fudging) ? fudging.GetInt32() : 0,
+            NativeFieldSize = config.TryGetProperty("native_field_size", out var size) && size.ValueKind == JsonValueKind.Number
+                && size.TryGetInt32(out var fieldSize) && Db2FieldSize.IsValid(fieldSize) ? fieldSize : null,
         };
     }
 }

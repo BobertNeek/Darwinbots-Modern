@@ -607,12 +607,17 @@ public sealed partial class NativeEngineClient : IEngineClient
 
     public void UpdateMutationSettings(MutationSettingsUpdate update)
     {
+        ValidateMutationSettings(update);
+        ExecuteBatch(NativeCommandSerializer.CreateMutationSettingsBatch(update), "update mutation settings");
+    }
+
+    private static void ValidateMutationSettings(MutationSettingsUpdate update)
+    {
         ArgumentNullException.ThrowIfNull(update);
         if (!float.IsFinite(update.GlobalMultiplier) || update.GlobalMultiplier is < 0 or > 100)
             throw new ArgumentOutOfRangeException(nameof(update));
         if (update.SpeciesRates.Any(value => !float.IsFinite(value.Rate) || value.Rate is < 0 or > 100))
             throw new ArgumentOutOfRangeException(nameof(update));
-        ExecuteBatch(NativeCommandSerializer.CreateMutationSettingsBatch(update), "update mutation settings");
     }
 
     public void UpdateOrganismMutationProfile(uint slot, uint generation, MutationProfileUpdate profile)
@@ -844,6 +849,16 @@ public sealed partial class NativeEngineClient : IEngineClient
         ArgumentNullException.ThrowIfNull(update);
         ValidatePosition(update.Gravity);
         ExecuteBatch(NativeCommandSerializer.CreateEnvironmentBatch(update), "update environment");
+        if (update.FieldSize is not null) CacheWorldDimensions(Snapshot());
+    }
+
+    public void UpdateLiveSettings(EnvironmentUpdate environment, MutationSettingsUpdate mutation)
+    {
+        ArgumentNullException.ThrowIfNull(environment);
+        ValidatePosition(environment.Gravity);
+        ValidateMutationSettings(mutation);
+        ExecuteBatch(NativeCommandSerializer.CreateLiveSettingsBatch(environment, mutation), "update live settings");
+        if (environment.FieldSize is not null) CacheWorldDimensions(Snapshot());
     }
 
     private static OrganismKey ReadKey(JsonElement value) => new(
@@ -988,9 +1003,14 @@ public sealed partial class NativeEngineClient : IEngineClient
         if (save.Length == 0) throw new InvalidDataException("Save data is empty.");
         ThrowIfFailed(NativeMethods.EngineLoad(_engine, save, (nuint)save.Length), "load simulation");
         var loaded = Snapshot();
-        _worldWidth = loaded.WorldSize[0];
-        _worldHeight = loaded.WorldSize[1];
+        CacheWorldDimensions(loaded);
         UpdateRestartClockPolicy(loaded.LocalMode);
+    }
+
+    private void CacheWorldDimensions(EngineSnapshot snapshot)
+    {
+        _worldWidth = snapshot.WorldSize[0];
+        _worldHeight = snapshot.WorldSize[1];
     }
 
     public EngineSnapshot Snapshot()

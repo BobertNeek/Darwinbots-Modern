@@ -6,6 +6,16 @@ namespace Darwinbots.Desktop.Core.Tests;
 public sealed class NativeSnapshotParserTests
 {
     [Fact]
+    public void OriginalF1FlagIsReadAndOlderSnapshotsDefaultOff()
+    {
+        var contest = NativeSnapshotParser.Parse("""{"tick":0,"organisms":[],"native_f1_enabled":true}""", "CPU");
+        var older = NativeSnapshotParser.Parse("""{"tick":0,"organisms":[]}""", "CPU");
+
+        Assert.True(contest.NativeF1Enabled);
+        Assert.False(older.NativeF1Enabled);
+    }
+
+    [Fact]
     public void OrdinaryRestartStateUsesNativeFieldsAndDefaultsToUnavailableForOlderSnapshots()
     {
         var older = NativeSnapshotParser.Parse("""{"tick":0,"organisms":[]}""", "CPU");

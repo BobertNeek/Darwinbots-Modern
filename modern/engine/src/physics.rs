@@ -3,6 +3,32 @@ use bytemuck::{Pod, Zeroable};
 use std::sync::mpsc;
 use wgpu::util::DeviceExt;
 
+fn gpu_grid_extent(world_size: [f32; 2], cell_size: f32) -> [u32; 2] {
+    world_size.map(|axis| (axis / cell_size).ceil().max(1.0) as u32)
+}
+
+fn validate_gpu_grid_extent(
+    extent: [u32; 2],
+    max_workgroups: u32,
+    max_storage_bytes: u64,
+) -> Result<(), EngineError> {
+    let cells = u64::from(extent[0]) * u64::from(extent[1]);
+    if cells.div_ceil(64) > u64::from(max_workgroups) {
+        return Err(EngineError::Gpu(
+            "Field size exceeds the compute device's sensing dispatch limit.".into(),
+        ));
+    }
+    let offset_bytes = (cells + 1)
+        .checked_next_power_of_two()
+        .and_then(|offsets| offsets.checked_mul(std::mem::size_of::<u32>() as u64));
+    if offset_bytes.is_none_or(|bytes| bytes > max_storage_bytes) {
+        return Err(EngineError::Gpu(
+            "Field size exceeds the compute device's sensing buffer limit.".into(),
+        ));
+    }
+    Ok(())
+}
+
 mod collision;
 mod environment;
 mod movement;
@@ -532,10 +558,7 @@ impl GpuPhysicsBackend {
         cell_size: f32,
         radius: f32,
     ) -> Result<(Vec<Option<usize>>, Vec<[f32; 2]>, Vec<RenderInstance>), EngineError> {
-        let grid_size = [
-            (world_size[0] / cell_size).ceil().max(1.0) as u32,
-            (world_size[1] / cell_size).ceil().max(1.0) as u32,
-        ];
+        let grid_size = gpu_grid_extent(world_size, cell_size);
         self.sense_integrate_render_impl(
             positions,
             velocities,
@@ -564,10 +587,7 @@ impl GpuPhysicsBackend {
         cell_size: f32,
         radius: f32,
     ) -> Result<(Vec<Option<usize>>, Vec<RenderInstance>), EngineError> {
-        let grid_size = [
-            (world_size[0] / cell_size).ceil().max(1.0) as u32,
-            (world_size[1] / cell_size).ceil().max(1.0) as u32,
-        ];
+        let grid_size = gpu_grid_extent(world_size, cell_size);
         let velocities = vec![[0.0; 2]; positions.len()];
         self.sense_integrate_render_impl(
             positions,
@@ -584,6 +604,25 @@ impl GpuPhysicsBackend {
             true,
         )
         .map(|(targets, _, instances)| (targets, instances))
+    }
+
+    pub(crate) fn validate_sensing_grid_extent(
+        &self,
+        world_size: [f32; 2],
+        cell_size: f32,
+    ) -> Result<(), EngineError> {
+        self.validate_sensing_grid(gpu_grid_extent(world_size, cell_size))
+    }
+
+    fn validate_sensing_grid(&self, extent: [u32; 2]) -> Result<(), EngineError> {
+        let limits = self.device.limits();
+        validate_gpu_grid_extent(
+            extent,
+            limits.max_compute_workgroups_per_dimension,
+            limits
+                .max_buffer_size
+                .min(u64::from(limits.max_storage_buffer_binding_size)),
+        )
     }
 
     // Preserve the public GPU buffer contract and its established tuple result.
@@ -666,6 +705,9 @@ impl GpuPhysicsBackend {
     ) -> Result<(Vec<Option<usize>>, Vec<[f32; 2]>, Vec<RenderInstance>), EngineError> {
         if positions.is_empty() {
             return Ok((Vec::new(), Vec::new(), Vec::new()));
+        }
+        if gpu_build_grid {
+            self.validate_sensing_grid(grid_size)?;
         }
         let particles: Vec<_> = positions
             .iter()
@@ -1012,7 +1054,23 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
 
 #[cfg(test)]
 mod radius_tests {
-    use super::organism_radius;
+    use super::{gpu_grid_extent, organism_radius, validate_gpu_grid_extent};
+
+    #[test]
+    fn live_field_size_checks_dense_gpu_limits_before_grid_allocation() {
+        let stock_limit = 65535;
+        let stock_buffer = 128 * 1024 * 1024;
+        let preset = |size| {
+            gpu_grid_extent(
+                crate::config::native_field_dimensions(size).unwrap(),
+                1000.0,
+            )
+        };
+        assert_eq!(preset(25), [2496, 1872]);
+        assert!(validate_gpu_grid_extent(preset(24), stock_limit, stock_buffer).is_ok());
+        assert!(validate_gpu_grid_extent(preset(25), stock_limit, stock_buffer).is_err());
+        assert!(validate_gpu_grid_extent(preset(12), stock_limit, 8 * 1024).is_err());
+    }
 
     #[test]
     fn native_radius_rounds_double_result_before_chloroplast_blend() {
