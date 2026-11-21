@@ -769,7 +769,7 @@ public sealed partial class MainWindow : Window
             async _ => await ShowSelectedPhylogenyAsync());
         handlers[LegacyCommandId.RobotChangeColor] = Handler(
             SelectedRobotState,
-            async _ => await ChangeSelectedSpeciesColorAsync());
+            async _ => await ChangeSelectedRobotColorAsync());
         handlers[LegacyCommandId.RobotOpenConsole] = Handler(
             SelectedRobotState,
             async _ => await ShowSelectedRobotConsoleAsync());
@@ -1598,13 +1598,12 @@ public sealed partial class MainWindow : Window
         return Task.FromResult(LegacyCommandResult.Success("PHILOGENY OPEN"));
     }
 
-    private async Task<LegacyCommandResult> ChangeSelectedSpeciesColorAsync()
+    private async Task<LegacyCommandResult> ChangeSelectedRobotColorAsync()
     {
         var organism = _viewModel.SelectedOrganism!;
         var session = _session!;
-        var species = session.LatestSnapshot.Species.ElementAtOrDefault((int)organism.Species);
         var dialog = new RobotColorEditorWindow(
-            species?.Color ?? organism.Phenotype.Color,
+            organism.Phenotype.Color,
             async edit =>
             {
                 if (edit.WriteToDna)
@@ -1616,11 +1615,11 @@ public sealed partial class MainWindow : Window
                         RobotColorDna.Apply(dna, edit.Color));
                 }
 
-                await session.SetSpeciesColorAsync(organism.Species, edit.Color);
+                await session.SetOrganismColorAsync(organism.Slot, organism.Generation, edit.Color);
             });
         await dialog.ShowDialog(this);
         if (!dialog.Accepted) return LegacyCommandResult.Cancel();
-        var status = dialog.WriteToDna ? "SPECIES COLOR + DNA METADATA" : "SPECIES COLOR";
+        var status = dialog.WriteToDna ? "ROBOT COLOR + DNA METADATA" : "ROBOT COLOR";
         return LegacyCommandResult.Success($"{status} · {dialog.PreviewHex}");
     }
 
