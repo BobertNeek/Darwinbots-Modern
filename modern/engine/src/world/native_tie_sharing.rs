@@ -1,45 +1,5 @@
 use super::*;
 
-pub(super) fn store_scaled_credit(store: f32, amount: f64, share: f64) -> f32 {
-    let store = f64::from(store);
-    let credit = amount * share;
-    let total = store + credit;
-    let rounded = total as f32;
-    if total == f64::from(rounded) {
-        return rounded;
-    }
-    let rounds_down = total > f64::from(rounded);
-    let other = if rounds_down {
-        rounded.next_up()
-    } else {
-        rounded.next_down()
-    };
-    if total != (f64::from(rounded) + f64::from(other)) * 0.5 {
-        return rounded;
-    }
-
-    // Update_Ties retains a 64-bit significand through multiply and add before
-    // storing Single. Recover the bits lost by Double at the Single midpoint.
-    let credit_step = extended_ulp(credit);
-    let credit_remainder =
-        (amount.mul_add(share, -credit) / credit_step).round_ties_even() * credit_step;
-    let stored_credit = total - store;
-    let sum_remainder = (store - (total - stored_credit)) + (credit - stored_credit);
-    let remainder = sum_remainder + credit_remainder;
-    let half_step = extended_ulp(total) * 0.5;
-    if (rounds_down && remainder > half_step) || (!rounds_down && remainder < -half_step) {
-        other
-    } else {
-        rounded
-    }
-}
-
-fn extended_ulp(value: f64) -> f64 {
-    const EXPONENT_MASK: u64 = 0x7ff0_0000_0000_0000;
-    let exponent = value.to_bits() & EXPONENT_MASK;
-    f64::from_bits(exponent - (63_u64 << 52))
-}
-
 #[derive(Clone, Copy)]
 pub(super) enum SharedResource {
     Energy,
@@ -188,11 +148,11 @@ mod tests {
         let body = 1_000.0_f32;
         let amount = 125.0 / 4096.0;
         assert_eq!(
-            store_scaled_credit(body, amount, 0.029).to_bits(),
+            store_scaled_sum(body, amount, 0.029).to_bits(),
             body.to_bits() + 14
         );
         assert_eq!(
-            store_scaled_credit(body.next_up(), amount, 0.029).to_bits(),
+            store_scaled_sum(body.next_up(), amount, 0.029).to_bits(),
             body.to_bits() + 16
         );
     }
