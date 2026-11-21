@@ -29,6 +29,7 @@ public sealed class PositionalStartupSaveTests
             {
                 Backend = "Cpu", Seed = 42, PopulationCapacity = 16, VegetablePopulationCap = 0,
                 WorldWidth = 3000, WorldHeight = 2000, BrownianMotion = 0,
+                Vegetation = Db2VegetationOptions.Default with { StartChloroplasts = 1234 },
             });
             engine.ImportSpecies(new("Startup Bot", "start stop", false, 0xff123456, 1, 1234, 0, false, 0));
             engine.Tick(3);
@@ -51,6 +52,11 @@ public sealed class PositionalStartupSaveTests
                     await WaitFor(() => model.Status == "LOADED");
                     Assert.Equal(expected.NativeCycle, model.NativeCycle);
                     Assert.Equal(expected.Population, model.Population);
+                    var session = Assert.IsType<SimulationSession>(typeof(MainWindow)
+                        .GetField("_session", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(runtime));
+                    var configuration = Assert.IsType<WorldConfiguration>(await session.ReadConfigurationAsync());
+                    Assert.Equal(legacyFormat ? 0 : 1234,
+                        configuration.Environment.Vegetation.StartChloroplasts);
                     Assert.Same(runtime, Assert.Single(opened));
                 }
                 finally

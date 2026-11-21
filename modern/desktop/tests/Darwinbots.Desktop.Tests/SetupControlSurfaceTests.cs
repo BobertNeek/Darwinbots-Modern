@@ -49,6 +49,10 @@ public sealed class SetupControlSurfaceTests
                 Invoke(window, "SaveSettings_Click");
                 await WaitFor(() => storage.SavedSettings is not null);
                 Assert.DoesNotContain("Gaussian", storage.SavedSettings!.ToJson(), StringComparison.OrdinalIgnoreCase);
+                SetEnvironment(window, EnvironmentUpdate.Default with
+                {
+                    Vegetation = Db2VegetationOptions.Default with { StartChloroplasts = 7321, MaxEnergyPerTick = 70 },
+                });
                 Invoke(window, "OpenSave_Click");
                 await WaitFor(() => created.Count == 5);
                 Invoke(window, "Recover_Click");
@@ -58,6 +62,7 @@ public sealed class SetupControlSurfaceTests
                 Assert.All(created, value => Assert.Equal((byte)12, value.NativeSunChange));
                 Assert.Equal("chosen-original.sim", created[4].LoadSavePath);
                 Assert.False(created[4].IsAutosaveRecovery);
+                Assert.Equal(Db2VegetationOptions.Default with { StartChloroplasts = 7321 }, created[4].Vegetation);
                 Assert.Equal("chosen-modern.db3s", created[5].LoadSavePath);
                 Assert.True(created[5].IsAutosaveRecovery);
                 Invoke(fresh, "StartNew_Click");
@@ -144,14 +149,18 @@ public sealed class SetupControlSurfaceTests
     }
 
     [Fact]
-    public async Task NewWorldRestoresEverySetupDefaultAndAdvancedDialogRoundTripsAllValues()
+    public async Task NewWorldRestoresSimulationDefaultsAndKeepsStartingChloroplasts()
     {
         var session = DesktopTestApplication.Session;
         await session.Dispatch(() =>
         {
             var window = new SetupWindow(new AuditStorageService());
             window.Show();
-            SetEnvironment(window, EnvironmentUpdate.Default with { BrownianMotion = 9f, ToroidalWorld = false });
+            var vegetation = Db2VegetationOptions.Default with { StartChloroplasts = 7321 };
+            SetEnvironment(window, EnvironmentUpdate.Default with
+            {
+                BrownianMotion = 9f, ToroidalWorld = false, Vegetation = vegetation,
+            });
             window.FindControl<ComboBox>("Backend")!.SelectedIndex = 2;
             window.FindControl<NumericUpDown>("WorldWidth")!.Value = 99_000;
             window.FindControl<NumericUpDown>("WorldHeight")!.Value = 88_000;
@@ -161,7 +170,7 @@ public sealed class SetupControlSurfaceTests
 
             Invoke(window, "NewWorld_Click");
 
-            AssertEnvironmentEqual(EnvironmentUpdate.Default, GetEnvironment(window));
+            AssertEnvironmentEqual(EnvironmentUpdate.Default with { Vegetation = vegetation }, GetEnvironment(window));
             Assert.Equal(0, window.FindControl<ComboBox>("Backend")!.SelectedIndex);
             Assert.Equal(16_000, window.FindControl<NumericUpDown>("WorldWidth")!.Value);
             Assert.Equal(12_000, window.FindControl<NumericUpDown>("WorldHeight")!.Value);

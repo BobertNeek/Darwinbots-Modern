@@ -309,6 +309,15 @@ fn configuration(t: &NativeSimulationTail) -> Result<EngineConfig, EngineError> 
 impl Engine {
     /// Load a genuine 2.48.32 `.sim`, retaining all source records and metadata.
     pub fn from_native_sim(bytes: &[u8]) -> Result<Self, EngineError> {
+        // StartChlr belongs to Global.gset. Without a profile, VB6 leaves it at zero.
+        Self::from_native_sim_with_start_chloroplasts(bytes, 0)
+    }
+
+    /// Load a genuine 2.48.32 `.sim` using the original process's StartChlr setting.
+    pub fn from_native_sim_with_start_chloroplasts(
+        bytes: &[u8],
+        start_chloroplasts: i32,
+    ) -> Result<Self, EngineError> {
         let file = NativeRecordFile::decode(bytes)?;
         let tail = NativeSimulationTail::decode(&file.tail)?;
         // The lossless codec permits every float bit pattern. Runtime state does not.
@@ -327,7 +336,9 @@ impl Engine {
                 return Err(invalid(format!("nonfinite {}", field.name)));
             }
         }
-        let mut engine = Self::new(configuration(&tail)?)?;
+        let mut config = configuration(&tail)?;
+        config.vegetation.start_chloroplasts = start_chloroplasts;
+        let mut engine = Self::new(config)?;
         // SimOpts.F1 is part of the .sim stream. Global x_restartmode and
         // x_fudge live in separate .gset files and cannot be inferred here.
         engine.native_f1 = Some(tail.integer("f1")? != 0);
@@ -1454,6 +1465,7 @@ mod tests {
         assert_eq!(engine.projectiles.owners.len(), 146);
         assert_eq!(engine.config.world_width, 16_000.0);
         assert_eq!(engine.config.world_height, 12_000.0);
+        assert_eq!(engine.config.vegetation.start_chloroplasts, 0);
         let first = engine.slots[0].organism.as_ref().unwrap();
         assert_eq!(first.materials.energy.to_bits(), 0x4412_c0fd);
         assert_eq!(first.materials.body.to_bits(), 153.94617_f32.to_bits());

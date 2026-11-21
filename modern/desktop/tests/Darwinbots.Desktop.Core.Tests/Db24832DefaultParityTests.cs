@@ -22,7 +22,7 @@ public sealed class Db24832DefaultParityTests
         Assert.Equal(0, update.CorpseDecay.PacketSize);
         Assert.Equal(0UL, update.CorpseDecay.Period);
         Assert.Equal(200, update.Recording!.SamplingInterval);
-        Assert.Equal(16_000, update.Vegetation.StartChloroplasts);
+        Assert.Equal(0, update.Vegetation.StartChloroplasts);
         Assert.Equal(100, update.Vegetation.MaxEnergyPerTick);
         Assert.Equal(50, update.Vegetation.MinimumChloroplastEquivalents);
         Assert.Equal(10UL, update.Vegetation.RepopulationCooldown);

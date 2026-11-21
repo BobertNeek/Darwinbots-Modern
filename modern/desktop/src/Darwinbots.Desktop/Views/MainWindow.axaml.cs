@@ -1169,7 +1169,8 @@ public sealed partial class MainWindow : Window
                     ? SetupWindow.CreateNativeAppearanceProvider(_session is { } active ? await active.ReadNativeSetupUniformStateAsync() : null)
                     : null;
                 var setupWindow = new SetupWindow(_storage, spare, sunChange, caches,
-                    allowLastExitResume: _startupArguments.Count == 0, loadLastExitSettings: false, stageNativeAppearance: stageAppearance);
+                    allowLastExitResume: _startupArguments.Count == 0, loadLastExitSettings: false, stageNativeAppearance: stageAppearance,
+                    startChloroplasts: _liveEnvironment.Vegetation.StartChloroplasts);
                 setupWindow.WorldCreated += options =>
                 {
                     var replacement = new MainWindow(_startupArguments, options, _engineFactory, _storage, _launchSafeModeBackup)
@@ -1906,6 +1907,7 @@ public sealed partial class MainWindow : Window
     {
         ResumeRestartMode = false,
         GlobalSettings = _globalSettings,
+        Vegetation = _setup.Vegetation with { StartChloroplasts = _liveEnvironment.Vegetation.StartChloroplasts },
         Recording = _liveEnvironment.Recording ?? new(),
         ShapesVisible = _liveEnvironment.ShapesVisible ?? _setup.ShapesVisible,
         ShapeDrift = _shapeDrift,

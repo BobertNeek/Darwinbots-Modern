@@ -122,7 +122,7 @@ public sealed record Db2VegetationOptions(
     int SunThresholdMode = 0,
     bool SunOnRandom = false)
 {
-    public static Db2VegetationOptions Default { get; } = new(16_000, 100, 50, 10, 10, 0.75f, true, false, 10_000, Gradient: 1.02f);
+    public static Db2VegetationOptions Default { get; } = new(0, 100, 50, 10, 10, 0.75f, true, false, 10_000, Gradient: 1.02f);
 }
 
 public sealed record EnvironmentUpdate(
