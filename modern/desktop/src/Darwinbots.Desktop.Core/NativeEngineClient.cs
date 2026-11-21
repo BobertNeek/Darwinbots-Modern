@@ -1311,6 +1311,12 @@ public sealed partial class NativeEngineClient : IEngineClient
         } },
     }, "configure post-DNA memory");
 
+    public void ConfigureGeneActivationWatch(ulong watchId, bool enabled, OrganismKey? focus) => ExecuteBatch(new
+    {
+        version = 1,
+        commands = new[] { new { type = "configure_gene_activation_watch", watch_id = watchId, enabled, focus = OrganismPayload(focus) } },
+    }, "configure gene activations");
+
     public void ConfigureGraphSampling(GraphSamplingSettings settings) => ExecuteBatch(new
     {
         version = 1,

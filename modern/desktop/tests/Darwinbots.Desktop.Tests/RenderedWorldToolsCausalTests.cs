@@ -507,19 +507,37 @@ public sealed class RenderedWorldToolsCausalTests
                 var viewer = Assert.Single(window.OwnedWindows.OfType<GeneActivationsWindow>());
                 string?[] Text() => viewer.GetVisualDescendants().OfType<TextBlock>().Select(block => block.Text).ToArray();
                 Assert.Contains("G1:ON  G2:off", Text());
+                Assert.Single(viewer.GetVisualDescendants().OfType<Control>(), control => control.Name == "ActivationBands");
 
-                viewModel.Select(new OrganismKey(second.Slot, second.Generation));
+                var secondFocus = new OrganismKey(second.Slot, second.Generation);
+                viewModel.Select(secondFocus);
                 Assert.Contains("G1:off  G2:ON", Text());
+                await WaitFor(() => session.LatestSnapshot.GeneActivationMeter?.Focus == secondFocus, () => viewModel.Status);
+                Assert.Empty(session.LatestSnapshot.GeneActivationMeter!.Weighted);
                 command.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
                 Assert.Same(viewer, Assert.Single(window.OwnedWindows.OfType<GeneActivationsWindow>()));
 
                 await session.StepAsync();
                 await WaitFor(() => Text().Contains("G1:ON  G2:ON"), () => string.Join(", ", Text()));
+                var stepTick = session.LatestSnapshot.Tick;
+                Assert.Equal(new[] { 20, 20 }, session.LatestSnapshot.GeneActivationMeter!.Weighted);
+                await session.ExecuteRobotsAsync();
+                Assert.Equal(stepTick, session.LatestSnapshot.Tick);
+                Assert.Equal(new[] { 36, 36 }, session.LatestSnapshot.GeneActivationMeter!.Weighted);
+                await session.RefreshSnapshotAsync();
+                Assert.Equal(2ul, session.LatestSnapshot.GeneActivationMeter!.Executions);
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                using var frame = viewer.CaptureRenderedFrame();
+                Assert.NotNull(frame);
 
                 viewModel.ClearSelection();
                 Assert.Contains("No robot focused", Text());
                 Assert.DoesNotContain(Text(), line => line?.Contains("G1:", StringComparison.Ordinal) == true);
                 Assert.True(viewer.IsVisible);
+                await WaitFor(() => session.LatestSnapshot.GeneActivationMeter is { Focus: null }, () => viewModel.Status);
+                Assert.Equal(new[] { 36, 36 }, session.LatestSnapshot.GeneActivationMeter!.Weighted);
+                viewer.Close();
+                await WaitFor(() => session.LatestSnapshot.GeneActivationMeter is null, () => viewModel.Status);
             }
             finally
             {

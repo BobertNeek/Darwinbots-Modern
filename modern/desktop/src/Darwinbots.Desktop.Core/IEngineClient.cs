@@ -161,6 +161,7 @@ public interface IEngineClient : IDisposable
     void UpdateLegacyRestrictions(bool robotFixingAllowed, bool asexualReproductionAllowed);
     void ConfigurePlayerBot(PlayerBotConfig config);
     void ConfigureNativePostDnaMemoryWatch(ulong requestId, OrganismKey? focus, bool captureMemory) { }
+    void ConfigureGeneActivationWatch(ulong watchId, bool enabled, OrganismKey? focus) { }
     void SetPlayerBotKey(uint slot, uint generation, int keyCode, bool pressed);
     void SetPlayerBotKeyState(int keyCode, bool pressed) =>
         throw new NotSupportedException("This engine client does not support independent PlayerBot key state.");

@@ -266,6 +266,10 @@ public static class NativeSnapshotParser
                     sample.Memory?.Select(cell => new MemoryCellSnapshot(cell.Address, cell.Value)).ToArray(),
                     sample.Facts is null ? null : ProjectOrganism(sample.Facts))
                 : null,
+            GeneActivationMeter = native.GeneActivationMeter is { } meter
+                ? new(meter.WatchId, meter.Focus is { } focus ? new(focus.Slot, focus.Generation) : null,
+                    meter.Current ?? [], meter.Weighted ?? [], meter.Executions)
+                : null,
             RestrictionOptions = restrictionOptions,
             Stats = stats,
             WorldSize = native.WorldSize is { Length: 2 } ? native.WorldSize : [16_000f, 12_000f],
@@ -563,6 +567,7 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("asexual_reproduction_allowed")] bool? AsexualReproductionAllowed,
         [property: JsonPropertyName("player_bot")] NativePlayerBot? PlayerBot,
         [property: JsonPropertyName("native_post_dna_memory")] NativePostDnaMemory? NativePostDnaMemory,
+        [property: JsonPropertyName("gene_activation_meter")] NativeGeneActivationMeter? GeneActivationMeter,
         [property: JsonPropertyName("restriction_options")] NativeRestrictionOptions? RestrictionOptions,
         [property: JsonPropertyName("stats")] NativeStats? Stats,
         [property: JsonPropertyName("obstacles")] NativeObstacle[]? Obstacles,
@@ -587,6 +592,13 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("focus")] NativeId? Focus,
         [property: JsonPropertyName("memory")] NativeMemoryCell[]? Memory,
         [property: JsonPropertyName("facts")] NativeOrganism? Facts);
+
+    private sealed record NativeGeneActivationMeter(
+        [property: JsonPropertyName("watch_id")] ulong WatchId,
+        [property: JsonPropertyName("focus")] NativeId? Focus,
+        [property: JsonPropertyName("current")] bool[]? Current,
+        [property: JsonPropertyName("weighted")] int[]? Weighted,
+        [property: JsonPropertyName("executions")] ulong Executions);
 
     private sealed record NativePlayerBot(
         [property: JsonPropertyName("enabled")] bool Enabled,
