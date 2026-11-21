@@ -60,6 +60,12 @@ public sealed class PersistentToolWindowRegistry
             if (updateGraphs || window is not GraphSuiteWindow) window.SetSnapshot(snapshot);
     }
 
+    public void Hide(string key)
+    {
+        if (_windows.TryGetValue(key, out var window) && window.IsVisible)
+            window.Hide();
+    }
+
     public bool Close(string key)
     {
         if (!_windows.TryGetValue(key, out var window)) return false;
