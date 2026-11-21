@@ -316,6 +316,7 @@ public sealed record EngineSnapshot(
     public bool RobotFixingAllowed { get; init; } = true;
     public bool AsexualReproductionAllowed { get; init; } = true;
     public PlayerBotSnapshot PlayerBot { get; init; } = PlayerBotSnapshot.Default;
+    public GeneActivationMeterSnapshot? GeneActivationMeter { get; init; }
     public RestrictionOptions RestrictionOptions { get; init; } = RestrictionOptions.Default;
     public SimulationStatsSnapshot Stats { get; init; } = SimulationStatsSnapshot.Empty;
     public float[] WorldSize { get; init; } = [16_000f, 12_000f];

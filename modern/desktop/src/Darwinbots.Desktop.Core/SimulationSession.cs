@@ -329,6 +329,9 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task ConfigureGraphSamplingAsync(GraphSamplingSettings settings, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.ConfigureGraphSampling(settings), cancellationToken);
 
+    public Task ConfigureGeneActivationWatchAsync(ulong watchId, bool enabled, OrganismKey? focus) =>
+        Enqueue(engine => engine.ConfigureGeneActivationWatch(watchId, enabled, focus), CancellationToken.None);
+
     public Task UpdateEnvironmentAsync(EnvironmentUpdate update, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.UpdateEnvironment(update), cancellationToken);
 
