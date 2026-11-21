@@ -1137,7 +1137,8 @@ public sealed partial class MainWindow : Window
             await session.RemoveManyAsync(keys, suppressDeathPoffs: true);
         else
             await session.RemoveAsync(keys[0].Slot, keys[0].Generation);
-        if (!session.LatestSnapshot.PlayerBot.Enabled)
+        // Report native robot removal as part of presenting the committed snapshot.
+        if (session.LatestSnapshot.NativeCycle is null && !session.LatestSnapshot.PlayerBot.Enabled)
         {
             _viewModel.ClearSelection();
             Viewport.SelectSlot(null);
