@@ -446,6 +446,63 @@ mod tests {
     }
 
     #[test]
+    fn native_species_comment_edits_keep_the_bound_source_until_dna_is_replaced() {
+        const BOUND: &str = "start 19 .up store stop";
+        const AUTHORED: &str = "start 23 .up store stop";
+        let mut world = Engine::from_native_sim(C281).unwrap();
+        assert_eq!(
+            world
+                .bind_native_restart_sources(vec![binding(1, BOUND)])
+                .unwrap(),
+            1
+        );
+        let view = world.configuration_view().unwrap();
+        let mut rows: Vec<crate::SpeciesSettings> = view["species"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|row| row["dna"].is_string())
+            .map(|row| serde_json::from_value(row.clone()).unwrap())
+            .collect();
+        let alga = rows
+            .iter()
+            .position(|row| row.species_id == Some(SpeciesId(0)))
+            .unwrap();
+        let bound = world.load_dna_source(BOUND).unwrap();
+        assert_ne!(
+            world.load_dna_source(&rows[alga].dna).unwrap().blocks(),
+            bound.blocks()
+        );
+
+        let living = world.snapshot().organisms.clone();
+        rows[alga].comment = "Edited without replacing its DNA".into();
+        world.update_species_settings(rows.clone()).unwrap();
+        assert_eq!(world.snapshot().organisms, living);
+        assert!(
+            world.species_templates[0]
+                .as_ref()
+                .unwrap()
+                .source_text
+                .is_none()
+        );
+        assert_eq!(
+            world.species_templates[0].as_ref().unwrap().comment,
+            rows[alga].comment
+        );
+        let mut resumed = SaveFile::decode(&SaveFile::encode(&world).unwrap()).unwrap();
+        let newborn = trigger_one_repopulation_birth(&mut resumed);
+        assert_eq!(resumed.dna(newborn).unwrap().blocks(), bound.blocks());
+
+        rows[alga].dna = AUTHORED.into();
+        world.update_species_settings(rows).unwrap();
+        assert_eq!(world.snapshot().organisms, living);
+        let mut resumed = SaveFile::decode(&SaveFile::encode(&world).unwrap()).unwrap();
+        let newborn = trigger_one_repopulation_birth(&mut resumed);
+        let authored = resumed.load_dna_source(AUTHORED).unwrap();
+        assert_eq!(resumed.dna(newborn).unwrap().blocks(), authored.blocks());
+    }
+
+    #[test]
     fn native_repopulation_binds_zero_quantity_without_enabling_restart() {
         let mut file = NativeRecordFile::decode(C281).unwrap();
         file.robots.clear();
