@@ -11,6 +11,7 @@ public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWi
     private readonly bool _keepUpdatingOnClose;
     private readonly Func<bool>? _autoFork;
     private readonly Func<GraphSamplingSettings?, Action<NativeGraphRecordingSample?>, Task>? _consumeNativeSample;
+    private readonly Func<Action<NativeGraphRecordingSample?>, Task>? _consumeNativeResetSample;
     private static readonly IReadOnlyDictionary<GraphMetric, double> EmptyMetrics = new Dictionary<GraphMetric, double>();
     private readonly Dictionary<GraphMetric, RecordingChart> _recordingCharts = [];
     private EngineSnapshot _snapshot = EngineSnapshot.Empty;
@@ -23,13 +24,15 @@ public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWi
     public GraphSuiteWindow(EngineSnapshot snapshot, LegacyGraphRecordingRun? recording = null, Func<bool>? autoFork = null,
         Func<Task<NativeGraphRecordingSample?>>? readNativeSample = null,
         Func<GraphSamplingSettings?, Action<NativeGraphRecordingSample?>, Task>? consumeNativeSample = null,
-        bool keepUpdatingOnClose = false)
+        bool keepUpdatingOnClose = false,
+        Func<Action<NativeGraphRecordingSample?>, Task>? consumeNativeResetSample = null)
     {
         _recording = recording;
         _keepUpdatingOnClose = keepUpdatingOnClose;
         _autoFork = autoFork;
         _consumeNativeSample = consumeNativeSample ?? (readNativeSample is null ? null
             : async (_, consume) => consume(await readNativeSample()));
+        _consumeNativeResetSample = consumeNativeResetSample;
         InitializeComponent();
         GraphView.GraphWindowRequested += OpenGraphWindow;
         GraphView.ReopenGraphRequested = ReopenGraphWindow;
@@ -122,9 +125,11 @@ public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWi
         }
     }
 
-    private void ResetRecordingCharts() => ResetRecordingCharts(_recordingCharts, feedImmediately: false);
+    private void ResetRecordingCharts() =>
+        ResetRecordingCharts(_recordingCharts, feedImmediately: true, resetSweep: true);
 
-    private void ResetRecordingCharts(IEnumerable<KeyValuePair<GraphMetric, RecordingChart>> charts, bool feedImmediately)
+    private void ResetRecordingCharts(IEnumerable<KeyValuePair<GraphMetric, RecordingChart>> charts, bool feedImmediately,
+        bool resetSweep = false)
     {
         if (_recording is null || _recording.IsSuspended) return;
         var pendingReads = new List<(GraphMetric Metric, RecordingChart Chart, int Version)>();
@@ -138,18 +143,29 @@ public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWi
             if (chart.AwaitingNativeRead)
                 pendingReads.Add((metric, chart, chart.Version));
             else if (feedImmediately && ViewModel.HistorySamples.LastOrDefault() is { } sample)
-                RecordPoint(metric, chart, sample);
+            {
+                if (resetSweep) AppendImmediatePoint(metric, chart, sample);
+                else RecordPoint(metric, chart, sample);
+            }
         }
         if (pendingReads.Count > 0 && _consumeNativeSample is { } capture)
         {
             var generation = _recording.Generation;
-            var sampling = feedImmediately ? SamplingFor(pendingReads.Select(entry => entry.Metric)) : null;
-            _ = capture(sampling, sample => FinishNativeRead(pendingReads, generation, feedImmediately, sample));
+            void Complete(NativeGraphRecordingSample? sample) =>
+                FinishNativeRead(pendingReads, generation, feedImmediately, resetSweep, sample);
+            if (resetSweep && _consumeNativeResetSample is { } captureReset)
+                _ = captureReset(Complete);
+            else
+            {
+                GraphSamplingSettings? sampling = !feedImmediately ? null : resetSweep ? new(Generational: true)
+                    : SamplingFor(pendingReads.Select(entry => entry.Metric));
+                _ = capture(sampling, Complete);
+            }
         }
     }
 
     private void FinishNativeRead(List<(GraphMetric Metric, RecordingChart Chart, int Version)> pending,
-        int generation, bool feedImmediately, NativeGraphRecordingSample? sample)
+        int generation, bool feedImmediately, bool resetSweep, NativeGraphRecordingSample? sample)
     {
         if (_recording is not { } recording || recording.Generation != generation || recording.IsSuspended) return;
 
@@ -161,12 +177,22 @@ public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWi
             chart.AwaitingNativeRead = false;
             if (sample is null) continue;
             chart.MostRecentTick = sample.Tick;
-            if (feedImmediately) AppendImmediatePoint(metric, chart, ProjectNativePoint(sample));
+            if (feedImmediately)
+                AppendImmediatePoint(metric, chart, resetSweep ? ProjectResetSweepPoint(sample, metric) : ProjectNativePoint(sample));
         }
     }
 
     private static GraphMetricSample ProjectNativePoint(NativeGraphRecordingSample sample) =>
         new(sample.Tick, EmptyMetrics, sample.SpeciesGraphs, sample.DynamicCostSeries);
+
+    private static GraphMetricSample ProjectResetSweepPoint(NativeGraphRecordingSample sample, GraphMetric metric)
+    {
+        var point = ProjectNativePoint(sample) with { NativeResetSweep = true };
+        // FeedGraph(0) carries the dynamic chart's one-row limit into the remaining graphs.
+        return LegacyGraphRecordingRun.NativeIndexOf(metric) > LegacyGraphRecordingRun.NativeIndexOf(GraphMetric.DynamicCostStats)
+            ? point with { SpeciesGraphs = sample.SpeciesGraphs.Take(1).ToArray() }
+            : point;
+    }
 
     private void RecordPoint(GraphMetric metric, RecordingChart chart, GraphMetricSample sample) =>
         chart.Save.AddPoint(ViewModel.LegacyPoint(metric, sample), ViewModel.LegacyHeader(metric),

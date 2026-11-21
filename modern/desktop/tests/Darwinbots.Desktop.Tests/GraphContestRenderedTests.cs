@@ -932,16 +932,21 @@ public sealed class GraphContestRenderedTests
                 Assert.Contains("JOINED", graphWindow.ViewModel.Status, StringComparison.Ordinal);
 
                 graphView.FindControl<Button>("ResetGraphsButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                Assert.All(liveSeries, graph => Assert.Empty(graph.Samples));
+                var resetPrompt = Assert.Single(graphWindow.OwnedWindows.OfType<LegacyConfirmationWindow>());
+                resetPrompt.GetVisualDescendants().OfType<Button>().Single(button => Equals(button.Content, "OK"))
+                    .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(
+                    () => liveSeries.All(graph => graph.Samples.Count == 1 && graph.Samples[0].Tick == updateTick),
+                    () => "Reset All did not immediately feed one point at the paused tick.");
                 await session.StepAsync(100);
                 await FlushGraphPresentationAsync();
-                Assert.All(liveSeries, graph => Assert.Empty(graph.Samples));
+                Assert.All(liveSeries, graph => Assert.Equal(updateTick, Assert.Single(graph.Samples).Tick));
                 var postResetTick = session.LatestSnapshot.Tick;
                 Assert.True(postResetTick > updateTick);
                 UpdateLiveGraphs();
                 await WaitFor(
-                    () => liveSeries.All(graph => graph.Samples.Count == 1 && graph.Samples[0].Tick == postResetTick),
-                    () => "Update Now did not start a fresh point series after Reset All.");
+                    () => liveSeries.All(graph => graph.Samples.Count == 2 && graph.Samples[^1].Tick == postResetTick),
+                    () => "Update Now did not add a point to the fresh series after Reset All.");
 
                 var contestButton = window.FindControl<Button>("ContestResultsButton")!;
                 contestButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));

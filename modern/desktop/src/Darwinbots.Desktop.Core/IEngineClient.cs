@@ -35,6 +35,7 @@ public interface IEngineClient : IDisposable
             TickRecordingDeaths(count, weightPercent, onDeathsCommitted);
     }
     NativeGraphRecordingSample? ReadNativeGraphSample() => null;
+    NativeGraphRecordingSample? ReadNativeGraphResetSample() => ReadNativeGraphSample();
     NativeGraphRecordingSample? FeedNativeGraphSample(GraphSamplingSettings settings, bool dueOnly = false) =>
         ReadNativeGraphSample();
     DnaImportReport ImportDna(string dna, float[]? position = null);
