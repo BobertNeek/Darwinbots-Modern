@@ -1,5 +1,9 @@
 using System.Reflection;
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
+using Avalonia.Headless;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.VisualTree;
@@ -110,7 +114,8 @@ public sealed class SetupAddSpeciesRenderedTests
                     var details = Assert.Single(editor.GetVisualDescendants().OfType<Expander>(), control => control.DataContext == added);
                     details.IsExpanded = true;
                     editor.UpdateLayout();
-                    var comment = Assert.Single(details.GetVisualDescendants().OfType<TextBox>(), control => control.Watermark == "Species comment");
+                    var comment = Assert.Single(DetailsFor(editor, added).GetVisualDescendants().OfType<TextBox>(),
+                        control => control.Watermark == "Species comment");
                     Assert.Equal(native ? LeadingComment : string.Empty, comment.Text);
                     Assert.Equal(Dna, added.Dna);
                     var prior = Assert.Single(editor.Species, row => row.Name == existing.Name);
@@ -132,6 +137,86 @@ public sealed class SetupAddSpeciesRenderedTests
         }
         finally { temporary.Delete(recursive: true); }
     }
+
+    [Theory]
+    [InlineData(1440, 1000, false)]
+    [InlineData(1080, 820, true)]
+    public async Task ExpandedSpeciesDetailsStayInTheVisibleRosterWidth(int width, int height, bool keyboard)
+    {
+        var temporary = Directory.CreateTempSubdirectory("darwinbots-setup-species-layout-");
+        try
+        {
+            var file = Path.Combine(temporary.FullName, "Added Species.txt");
+            await File.WriteAllTextAsync(file, Dna);
+            var storage = new AvaloniaDesktopStorageService(Path.Combine(temporary.FullName, "profile"));
+            await storage.MarkFirstRunCompleteAsync();
+
+            await DesktopTestApplication.Session.Dispatch(async () =>
+            {
+                var window = new SetupWindow(storage) { WindowState = WindowState.Normal, Width = width, Height = height };
+                try
+                {
+                    _ = new DnaPicker(window, file);
+                    window.Show();
+                    var added = await AddSpeciesAsync(window, 5, 3_000);
+                    window.UpdateLayout();
+                    var scroller = window.FindControl<ScrollViewer>("SpeciesRosterScroll")!;
+                    var expander = Assert.Single(window.GetVisualDescendants().OfType<Expander>(), row => row.DataContext == added);
+                    var header = Assert.Single(expander.GetVisualDescendants().OfType<ToggleButton>());
+                    var details = DetailsFor(window, added);
+                    Assert.False(details.IsVisible);
+                    var compactHeight = expander.Bounds.Height;
+
+                    header.BringIntoView();
+                    window.UpdateLayout();
+                    Assert.True(scroller.Offset.X > 0);
+                    if (keyboard)
+                    {
+                        Assert.True(header.Focus());
+                        window.KeyPress(Key.Space, RawInputModifiers.None, PhysicalKey.Space, null);
+                        window.KeyRelease(Key.Space, RawInputModifiers.None, PhysicalKey.Space, null);
+                    }
+                    else
+                    {
+                        var center = header.TranslatePoint(new Point(header.Bounds.Width / 2, header.Bounds.Height / 2), window)!.Value;
+                        window.MouseDown(center, MouseButton.Left, RawInputModifiers.None);
+                        window.MouseUp(center, MouseButton.Left, RawInputModifiers.None);
+                    }
+                    await WaitForAsync(() => expander.IsExpanded && details.IsVisible, "Species EDIT did not expand its row.");
+                    window.UpdateLayout();
+                    Assert.InRange(expander.Bounds.Height, compactHeight - 1, compactHeight + 1);
+
+                    var coordinate = details.GetVisualDescendants().OfType<NumericUpDown>().Last(control => control.Maximum == 1_000_000);
+                    var skinPoints = details.GetVisualDescendants().OfType<NumericUpDown>()
+                        .Where(control => control.Maximum is 0.82m or 1256m).ToArray();
+                    Assert.Equal(8, skinPoints.Length);
+                    Assert.All(skinPoints, control => Assert.True(control.Bounds.Width >= 100));
+                    var restriction = Assert.Single(details.GetVisualDescendants().OfType<CheckBox>(),
+                        control => Equals(control.Content, "KILL DISQUALIFIED"));
+                    var comment = Assert.Single(details.GetVisualDescendants().OfType<TextBox>(), control => control.Watermark == "Species comment");
+                    Assert.Equal(LeadingComment, comment.Text);
+                    foreach (var control in new Control[] { coordinate, skinPoints[^1], restriction, comment })
+                    {
+                        control.BringIntoView();
+                        window.UpdateLayout();
+                        var relative = control.TranslatePoint(default, scroller)!.Value;
+                        var onWindow = control.TranslatePoint(default, window)!.Value;
+                        Assert.InRange(relative.X, 0, scroller.Viewport.Width);
+                        Assert.InRange(relative.X + control.Bounds.Width, 0, scroller.Viewport.Width + 1);
+                        Assert.InRange(onWindow.Y, 64, window.Bounds.Height - 34);
+                        Assert.InRange(onWindow.Y + control.Bounds.Height, 64, window.Bounds.Height - 34);
+                    }
+                    comment.Text = "Updated species detail";
+                    Assert.Equal(comment.Text, added.Comment);
+                }
+                finally { window.Close(); }
+            }, CancellationToken.None);
+        }
+        finally { temporary.Delete(recursive: true); }
+    }
+
+    private static Border DetailsFor(SetupWindow window, SetupSpeciesRow row) =>
+        Assert.Single(window.GetVisualDescendants().OfType<Border>(), detail => detail.Name == "SpeciesDetails" && detail.DataContext == row);
 
     private static GlobalSettings Settings(string mainDirectory) => new()
     {
