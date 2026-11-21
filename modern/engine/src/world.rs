@@ -2437,7 +2437,7 @@ pub struct Engine {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     native_cycle: Option<i32>,
     #[serde(skip)]
-    native_restarted_this_cycle: bool,
+    pub(crate) native_restarted_this_cycle: bool,
     /// Original mode1 UpdateCounters census and its one-cycle delayed display.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     native_population_census: Option<[usize; 2]>,
