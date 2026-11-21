@@ -6,6 +6,8 @@ namespace Darwinbots.Desktop.Views;
 
 public sealed partial class GlobalSettingsWindow : Window
 {
+    private const int MinimumHideInterval = 150;
+
     public bool Accepted { get; private set; }
     public GlobalSettings Settings { get; private set; }
 
@@ -16,6 +18,12 @@ public sealed partial class GlobalSettingsWindow : Window
         Settings = settings ?? throw new ArgumentNullException(nameof(settings));
         InitializeComponent();
         Populate(settings);
+        CycleLength.LostFocus += (_, _) =>
+        {
+            var interval = ReadHideInterval();
+            CycleLength.Value = interval;
+            CycleLength.Minimum = Math.Min(MinimumHideInterval, interval);
+        };
     }
 
     private void Populate(GlobalSettings settings)
@@ -108,6 +116,9 @@ public sealed partial class GlobalSettingsWindow : Window
         EvolutionMode.SelectedIndex = (int)evolution.Mode;
         SourceBot.Text = evolution.SourceBot;
         StageLength.Value = (decimal)evolution.StageLength;
+        // Existing Modern profiles could store a shorter interval. Leave it
+        // available until the field is edited.
+        CycleLength.Minimum = Math.Min(MinimumHideInterval, evolution.CycleLength);
         CycleLength.Value = evolution.CycleLength;
         AutoGraphs.IsChecked = evolution.AutoGraphs;
         NormalizeDnaSize.IsChecked = evolution.NormalizeDnaSize;
@@ -212,7 +223,7 @@ public sealed partial class GlobalSettingsWindow : Window
             Mode = (EvolutionMode)(EvolutionMode.SelectedIndex < 0 ? 0 : EvolutionMode.SelectedIndex),
             SourceBot = SourceBot.Text ?? string.Empty,
             StageLength = (double)(StageLength.Value ?? 10),
-            CycleLength = (int)(CycleLength.Value ?? 100),
+            CycleLength = ReadHideInterval(),
             ReducePopulationOscillation = Settings.Evolution.ReducePopulationOscillation,
             AutoGraphs = AutoGraphs.IsChecked == true,
             NormalizeDnaSize = NormalizeDnaSize.IsChecked == true,
@@ -221,6 +232,11 @@ public sealed partial class GlobalSettingsWindow : Window
             RestrictSpeciesMixing = Settings.Evolution.RestrictSpeciesMixing,
         },
     };
+
+    private int ReadHideInterval() =>
+        CycleLength.Value == Settings.Evolution.CycleLength
+            ? Settings.Evolution.CycleLength
+            : (int)Math.Clamp(Math.Abs(CycleLength.Value ?? 0m), MinimumHideInterval, CycleLength.Maximum);
 
     private void Apply_Click(object? sender, RoutedEventArgs e)
     {
