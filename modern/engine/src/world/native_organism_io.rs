@@ -75,6 +75,7 @@ impl Engine {
         }
         // The public method is atomic too, not only its command-batch caller.
         let mut candidate = SaveFile::decode(&SaveFile::encode(self)?)?;
+        candidate.inherit_gene_activation_watch(self);
         let count = candidate.apply_native_organisms(file, position)?;
         *self = candidate;
         Ok(count)

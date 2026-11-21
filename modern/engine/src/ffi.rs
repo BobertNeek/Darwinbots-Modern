@@ -79,6 +79,11 @@ enum EngineCommand {
     ConfigureGraphSampling {
         settings: crate::GraphSamplingSettings,
     },
+    ConfigureGeneActivationWatch {
+        watch_id: u64,
+        enabled: bool,
+        focus: Option<OrganismIdCommand>,
+    },
     UpdateCostSettings {
         costs: crate::DnaCosts,
     },
@@ -567,6 +572,36 @@ fn db_engine_command_batch_impl(
             format!("unsupported command batch version {}", batch.version),
         );
     }
+    if let [
+        EngineCommand::ConfigureGeneActivationWatch {
+            watch_id,
+            enabled,
+            focus,
+        },
+    ] = batch.commands.as_slice()
+    {
+        // Changing the tool's focus alone must not rebuild the GPU world.
+        let response = serde_json::json!({
+            "version": ABI_VERSION,
+            "tick": engine.snapshot().tick,
+            "population": engine.population(),
+            "backend": format!("{:?}", engine.backend()),
+            "results": [null],
+        });
+        return match serde_json::to_vec(&response) {
+            Ok(bytes) => {
+                engine.configure_gene_activation_watch(
+                    *watch_id,
+                    *enabled,
+                    focus
+                        .as_ref()
+                        .map(|id| OrganismId::new(id.slot, id.generation)),
+                );
+                write_buffer(out_buffer, bytes)
+            }
+            Err(error) => fail(DbStatus::EngineError, error),
+        };
+    }
     // Pure queries must not reconstruct the world or its GPU backend.
     if !batch.commands.is_empty()
         && batch.commands.iter().all(|command| {
@@ -641,7 +676,10 @@ fn db_engine_command_batch_impl(
         Ok(Some(candidate)) => candidate,
         Ok(None) => match SaveFile::encode(committed_engine) {
             Ok(bytes) => match SaveFile::decode(&bytes) {
-                Ok(candidate) => candidate,
+                Ok(mut candidate) => {
+                    candidate.inherit_gene_activation_watch(committed_engine);
+                    candidate
+                }
                 Err(error) => return fail(DbStatus::EngineError, error.to_string()),
             },
             Err(error) => return fail(DbStatus::EngineError, error.to_string()),
@@ -652,6 +690,18 @@ fn db_engine_command_batch_impl(
 
     for command in batch.commands {
         let result = match command {
+            EngineCommand::ConfigureGeneActivationWatch {
+                watch_id,
+                enabled,
+                focus,
+            } => {
+                engine.configure_gene_activation_watch(
+                    watch_id,
+                    enabled,
+                    focus.map(|id| OrganismId::new(id.slot, id.generation)),
+                );
+                Ok(serde_json::Value::Null)
+            }
             EngineCommand::SetNativeRestartSeed {
                 seed,
                 skin_timer_seconds,

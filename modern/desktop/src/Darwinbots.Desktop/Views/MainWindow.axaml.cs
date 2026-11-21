@@ -76,6 +76,8 @@ public sealed partial class MainWindow : Window
     private bool _navigationInFlight;
     private readonly SemaphoreSlim _advanceGate = new(1, 1);
     private volatile bool _loadingSimulation;
+    private GeneActivationsWindow? _geneActivationWindow;
+    private ulong _geneActivationWatchId;
     private OrganismKey? _moveOrganism;
     private WorldInsertionController? _insertion;
     private bool _turbo;
@@ -1647,26 +1649,46 @@ public sealed partial class MainWindow : Window
         return LegacyCommandResult.Success("ROBOT CONSOLE OPEN");
     }
 
-    private Task<LegacyCommandResult> ShowSelectedGeneActivationsAsync()
+    private async Task<LegacyCommandResult> ShowSelectedGeneActivationsAsync()
     {
-        if (_session is not { } session || _viewModel.SelectedKey is null)
-            return Task.FromResult(LegacyCommandResult.Failure("NO ROBOT SELECTED"));
+        if (_session is not { } session || _loadingSimulation || _viewModel.SelectedKey is null)
+            return LegacyCommandResult.Failure("NO ROBOT SELECTED");
 
         var window = _toolWindows.ShowOrActivate("gene-activations", () =>
         {
-            var viewer = new GeneActivationsWindow();
+            var viewer = new GeneActivationsWindow(++_geneActivationWatchId);
+            _geneActivationWindow = viewer;
             void FollowSelection(object? sender, System.ComponentModel.PropertyChangedEventArgs change)
             {
-                if (change.PropertyName == nameof(MainWindowViewModel.SelectedId))
-                    viewer.SetFocus(_viewModel.SelectedKey, session.LatestSnapshot);
+                if (change.PropertyName != nameof(MainWindowViewModel.SelectedId)) return;
+                viewer.SetFocus(_viewModel.SelectedKey, session.LatestSnapshot);
+                if (!_loadingSimulation)
+                    _ = UpdateGeneActivationWatchAsync(session, viewer, true, _viewModel.SelectedKey);
             }
 
             _viewModel.PropertyChanged += FollowSelection;
-            viewer.Closed += (_, _) => _viewModel.PropertyChanged -= FollowSelection;
+            viewer.Closed += (_, _) =>
+            {
+                _viewModel.PropertyChanged -= FollowSelection;
+                if (_geneActivationWindow == viewer) _geneActivationWindow = null;
+                _ = UpdateGeneActivationWatchAsync(session, viewer, false, null);
+            };
             return viewer;
         });
         window.SetFocus(_viewModel.SelectedKey, session.LatestSnapshot);
-        return Task.FromResult(LegacyCommandResult.Success("GENE ACTIVATIONS OPEN"));
+        await UpdateGeneActivationWatchAsync(session, window, true, _viewModel.SelectedKey);
+        return LegacyCommandResult.Success("GENE ACTIVATIONS OPEN");
+    }
+
+    private async Task UpdateGeneActivationWatchAsync(SimulationSession session, GeneActivationsWindow window,
+        bool enabled, OrganismKey? focus)
+    {
+        try { await session.ConfigureGeneActivationWatchAsync(window.WatchId, enabled, focus); }
+        catch (Exception error)
+        {
+            if (_session == session && window.IsVisible)
+                _viewModel.Status = $"GENE ACTIVATIONS ERROR · {error.Message}";
+        }
     }
 
     private async Task<LegacyCommandResult> MakeSelectedNewSpeciesAsync()
@@ -2935,6 +2957,12 @@ public sealed partial class MainWindow : Window
             if (_session is null) return;
             _loadingSimulation = true;
             await _session.LoadAsync(save);
+            if (_geneActivationWindow is { } viewer)
+            {
+                viewer.RestartWatch(++_geneActivationWatchId);
+                viewer.SetFocus(_viewModel.SelectedKey, _session.LatestSnapshot);
+                await UpdateGeneActivationWatchAsync(_session, viewer, true, _viewModel.SelectedKey);
+            }
             // A rejected load publishes no snapshot and must keep user-closed
             // graphs closed. Loading publications defer this until success.
             _automaticEvolutionGraphBoundary = null;
