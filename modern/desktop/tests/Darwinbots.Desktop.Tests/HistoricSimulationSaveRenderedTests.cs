@@ -416,6 +416,8 @@ public sealed class HistoricSimulationSaveRenderedTests
         try
         {
             var expectedPath = folderName is null ? null : directory.CreateSubdirectory(folderName).FullName;
+            const string marker = "simulation-picker-folder.marker";
+            if (expectedPath is not null) await File.WriteAllTextAsync(Path.Combine(expectedPath, marker), "simulation folder");
             await using var session = new SimulationSession(new RecordingEngineClient());
             await DesktopTestApplication.Session.Dispatch(async () =>
             {
@@ -443,9 +445,9 @@ public sealed class HistoricSimulationSaveRenderedTests
 
                     Assert.Equal(3, options.Count);
                     Assert.All(options, picker => Assert.Same(expectedPath is null ? null : folder, picker.SuggestedStartLocation));
-                    Assert.Equal(Enumerable.Repeat(expectedPath, expectedPath is null ? 0 : 3),
-                        lookups.Select(uri => uri.LocalPath),
-                        OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+                    Assert.Equal(expectedPath is null ? 0 : 3, lookups.Count);
+                    foreach (var lookup in lookups)
+                        Assert.True(File.Exists(Path.Combine(lookup.LocalPath, marker)), lookup.LocalPath);
                 }
                 finally { CloseFilePickerWindow(window); }
 

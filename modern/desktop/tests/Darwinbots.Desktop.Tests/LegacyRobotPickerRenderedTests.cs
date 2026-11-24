@@ -23,6 +23,8 @@ public sealed class LegacyRobotPickerRenderedTests
         try
         {
             var expected = folderName is null ? null : root.CreateSubdirectory(folderName).FullName;
+            const string marker = "robot-picker-folder.marker";
+            if (expected is not null) await File.WriteAllTextAsync(Path.Combine(expected, marker), "robot folder");
             var setup = new WorldSetupOptions
             {
                 Backend = "Cpu", PopulationCapacity = 64, VegetablePopulationCap = 0,
@@ -62,7 +64,7 @@ public sealed class LegacyRobotPickerRenderedTests
                     Assert.All(options, picker => Assert.Same(expected is null ? null : folder, picker.SuggestedStartLocation));
                     Assert.Equal(expected is null ? 0 : 3, lookups.Count);
                     foreach (var lookup in lookups)
-                        Assert.Equal(expected, lookup.LocalPath, ignoreCase: OperatingSystem.IsWindows());
+                        Assert.True(File.Exists(Path.Combine(lookup.LocalPath, marker)), lookup.LocalPath);
                     Assert.Equal(before.Tick, session.LatestSnapshot.Tick);
                 }
                 finally
