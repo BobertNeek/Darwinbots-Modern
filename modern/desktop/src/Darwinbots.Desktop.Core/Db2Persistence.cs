@@ -114,6 +114,31 @@ public static class Db2SettingsCodec
 public static class Db2GenomeRecordFile
 {
     public const string Header = "Rob id,Parent id,Founder name,Generation,Birth cycle,Age,Mutations,New mutations,Dna length,Offspring number,kills,Fitness,Energy,Chloroplasts";
+    public const string MutationHistoryHeader = "Rob id,Mutation History";
+
+    public static string MutationHistoryPath(string snapshotPath) =>
+        Path.ChangeExtension(snapshotPath, null) + "_Mutations.txt";
+
+    public static Task WriteWithMutationHistoryAsync(string snapshotPath, byte[] records, byte[] mutationHistory)
+    {
+        var path = Path.GetFullPath(snapshotPath);
+        return Db2RobotFileStorage.WriteFilesAsync([(path, records), (MutationHistoryPath(path), mutationHistory)]);
+    }
+
+    public static string EncodeMutationHistory(
+        IEnumerable<(ulong Id, IReadOnlyList<string> Log)> histories, bool includeHeader)
+    {
+        var builder = new StringBuilder();
+        if (includeHeader) builder.Append(MutationHistoryHeader).Append("\r\n");
+        foreach (var (id, log) in histories)
+        {
+            builder.Append("\r\n").Append(id.ToString(CultureInfo.InvariantCulture)).Append(",\r\n");
+            foreach (var entry in log)
+                builder.Append(entry.ReplaceLineEndings("\r\n")).Append("\r\n");
+            builder.Append("\r\n");
+        }
+        return builder.ToString();
+    }
 
     public static string EncodeLiving(
         EngineSnapshot snapshot,

@@ -7,6 +7,32 @@ namespace Darwinbots.Desktop.Core.Tests;
 public sealed class Db2PersistenceTests
 {
     [Fact]
+    public async Task LivingGenomeRecordsAndMutationHistoryCommitAsAFilePair()
+    {
+        var directory = Directory.CreateTempSubdirectory("db2-genome-pair-");
+        try
+        {
+            var path = Path.Combine(directory.FullName, "population.42.snp");
+            var sidecar = Path.Combine(directory.FullName, "population.42_Mutations.txt");
+            var history = Db2GenomeRecordFile.EncodeMutationHistory(
+                [(10, ["New mutation", "Café"]), (11, [])], includeHeader: true);
+            Assert.Equal("Rob id,Mutation History\r\n\r\n10,\r\nNew mutation\r\nCafé\r\n\r\n\r\n11,\r\n\r\n", history);
+            var historyBytes = LegacyDnaText.Encode(history);
+            Assert.Contains((byte)0xe9, historyBytes);
+            await Db2GenomeRecordFile.WriteWithMutationHistoryAsync(path, "first SNP"u8.ToArray(), historyBytes);
+            Assert.Equal("first SNP", File.ReadAllText(path));
+            Assert.Equal(history, LegacyDnaText.Decode(File.ReadAllBytes(sidecar)));
+
+            File.Delete(sidecar);
+            Directory.CreateDirectory(sidecar);
+            await Assert.ThrowsAsync<IOException>(() =>
+                Db2GenomeRecordFile.WriteWithMutationHistoryAsync(path, "replacement SNP"u8.ToArray(), historyBytes));
+            Assert.Equal("first SNP", File.ReadAllText(path));
+        }
+        finally { directory.Delete(recursive: true); }
+    }
+
+    [Fact]
     public void OriginalSettingsUseWindows1252ForNonAsciiSpeciesNamesAndPaths()
     {
         var expected = new DesktopSettings {

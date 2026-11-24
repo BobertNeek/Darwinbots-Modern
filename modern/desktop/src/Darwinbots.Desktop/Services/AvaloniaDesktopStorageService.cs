@@ -213,7 +213,8 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
     public async Task<bool> SaveLivingSnapshotAsync(
         TopLevel owner,
         string suggestedFileName,
-        Func<Stream, Task> writeAsync)
+        byte[] snapshot,
+        Func<Task<byte[]?>> chooseMutationHistoryAsync)
     {
         var file = await owner.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
@@ -223,27 +224,63 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
             FileTypeChoices = [SnapshotFileType()],
         });
         if (file is null) return false;
+        var history = await chooseMutationHistoryAsync();
+        if (history is not null)
+        {
+            var path = LocalPath(file) ??
+                throw new NotSupportedException("Saving mutation history requires a local snapshot file.");
+            await Db2GenomeRecordFile.WriteWithMutationHistoryAsync(path, snapshot, history);
+            return true;
+        }
+
         await using var stream = await file.OpenWriteAsync();
         stream.SetLength(0);
-        await writeAsync(stream);
+        await stream.WriteAsync(snapshot);
         return true;
     }
 
-    public async Task<bool> AppendDeadSnapshotAsync(Func<Stream, Task> writeAsync)
+    public async Task<bool> AppendDeadSnapshotAsync(Func<Stream, Task> writeAsync, Func<Stream, Task>? writeMutationHistoryAsync)
     {
         var path = DeadSnapshotPath();
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        await using var stream = new FileStream(
+        await using var history = writeMutationHistoryAsync is null ? null : OpenRecording(Db2GenomeRecordFile.MutationHistoryPath(path));
+        await using var stream = OpenRecording(path);
+        var start = stream.Seek(0, SeekOrigin.End);
+        var historyStart = history?.Seek(0, SeekOrigin.End);
+        try
+        {
+            await writeAsync(stream);
+            if (history is not null)
+            {
+                await writeMutationHistoryAsync!(history);
+                await history.FlushAsync();
+            }
+            await stream.FlushAsync();
+            return true;
+        }
+        catch (Exception error)
+        {
+            try
+            {
+                stream.SetLength(start);
+                if (historyStart is { } length) history!.SetLength(length);
+            }
+            catch (Exception rollback)
+            {
+                throw new IOException("Unable to restore dead recording files after a failed write.", new AggregateException(error, rollback));
+            }
+            throw;
+        }
+    }
+
+    private static FileStream OpenRecording(string path) =>
+        new(
             path,
             FileMode.OpenOrCreate,
             FileAccess.ReadWrite,
             FileShare.Read,
             bufferSize: 4096,
             options: FileOptions.Asynchronous);
-        stream.Seek(0, SeekOrigin.End);
-        await writeAsync(stream);
-        return true;
-    }
 
     public string? FindLatestAutosave()
     {
