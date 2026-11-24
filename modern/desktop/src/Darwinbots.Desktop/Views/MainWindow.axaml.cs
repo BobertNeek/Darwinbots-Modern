@@ -120,6 +120,7 @@ public sealed partial class MainWindow : Window
     private RgbMemoryMonitorSettings _rgbMemorySettings = RgbMemoryMonitorSettings.Default;
     private const string RgbMonitorToolKey = "rgb-memory-monitor";
     private readonly PersistentToolWindowRegistry _toolWindows;
+    private readonly SeededSpawnPlacement _randomShapePlacement;
     private readonly Stopwatch _runtimeClock = new();
     private double _activeCostMultiplier;
     private TrayIcon? _trayIcon;
@@ -142,6 +143,7 @@ public sealed partial class MainWindow : Window
     {
         _startupArguments = arguments.ToArray();
         _setup = setup with { NativeGaussianSpare = null, NativeSunChange = null, NativeProcessCaches = null };
+        _randomShapePlacement = new SeededSpawnPlacement(setup.Seed ^ 0x4d42UL);
         _initialNativeGaussianSpare = setup.NativeGaussianSpare;
         _initialNativeSunChange = setup.NativeSunChange;
         _initialNativeProcessCaches = setup.NativeProcessCaches;
@@ -1921,11 +1923,8 @@ public sealed partial class MainWindow : Window
     private async Task<LegacyCommandResult> AddRandomObstaclesCommandAsync(int count)
     {
         if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        var placement = new SeededSpawnPlacement(
-            _setup.Seed ^ _session.LatestSnapshot.Tick ^ 0x4d42UL);
-        var width = (float)_setup.WorldWidth;
-        var height = (float)_setup.WorldHeight;
-        var shapes = placement.NextObstacles(count, width, height);
+        var size = _session.LatestSnapshot.WorldSize;
+        var shapes = _randomShapePlacement.NextObstacles(count, size[0], size[1]);
         await AddObstaclesAsync(shapes);
         return LegacyCommandResult.Success($"ADDED {count} RANDOM SHAPES");
     }
@@ -1955,7 +1954,8 @@ public sealed partial class MainWindow : Window
     private async Task<LegacyCommandResult> AddMazeCommandAsync(MazePreset pattern)
     {
         if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        var shapes = MazePresetBuilder.Build(pattern, _setup.WorldWidth, _setup.WorldHeight);
+        var size = _session.LatestSnapshot.WorldSize;
+        var shapes = MazePresetBuilder.Build(pattern, size[0], size[1]);
         await AddObstaclesAsync(shapes);
         return LegacyCommandResult.Success($"{pattern.ToString().ToUpperInvariant()} MAZE ADDED · {shapes.Count} SHAPES");
     }

@@ -15,6 +15,65 @@ namespace Darwinbots.Desktop.Tests;
 public sealed class RenderedWorldToolsCausalTests
 {
     [Fact]
+    public async Task RandomShapesAndMazeCommandsUseTheLoadedWorldWhilePaused()
+    {
+        var setup = new WorldSetupOptions
+        {
+            Backend = "Cpu", Seed = 95, PopulationCapacity = 64,
+            WorldWidth = 7_000, WorldHeight = 5_000,
+        };
+        var loadedSetup = setup with { WorldWidth = 1_100, WorldHeight = 800 };
+        using var savedWorld = new NativeEngineClient(loadedSetup);
+        var storage = new AuditStorageService { OpenedSimulation = savedWorld.Save() };
+
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], setup, NativeEngineClientFactory.Instance, storage);
+            window.Show();
+            try
+            {
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                var load = menu.FindCommandItem(LegacyCommandId.FileLoadSimulation)!;
+                await WaitFor(() => load.IsEnabled, () => "The simulation did not finish starting.");
+                var session = TryField<SimulationSession>(window, "_session")!;
+                Assert.Equal([7_000f, 5_000f], session.LatestSnapshot.WorldSize);
+
+                load.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(
+                    () => session.LatestSnapshot.WorldSize.SequenceEqual([1_100f, 800f]),
+                    () => "The load command did not publish the saved field dimensions.");
+                var tick = session.LatestSnapshot.Tick;
+
+                var random = menu.FindCommandItem(LegacyCommandId.ObjectsAddTenRandomShapes)!;
+                random.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => session.LatestSnapshot.Obstacles.Count == 10,
+                    () => "The first random-shape command did not add ten rectangles.");
+                random.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => session.LatestSnapshot.Obstacles.Count == 20,
+                    () => "The second random-shape command did not add ten rectangles.");
+                var rectangles = session.LatestSnapshot.Obstacles;
+                Assert.Equal(20, rectangles.Select(shape =>
+                    (shape.Minimum[0], shape.Minimum[1], shape.Maximum[0], shape.Maximum[1])).Distinct().Count());
+                Assert.All(rectangles, shape =>
+                {
+                    Assert.InRange(shape.Minimum[0], 0f, shape.Maximum[0]);
+                    Assert.InRange(shape.Minimum[1], 0f, shape.Maximum[1]);
+                    Assert.InRange(shape.Maximum[0], 0f, 1_100f);
+                    Assert.InRange(shape.Maximum[1], 0f, 800f);
+                });
+
+                menu.FindCommandItem(LegacyCommandId.ObjectsTrashCompactor)!
+                    .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => session.LatestSnapshot.Obstacles.Count == 22,
+                    () => "The trash compactor command did not add two walls.");
+                Assert.Contains(session.LatestSnapshot.Obstacles.Skip(20), shape => shape.Minimum[0] == 1_099f);
+                Assert.Equal(tick, session.LatestSnapshot.Tick);
+            }
+            finally { window.Close(); }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
     public async Task MainWindowRoutesWorldObjectsMutationAndGraphToolsWithOfflineRenderedReceipt()
     {
         var setup = new WorldSetupOptions
