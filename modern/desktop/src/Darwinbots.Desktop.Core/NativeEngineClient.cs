@@ -106,12 +106,15 @@ public sealed partial class NativeEngineClient : IEngineClient
         _ => "UNKNOWN",
     };
 
-    public void Tick(uint count = 1) => Advance(count, null);
+    public void Tick(uint count = 1) => Advance(count, 100, null);
 
     public void TickRecordingDeaths(uint count, Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted) =>
-        Advance(count, onCommitted);
+        TickRecordingDeaths(count, 100, onCommitted);
 
-    private void Advance(uint count, Action<IReadOnlyList<DeathRecordSnapshot>>? onDeathsCommitted)
+    public void TickRecordingDeaths(uint count, int weightPercent, Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted) =>
+        Advance(count, weightPercent, onCommitted);
+
+    private void Advance(uint count, int weightPercent, Action<IReadOnlyList<DeathRecordSnapshot>>? onDeathsCommitted)
     {
         EnsureAlive();
         if (count == 0) return;
@@ -119,7 +122,7 @@ public sealed partial class NativeEngineClient : IEngineClient
         {
             // External league/staged restarts take a new Timer sample for each
             // original cycle. Each successful cycle commits before the next begins.
-            for (uint cycle = 0; cycle < count; cycle++) Advance(1, onDeathsCommitted);
+            for (uint cycle = 0; cycle < count; cycle++) Advance(1, weightPercent, onDeathsCommitted);
             return;
         }
         var restart = NativeRestartSeedCommand();
@@ -129,11 +132,46 @@ public sealed partial class NativeEngineClient : IEngineClient
             return;
         }
         var result = ExecuteBatchForResult(
-            new { version = 1, commands = new object[] { restart, new { type = "tick", count, capture_deaths = true } } },
+            new { version = 1, commands = new object[] { restart, new { type = "tick", count, capture_deaths = true, recording_weight = weightPercent } } },
             "advance simulation with death records");
         var records = result.GetProperty("results")[1].GetProperty("death_records").Deserialize<DeathRecordSnapshot[]>(DeathRecordJson);
         if (records is { Length: > 0 }) onDeathsCommitted(records);
     }
+
+    public GenomeRecordCapture CaptureLivingSnp(int weightPercent)
+    {
+        var result = ExecuteBatchForResult(new
+        {
+            version = 1,
+            commands = new[] { new { type = "capture_living_genome_records", weight_percent = weightPercent } },
+        }, "capture living snapshot records");
+        return new(result.GetProperty("tick").GetUInt64(), ReadGenomeRecords(result));
+    }
+
+    public IReadOnlyList<DeathRecordSnapshot> RemoveRecordingDeaths(
+        IReadOnlyList<OrganismKey> organisms, bool suppressDeathPoffs, bool excludeVegetables, int weightPercent)
+    {
+        ArgumentNullException.ThrowIfNull(organisms);
+        if (organisms.Count == 0)
+            throw new ArgumentException("At least one organism is required.", nameof(organisms));
+        var result = ExecuteBatchForResult(new
+        {
+            version = 1,
+            commands = new[] { new
+            {
+                type = "remove_many",
+                organisms = organisms.Select(key => new { slot = key.Slot, generation = key.Generation }).ToArray(),
+                suppress_death_poffs = suppressDeathPoffs,
+                recording_weight = weightPercent,
+                exclude_repopulating = excludeVegetables,
+            } },
+        }, "remove organisms with death records");
+        return ReadGenomeRecords(result);
+    }
+
+    private static DeathRecordSnapshot[] ReadGenomeRecords(JsonElement result) =>
+        result.GetProperty("results")[0].Deserialize<DeathRecordSnapshot[]>(DeathRecordJson)
+        ?? throw new InvalidDataException("The native genome record result is missing.");
 
     public DnaImportReport ImportDna(string dna, float[]? position = null)
     {

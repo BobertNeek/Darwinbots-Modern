@@ -6,6 +6,12 @@ public interface IEngineClient : IDisposable
     EngineCapabilities Capabilities();
     void Tick(uint count = 1);
     void TickRecordingDeaths(uint count, Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted) => Tick(count);
+    void TickRecordingDeaths(uint count, int weightPercent, Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted) =>
+        TickRecordingDeaths(count, onCommitted);
+    GenomeRecordCapture? CaptureLivingSnp(int weightPercent) => null;
+    // A null result means recording removal is unavailable and nothing was removed.
+    IReadOnlyList<DeathRecordSnapshot>? RemoveRecordingDeaths(
+        IReadOnlyList<OrganismKey> organisms, bool suppressDeathPoffs, bool excludeVegetables, int weightPercent) => null;
     DnaImportReport ImportDna(string dna, float[]? position = null);
     int ImportOrganism(ReadOnlyMemory<byte> payload) => throw new NotSupportedException("This engine client does not support organism interchange.");
     DnaImportReport ImportSpecies(SpeciesImport species);
