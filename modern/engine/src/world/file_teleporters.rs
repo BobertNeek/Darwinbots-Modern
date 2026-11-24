@@ -2,11 +2,12 @@
 
 use super::*;
 use crate::SaveFile;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum FileTransferPhase {
     BeforeRobots,
+    NativeArchivedCorpses,
     AfterPortalMovement,
 }
 
@@ -30,11 +31,7 @@ impl Engine {
         let mut transfers = FileTransferTransaction::default();
         let mut shared_path_exports = HashMap::new();
         let result = self
-            .apply_file_teleporters_staged(
-                &mut transfers,
-                FileTransferPhase::BeforeRobots,
-                &mut shared_path_exports,
-            )
+            .apply_early_teleporters_staged(&mut transfers, &mut shared_path_exports)
             .and_then(|()| {
                 self.apply_file_teleporters_staged(
                     &mut transfers,
@@ -49,6 +46,30 @@ impl Engine {
         result
     }
 
+    pub(super) fn apply_early_teleporters_staged(
+        &mut self,
+        transfers: &mut FileTransferTransaction,
+        shared_path_exports: &mut HashMap<u32, Vec<PathBuf>>,
+    ) -> Result<(), EngineError> {
+        self.apply_file_teleporters_staged(
+            transfers,
+            FileTransferPhase::BeforeRobots,
+            shared_path_exports,
+        )?;
+        if self.native_cycle.is_some() {
+            self.check_native_teleporters_staged(transfers, shared_path_exports);
+            // Old Modern saves can also hold corpses outside the native robot slots.
+            if !self.corpses.is_empty() {
+                self.apply_file_teleporters_staged(
+                    transfers,
+                    FileTransferPhase::NativeArchivedCorpses,
+                    shared_path_exports,
+                )?;
+            }
+        }
+        Ok(())
+    }
+
     pub(super) fn apply_file_teleporters_staged(
         &mut self,
         transfers: &mut FileTransferTransaction,
@@ -60,20 +81,25 @@ impl Engine {
         if late && !native_world {
             return Ok(());
         }
-        let mut gateways = if late {
-            Vec::new()
-        } else {
-            self.file_teleporters
-                .iter()
-                .cloned()
-                .map(|gateway| (gateway, None))
-                .collect::<Vec<_>>()
-        };
+        let mut gateways = Vec::new();
+        if phase == FileTransferPhase::BeforeRobots {
+            gateways.extend(
+                self.file_teleporters
+                    .iter()
+                    .cloned()
+                    .map(|gateway| (gateway, None)),
+            );
+        }
         for (index, tele) in self.teleporters.iter().enumerate() {
-            if tele.internet
-                || !(late && tele.inbound
-                    || !late && (tele.outbound || (!native_world && tele.inbound)))
-            {
+            let original_portal = native_world && tele.native_top_left.is_some();
+            let active = match phase {
+                FileTransferPhase::BeforeRobots => {
+                    !original_portal && (tele.outbound || (!native_world && tele.inbound))
+                }
+                FileTransferPhase::NativeArchivedCorpses => original_portal && tele.outbound,
+                FileTransferPhase::AfterPortalMovement => tele.inbound,
+            };
+            if tele.internet || !active {
                 continue;
             }
             let inbound = if tele.inbound {
@@ -134,45 +160,29 @@ impl Engine {
             };
 
             if !late && !settings.outbound_path.as_os_str().is_empty() {
-                for id in self.slots.ids_in_slot_order() {
-                    if native_index.is_none() && sent >= settings.capacity as u64 {
-                        break;
-                    }
-                    let Ok(organism) = self.organism(id) else {
-                        continue;
-                    };
-                    let robot = self.slots.get(id)?;
-                    if !touches_outbound(organism.position, organism.radius)
-                        || !settings.accepts(organism.vegetable, robot.flags.corpse)
-                    {
-                        continue;
-                    }
-                    let Ok(members) = self.file_transfer_group(id) else {
-                        continue;
-                    };
-                    let filename = format!(
-                        "db2-{tick:016x}-{slot:08x}-{generation:08x}.dbo",
-                        tick = self.tick,
-                        slot = id.slot(),
-                        generation = id.generation(),
-                    );
-                    let path = settings.outbound_path.join(filename);
-                    let export = if native_index.is_some() {
-                        self.export_original_organism_file(&members)
-                    } else {
-                        self.export_native_organisms(&members)
-                    };
-                    let Ok(bytes) = export else {
-                        continue;
-                    };
-                    if transfers.stage_export(&path, &bytes).is_err() {
-                        continue;
-                    }
-                    if self.remove_many_with_death_poffs(&members, true).is_ok() {
-                        sent = sent.saturating_add(1);
-                        emitted_paths.push(path);
-                    } else {
-                        transfers.cancel_export(&path);
+                if phase == FileTransferPhase::BeforeRobots {
+                    for id in self.slots.ids_in_slot_order() {
+                        if native_index.is_none() && sent >= settings.capacity as u64 {
+                            break;
+                        }
+                        let Ok(organism) = self.organism(id) else {
+                            continue;
+                        };
+                        let robot = self.slots.get(id)?;
+                        if !touches_outbound(organism.position, organism.radius)
+                            || !settings.accepts(organism.vegetable, robot.flags.corpse)
+                        {
+                            continue;
+                        }
+                        if let Some(path) = self.stage_outbound_robot(
+                            id,
+                            &settings.outbound_path,
+                            native_index.is_some(),
+                            transfers,
+                        ) {
+                            sent = sent.saturating_add(1);
+                            emitted_paths.push(path);
+                        }
                     }
                 }
 
@@ -334,7 +344,10 @@ impl Engine {
             if settings.inbound_path == settings.outbound_path && !emitted_paths.is_empty() {
                 if separate_native_departures {
                     // The early outputs become visible only when both passes commit.
-                    shared_path_exports.insert(settings.id, emitted_paths);
+                    shared_path_exports
+                        .entry(settings.id)
+                        .or_default()
+                        .extend(emitted_paths);
                 } else {
                     teleporter.backflow_guard = emitted_paths.pop();
                 }
@@ -354,6 +367,35 @@ impl Engine {
 
     pub fn legacy_organism_group(&self, seed: OrganismId) -> Vec<OrganismId> {
         self.list_organism_cells(seed, 50)
+    }
+
+    pub(super) fn stage_outbound_robot(
+        &mut self,
+        id: OrganismId,
+        directory: &Path,
+        original: bool,
+        transfers: &mut FileTransferTransaction,
+    ) -> Option<PathBuf> {
+        let members = self.file_transfer_group(id).ok()?;
+        let path = directory.join(format!(
+            "db2-{tick:016x}-{slot:08x}-{generation:08x}.dbo",
+            tick = self.tick,
+            slot = id.slot(),
+            generation = id.generation(),
+        ));
+        let bytes = if original {
+            self.export_original_organism_file(&members)
+        } else {
+            self.export_native_organisms(&members)
+        }
+        .ok()?;
+        transfers.stage_export(&path, &bytes).ok()?;
+        if self.remove_many_with_death_poffs(&members, true).is_ok() {
+            Some(path)
+        } else {
+            transfers.cancel_export(&path);
+            None
+        }
     }
 
     fn apply_file_teleporter_payload(
