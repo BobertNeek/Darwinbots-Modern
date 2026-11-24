@@ -215,6 +215,7 @@ public sealed class HistoricSimulationSaveRenderedTests
                 {
                     selection.SetResult([StorageProxy.Create<IStorageFile>((method, _) =>
                     {
+                        if (method.Name == "get_Path") return new Uri("file:///mock-save.sim");
                         Assert.Equal(nameof(IStorageFile.OpenReadAsync), method.Name);
                         readRequested.SetResult();
                         return readStream.Task;
@@ -264,6 +265,7 @@ public sealed class HistoricSimulationSaveRenderedTests
                     StorageProxy.Create<IStorageFile>((itemMethod, _) => itemMethod.Name switch
                     {
                         nameof(IStorageFile.OpenReadAsync) => Task.FromResult<Stream>(new MemoryStream(data)),
+                        "get_Path" => new Uri("file:///mock-save.sim"),
                         _ => throw new NotSupportedException(itemMethod.Name),
                     }),
                 } : [];
@@ -442,7 +444,8 @@ public sealed class HistoricSimulationSaveRenderedTests
                     Assert.Equal(3, options.Count);
                     Assert.All(options, picker => Assert.Same(expectedPath is null ? null : folder, picker.SuggestedStartLocation));
                     Assert.Equal(Enumerable.Repeat(expectedPath, expectedPath is null ? 0 : 3),
-                        lookups.Select(uri => uri.LocalPath));
+                        lookups.Select(uri => uri.LocalPath),
+                        OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
                 }
                 finally { CloseFilePickerWindow(window); }
 

@@ -963,14 +963,24 @@ mod tests {
 
         let mut samples = Vec::new();
         world
-            .tick_many_with_native_source_requirement(1, None, Some(&mut samples))
+            .tick_many_with_native_options(
+                1,
+                None,
+                Some(&mut samples),
+                crate::NativeRedrawCadence::Off,
+            )
             .unwrap();
         assert_eq!(world.native_cycle, Some(9));
         assert_eq!(world.local_mode.restart_count, 0);
         assert!(samples.is_empty());
 
         world
-            .tick_many_with_native_source_requirement(1, None, Some(&mut samples))
+            .tick_many_with_native_options(
+                1,
+                None,
+                Some(&mut samples),
+                crate::NativeRedrawCadence::Off,
+            )
             .unwrap();
         assert_eq!(world.native_cycle, Some(10));
         assert_eq!(samples.len(), 1);
