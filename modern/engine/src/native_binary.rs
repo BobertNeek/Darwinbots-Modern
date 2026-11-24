@@ -7,6 +7,8 @@ use serde::{Deserialize, Serialize};
 const RECORD_END: [u8; 3] = [254; 3];
 const MIN_RECORD_BYTES: usize = 9_321;
 const MAX_TEXT_BYTES: usize = 16 * 1024 * 1024;
+const MODELED_MUTATION_ENTRIES: usize = 11;
+const SPARE_MUTATION_ENTRIES: usize = 10;
 
 /// Preserve floating point bit patterns and ANSI bytes without conversion.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -28,6 +30,21 @@ pub struct NativeField {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct NativeRobotRecord {
     fields: Vec<NativeField>,
+}
+
+/// The original copies these additional rate, mean, and deviation Singles
+/// to offspring without using them in the modeled mutation operations.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) struct NativeMutationSpareEntries {
+    rates: [[u8; 4]; SPARE_MUTATION_ENTRIES],
+    shapes: [[u8; 8]; SPARE_MUTATION_ENTRIES],
+}
+
+impl NativeMutationSpareEntries {
+    pub(crate) fn write(&self, rates: &mut [u8], shapes: &mut [u8]) {
+        rates[MODELED_MUTATION_ENTRIES * 4..].copy_from_slice(self.rates.as_flattened());
+        shapes[MODELED_MUTATION_ENTRIES * 8..].copy_from_slice(self.shapes.as_flattened());
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -152,6 +169,23 @@ impl NativeRobotRecord {
             NativeValue::Bytes(value) => Ok(value),
             _ => Err(invalid(&format!("robot field {name} is not a byte block"))),
         }
+    }
+
+    pub(crate) fn mutation_spare_entries(&self) -> Result<NativeMutationSpareEntries, EngineError> {
+        let (rates, rate_remainder) = self.bytes("mutation_rates")?.as_chunks::<4>();
+        let (shapes, shape_remainder) = self.bytes("mutation_shapes")?.as_chunks::<8>();
+        let entries = MODELED_MUTATION_ENTRIES + SPARE_MUTATION_ENTRIES;
+        if rates.len() != entries
+            || shapes.len() != entries
+            || !rate_remainder.is_empty()
+            || !shape_remainder.is_empty()
+        {
+            return Err(invalid("robot mutation arrays have the wrong lengths"));
+        }
+        Ok(NativeMutationSpareEntries {
+            rates: rates[MODELED_MUTATION_ENTRIES..].try_into().unwrap(),
+            shapes: shapes[MODELED_MUTATION_ENTRIES..].try_into().unwrap(),
+        })
     }
 
     pub fn set_single(&mut self, name: &str, value: f32) -> Result<(), EngineError> {

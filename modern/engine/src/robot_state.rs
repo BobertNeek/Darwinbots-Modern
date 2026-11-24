@@ -363,6 +363,9 @@ pub struct RobotState {
     pub(crate) native_record_index: Option<usize>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) native_record_override: Option<Box<crate::native_binary::NativeRobotRecord>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) native_mutation_spare_entries:
+        Option<Box<crate::native_binary::NativeMutationSpareEntries>>,
     pub identity: RobotIdentity,
     pub flags: RobotFlags,
     pub kinematics: RobotKinematics,
@@ -403,6 +406,7 @@ impl RobotState {
         let mut state = Self {
             native_record_index: None,
             native_record_override: None,
+            native_mutation_spare_entries: None,
             identity: RobotIdentity {
                 species,
                 parents,
