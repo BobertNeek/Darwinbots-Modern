@@ -178,6 +178,91 @@ fn insertion_coordinate(random: u64, extent: f32) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::SpeciesSettings;
+    use crate::native_binary::NativeSimulationTail;
+
+    #[test]
+    fn native_dbo_founder_keeps_original_roster_quantity_through_untouched_apply() {
+        let bytes = tied_file().encode().unwrap();
+        let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+        world.insert_native_organisms(&bytes).unwrap();
+        let ids = world.slots.ids_in_slot_order();
+        let founder = ids
+            .iter()
+            .map(|&id| world.slots.get(id).unwrap())
+            .find(|robot| !robot.flags.corpse)
+            .unwrap();
+        let name = founder.identity.species_file.clone();
+        let index = founder.identity.species.0 as usize;
+        assert_eq!(world.species[index].minimum_population, 5);
+        assert!(world.species_templates[index].is_none());
+        assert_native_quantity(&world, &name);
+
+        let initial_configuration = world.configuration_view().unwrap();
+        let initial_row = founder_row(&initial_configuration, &name);
+        assert_eq!(initial_row["initial_count"], 5);
+        assert_eq!(initial_row["initial_energy"], 3000);
+        let mut resumed = SaveFile::decode(&SaveFile::encode(&world).unwrap()).unwrap();
+        let configuration = resumed.configuration_view().unwrap();
+        assert_eq!(founder_row(&configuration, &name), initial_row);
+
+        // Match the species editor's untouched Apply on a paused world.
+        let roster: Vec<SpeciesSettings> = configuration["species"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|row| row["dna"].is_string())
+            .map(|row| serde_json::from_value(row.clone()).unwrap())
+            .collect();
+        resumed.update_species_settings(roster).unwrap();
+        assert_eq!(resumed.snapshot().tick, world.snapshot().tick);
+        assert_eq!(resumed.slots.ids_in_slot_order(), ids);
+        assert_native_quantity(&resumed, &name);
+
+        let saved = SaveFile::decode(&SaveFile::encode(&resumed).unwrap()).unwrap();
+        let template = saved.species_templates[index].as_ref().unwrap();
+        assert_eq!(
+            (template.initial_population, template.initial_energy),
+            (5, 3000)
+        );
+
+        let mut portable = Engine::new(EngineConfig::testing()).unwrap();
+        portable.native_random = None;
+        portable.insert_native_organisms(&bytes).unwrap();
+        assert_eq!(
+            founder_row(&portable.configuration_view().unwrap(), &name)["initial_count"],
+            1
+        );
+
+        fn founder_row<'a>(
+            configuration: &'a serde_json::Value,
+            name: &str,
+        ) -> &'a serde_json::Value {
+            configuration["species"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|row| row["name"].as_str() == Some(name))
+                .unwrap()
+        }
+
+        fn assert_native_quantity(world: &Engine, name: &str) {
+            let file = NativeRecordFile::decode(&world.export_native_sim().unwrap()).unwrap();
+            let tail = NativeSimulationTail::decode(&file.tail).unwrap();
+            let species = (0..tail.integer("species_count").unwrap())
+                .map(|index| format!("species[{index}]"))
+                .find(|row| {
+                    crate::world::native_io::text(tail.bytes(&format!("{row}.name")).unwrap())
+                        == name
+                })
+                .unwrap();
+            assert_eq!(tail.integer(&format!("{species}.quantity")).unwrap(), 5);
+            assert_eq!(
+                tail.integer(&format!("{species}.start_energy")).unwrap(),
+                3000
+            );
+        }
+    }
 
     #[test]
     fn native_menu_insertion_uses_whole_twips_translates_all_cells_and_continues_after_save() {

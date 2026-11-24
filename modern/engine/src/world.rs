@@ -3096,9 +3096,16 @@ impl Engine {
                     "initial_energy".into(),
                     serde_json::json!(template.map_or(3000, |value| value.initial_energy)),
                 );
+                // Native organism imports set the roster quantity before a template exists.
                 fields.insert(
                     "initial_count".into(),
-                    serde_json::json!(template.map_or(1, |value| value.initial_population)),
+                    serde_json::json!(template.map_or_else(
+                        || {
+                            self.native_cycle
+                                .map_or(1, |_| definition.minimum_population)
+                        },
+                        |value| value.initial_population,
+                    )),
                 );
                 Ok(value)
             })
