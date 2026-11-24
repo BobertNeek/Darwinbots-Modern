@@ -23,6 +23,7 @@ namespace Darwinbots.Desktop.Views;
 
 public sealed partial class MainWindow : Window
 {
+    private const string NewTeleporterToolKey = "new-teleporter";
     private const string TrayPngBase64 = "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAlSURBVDhPY1BQV/1PCQYb4FNrQBYeNWDUABAeNYCaBpCPVf8DAN1j1wSVGu34AAAAAElFTkSuQmCC";
 
     private async void MainWindow_KeyDown(object? sender, KeyEventArgs e)
@@ -723,8 +724,8 @@ public sealed partial class MainWindow : Window
             () => new LegacyCommandState(_hasBackgroundImage, false, _hasBackgroundImage ? null : "No background picture is loaded."),
             _ => Task.FromResult(RemoveBackground()));
         handlers[LegacyCommandId.ObjectsNewTeleporter] = Handler(
-            () => LegacyCommandState.Available,
-            _ => Task.FromResult(BeginObjectPlacementCommand(LegacyCommandId.ObjectsNewTeleporter)));
+            EngineState,
+            _ => Task.FromResult(OpenNewTeleporter()));
         handlers[LegacyCommandId.ObjectsDeleteTeleporter] = Handler(
             () => FeatureState(WorldFeatureKind.Teleporter),
             async _ => await RemoveSelectedFeatureCommandAsync());
@@ -972,6 +973,31 @@ public sealed partial class MainWindow : Window
         return BeginEnvironmentPlacement(route.Kind == ObjectEditorKind.Shape
             ? EnvironmentPlacement.Obstacle
             : EnvironmentPlacement.Teleporter);
+    }
+
+    private LegacyCommandResult OpenNewTeleporter()
+    {
+        if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        if (_navigationInFlight || _loadingSimulation)
+            return LegacyCommandResult.Failure("THE SIMULATION IS CHANGING");
+        _toolWindows.ShowOrActivate(NewTeleporterToolKey, () => new NewTeleporterWindow(
+            (dialog, options) => CreateNativeTeleporterAsync(dialog, session, options)));
+        return LegacyCommandResult.Success("NEW TELEPORTER OPEN");
+    }
+
+    private async Task CreateNativeTeleporterAsync(NewTeleporterWindow dialog, SimulationSession session, NativeTeleporterOptions options)
+    {
+        await _advanceGate.WaitAsync();
+        try
+        {
+            // A load that took the gate first closes the draft before queued edits run.
+            if (!dialog.IsVisible) return;
+            if (_navigationInFlight || !ReferenceEquals(session, _session))
+                throw new InvalidOperationException("The simulation is changing.");
+            await session.AddNativeTeleporterAsync(options);
+            _viewModel.Status = "TELEPORTER CREATED";
+        }
+        finally { _advanceGate.Release(); }
     }
 
     private async Task<LegacyCommandResult> KillSelectedAsync()
@@ -3095,6 +3121,7 @@ public sealed partial class MainWindow : Window
             if (_session is null) return;
             _loadingSimulation = true;
             await _session.LoadAsync(save);
+            _toolWindows.Close(NewTeleporterToolKey);
             // A rejected load publishes no snapshot and must keep user-closed
             // graphs closed. Loading publications defer this until success.
             _automaticEvolutionGraphBoundary = null;

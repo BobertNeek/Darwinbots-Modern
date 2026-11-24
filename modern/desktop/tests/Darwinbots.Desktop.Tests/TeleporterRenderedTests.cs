@@ -2,9 +2,12 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
+using Darwinbots.Desktop.Controls;
 using Darwinbots.Desktop.Core;
+using Darwinbots.Desktop.Core.LegacyMenus;
 using Darwinbots.Desktop.ViewModels;
 using Darwinbots.Desktop.Views;
 using System.Reflection;
@@ -154,6 +157,195 @@ public sealed class TeleporterRenderedTests
         Assert.Equal(width, teleporter.Width);
         Assert.Equal(height, teleporter.Height);
         Assert.True(teleporter.RandomDestination);
+    }
+
+    [Fact]
+    public async Task ObjectsMenuCreatesOriginalTeleportersAndKeepsToolbarPlacement()
+    {
+        var setup = new WorldSetupOptions { Backend = "Cpu", WorldWidth = 4_000, WorldHeight = 2_000, PopulationCapacity = 16 };
+        var transferDirectory = Directory.CreateTempSubdirectory("darwinbots teleporter ");
+        try
+        {
+            var inboundDirectory = transferDirectory.CreateSubdirectory("inbound").FullName;
+            var outboundDirectory = transferDirectory.CreateSubdirectory("outbound").FullName;
+            await DesktopTestApplication.Session.Dispatch(async () =>
+            {
+                var player = new MainWindow([], setup, NativeEngineClientFactory.Instance, new AuditStorageService())
+                {
+                    WindowState = WindowState.Normal, Width = 1_100, Height = 820,
+                };
+                player.Show();
+                try
+                {
+                    var menu = player.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                    var command = menu.FindCommandItem(LegacyCommandId.ObjectsNewTeleporter)!;
+                    var toolbar = player.FindControl<Button>("AddTeleporterButton")!;
+                    await WaitFor(() => Session(player) is not null && command.IsEnabled);
+                    var session = Session(player)!;
+
+                    async Task<NewTeleporterWindow> OpenDialog()
+                    {
+                        command.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                        await WaitFor(() => player.OwnedWindows.OfType<NewTeleporterWindow>().Any());
+                        return Assert.Single(player.OwnedWindows.OfType<NewTeleporterWindow>());
+                    }
+
+                    var dialog = await OpenDialog();
+                    Assert.True(toolbar.IsEffectivelyEnabled);
+                    var mode = dialog.FindControl<ComboBox>("Mode")!;
+                    Assert.Equal("Intrasim", ((ComboBoxItem)mode.SelectedItem!).Content);
+                    Assert.Equal(3, mode.Items.Count);
+                    Assert.Equal(300m, dialog.FindControl<NumericUpDown>("PortalSize")!.Value);
+                    Assert.False(dialog.FindControl<CheckBox>("FixedPosition")!.IsChecked);
+                    Assert.False(dialog.FindControl<TextBox>("FilePath")!.IsEffectivelyEnabled);
+                    Assert.True(dialog.FindControl<CheckBox>("TeleportHeterotrophs")!.IsEffectivelyEnabled);
+                    Assert.False(dialog.FindControl<NumericUpDown>("PollInterval")!.IsEffectivelyEnabled);
+                    mode.SelectedIndex = 1;
+                    Assert.Same(dialog, await OpenDialog());
+                    Assert.Equal(1, mode.SelectedIndex);
+                    Click(dialog, dialog.FindControl<Button>("CancelButton")!);
+                    await WaitFor(() => !dialog.IsVisible);
+                    Assert.Empty(session.LatestSnapshot.Teleporters);
+
+                    var viewport = player.FindControl<Control>("Viewport")!;
+                    Click(player, toolbar);
+                    ClickAt(player, viewport, new Point(viewport.Bounds.Width * 0.25, viewport.Bounds.Height * 0.30));
+                    ClickAt(player, viewport, new Point(viewport.Bounds.Width * 0.68, viewport.Bounds.Height * 0.62));
+                    await WaitFor(() => session.LatestSnapshot.Teleporters.Count == 1);
+                    var modern = Assert.Single(session.LatestSnapshot.Teleporters);
+                    Assert.True(modern.Local && !modern.RandomDestination);
+                    Assert.Equal(180f, modern.Radius);
+                    Assert.NotEqual(modern.Center, modern.Destination);
+                    await session.RemoveTeleporterAsync(modern.Id);
+                    Assert.Empty(session.LatestSnapshot.Teleporters);
+
+                    dialog = await OpenDialog();
+                    Assert.Equal(0, dialog.FindControl<ComboBox>("Mode")!.SelectedIndex);
+                    Click(dialog, dialog.FindControl<Button>("ApplyButton")!);
+                    await WaitFor(() => !dialog.IsVisible && session.LatestSnapshot.Teleporters.Count == 1);
+                    var local = Assert.Single(session.LatestSnapshot.Teleporters);
+                    Assert.Equal((150f, 300f), (local.Width!.Value, local.Height!.Value));
+                    Assert.InRange(local.Center[0], 75f, 3_925f);
+                    Assert.InRange(local.Center[1], 150f, 1_850f);
+                    Assert.True(local.Local && local.RandomDestination);
+                    Assert.False(local.Inbound || local.Outbound || local.Internet);
+                    Assert.True(local.DriftHorizontal && local.DriftVertical);
+
+                    dialog = await OpenDialog();
+                    dialog.FindControl<ComboBox>("Mode")!.SelectedIndex = 1;
+                    var inboundPath = dialog.FindControl<TextBox>("FilePath")!;
+                    var poll = dialog.FindControl<NumericUpDown>("PollInterval")!;
+                    var capacity = dialog.FindControl<NumericUpDown>("Capacity")!;
+                    Assert.True(inboundPath.IsEffectivelyEnabled);
+                    Assert.True(poll.IsEffectivelyEnabled);
+                    Assert.False(dialog.FindControl<CheckBox>("TeleportVegetables")!.IsEffectivelyEnabled);
+                    Assert.Equal(10m, poll.Value);
+                    Assert.Equal(10m, capacity.Value);
+                    inboundPath.Text = inboundDirectory;
+                    poll.Value = 3m;
+                    capacity.Value = 12m;
+                    dialog.FindControl<CheckBox>("FixedPosition")!.IsChecked = true;
+                    Click(dialog, dialog.FindControl<Button>("ApplyButton")!);
+                    await WaitFor(() => !dialog.IsVisible && session.LatestSnapshot.Teleporters.Count == 2);
+                    var inbound = Assert.Single(session.LatestSnapshot.Teleporters, value => value.Inbound);
+                    Assert.Equal(inboundDirectory, inbound.Path);
+                    Assert.Equal((3u, 12, 12u), (inbound.PollInterval, inbound.Capacity, inbound.PollCountdown));
+                    Assert.True(inbound.FixedPosition);
+                    Assert.False(inbound.DriftHorizontal || inbound.DriftVertical);
+
+                    dialog = await OpenDialog();
+                    dialog.FindControl<ComboBox>("Mode")!.SelectedIndex = 2;
+                    Assert.False(dialog.FindControl<NumericUpDown>("PollInterval")!.IsEffectivelyEnabled);
+                    var outboundPath = dialog.FindControl<TextBox>("FilePath")!;
+                    var excludesCorpses = dialog.FindControl<CheckBox>("TeleportCorpses")!;
+                    Assert.True(outboundPath.IsEffectivelyEnabled);
+                    Assert.True(excludesCorpses.IsEffectivelyEnabled);
+                    outboundPath.Text = outboundDirectory;
+                    excludesCorpses.IsChecked = false;
+                    dialog.FindControl<NumericUpDown>("PortalSize")!.Value = 500m;
+                    Click(dialog, dialog.FindControl<Button>("ApplyButton")!);
+                    await WaitFor(() => !dialog.IsVisible && session.LatestSnapshot.Teleporters.Count == 3);
+                    var outbound = Assert.Single(session.LatestSnapshot.Teleporters, value => value.Outbound);
+                    Assert.Equal(outboundDirectory, outbound.Path);
+                    Assert.Equal((250f, 500f), (outbound.Width!.Value, outbound.Height!.Value));
+                    Assert.False(outbound.TeleportCorpses);
+
+                    using var reopened = new NativeEngineClient(setup);
+                    reopened.Load(await session.SaveLegacyAsync());
+                    var afterSave = reopened.Snapshot().Teleporters;
+                    Assert.Equal(3, afterSave.Count);
+                    var reopenedLocal = Assert.Single(afterSave, value => value.Local);
+                    Assert.False(reopenedLocal.Inbound || reopenedLocal.FixedPosition);
+                    Assert.Equal(local.Center, reopenedLocal.Center);
+                    Assert.Equal(inbound.Path, Assert.Single(afterSave, value => value.Inbound).Path);
+                    var reopenedOutbound = Assert.Single(afterSave, value => value.Outbound);
+                    Assert.Equal(outboundDirectory, reopenedOutbound.Path);
+                    Assert.False(reopenedOutbound.TeleportCorpses);
+                }
+                finally
+                {
+                    foreach (var owned in player.OwnedWindows.ToArray()) owned.Close();
+                    player.Close();
+                }
+            }, CancellationToken.None);
+        }
+        finally { transferDirectory.Delete(recursive: true); }
+    }
+
+    [Fact]
+    public async Task QueuedSimulationLoadClosesNewTeleporterDraftBeforeApplyCanReachTheReplacement()
+    {
+        var setup = new WorldSetupOptions { Backend = "Cpu", WorldWidth = 4_000, WorldHeight = 2_000, PopulationCapacity = 16 };
+        var storage = new AuditStorageService();
+        using var replacement = new NativeEngineClient(setup);
+        replacement.AddTeleporter(new TeleporterSnapshot(17, [500f, 500f], 50f, [800f, 800f]));
+        var save = replacement.Save();
+
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var player = new MainWindow([], setup, NativeEngineClientFactory.Instance, storage);
+            player.Show();
+            try
+            {
+                var menu = player.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                var create = menu.FindCommandItem(LegacyCommandId.ObjectsNewTeleporter)!;
+                var load = menu.FindCommandItem(LegacyCommandId.FileLoadSimulation)!;
+                await WaitFor(() => Session(player) is not null && create.IsEnabled && load.IsEnabled);
+                var session = Session(player)!;
+                create.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                var draft = Assert.Single(player.OwnedWindows.OfType<NewTeleporterWindow>());
+                draft.FindControl<NumericUpDown>("PortalSize")!.Value = 500m;
+
+                load.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                Assert.True(draft.IsVisible);
+                Assert.Equal(500m, draft.FindControl<NumericUpDown>("PortalSize")!.Value);
+
+                var gate = Assert.IsType<SemaphoreSlim>(typeof(MainWindow)
+                    .GetField("_advanceGate", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(player));
+                await gate.WaitAsync();
+                try
+                {
+                    storage.OpenedSimulation = save;
+                    load.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    draft.FindControl<Button>("ApplyButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                }
+                finally { gate.Release(); }
+
+                // Wait behind both tasks that were queued against the same session.
+                await gate.WaitAsync();
+                gate.Release();
+                var model = Assert.IsType<MainWindowViewModel>(player.DataContext);
+                await WaitFor(() => model.Status == "LOADED");
+                Assert.False(draft.IsVisible);
+                Assert.Same(session, Session(player));
+                Assert.Equal(17u, Assert.Single(session.LatestSnapshot.Teleporters).Id);
+            }
+            finally
+            {
+                foreach (var owned in player.OwnedWindows.ToArray()) owned.Close();
+                player.Close();
+            }
+        }, CancellationToken.None);
     }
 
     [Fact]

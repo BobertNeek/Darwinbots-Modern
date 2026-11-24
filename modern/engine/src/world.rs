@@ -74,6 +74,8 @@ mod player_insertion;
 
 #[path = "world/file_teleporters.rs"]
 mod file_teleporters;
+#[path = "world/native_teleporters.rs"]
+mod native_teleporters;
 mod species_settings;
 
 #[path = "world/file_transfer_transaction.rs"]

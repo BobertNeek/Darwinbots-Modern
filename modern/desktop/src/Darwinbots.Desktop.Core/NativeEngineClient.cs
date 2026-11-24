@@ -436,6 +436,33 @@ public sealed partial class NativeEngineClient : IEngineClient
         }, "add teleporter");
     }
 
+    public void AddNativeTeleporter(NativeTeleporterOptions options) => ExecuteBatch(new
+    {
+        version = 1,
+        commands = new[]
+        {
+            new
+            {
+                type = "add_native_teleporter",
+                options = new
+                {
+                    kind = options.Kind.ToString().ToLowerInvariant(),
+                    size = options.Size,
+                    path = options.Path,
+                    fixed_position = options.FixedPosition,
+                    filters = new
+                    {
+                        teleport_vegetables = options.Filters.TeleportVegetables,
+                        teleport_corpses = options.Filters.TeleportCorpses,
+                        teleport_heterotrophs = options.Filters.TeleportHeterotrophs,
+                    },
+                    poll_interval = options.PollInterval,
+                    capacity = options.Capacity,
+                },
+            },
+        },
+    }, "add original teleporter");
+
     public void UpdateTeleporter(TeleporterSnapshot teleporter)
     {
         ValidateTeleporter(teleporter);
@@ -467,7 +494,7 @@ public sealed partial class NativeEngineClient : IEngineClient
             path = teleporter.Path,
             inbound_path = teleporter.InboundPath,
             outbound_path = teleporter.OutboundPath,
-            inbound = mode is "intrasim" or "inbound",
+            inbound = mode == "inbound" || (mode == "intrasim" && teleporter.Local && teleporter.Inbound),
             outbound = mode == "outbound",
             local = mode == "intrasim",
             internet = mode == "internet",

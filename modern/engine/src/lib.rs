@@ -51,7 +51,8 @@ pub use dna::{DnaMetadata, LegacyDna};
 pub use dna_costs::{DnaCosts, SimulationCostAction, SimulationCostInput, SimulationCostReport};
 pub use dna_tokens::{DnaBlock, MAX_DNA_BLOCKS, TokenClass};
 pub use environment::{
-    FileTeleporter, Obstacle, ShapeShotPolicy, ShapeVisionPolicy, Teleporter, TeleporterFilters,
+    FileTeleporter, NativeTeleporterKind, NativeTeleporterOptions, Obstacle, ShapeShotPolicy,
+    ShapeVisionPolicy, Teleporter, TeleporterFilters,
 };
 pub use error::EngineError;
 pub use evolution::{
