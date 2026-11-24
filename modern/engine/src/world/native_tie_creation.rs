@@ -90,11 +90,13 @@ impl Engine {
     }
 
     pub(super) fn native_delete_pair(&mut self, first: OrganismId, second: OrganismId) {
-        // DeleteTie checks the runtime count of both robots before compaction.
+        // The original exits if either live robot has no counted ties.
         if [first, second].into_iter().any(|id| {
-            self.slots
-                .get(id)
-                .is_ok_and(|robot| robot.native_tie_count_pending)
+            self.slots.get(id).map_or(true, |robot| {
+                !robot.flags.exists
+                    || robot.native_tie_count_pending
+                    || self.tie_indices_for(id).is_empty()
+            })
         }) {
             return;
         }
@@ -102,25 +104,42 @@ impl Engine {
     }
 
     pub(super) fn remove_native_tie_pair(&mut self, first: OrganismId, second: OrganismId) {
-        let Some(index) = self.ties.iter().position(|tie| {
-            (tie.first == first && tie.second == second)
-                || (tie.first == second && tie.second == first)
-        }) else {
-            return;
-        };
+        let mut removals = Vec::new();
         for (actor, other) in [(first, second), (second, first)] {
+            let indices = self.tie_indices_for(actor);
+            let Some(ordinal) = indices.iter().position(|&index| {
+                let tie = &self.ties[index];
+                if tie.first == actor {
+                    tie.second == other
+                } else {
+                    tie.first == other
+                }
+            }) else {
+                continue;
+            };
+            removals.push(indices[ordinal]);
             let robot = self.slots.get_mut(actor).unwrap();
-            let endpoints = robot.ties.iter().flatten().copied().collect::<Vec<_>>();
-            if let Some(ordinal) = endpoints.iter().position(|end| end.other == Some(other))
-                && robot.program.memory.read(MEM_TIE_PRESENT) == endpoints[ordinal].port
+            if let Some(endpoint) = robot.ties[ordinal]
+                && robot.program.memory.read(MEM_TIE_PRESENT) == endpoint.port
             {
-                let previous = ordinal.checked_sub(1).map_or(0, |i| endpoints[i].port);
+                let previous = ordinal
+                    .checked_sub(1)
+                    .and_then(|previous| robot.ties[previous])
+                    .map_or(0, |endpoint| endpoint.port);
                 robot.program.memory.write(MEM_TIE_PRESENT, previous);
             }
         }
-        self.ties.remove(index);
+        removals.sort_unstable();
+        removals.dedup();
+        if removals.is_empty() {
+            return;
+        }
+        for index in removals.into_iter().rev() {
+            self.ties.remove(index);
+        }
+        self.native_refresh_tie_ends(first, second);
         for actor in [first, second] {
-            let count = self.ties.iter().filter(|tie| tie.contains(actor)).count();
+            let count = self.tie_indices_for(actor).len();
             self.slots
                 .get_mut(actor)
                 .unwrap()
@@ -128,9 +147,6 @@ impl Engine {
                 .memory
                 .write(MEM_NUMBER_OF_TIES, count as i32);
         }
-        // Compact local endpoint caches before appending a replacement. Reusing
-        // the old port must not put the new tie back in its deleted array slot.
-        self.native_refresh_tie_ends(first, second);
     }
 
     pub(super) fn native_make_tie(
@@ -183,6 +199,11 @@ impl Engine {
             tie.sync_native_primary();
             self.ties.push(tie);
             self.native_refresh_tie_ends(first, second);
+            let first_activated = self.activate_dormant_native_ties(first, first_count + 1);
+            let second_activated = self.activate_dormant_native_ties(second, second_count + 1);
+            if first_activated || second_activated {
+                self.native_refresh_tie_ends(first, second);
+            }
             let source = self.slots.get_mut(first).unwrap();
             source.native_tie_count_pending = false;
             source

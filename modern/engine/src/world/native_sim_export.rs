@@ -301,6 +301,42 @@ impl Engine {
             number(&mut tail, "mutation_min", 10000.0)?;
             number(&mut tail, "speciation_min_population", 10.0)?;
         }
+        if let Some(recording) = &self.native_graph_recording {
+            if !recording.run_stamp.is_empty() {
+                text(&mut tail, "sim_start", &recording.run_stamp)?;
+            }
+            for graph in &recording.graphs {
+                let index = graph.graph_index;
+                number(
+                    &mut tail,
+                    &format!("graph[{index}].counter"),
+                    f64::from(graph.counter),
+                )?;
+                flag(&mut tail, &format!("graph[{index}].save"), graph.enabled)?;
+            }
+        }
+        if let Some(layout) = &self.native_graph_layout {
+            for graph in &layout.graphs {
+                let index = graph.graph_index;
+                if let Some(visible) = graph.visible {
+                    flag(&mut tail, &format!("graph[{index}].visible"), visible)?;
+                }
+                if let Some(left) = graph.left {
+                    number(&mut tail, &format!("graph[{index}].left"), f64::from(left))?;
+                }
+                if let Some(top) = graph.top {
+                    number(&mut tail, &format!("graph[{index}].top"), f64::from(top))?;
+                }
+            }
+            for query in &layout.custom_queries {
+                text(
+                    &mut tail,
+                    &format!("graph_query{}", query.slot),
+                    &query.expression,
+                )?;
+            }
+        }
+
         let archived_species_count = origin
             .as_ref()
             .map(|origin| origin.integer("species_count"))
@@ -1117,6 +1153,138 @@ mod tests {
             }
             assert_eq!(crate::SaveFile::encode(&world).unwrap(), live);
         }
+    }
+
+    #[test]
+    fn native_graph_layout_changes_only_authored_fields_in_original_saves() {
+        use crate::world::native_graph_layout::{NativeGraphCustomQuery, NativeGraphLayoutRow};
+
+        let mut original = NativeRecordFile::decode(include_bytes!(
+            "../../tests/fixtures/db24832-original-user.sim"
+        ))
+        .unwrap();
+        let mut tail = NativeSimulationTail::decode(&original.tail).unwrap();
+        text(&mut tail, "sim_start", "21-11-2026 5-55-03 PM").unwrap();
+        text(&mut tail, "graph_query1", "archived").unwrap();
+        text(&mut tail, "graph_query3", "é ").unwrap();
+        number(&mut tail, "graph[17].counter", 42.0).unwrap();
+        number(&mut tail, "graph[17].save", 1.0).unwrap();
+        number(&mut tail, "graph[17].visible", 1.0).unwrap();
+        number(&mut tail, "graph[17].left", 0.0).unwrap();
+        number(&mut tail, "graph[17].top", -300.0).unwrap();
+        original.tail = tail.encode().unwrap();
+
+        let mut world = Engine::from_native_sim(&original.encode().unwrap()).unwrap();
+        let archived = serde_json::json!(world.read_native_graph_layout().unwrap());
+        assert_eq!(archived["graphs"][17]["left"], 0);
+        assert_eq!(archived["graphs"][17]["top"], -300);
+        assert_eq!(archived["custom_queries"][2], "é ");
+        assert!(world.native_graph_layout.is_none());
+        let recording = world.read_native_graph_recording().unwrap();
+        world
+            .update_native_graph_layout(
+                vec![NativeGraphLayoutRow {
+                    graph_index: 17,
+                    visible: None,
+                    left: Some(-1920),
+                    top: None,
+                }],
+                vec![NativeGraphCustomQuery {
+                    slot: 1,
+                    expression: String::new(),
+                }],
+            )
+            .unwrap();
+        let resumed = crate::SaveFile::decode(&crate::SaveFile::encode(&world).unwrap()).unwrap();
+        assert_eq!(resumed.read_native_graph_recording().unwrap(), recording);
+        let export = NativeRecordFile::decode(&resumed.export_native_sim().unwrap()).unwrap();
+        let edited = NativeSimulationTail::decode(&export.tail).unwrap();
+        assert_eq!(edited.integer("graph[17].left").unwrap(), -1920);
+        assert_eq!(edited.bytes("graph_query1").unwrap(), b"");
+        for key in [
+            "sim_start",
+            "graph_query3",
+            "graph_query3.length",
+            "graph[17].visible",
+            "graph[17].top",
+            "graph[17].save",
+            "graph[17].counter",
+        ] {
+            assert_eq!(
+                edited.value(key).unwrap(),
+                tail.value(key).unwrap(),
+                "{key}"
+            );
+        }
+    }
+
+    #[test]
+    fn native_graph_recording_keeps_archived_metadata_unless_edited() {
+        use crate::world::native_graph_recording::NativeGraphRecordingRow;
+
+        let mut original = NativeRecordFile::decode(include_bytes!(
+            "../../tests/fixtures/db24832-original-user.sim"
+        ))
+        .unwrap();
+        let mut tail = NativeSimulationTail::decode(&original.tail).unwrap();
+        text(&mut tail, "sim_start", "21-11-2026 5-55-03 PM").unwrap();
+        text(&mut tail, "graph_query3", "é ").unwrap();
+        number(&mut tail, "graph[17].counter", 42.0).unwrap();
+        number(&mut tail, "graph[17].save", 1.0).unwrap();
+        flag(&mut tail, "graph[17].visible", true).unwrap();
+        number(&mut tail, "graph[17].left", 1920.0).unwrap();
+        number(&mut tail, "graph[17].top", -360.0).unwrap();
+        original.tail = tail.encode().unwrap();
+        let imported = Engine::from_native_sim(&original.encode().unwrap()).unwrap();
+        let mut resumed =
+            crate::SaveFile::decode(&crate::SaveFile::encode(&imported).unwrap()).unwrap();
+        assert!(resumed.native_graph_recording.is_none());
+        let readback = resumed.read_native_graph_recording().unwrap();
+        assert_eq!(readback.run_stamp, "21-11-2026 5-55-03 PM");
+        assert!(readback.graphs.contains(&NativeGraphRecordingRow {
+            graph_index: 17,
+            enabled: true,
+            counter: 42,
+        }));
+
+        let export_tail = |world: &Engine| {
+            let saved = NativeRecordFile::decode(&world.export_native_sim().unwrap()).unwrap();
+            NativeSimulationTail::decode(&saved.tail).unwrap()
+        };
+        let preserved = export_tail(&resumed);
+        assert_eq!(preserved.integer("graph[17].save").unwrap(), 1);
+
+        resumed
+            .update_native_graph_recording(
+                None,
+                vec![NativeGraphRecordingRow {
+                    graph_index: 17,
+                    enabled: false,
+                    counter: 43,
+                }],
+            )
+            .unwrap();
+        let resumed = crate::SaveFile::decode(&crate::SaveFile::encode(&resumed).unwrap()).unwrap();
+        let edited = export_tail(&resumed);
+        assert_eq!(edited.integer("graph[17].save").unwrap(), 0);
+        assert_eq!(edited.integer("graph[17].counter").unwrap(), 43);
+        for key in [
+            "sim_start",
+            "graph_query3",
+            "graph[17].visible",
+            "graph[17].left",
+            "graph[17].top",
+        ] {
+            assert_eq!(
+                edited.value(key).unwrap(),
+                tail.value(key).unwrap(),
+                "{key}"
+            );
+        }
+        assert_eq!(
+            resumed.read_native_graph_recording().unwrap().run_stamp,
+            readback.run_stamp
+        );
     }
 
     #[test]

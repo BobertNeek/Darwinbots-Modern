@@ -14,7 +14,7 @@ public sealed partial class NativeEngineClient : IEngineClient
     private readonly TimeProvider _clock;
     private bool _sampleRestartClockPerCycle;
     private bool _sampleClassicSkinClock;
-    private static readonly JsonSerializerOptions DeathRecordJson = new()
+    private static readonly JsonSerializerOptions NativeRecordingJson = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
     };
@@ -121,8 +121,46 @@ public sealed partial class NativeEngineClient : IEngineClient
         Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted) =>
         Advance(count, weightPercent, onCommitted, requireNativeRepopulationSource: true, cancelledLineages);
 
+    public void TickRecordingGraphs(uint count, Action<IReadOnlyList<NativeGraphRecordingSample>> onCommitted,
+        bool requireNativeRepopulationSource, IReadOnlyList<ulong> cancelledLineages,
+        int weightPercent = 100, Action<IReadOnlyList<DeathRecordSnapshot>>? onDeathsCommitted = null)
+    {
+        ArgumentNullException.ThrowIfNull(onCommitted);
+        Advance(count, weightPercent, onDeathsCommitted, requireNativeRepopulationSource, cancelledLineages, onCommitted);
+    }
+
+    public NativeGraphRecordingSample? ReadNativeGraphSample() => ReadNativeGraphSample("read_native_graph_sample");
+
+    public NativeGraphRecordingSample? ReadNativeGraphResetSample() => ReadNativeGraphSample("read_native_graph_reset_sample");
+
+    private NativeGraphRecordingSample? ReadNativeGraphSample(string command)
+    {
+        EnsureAlive();
+        var result = ExecuteBatchForResult(
+            new { version = 1, commands = new[] { new { type = command } } },
+            "sample original graphs").GetProperty("results")[0];
+        return result.Deserialize<NativeGraphRecordingSample>(NativeRecordingJson);
+    }
+
+    public NativeGraphRecordingSample? FeedNativeGraphSample(GraphSamplingSettings settings, bool dueOnly = false)
+    {
+        EnsureAlive();
+        var command = new
+        {
+            type = "feed_native_graph_sample",
+            selective = settings.Selective,
+            generational = settings.Generational,
+            slow = settings.Slow,
+            due_only = dueOnly,
+        };
+        var result = ExecuteBatchForResult(new { version = 1, commands = new[] { command } },
+            "feed original graphs").GetProperty("results")[0];
+        return result.Deserialize<NativeGraphRecordingSample>(NativeRecordingJson);
+    }
+
     private void Advance(uint count, int weightPercent, Action<IReadOnlyList<DeathRecordSnapshot>>? onDeathsCommitted,
-        bool requireNativeRepopulationSource = false, IReadOnlyList<ulong>? cancelledLineages = null)
+        bool requireNativeRepopulationSource = false, IReadOnlyList<ulong>? cancelledLineages = null,
+        Action<IReadOnlyList<NativeGraphRecordingSample>>? onGraphSamplesCommitted = null)
     {
         EnsureAlive();
         if (count == 0) return;
@@ -133,7 +171,7 @@ public sealed partial class NativeEngineClient : IEngineClient
             // External league/staged restarts take a new Timer sample for each
             // original cycle. Each successful cycle commits before the next begins.
             for (uint cycle = 0; cycle < count; cycle++)
-                Advance(1, weightPercent, onDeathsCommitted, requireNativeRepopulationSource, cancelledLineages);
+                Advance(1, weightPercent, onDeathsCommitted, requireNativeRepopulationSource, cancelledLineages, onGraphSamplesCommitted);
             return;
         }
         var command = new
@@ -144,16 +182,21 @@ public sealed partial class NativeEngineClient : IEngineClient
             recording_weight = weightPercent,
             require_native_repopulation_source = requireNativeRepopulationSource,
             cancelled_native_repopulation_lineages = cancelledLineages ?? [],
+            capture_graph_samples = onGraphSamplesCommitted is not null,
         };
         var batch = new { version = 1, commands = new object[] { NativeRestartSeedCommand(), command } };
-        if (onDeathsCommitted is null)
+        if (onDeathsCommitted is null && onGraphSamplesCommitted is null)
         {
             ExecuteBatch(batch, "advance simulation");
             return;
         }
-        var result = ExecuteBatchForResult(batch, "advance simulation with death records");
-        var records = result.GetProperty("results")[1].GetProperty("death_records").Deserialize<DeathRecordSnapshot[]>(DeathRecordJson);
-        if (records is { Length: > 0 }) onDeathsCommitted(records);
+        var result = ExecuteBatchForResult(batch, "advance simulation with recording").GetProperty("results")[1];
+        if (onDeathsCommitted is not null &&
+            result.GetProperty("death_records").Deserialize<DeathRecordSnapshot[]>(NativeRecordingJson) is { Length: > 0 } records)
+            onDeathsCommitted(records);
+        if (onGraphSamplesCommitted is not null &&
+            result.GetProperty("graph_samples").Deserialize<NativeGraphRecordingSample[]>(NativeRecordingJson) is { Length: > 0 } samples)
+            onGraphSamplesCommitted(samples);
     }
 
     public GenomeRecordCapture CaptureLivingSnp(int weightPercent)
@@ -188,7 +231,7 @@ public sealed partial class NativeEngineClient : IEngineClient
     }
 
     private static DeathRecordSnapshot[] ReadGenomeRecords(JsonElement result) =>
-        result.GetProperty("results")[0].Deserialize<DeathRecordSnapshot[]>(DeathRecordJson)
+        result.GetProperty("results")[0].Deserialize<DeathRecordSnapshot[]>(NativeRecordingJson)
         ?? throw new InvalidDataException("The native genome record result is missing.");
 
     public DnaImportReport ImportDna(string dna, float[]? position = null)
@@ -1255,6 +1298,68 @@ public sealed partial class NativeEngineClient : IEngineClient
             slow = settings.Slow,
         } } },
     }, "configure graph sampling");
+
+    public NativeGraphRecordingState ReadNativeGraphRecording()
+    {
+        EnsureAlive();
+        var result = ExecuteBatchForResult(
+            new { version = 1, commands = new[] { new { type = "read_native_graph_recording" } } },
+            "read original graph recording").GetProperty("results")[0];
+        var graphs = result.GetProperty("graphs").EnumerateArray().Select(row => new NativeGraphRecordingRow(
+            row.GetProperty("graph_index").GetInt32(),
+            row.GetProperty("enabled").GetBoolean(),
+            row.GetProperty("counter").GetInt32())).ToArray();
+        return new(result.GetProperty("run_stamp").GetString() ?? string.Empty, graphs);
+    }
+
+    public void UpdateNativeGraphRecording(string? runStamp, IReadOnlyList<NativeGraphRecordingRow> graphs)
+    {
+        EnsureAlive();
+        ArgumentNullException.ThrowIfNull(graphs);
+        ExecuteBatch(new
+        {
+            version = 1,
+            commands = new[] { new
+            {
+                type = "update_native_graph_recording",
+                run_stamp = runStamp,
+                graphs = graphs.Select(row => new
+                {
+                    graph_index = row.GraphIndex, enabled = row.Enabled, counter = row.Counter,
+                }).ToArray(),
+            } },
+        }, "update original graph recording");
+    }
+
+    public NativeGraphLayoutState ReadNativeGraphLayout()
+    {
+        EnsureAlive();
+        var result = ExecuteBatchForResult(
+            new { version = 1, commands = new[] { new { type = "read_native_graph_layout" } } },
+            "read original graph layout").GetProperty("results")[0];
+        return result.Deserialize<NativeGraphLayoutState>(NativeRecordingJson)
+            ?? throw new InvalidDataException("The original graph layout result is missing.");
+    }
+
+    public void UpdateNativeGraphLayout(IReadOnlyList<NativeGraphLayoutRow> graphs,
+        IReadOnlyList<NativeGraphCustomQuery>? customQueries = null)
+    {
+        EnsureAlive();
+        ArgumentNullException.ThrowIfNull(graphs);
+        ExecuteBatch(new
+        {
+            version = 1,
+            commands = new[] { new
+            {
+                type = "update_native_graph_layout",
+                graphs = graphs.Select(row => new
+                {
+                    graph_index = row.GraphIndex, visible = row.Visible, left = row.Left, top = row.Top,
+                }).ToArray(),
+                custom_queries = customQueries?.Select(query => new { slot = query.Slot, expression = query.Expression }).ToArray() ?? [],
+            } },
+        }, "update original graph layout");
+    }
 
     public void UpdateEnvironment(EnvironmentUpdate update)
     {

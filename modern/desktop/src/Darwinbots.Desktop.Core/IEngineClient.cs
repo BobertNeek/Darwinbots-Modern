@@ -22,6 +22,22 @@ public interface IEngineClient : IDisposable
     void TickRecordingDeaths(uint count, int weightPercent, IReadOnlyList<ulong> cancelledLineages,
         Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted) =>
         Tick(count, requireNativeRepopulationSource: true, cancelledLineages);
+
+    void TickRecordingGraphs(uint count, Action<IReadOnlyList<NativeGraphRecordingSample>> onCommitted,
+        bool requireNativeRepopulationSource, IReadOnlyList<ulong> cancelledLineages,
+        int weightPercent = 100, Action<IReadOnlyList<DeathRecordSnapshot>>? onDeathsCommitted = null)
+    {
+        if (onDeathsCommitted is null)
+            Tick(count, requireNativeRepopulationSource, cancelledLineages);
+        else if (requireNativeRepopulationSource)
+            TickRecordingDeaths(count, weightPercent, cancelledLineages, onDeathsCommitted);
+        else
+            TickRecordingDeaths(count, weightPercent, onDeathsCommitted);
+    }
+    NativeGraphRecordingSample? ReadNativeGraphSample() => null;
+    NativeGraphRecordingSample? ReadNativeGraphResetSample() => ReadNativeGraphSample();
+    NativeGraphRecordingSample? FeedNativeGraphSample(GraphSamplingSettings settings, bool dueOnly = false) =>
+        ReadNativeGraphSample();
     DnaImportReport ImportDna(string dna, float[]? position = null);
     int ImportOrganism(ReadOnlyMemory<byte> payload) => throw new NotSupportedException("This engine client does not support organism interchange.");
     DnaImportReport ImportSpecies(SpeciesImport species);
@@ -184,6 +200,11 @@ public interface IEngineClient : IDisposable
         if (settings.Selective || settings.Generational || settings.Slow)
             throw new NotSupportedException("Native graph sampling is unavailable.");
     }
+    NativeGraphRecordingState? ReadNativeGraphRecording() => null;
+    void UpdateNativeGraphRecording(string? runStamp, IReadOnlyList<NativeGraphRecordingRow> graphs) { }
+    NativeGraphLayoutState? ReadNativeGraphLayout() => null;
+    void UpdateNativeGraphLayout(IReadOnlyList<NativeGraphLayoutRow> graphs,
+        IReadOnlyList<NativeGraphCustomQuery>? customQueries = null) { }
     byte[] Save();
     byte[] SaveWithoutRestartMode() => throw new NotSupportedException("This engine client cannot save without restart mode state.");
     byte[] SaveLegacy() => throw new NotSupportedException("This engine client does not support legacy simulation export.");

@@ -86,6 +86,45 @@ public sealed class SimulationSession : IAsyncDisposable
                 engine.TickRecordingDeaths(1, weightPercent, cancelledLineages, onCommitted);
         }, cancellationToken, measureTicks: true);
 
+    public Task StepRecordingGraphsAsync(uint count, Action<IReadOnlyList<NativeGraphRecordingSample>> onCommitted,
+        bool requireNativeRepopulationSource = false, IReadOnlyList<ulong>? cancelledLineages = null,
+        CancellationToken cancellationToken = default, int weightPercent = 100,
+        Action<IReadOnlyList<DeathRecordSnapshot>>? onDeathsCommitted = null)
+    {
+        ArgumentNullException.ThrowIfNull(onCommitted);
+        var cancellations = cancelledLineages?.ToArray() ?? [];
+        return Enqueue(engine =>
+        {
+            ApplyPlayerBotPointer(engine);
+            engine.TickRecordingGraphs(count, onCommitted, requireNativeRepopulationSource, cancellations, weightPercent, onDeathsCommitted);
+        }, cancellationToken, measureTicks: true);
+    }
+
+    public async Task<NativeGraphRecordingSample?> ReadNativeGraphSampleAsync(CancellationToken cancellationToken = default)
+    {
+        NativeGraphRecordingSample? sample = null;
+        await Enqueue(engine => sample = engine.ReadNativeGraphSample(), cancellationToken, publishSnapshot: false)
+            .ConfigureAwait(false);
+        return sample;
+    }
+
+    public async Task<NativeGraphRecordingSample?> ReadNativeGraphResetSampleAsync(CancellationToken cancellationToken = default)
+    {
+        NativeGraphRecordingSample? sample = null;
+        await Enqueue(engine => sample = engine.ReadNativeGraphResetSample(), cancellationToken, publishSnapshot: false)
+            .ConfigureAwait(false);
+        return sample;
+    }
+
+    public async Task<NativeGraphRecordingSample?> FeedNativeGraphSampleAsync(GraphSamplingSettings settings,
+        bool dueOnly = false, CancellationToken cancellationToken = default)
+    {
+        NativeGraphRecordingSample? sample = null;
+        await Enqueue(engine => sample = engine.FeedNativeGraphSample(settings, dueOnly), cancellationToken, publishSnapshot: false)
+            .ConfigureAwait(false);
+        return sample;
+    }
+
     public async Task<OrganismKey?> FindBestRobotAsync(bool energyWeighting, CancellationToken cancellationToken = default)
         => await FindBestRobotAsync(energyWeighting ? 100 : 0, cancellationToken).ConfigureAwait(false);
 
@@ -685,6 +724,36 @@ public sealed class SimulationSession : IAsyncDisposable
 
     public Task ConfigureNativePostDnaMemoryWatchAsync(ulong requestId, OrganismKey? focus, bool captureMemory) =>
         Enqueue(engine => engine.ConfigureNativePostDnaMemoryWatch(requestId, focus, captureMemory), CancellationToken.None);
+
+    public async Task<NativeGraphRecordingState?> ReadNativeGraphRecordingAsync(CancellationToken cancellationToken = default)
+    {
+        NativeGraphRecordingState? recording = null;
+        await Enqueue(engine => recording = engine.ReadNativeGraphRecording(), cancellationToken, publishSnapshot: false)
+            .ConfigureAwait(false);
+        return recording;
+    }
+
+    public Task UpdateNativeGraphRecordingAsync(string? runStamp, IReadOnlyList<NativeGraphRecordingRow> graphs,
+        CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.UpdateNativeGraphRecording(runStamp, graphs), cancellationToken, publishSnapshot: false);
+
+    public async Task<NativeGraphLayoutState?> ReadNativeGraphLayoutAsync(CancellationToken cancellationToken = default)
+    {
+        NativeGraphLayoutState? layout = null;
+        await Enqueue(engine => layout = engine.ReadNativeGraphLayout(), cancellationToken, publishSnapshot: false)
+            .ConfigureAwait(false);
+        return layout;
+    }
+
+    public Task UpdateNativeGraphLayoutAsync(IReadOnlyList<NativeGraphLayoutRow> graphs,
+        IReadOnlyList<NativeGraphCustomQuery>? customQueries = null, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(graphs);
+        var stableGraphs = graphs.ToArray();
+        var stableQueries = customQueries?.ToArray();
+        return Enqueue(engine => engine.UpdateNativeGraphLayout(stableGraphs, stableQueries), cancellationToken,
+            publishSnapshot: false);
+    }
 
     public Task UpdateEnvironmentAsync(EnvironmentUpdate update, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.UpdateEnvironment(update), cancellationToken);

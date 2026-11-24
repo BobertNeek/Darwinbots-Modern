@@ -121,6 +121,24 @@ public static class SetupStorageService
         path is not null && IsLocalPath(PortablePath(path)) && Path.IsPathFullyQualified(path)
             ? Path.GetDirectoryName(path) : null;
 
+    internal static bool? ReadNativeGraphClosePreference(string mainDirectory)
+    {
+        var directory = PortablePath(mainDirectory);
+        if (!IsLocalPath(directory) || !Path.IsPathFullyQualified(directory)) return null;
+        try
+        {
+            // frmGset writes one record per line. GraphUp follows the restrictions.
+            return File.ReadLines(Path.Combine(directory, "Global.gset")).Skip(50).FirstOrDefault()
+                ?.Trim().ToUpperInvariant() switch
+            {
+                "#TRUE#" => true,
+                "#FALSE#" => false,
+                _ => null,
+            };
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { return null; }
+    }
+
     private static IEnumerable<string> NativeRestartSourcePaths(string name, string savedDirectory, string? simulationPath,
         string mainDirectory)
     {

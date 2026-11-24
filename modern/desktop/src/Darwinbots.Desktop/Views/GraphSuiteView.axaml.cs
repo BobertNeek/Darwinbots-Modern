@@ -26,6 +26,7 @@ public sealed partial class GraphSuiteView : UserControl
 
     public GraphSuiteViewModel ViewModel => _viewModel;
     public event Action<GraphSeriesViewModel>? GraphWindowRequested;
+    internal Func<GraphMetric, GraphSeriesViewModel?>? ReopenGraphRequested { get; set; }
 
     public void SetSnapshot(EngineSnapshot snapshot)
     {
@@ -34,8 +35,19 @@ public sealed partial class GraphSuiteView : UserControl
         RefreshChart();
     }
 
-    private void OpenGraph_Click(object? sender, RoutedEventArgs e)
+    private async void OpenGraph_Click(object? sender, RoutedEventArgs e)
     {
+        if (_viewModel.SelectedChoice.Action == GraphMenuAction.ResetAllGraphs)
+        {
+            await ConfirmResetGraphsAsync();
+            return;
+        }
+        if (_viewModel.SelectedChoice.Metric is { } metric && ReopenGraphRequested?.Invoke(metric) is { } existing)
+        {
+            _displayedSeries = existing;
+            RefreshChart();
+            return;
+        }
         var opened = _viewModel.OpenSelectedGraph();
         if (opened is not null)
         {
@@ -45,8 +57,13 @@ public sealed partial class GraphSuiteView : UserControl
         RefreshChart();
     }
 
-    private void ResetGraphs_Click(object? sender, RoutedEventArgs e)
+    private async void ResetGraphs_Click(object? sender, RoutedEventArgs e) => await ConfirmResetGraphsAsync();
+
+    private async Task ConfirmResetGraphsAsync()
     {
+        if (TopLevel.GetTopLevel(this) is not Window owner) return;
+        var dialog = new LegacyConfirmationWindow("Graph", "Are you sure you want to reset all graphs?", okCancel: true);
+        if (!await dialog.ShowDialog<bool>(owner)) return;
         _viewModel.ResetAllGraphs();
         RefreshChart();
     }
@@ -119,7 +136,8 @@ public sealed partial class GraphSuiteView : UserControl
         {
             _displayedSeries = graph;
             RefreshChart();
-            GraphWindowRequested?.Invoke(graph);
+            if (graph.Id.StartsWith("legacy-", StringComparison.Ordinal) || ReopenGraphRequested?.Invoke(graph.Metric) is null)
+                GraphWindowRequested?.Invoke(graph);
         }
     }
 
@@ -128,9 +146,13 @@ public sealed partial class GraphSuiteView : UserControl
         if (TopLevel.GetTopLevel(this) is Window window) window.Close();
     }
 
-    private void RefreshChart()
+    internal IReadOnlyList<GraphSeriesViewModel> SeriesFor(GraphSeriesViewModel graph) =>
+        _viewModel.RunningGraphs.Where(candidate => candidate.Metric == graph.Metric
+            && candidate.UsesSampleOrder == graph.UsesSampleOrder).ToArray();
+
+    internal void RefreshChart()
     {
         var selected = _displayedSeries ?? _viewModel.RunningGraphs.LastOrDefault();
-        SeriesChart.SetSeries(selected is null ? [] : _viewModel.RunningGraphs.Where(graph => graph.Metric == selected.Metric).ToArray());
+        SeriesChart.SetSeries(selected is null ? [] : SeriesFor(selected));
     }
 }

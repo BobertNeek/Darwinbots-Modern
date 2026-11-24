@@ -78,7 +78,7 @@ impl Engine {
                 end.k = HARD_TIE_K;
                 end.hardened = true;
                 end.kind = 3;
-                if forward {
+                if !tie.is_native_back(actor) {
                     end.angle = normalize_tie_angle(angle - robot.heading());
                     end.angle_fixed = true;
                     end.angle_initialized = true;

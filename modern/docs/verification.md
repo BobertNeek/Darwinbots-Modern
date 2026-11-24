@@ -19,7 +19,9 @@ The isolated Windows build with the source tree at `2d27cce7b68efbb30f7b33e58482
 
 The same Windows build loaded a native SIM prepared with one inbound and one outbound file teleporter in a disposable directory. F2 showed native cycle 281 and both portals on the field. Two F7 steps removed the inbound DBO and wrote a native DBO to the outbound directory. F3 saved a DB3S at cycle 283 with inbound `received: 1` and outbound `sent: 1`. Both persisted rows had `internet: false`. The input SIM SHA-256 was `db854250155722d0fc7067c4b50dc6f31a763eab0a162cf8afb9bc8d50739eeb`. The outbound DBO SHA-256 was `463e328f60eee587818f413513a47b1a59a7ae0d8fd06101c4e5b69f5009c253`. The DB3S SHA-256 was `e85eae721d40bcc23b8e146b32102735b8ba9ac419edad80391f48c8207d8939`. This run prepared the portal definitions through the Rust API and exercised transfer through the native desktop. Interactive portal creation remains open.
 
-Original Windows directed-tie checkpoints confirm separate import and first-cycle behavior for reciprocal, one-way, and dormant input rows. The corresponding port behavior remains open. [Original executable receipts](windows-offline-acceptance.md#november-24-original-windows-results)
+Original Windows directed-tie checkpoints confirm separate import and first-cycle behavior for reciprocal, one-way, and dormant input rows. The port now preserves their import pointers and native round-trip and tie-creation behavior in automated Windows tests. [Original executable receipts](windows-offline-acceptance.md#november-24-original-windows-results)
+
+The Windows development build at source `cab0cb1c6bc985404c7a88e416d6bc379bd97248` opened the original SIM at cycle 281. In a disposable profile with the tray icon enabled, keyboard activation of Stealth Tray Mode hid the main window while the process stayed alive. The app host SHA-256 was `ee67baf3590d6aa4dcfd13eb67d657283c2d839fa25deec48ec1d76b4e65a000`. Notification-area icon visibility, live tray menu data, and restore remain open in the native walkthrough.
 
 ## November 4 offline assessment
 

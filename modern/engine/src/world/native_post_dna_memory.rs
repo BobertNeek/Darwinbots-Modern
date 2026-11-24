@@ -78,7 +78,7 @@ impl Engine {
         });
     }
 
-    pub(super) fn inherit_native_post_dna_memory_watch(&mut self, previous: &Self) {
+    pub(crate) fn inherit_native_post_dna_memory_watch(&mut self, previous: &Self) {
         self.post_dna_memory.clone_from(&previous.post_dna_memory);
     }
 }

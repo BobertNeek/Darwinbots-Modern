@@ -141,6 +141,82 @@ pub(super) fn read_cost_preset(t: &NativeSimulationTail) -> Result<u8, EngineErr
     })
 }
 
+fn read_native_tie_end(core: &[u8], extension: &[u8]) -> crate::tie::NativeTieEnd {
+    crate::tie::NativeTieEnd {
+        rest_length: single(extension, 9),
+        length: Some(long(core, 16)),
+        saved_reciprocal: Some(word(core, 4)),
+        last: word(core, 26),
+        b: single(extension, 1),
+        k: single(extension, 5),
+        hardened: extension[0] == 3,
+        kind: extension[0],
+        shrink: long(core, 20),
+        angle: single(core, 6),
+        bend: single(core, 10),
+        angle_fixed: word(core, 14) != 0,
+        angle_initialized: true,
+    }
+}
+
+struct DboTieRow {
+    owner: OrganismId,
+    endpoint: TieEndpointState,
+    end: crate::tie::NativeTieEnd,
+    back: bool,
+}
+
+fn decode_tie_row(
+    owner: OrganismId,
+    target: OrganismId,
+    core: &[u8],
+    extension: &[u8],
+) -> Result<DboTieRow, EngineError> {
+    let end = read_native_tie_end(core, extension);
+    if [end.rest_length, end.b, end.k, end.angle, end.bend]
+        .iter()
+        .any(|value| !value.is_finite())
+    {
+        return Err(invalid("nonfinite original tie state"));
+    }
+    Ok(DboTieRow {
+        owner,
+        endpoint: TieEndpointState {
+            other: Some(target),
+            reciprocal_index: u8::try_from(word(core, 4)).unwrap_or(0),
+            port: word(core, 0),
+            current_angle: end.angle,
+            requested_angle: end.angle,
+            current_length: long(core, 16) as f32,
+            requested_length: end.rest_length,
+            countdown: end.last,
+            information: word(core, 34),
+            sharing_marker: word(core, 36),
+            energy_marker: word(core, 32),
+            ..TieEndpointState::default()
+        },
+        end,
+        back: word(core, 30) != 0,
+    })
+}
+
+fn dbo_tie(row: &DboTieRow, reciprocal: Option<&DboTieRow>) -> TieState {
+    let mut tie = TieState::new(
+        row.owner,
+        row.endpoint.other.unwrap(),
+        row.end.rest_length,
+        row.endpoint.port,
+        reciprocal.map_or(0, |other| other.endpoint.port),
+    );
+    tie.native_ends = Some([row.end, reciprocal.map_or(row.end, |other| other.end)]);
+    tie.directed_native_back = reciprocal.is_none().then_some(row.back);
+    tie.information = row.endpoint.information != 0;
+    tie.sharing_first = row.endpoint.sharing_marker != 0;
+    tie.sharing_second = reciprocal.is_some_and(|other| other.endpoint.sharing_marker != 0);
+    tie.sync_native_primary();
+    tie
+}
+
 fn configuration(t: &NativeSimulationTail) -> Result<EngineConfig, EngineError> {
     let n = |name| t.number(name).map(|v| v as f32);
     let b = |name| t.integer(name).map(|v| v != 0);
@@ -475,7 +551,7 @@ impl Engine {
                 });
             }
         }
-        engine.native_ties(&file, &old_slots)?;
+        engine.load_native_tie_rows(&file, &old_slots, false)?;
         engine.native_shots(&tail, &old_slots)?;
         engine.native_environment(&tail)?;
         engine.refresh_native_chloroplast_population();
@@ -701,6 +777,179 @@ impl Engine {
         Ok(robot)
     }
 
+    pub(super) fn load_native_tie_rows(
+        &mut self,
+        file: &NativeRecordFile,
+        old_slots: &HashMap<i16, OrganismId>,
+        remap_dbo: bool,
+    ) -> Result<(), EngineError> {
+        let members = file
+            .robots
+            .iter()
+            .map(|record| {
+                let old = record.word("old_slot")?;
+                let id = old_slots[&old];
+                let number = if remap_dbo {
+                    i16::try_from(id.slot() + 1)
+                        .map_err(|_| invalid("DBO tie slot exceeds Integer range"))?
+                } else {
+                    old
+                };
+                Ok((old, number, id))
+            })
+            .collect::<Result<Vec<_>, EngineError>>()?;
+        let runtime_slots: HashMap<_, _> = members
+            .iter()
+            .map(|&(_, number, id)| (number, id))
+            .collect();
+        let mut rows = Vec::new();
+
+        for (record, &(_, _, owner)) in file.robots.iter().zip(&members) {
+            let core = record.bytes("ties_core")?;
+            let extension = record.bytes("ties_extension")?;
+            let mut pointers: [i16; 10] =
+                std::array::from_fn(|i| word(core, (i + 1) * 38 + 2) as i16);
+            // HDRoutines.RemapTies visits the group in file order and rewrites
+            // the positive prefix in place. A later old number can match a
+            // number written earlier in the loop.
+            if remap_dbo {
+                for &(old, new, _) in &members {
+                    for point in pointers.iter_mut().take_while(|point| **point > 0) {
+                        if *point == old {
+                            *point = new;
+                        }
+                    }
+                }
+            }
+            for point in pointers.iter_mut() {
+                if *point <= 0 {
+                    break;
+                }
+                if !runtime_slots.contains_key(point) {
+                    *point = 0;
+                }
+            }
+
+            for (i, pointer) in pointers
+                .into_iter()
+                .take_while(|point| *point > 0)
+                .enumerate()
+            {
+                let c = &core[(i + 1) * 38..(i + 2) * 38];
+                let e = &extension[(i + 1) * 13..(i + 2) * 13];
+                let row = decode_tie_row(owner, runtime_slots[&pointer], c, e)?;
+                self.slots.get_mut(owner)?.ties[i] = Some(row.endpoint);
+                rows.push(row);
+            }
+        }
+
+        // Collapse actual forward/back pairs just like freshly fired ties.
+        // Keep unmatched rows independent, even when they point to their owner.
+        let mut paired = vec![false; rows.len()];
+        for (index, row) in rows.iter().enumerate() {
+            if row.back || paired[index] {
+                continue;
+            }
+            let target = row.endpoint.other.unwrap();
+            let reciprocal = (target != row.owner)
+                .then(|| {
+                    rows.iter().enumerate().find(|(ordinal, other)| {
+                        !paired[*ordinal]
+                            && other.back
+                            && other.owner == target
+                            && other.endpoint.other == Some(row.owner)
+                    })
+                })
+                .flatten();
+            if let Some((ordinal, back)) = reciprocal {
+                paired[ordinal] = true;
+                paired[index] = true;
+                self.ties.push(dbo_tie(row, Some(back)));
+            }
+        }
+        for (row, paired) in rows.iter().zip(paired) {
+            if !paired {
+                self.ties.push(dbo_tie(row, None));
+            }
+        }
+        Ok(())
+    }
+
+    /// A new tie can fill the zero that hid later saved rows. VB6's next
+    /// prefix scan sees those literal pointers at their original positions.
+    pub(super) fn activate_dormant_native_ties(
+        &mut self,
+        owner: OrganismId,
+        occupied: usize,
+    ) -> bool {
+        if occupied >= MAX_TIES_PER_ROBOT {
+            return false;
+        }
+        let Ok(robot) = self.slots.get(owner) else {
+            return false;
+        };
+        let Some(mut record) = robot
+            .native_record_override
+            .as_deref()
+            .cloned()
+            .or_else(|| {
+                let index = robot.native_record_index?;
+                self.native_origin.as_ref()?.robots.get(index).cloned()
+            })
+        else {
+            return false;
+        };
+        let (Ok(core), Ok(extension)) = (record.bytes("ties_core"), record.bytes("ties_extension"))
+        else {
+            return false;
+        };
+        if !(1..=occupied).any(|row| word(core, row * 38 + 2) <= 0) {
+            return false;
+        }
+        let mut retained = core.to_vec();
+        let mut rows = Vec::new();
+        for i in occupied + 1..=MAX_TIES_PER_ROBOT {
+            let c = &core[i * 38..(i + 1) * 38];
+            let pointer = word(c, 2);
+            if pointer <= 0 {
+                break;
+            }
+            let slot = (pointer - 1) as usize;
+            let slots: &[RobotSlot] = &self.slots;
+            let Some(entry) = slots.get(slot) else {
+                break;
+            };
+            if entry
+                .organism
+                .as_ref()
+                .is_none_or(|robot| !robot.flags.exists)
+            {
+                break;
+            }
+            let target = OrganismId::new(slot as u32, entry.generation);
+            let e = &extension[i * 13..(i + 1) * 13];
+            let Ok(row) = decode_tie_row(owner, target, c, e) else {
+                break;
+            };
+            retained[i * 38 + 2..i * 38 + 4].fill(0);
+            rows.push((i - 1, row));
+        }
+        if rows.is_empty()
+            || record
+                .set_value("ties_core", NativeValue::Bytes(retained))
+                .is_err()
+        {
+            return false;
+        }
+        let robot = self.slots.get_mut(owner).unwrap();
+        for (index, row) in rows {
+            robot.ties[index] = Some(row.endpoint);
+            self.ties.push(dbo_tie(&row, None));
+        }
+        robot.native_record_override = Some(Box::new(record));
+        true
+    }
+
     pub(super) fn native_ties(
         &mut self,
         file: &NativeRecordFile,
@@ -770,24 +1019,9 @@ impl Engine {
                 } else {
                     0
                 };
-                let read_end = |core: &[u8], extension: &[u8]| crate::tie::NativeTieEnd {
-                    rest_length: single(extension, 9),
-                    length: Some(long(core, 16)),
-                    saved_reciprocal: Some(word(core, 4)),
-                    last: word(core, 26),
-                    b: single(extension, 1),
-                    k: single(extension, 5),
-                    hardened: extension[0] == 3,
-                    kind: extension[0],
-                    shrink: long(core, 20),
-                    angle: single(core, 6),
-                    bend: single(core, 10),
-                    angle_fixed: word(core, 14) != 0,
-                    angle_initialized: true,
-                };
-                let first_end = read_end(c, e);
+                let first_end = read_native_tie_end(c, e);
                 let second_end = if (1..=10).contains(&reciprocal) {
-                    read_end(
+                    read_native_tie_end(
                         &second_core[reciprocal * 38..(reciprocal + 1) * 38],
                         &second_extension[reciprocal * 13..(reciprocal + 1) * 13],
                     )
@@ -811,6 +1045,7 @@ impl Engine {
                 }
                 self.ties.push(TieState {
                     native_ends: Some([first_end, second_end]),
+                    directed_native_back: None,
                     first,
                     second,
                     rest_length: single(e, 9),

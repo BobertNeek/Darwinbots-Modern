@@ -74,6 +74,8 @@ enum EngineCommand {
         #[serde(default)]
         recording_weight: Option<u16>,
         #[serde(default)]
+        capture_graph_samples: bool,
+        #[serde(default)]
         require_native_repopulation_source: bool,
         #[serde(default)]
         cancelled_native_repopulation_lineages: Vec<u64>,
@@ -121,6 +123,31 @@ enum EngineCommand {
         request_id: u64,
         focus: Option<OrganismIdCommand>,
         capture_memory: Option<bool>,
+    },
+    ReadNativeGraphRecording,
+    ReadNativeGraphSample,
+    ReadNativeGraphResetSample,
+    FeedNativeGraphSample {
+        #[serde(default)]
+        selective: bool,
+        #[serde(default)]
+        generational: bool,
+        #[serde(default)]
+        slow: bool,
+        #[serde(default)]
+        due_only: bool,
+    },
+    ReadNativeGraphLayout,
+    UpdateNativeGraphLayout {
+        #[serde(default)]
+        graphs: Vec<crate::world::native_graph_layout::NativeGraphLayoutRow>,
+        #[serde(default)]
+        custom_queries: Vec<crate::world::native_graph_layout::NativeGraphCustomQuery>,
+    },
+    UpdateNativeGraphRecording {
+        run_stamp: Option<String>,
+        #[serde(default)]
+        graphs: Vec<crate::world::native_graph_recording::NativeGraphRecordingRow>,
     },
     UpdateCostSettings {
         costs: Option<crate::DnaCosts>,
@@ -714,6 +741,14 @@ pub extern "C" fn db_engine_command_batch(
     })
 }
 
+fn rebuild_archive_command_candidate(committed: &Engine) -> Result<Engine, EngineError> {
+    let mut candidate = SaveFile::decode(&SaveFile::encode(committed)?)?;
+    candidate.native_restarted_this_cycle = committed.native_restarted_this_cycle;
+    candidate.player_bot_input = committed.player_bot_input.clone();
+    candidate.inherit_native_post_dna_memory_watch(committed);
+    Ok(candidate)
+}
+
 fn db_engine_command_batch_impl(
     engine: *mut Engine,
     command_data: *const u8,
@@ -819,6 +854,14 @@ fn db_engine_command_batch_impl(
                     | EngineCommand::ReadNativeProcessCaches
                     | EngineCommand::ReadRobotTagReport
                     | EngineCommand::ReadNativeRestartSources
+                    | EngineCommand::ReadNativeGraphRecording
+                    | EngineCommand::ReadNativeGraphSample
+                    | EngineCommand::ReadNativeGraphResetSample
+                    | EngineCommand::FeedNativeGraphSample {
+                        selective: false,
+                        ..
+                    }
+                    | EngineCommand::ReadNativeGraphLayout
                     | EngineCommand::HasUnresolvedNativeRepopulationSources
                     | EngineCommand::ReadRobotTag { .. }
                     | EngineCommand::ReadRobotDna { .. }
@@ -859,6 +902,31 @@ fn db_engine_command_batch_impl(
                 EngineCommand::ReadNativeRestartSources => engine
                     .read_native_restart_sources()
                     .map(|sources| serde_json::json!(sources)),
+                EngineCommand::ReadNativeGraphRecording => engine
+                    .read_native_graph_recording()
+                    .map(|state| serde_json::json!(state)),
+                EngineCommand::ReadNativeGraphSample => {
+                    Ok(serde_json::json!(engine.read_native_graph_sample()))
+                }
+                EngineCommand::ReadNativeGraphResetSample => {
+                    Ok(serde_json::json!(engine.read_native_graph_reset_sample()))
+                }
+                EngineCommand::FeedNativeGraphSample {
+                    selective: false,
+                    generational,
+                    slow,
+                    due_only,
+                } => Ok(serde_json::json!(engine.feed_native_graph_sample(
+                    crate::GraphSamplingSettings {
+                        selective: false,
+                        generational: *generational,
+                        slow: *slow,
+                    },
+                    *due_only,
+                ))),
+                EngineCommand::ReadNativeGraphLayout => engine
+                    .read_native_graph_layout()
+                    .map(|state| serde_json::json!(state)),
                 EngineCommand::HasUnresolvedNativeRepopulationSources => engine
                     .has_unresolved_native_repopulation_sources()
                     .map(serde_json::Value::Bool),
@@ -919,15 +987,8 @@ fn db_engine_command_batch_impl(
     let committed_engine = engine;
     let mut candidate = match committed_engine.fork_cpu_command_candidate() {
         Ok(Some(candidate)) => candidate,
-        Ok(None) => match SaveFile::encode(committed_engine) {
-            Ok(bytes) => match SaveFile::decode(&bytes) {
-                Ok(mut candidate) => {
-                    candidate.player_bot_input = committed_engine.player_bot_input.clone();
-                    candidate.inherit_native_post_dna_memory_watch(committed_engine);
-                    candidate
-                }
-                Err(error) => return fail(DbStatus::EngineError, error.to_string()),
-            },
+        Ok(None) => match rebuild_archive_command_candidate(committed_engine) {
+            Ok(candidate) => candidate,
             Err(error) => return fail(DbStatus::EngineError, error.to_string()),
         },
         Err(error) => return fail(DbStatus::EngineError, error),
@@ -1000,31 +1061,43 @@ fn db_engine_command_batch_impl(
                 count,
                 capture_deaths,
                 recording_weight,
+                capture_graph_samples,
                 require_native_repopulation_source,
                 cancelled_native_repopulation_lineages,
             } => {
                 if count > 1_000_000 {
                     return fail(DbStatus::InvalidCommand, "tick count exceeds batch limit");
                 }
-                if require_native_repopulation_source && capture_deaths {
+                let cancelled_lineages = require_native_repopulation_source
+                    .then_some(cancelled_native_repopulation_lineages.as_slice());
+                let mut samples = Vec::new();
+                let capture = capture_graph_samples.then_some(&mut samples);
+                if capture_deaths {
+                    engine.tick_many_recording_deaths(
+                        count, cancelled_lineages, capture, recording_weight.unwrap_or(100),
+                    ).map(|records| {
+                        if capture_graph_samples {
+                            serde_json::json!({"death_records": records, "graph_samples": samples})
+                        } else {
+                            serde_json::json!({"death_records": records})
+                        }
+                    })
+                } else if capture_graph_samples {
                     engine
-                        .tick_requiring_native_repopulation_source_with_death_records(
-                            &cancelled_native_repopulation_lineages,
-                            recording_weight.unwrap_or(100),
+                        .tick_many_with_native_source_requirement(
+                            count,
+                            cancelled_lineages,
+                            capture,
                         )
-                        .map(|records| serde_json::json!({ "death_records": records }))
-                } else if require_native_repopulation_source {
-                    engine
-                        .tick_requiring_native_repopulation_source(
-                            &cancelled_native_repopulation_lineages,
-                        )
-                        .map(|_| serde_json::Value::Null)
-                } else if capture_deaths {
-                    engine
-                        .tick_many_with_death_records(count, recording_weight.unwrap_or(100))
-                        .map(|records| serde_json::json!({ "death_records": records }))
+                        .map(|_| serde_json::json!({"graph_samples": samples}))
                 } else {
-                    engine.tick_many(count).map(|_| serde_json::Value::Null)
+                    let step = match cancelled_lineages {
+                        Some(lineages) => {
+                            engine.tick_requiring_native_repopulation_source(lineages)
+                        }
+                        None => engine.tick_many(count),
+                    };
+                    step.map(|_| serde_json::Value::Null)
                 }
             }
             EngineCommand::ConfigureLocalMode { config } => engine
@@ -1034,6 +1107,40 @@ fn db_engine_command_batch_impl(
                 engine.configure_graph_sampling(settings);
                 Ok(serde_json::Value::Null)
             }
+            EngineCommand::ReadNativeGraphRecording => engine
+                .read_native_graph_recording()
+                .map(|state| serde_json::json!(state)),
+            EngineCommand::ReadNativeGraphSample => {
+                Ok(serde_json::json!(engine.read_native_graph_sample()))
+            }
+            EngineCommand::ReadNativeGraphResetSample => {
+                Ok(serde_json::json!(engine.read_native_graph_reset_sample()))
+            }
+            EngineCommand::FeedNativeGraphSample {
+                selective,
+                generational,
+                slow,
+                due_only,
+            } => Ok(serde_json::json!(engine.feed_native_graph_sample(
+                crate::GraphSamplingSettings {
+                    selective,
+                    generational,
+                    slow
+                },
+                due_only
+            ))),
+            EngineCommand::ReadNativeGraphLayout => engine
+                .read_native_graph_layout()
+                .map(|state| serde_json::json!(state)),
+            EngineCommand::UpdateNativeGraphLayout {
+                graphs,
+                custom_queries,
+            } => engine
+                .update_native_graph_layout(graphs, custom_queries)
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::UpdateNativeGraphRecording { run_stamp, graphs } => engine
+                .update_native_graph_recording(run_stamp, graphs)
+                .map(|_| serde_json::Value::Null),
             EngineCommand::UpdateCostSettings { costs, preset } => engine
                 .update_cost_settings_with_preset(costs, preset)
                 .map(|_| serde_json::Value::Null),
@@ -2923,6 +3030,217 @@ mod tests {
     }
 
     #[test]
+    fn native_graph_layout_commands_merge_partial_rows_and_reject_invalid_queries_atomically() {
+        let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+        let initial = SaveFile::encode(&world).unwrap();
+        let read = serde_json::json!({"type": "read_native_graph_layout"});
+        let (status, response) = classic_test_batch(&mut world, serde_json::json!([read]));
+        assert_eq!(status, DbStatus::Ok);
+        assert_eq!(SaveFile::encode(&world).unwrap(), initial);
+        let state: serde_json::Value = serde_json::from_slice(&response).unwrap();
+        assert_eq!(state["results"][0]["graphs"].as_array().unwrap().len(), 18);
+        assert_eq!(
+            state["results"][0]["graphs"][0],
+            serde_json::json!({"graph_index": 0, "visible": false})
+        );
+        assert_eq!(
+            state["results"][0]["custom_queries"],
+            serde_json::json!(["", "", ""])
+        );
+
+        let position = serde_json::json!({
+            "type": "update_native_graph_layout",
+            "graphs": [{"graph_index": 0, "left": 0, "top": -320}],
+            "custom_queries": [{"slot": 2, "expression": "1 2 +"}],
+        });
+        let visibility = serde_json::json!({
+            "type": "update_native_graph_layout", "graphs": [{"graph_index": 0, "visible": true}],
+        });
+        let (status, _) = classic_test_batch(
+            &mut world,
+            serde_json::json!([position, {
+                "type": "update_native_graph_layout", "custom_queries": [{"slot": 4, "expression": "invalid"}],
+            }]),
+        );
+        assert_eq!(status, DbStatus::EngineError);
+        assert_eq!(SaveFile::encode(&world).unwrap(), initial);
+
+        let (status, response) =
+            classic_test_batch(&mut world, serde_json::json!([position, visibility, read]));
+        assert_eq!(status, DbStatus::Ok);
+        let state: serde_json::Value = serde_json::from_slice(&response).unwrap();
+        assert_eq!(
+            state["results"][2]["graphs"][0],
+            serde_json::json!({
+                "graph_index": 0, "visible": true, "left": 0, "top": -320,
+            })
+        );
+        assert_eq!(
+            state["results"][2]["custom_queries"],
+            serde_json::json!(["", "1 2 +", ""])
+        );
+    }
+
+    #[test]
+    fn native_graph_recording_commands_persist_counters_and_reject_bad_indices_atomically() {
+        use crate::native_binary::{NativeRecordFile, NativeSimulationTail};
+
+        let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+        let read = serde_json::json!([{"type": "read_native_graph_recording"}]);
+        let original = SaveFile::encode(&world).unwrap();
+        let (status, _) = classic_test_batch(&mut world, read.clone());
+        assert_eq!(status, DbStatus::Ok);
+        assert_eq!(SaveFile::encode(&world).unwrap(), original);
+
+        let row = serde_json::json!({"graph_index": 0, "enabled": true, "counter": 2});
+        let update = serde_json::json!({
+            "type": "update_native_graph_recording",
+            "run_stamp": "2026-11-21 06-01-02",
+            "graphs": [row],
+        });
+        let (status, _) = classic_test_batch(
+            &mut world,
+            serde_json::json!([update, {
+                "type": "update_native_graph_recording",
+                "graphs": [{"graph_index": 18, "enabled": true, "counter": 1}],
+            }]),
+        );
+        assert_eq!(status, DbStatus::EngineError);
+        assert_eq!(SaveFile::encode(&world).unwrap(), original);
+
+        let (status, _) = classic_test_batch(&mut world, serde_json::json!([update]));
+        assert_eq!(status, DbStatus::Ok);
+        let checkpoint = SaveFile::encode(&world).unwrap();
+        let native = NativeRecordFile::decode(&world.export_native_sim().unwrap()).unwrap();
+        let tail = NativeSimulationTail::decode(&native.tail).unwrap();
+        assert_eq!(tail.bytes("sim_start").unwrap(), b"2026-11-21 06-01-02");
+        assert_eq!(tail.integer("graph[0].counter").unwrap(), 2);
+        assert_eq!(tail.integer("graph[0].save").unwrap(), -1);
+
+        for mut restored in [
+            SaveFile::decode(&checkpoint).unwrap(),
+            SaveFile::decode(&native.encode().unwrap()).unwrap(),
+        ] {
+            let (status, response) = classic_test_batch(&mut restored, read.clone());
+            assert_eq!(status, DbStatus::Ok);
+            let result: serde_json::Value = serde_json::from_slice(&response).unwrap();
+            assert_eq!(
+                result["results"][0],
+                serde_json::json!({
+                    "run_stamp": "2026-11-21 06-01-02",
+                    "graphs": [row],
+                })
+            );
+        }
+    }
+
+    #[test]
+    fn rebuilt_command_candidate_preserves_the_native_graph_restart_boundary() {
+        let mut config = EngineConfig::testing();
+        config.recording.sampling_interval = 1;
+        let mut committed = Engine::new_native(config).unwrap();
+        committed.tick().unwrap();
+        committed.native_restarted_this_cycle = true;
+        let settings = crate::GraphSamplingSettings::default();
+        let archive = SaveFile::encode(&committed).unwrap();
+
+        let mut loaded = SaveFile::decode(&archive).unwrap();
+        assert!(loaded.feed_native_graph_sample(settings, true).is_some());
+
+        let mut candidate = rebuild_archive_command_candidate(&committed).unwrap();
+        assert!(candidate.feed_native_graph_sample(settings, true).is_none());
+        assert_eq!(SaveFile::encode(&candidate).unwrap(), archive);
+    }
+
+    #[test]
+    fn native_graph_recording_stream_keeps_all_due_post_cycle_samples_without_changing_history() {
+        let mut config = EngineConfig::testing();
+        config.recording.sampling_interval = 5;
+        let mut world = Engine::new_native(config).unwrap();
+        world
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [500.0, 500.0])
+            .unwrap();
+        let original = SaveFile::encode(&world).unwrap();
+        let read = serde_json::json!([{"type": "read_native_graph_sample"}]);
+        let (status, output) = classic_test_batch(&mut world, read.clone());
+        assert_eq!(status, DbStatus::Ok);
+        let output: serde_json::Value = serde_json::from_slice(&output).unwrap();
+        assert_eq!(output["results"][0]["native_cycle"], -1);
+        assert_eq!(SaveFile::encode(&world).unwrap(), original);
+
+        let (status, reset) = classic_test_batch(
+            &mut world,
+            serde_json::json!([{"type": "read_native_graph_reset_sample"}]),
+        );
+        assert_eq!(status, DbStatus::Ok);
+        let reset: serde_json::Value = serde_json::from_slice(&reset).unwrap();
+        assert_eq!(reset["results"][0]["native_cycle"], -1);
+        assert_eq!(
+            reset["results"][0]["species_graphs"][0]["values"]["population"],
+            1.0,
+        );
+        assert_eq!(SaveFile::encode(&world).unwrap(), original);
+
+        let (status, before_first_due) = classic_test_batch(
+            &mut world,
+            serde_json::json!([
+                {"type": "feed_native_graph_sample", "slow": true, "due_only": true},
+                {"type": "feed_native_graph_sample"},
+            ]),
+        );
+        assert_eq!(status, DbStatus::Ok);
+        let before_first_due: serde_json::Value =
+            serde_json::from_slice(&before_first_due).unwrap();
+        assert!(before_first_due["results"][0].is_null());
+        assert_eq!(before_first_due["results"][1], output["results"][0]);
+        assert_eq!(SaveFile::encode(&world).unwrap(), original);
+
+        let (status, output) = classic_test_batch(
+            &mut world,
+            serde_json::json!([{
+                "type": "tick", "count": 11, "capture_graph_samples": true,
+            }]),
+        );
+        assert_eq!(status, DbStatus::Ok);
+        let output: serde_json::Value = serde_json::from_slice(&output).unwrap();
+        let result = &output["results"][0];
+        let graph_samples = result["graph_samples"].as_array().unwrap();
+        assert_eq!(
+            graph_samples
+                .iter()
+                .map(|sample| (
+                    sample["tick"].as_u64().unwrap(),
+                    sample["native_cycle"].as_i64().unwrap()
+                ))
+                .collect::<Vec<_>>(),
+            [(1, 0), (6, 5), (11, 10)],
+        );
+
+        let (status, current) = classic_test_batch(&mut world, read);
+        assert_eq!(status, DbStatus::Ok);
+        let current: serde_json::Value = serde_json::from_slice(&current).unwrap();
+        assert_eq!(graph_samples.last().unwrap(), &current["results"][0]);
+        // Cycle 5 ages the robot from five to six, crossing the 0.1 graph rounding threshold.
+        assert_eq!(
+            graph_samples[1]["species_graphs"][0]["values"]["average_age"].as_f64(),
+            Some(f64::from(0.1_f32)),
+        );
+
+        let mut reference = SaveFile::decode(&original).unwrap();
+        let (status, legacy) = classic_test_batch(
+            &mut reference,
+            serde_json::json!([{"type": "tick", "count": 11}]),
+        );
+        assert_eq!(status, DbStatus::Ok);
+        let legacy: serde_json::Value = serde_json::from_slice(&legacy).unwrap();
+        assert!(legacy["results"][0].is_null());
+        assert_eq!(
+            SaveFile::encode(&world).unwrap(),
+            SaveFile::encode(&reference).unwrap()
+        );
+    }
+
+    #[test]
     fn strict_repopulation_waits_for_the_selected_source_and_retries_atomically() {
         const SIM: &[u8] = include_bytes!("../tests/fixtures/db24832-original-user.sim");
         const ALGA: &str = "start 19 .up store stop";
@@ -2942,7 +3260,7 @@ mod tests {
         let mut world = Engine::from_native_sim(SIM).unwrap();
         let strict = serde_json::json!([{
             "type": "tick", "count": 1, "require_native_repopulation_source": true,
-            "capture_deaths": true, "recording_weight": 50
+            "capture_deaths": true, "recording_weight": 50, "capture_graph_samples": true
         }]);
         // Loading a stale path and running an ordinary cycle both succeed.
         assert!(has_unresolved(&mut world));
@@ -3046,6 +3364,7 @@ mod tests {
         assert_eq!(status, DbStatus::Ok);
         let response: serde_json::Value = serde_json::from_slice(&response).unwrap();
         assert!(response["results"][0]["death_records"].is_array());
+        assert!(response["results"][0]["graph_samples"].is_array());
         assert_eq!(world.snapshot().native_cycle, Some(283));
         assert!(world.snapshot().stats.reseeds > reseeds);
         let expected = world.load_dna_source(ALGA).unwrap();

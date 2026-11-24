@@ -602,7 +602,10 @@ public sealed class RenderedWorldToolsCausalTests
                 await WaitFor(
                     () => graphWindow.OwnedWindows.OfType<GraphSeriesWindow>().Count() == 2,
                     () => "Graph Suite did not open two live graph windows.");
-                Assert.All(graphWindow.ViewModel.RunningGraphs, graph => Assert.NotEmpty(graph.Samples));
+                await WaitFor(
+                    () => graphWindow.ViewModel.RunningGraphs.Count == 2
+                        && graphWindow.ViewModel.RunningGraphs.All(graph => graph.Samples.Count > 0),
+                    () => "The live graph windows did not receive their opening samples.");
 
                 var export = graphWindow.ViewModel.ExportCsv();
                 Assert.Contains("Population", export, StringComparison.Ordinal);
@@ -612,7 +615,13 @@ public sealed class RenderedWorldToolsCausalTests
                 Assert.Contains("JOINED", graphWindow.ViewModel.Status, StringComparison.Ordinal);
 
                 graphView.FindControl<Button>("ResetGraphsButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                Assert.All(graphWindow.ViewModel.RunningGraphs, graph => Assert.Empty(graph.Samples));
+                var resetPrompt = Assert.Single(graphWindow.OwnedWindows.OfType<LegacyConfirmationWindow>());
+                resetPrompt.GetVisualDescendants().OfType<Button>().Single(button => Equals(button.Content, "OK"))
+                    .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(
+                    () => graphWindow.ViewModel.Status == "ALL GRAPHS RESET"
+                        && graphWindow.ViewModel.RunningGraphs.All(graph => graph.Samples.Count == 1),
+                    () => "Reset All did not seed one point for each active graph.");
 
                 AvaloniaHeadlessPlatform.ForceRenderTimerTick();
                 using var frame = window.CaptureRenderedFrame();

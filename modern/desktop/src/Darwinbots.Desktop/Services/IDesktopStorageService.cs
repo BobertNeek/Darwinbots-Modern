@@ -72,4 +72,6 @@ public interface IDesktopStorageService
     Task SaveLastStartAsync(ReadOnlyMemory<byte> settings) => Task.CompletedTask;
     GlobalSettings? LoadGlobalSettings() => null;
     Task SaveGlobalSettingsAsync(GlobalSettings settings) => Task.CompletedTask;
+    bool? LoadGraphClosePreference() => null;
+    Task SaveGraphClosePreferenceAsync(bool? keepUpdating) => Task.CompletedTask;
 }

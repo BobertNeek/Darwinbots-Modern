@@ -87,7 +87,9 @@ impl Engine {
         let mut index: HashMap<OrganismId, Vec<usize>> = HashMap::new();
         for (ordinal, tie) in self.ties.iter().enumerate() {
             index.entry(tie.first).or_default().push(ordinal);
-            index.entry(tie.second).or_default().push(ordinal);
+            if tie.directed_native_back.is_none() {
+                index.entry(tie.second).or_default().push(ordinal);
+            }
         }
         for (&id, indices) in &mut index {
             self.order_native_tie_indices(id, indices);
@@ -131,7 +133,7 @@ impl Engine {
             .ties
             .iter()
             .enumerate()
-            .filter_map(|(index, tie)| tie.contains(id).then_some(index))
+            .filter_map(|(index, tie)| tie.has_endpoint(id).then_some(index))
             .collect::<Vec<_>>();
         self.order_native_tie_indices(id, &mut indices);
         indices

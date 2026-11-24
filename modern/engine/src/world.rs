@@ -106,12 +106,18 @@ use file_transfer_transaction::FileTransferTransaction;
 #[path = "world/native_corpses.rs"]
 mod native_corpses;
 
+#[path = "world/native_graph_layout.rs"]
+pub(crate) mod native_graph_layout;
+
 #[path = "world/death_recording.rs"]
 mod death_recording;
 use death_recording::DeathRecording;
 
+#[path = "world/native_graph_recording.rs"]
+pub(crate) mod native_graph_recording;
+
 #[path = "world/native_graphs.rs"]
-mod native_graphs;
+pub(crate) mod native_graphs;
 
 #[path = "world/native_dynamic_costs.rs"]
 mod native_dynamic_costs;
@@ -2394,6 +2400,7 @@ struct EngineCycleCheckpoint {
     dynamic_cost_state: DynamicCostRuntimeState,
     native_sim_guid: Option<i32>,
     native_cycle: Option<i32>,
+    native_restarted_this_cycle: bool,
     native_population_census: Option<[usize; 2]>,
     native_senses_census: Option<NativeSensesCensus>,
     native_loaded_census_stage: Option<native_reproduction::NativeLoadedCensusStage>,
@@ -2428,6 +2435,11 @@ pub struct Engine {
     native_random: Option<crate::native_random::NativeRandom>,
     #[serde(default)]
     graph_sampling: crate::GraphSamplingSettings,
+    /// Authored graph-save values layered over untouched native archive metadata.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    native_graph_recording: Option<native_graph_recording::NativeGraphRecordingState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    native_graph_layout: Option<native_graph_layout::NativeGraphLayoutOverlay>,
     #[serde(default)]
     dynamic_cost_state: DynamicCostRuntimeState,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -2439,6 +2451,8 @@ pub struct Engine {
     native_sim_guid: Option<i32>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     native_cycle: Option<i32>,
+    #[serde(skip)]
+    pub(crate) native_restarted_this_cycle: bool,
     /// Original mode1 UpdateCounters census and its one-cycle delayed display.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     native_population_census: Option<[usize; 2]>,
@@ -2793,10 +2807,13 @@ impl Engine {
             native_tie_index: None,
             native_random: None,
             graph_sampling: crate::GraphSamplingSettings::default(),
+            native_graph_recording: None,
+            native_graph_layout: None,
             native_origin: None,
             native_f1: None,
             native_sim_guid: None,
             native_cycle: None,
+            native_restarted_this_cycle: false,
             native_population_census: None,
             native_senses_census: None,
             native_loaded_census_stage: None,
@@ -3018,10 +3035,13 @@ impl Engine {
             native_tie_index: None,
             native_random: Some(native_random),
             graph_sampling: crate::GraphSamplingSettings::default(),
+            native_graph_recording: None,
+            native_graph_layout: None,
             native_origin: None,
             native_f1: None,
             native_sim_guid: None,
             native_cycle: None,
+            native_restarted_this_cycle: false,
             native_population_census: None,
             native_senses_census: None,
             native_loaded_census_stage: None,
@@ -6006,8 +6026,26 @@ impl Engine {
     }
 
     pub fn tick_many(&mut self, count: u32) -> Result<(), EngineError> {
+        self.tick_many_with_native_source_requirement(count, None, None)
+    }
+
+    pub(crate) fn tick_many_with_native_source_requirement(
+        &mut self,
+        count: u32,
+        cancelled_repopulation_lineages: Option<&[u64]>,
+        mut graph_samples: Option<&mut Vec<native_graphs::NativeGraphRecordingSample>>,
+    ) -> Result<(), EngineError> {
         for index in 0..count {
-            self.tick_transactional(index + 1 == count, false, None)?;
+            let previous_tick = self.tick;
+            self.tick_transactional(index + 1 == count, false, cancelled_repopulation_lineages)?;
+            // The native run loop feeds charts after UpdateSim and skips the
+            // cycle that requests a restart. Do not depend on publication cadence.
+            if let Some(samples) = graph_samples.as_deref_mut()
+                && self.tick != previous_tick
+                && let Some(sample) = self.feed_native_graph_sample(self.graph_sampling, true)
+            {
+                samples.push(sample);
+            }
         }
         Ok(())
     }
@@ -6131,6 +6169,7 @@ impl Engine {
             native_buckets: self.native_buckets.clone(),
             native_sim_guid: self.native_sim_guid,
             native_cycle: self.native_cycle,
+            native_restarted_this_cycle: self.native_restarted_this_cycle,
             native_population_census: self.native_population_census,
             native_senses_census: self.native_senses_census.clone(),
             native_loaded_census_stage: self.native_loaded_census_stage,
@@ -6151,6 +6190,7 @@ impl Engine {
         self.native_buckets = checkpoint.native_buckets;
         self.native_sim_guid = checkpoint.native_sim_guid;
         self.native_cycle = checkpoint.native_cycle;
+        self.native_restarted_this_cycle = checkpoint.native_restarted_this_cycle;
         self.native_population_census = checkpoint.native_population_census;
         self.native_senses_census = checkpoint.native_senses_census;
         self.native_loaded_census_stage = checkpoint.native_loaded_census_stage;
@@ -6239,6 +6279,7 @@ impl Engine {
         trace.phase(CyclePhase::CycleIncrement);
         self.tick = next_tick;
         self.native_cycle = next_native_cycle;
+        self.native_restarted_this_cycle = false;
         trace.phase(CyclePhase::ModeLogic);
         let (staged_restart, staged_energy_before) = self.staged_evolution_before_cycle()?;
         if staged_restart {
@@ -6504,11 +6545,14 @@ impl Engine {
             native_tie_index: self.native_tie_index.clone(),
             native_random: self.native_random.clone(),
             graph_sampling: self.graph_sampling.clone(),
+            native_graph_recording: self.native_graph_recording.clone(),
+            native_graph_layout: self.native_graph_layout.clone(),
             dynamic_cost_state: self.dynamic_cost_state.clone(),
             native_origin: self.native_origin.clone(),
             native_f1: self.native_f1,
             native_sim_guid: self.native_sim_guid,
             native_cycle: self.native_cycle,
+            native_restarted_this_cycle: self.native_restarted_this_cycle,
             native_population_census: self.native_population_census,
             native_senses_census: self.native_senses_census.clone(),
             native_loaded_census_stage: self.native_loaded_census_stage,
@@ -9157,7 +9201,7 @@ impl Engine {
         let mut channels = Vec::new();
         for tie_index in self.phase_tie_indices() {
             let tie = &self.ties[tie_index];
-            for (source_slot, target_slot, source_port) in [
+            for (side, (source_slot, target_slot, source_port)) in [
                 (
                     tie.first.slot() as usize,
                     tie.second.slot() as usize,
@@ -9168,7 +9212,16 @@ impl Engine {
                     tie.first.slot() as usize,
                     tie.second_port,
                 ),
-            ] {
+            ]
+            .into_iter()
+            .enumerate()
+            {
+                if tie
+                    .directed_native_back
+                    .is_some_and(|back| back || side != 0)
+                {
+                    continue;
+                }
                 let Some(source) = self.slots[source_slot].organism.as_ref() else {
                     continue;
                 };
@@ -9268,7 +9321,7 @@ impl Engine {
         let mut chloroplast_delay_requests = Vec::new();
         for tie_index in self.phase_tie_indices() {
             let tie = &self.ties[tie_index];
-            if !native && !tie.hardened {
+            if (!native && !tie.hardened) || tie.directed_native_back == Some(true) {
                 continue;
             }
             for (source_slot, target_slot) in [
@@ -10091,11 +10144,18 @@ impl Engine {
             if tie_count >= MAX_TIES_PER_ROBOT {
                 break;
             }
-            let Some(reciprocal) = self
+            let end = tie.native_end_states()[usize::from(!forward)];
+            let reciprocal_index = if tie.directed_native_back.is_some() {
+                end.saved_reciprocal
+                    .and_then(|value| u8::try_from(value).ok())
+                    .unwrap_or(0)
+            } else if let Some(reciprocal) = self
                 .tie_indices_for(other)
                 .iter()
                 .position(|ordinal| *ordinal == index)
-            else {
+            {
+                (reciprocal + 1) as u8
+            } else {
                 continue;
             };
             let delta = std::array::from_fn::<_, 2, _>(|axis| {
@@ -10108,7 +10168,6 @@ impl Engine {
                 delta[1].atan2(delta[0])
             };
             let relative = normalize_tie_angle(angle - source.heading());
-            let end = tie.native_end_states()[usize::from(!forward)];
             let port = if forward {
                 tie.first_port
             } else {
@@ -10134,7 +10193,7 @@ impl Engine {
             };
             endpoints[tie_count] = Some(TieEndpointState {
                 other: Some(other),
-                reciprocal_index: (reciprocal + 1) as u8,
+                reciprocal_index,
                 port,
                 information: i32::from(tie.information),
                 current_angle: relative,
@@ -10523,7 +10582,7 @@ impl Engine {
             let tie_count = self
                 .ties
                 .iter()
-                .filter(|tie| tie.contains(attacker_id))
+                .filter(|tie| tie.has_endpoint(attacker_id))
                 .count();
             let Some(attacker) = self.slots[attacker_slot].organism.as_mut() else {
                 continue;
@@ -10768,7 +10827,7 @@ impl Engine {
                 .get(current)
                 .is_ok_and(|robot| robot.counters.multibot)
             {
-                for tie in self.ties.iter().filter(|tie| tie.contains(current)) {
+                for tie in self.ties.iter().filter(|tie| tie.has_endpoint(current)) {
                     let other = if tie.first == current {
                         tie.second
                     } else {
@@ -14448,6 +14507,12 @@ impl Engine {
             return Err(EngineError::InvalidSave(
                 "invalid trash compactor walls".into(),
             ));
+        }
+        if let Some(recording) = &engine.native_graph_recording {
+            recording.validate()?;
+        }
+        if let Some(layout) = &engine.native_graph_layout {
+            layout.validate()?;
         }
         // Reject process caches before migration or snapshot-derived ring indexing.
         engine.native_energy.validate().map_err(|error| {

@@ -6,6 +6,35 @@ namespace Darwinbots.Desktop.Core.Tests;
 public sealed class GraphAndContestTests
 {
     [Theory]
+    [InlineData(GraphMetric.Population, false, false, false)]
+    [InlineData(GraphMetric.SelectiveGeneticDistance, true, false, false)]
+    [InlineData(GraphMetric.GenerationalDistance, false, true, false)]
+    [InlineData(GraphMetric.SlowGeneticDistance, false, false, true)]
+    public void NamedGraphsRequestOnlyTheirOwnSampling(GraphMetric metric, bool selective, bool generational, bool slow)
+    {
+        var suite = new GraphSuiteViewModel();
+        Assert.Equal(new GraphSamplingSettings(selective, generational, slow), suite.SamplingSettingsFor(metric));
+    }
+
+    [Theory]
+    [InlineData("pop 2 mult", false, false, false)]
+    [InlineData("SIMPGENETIC 2 mult", true, false, false)]
+    [InlineData("MAXGD 1 add", false, true, false)]
+    [InlineData("SIMPGENETIC maxgd add", true, true, false)]
+    [InlineData("Selective_Genetic_Distance / (Generational_Distance + slow_genetic_distance)", true, true, true)]
+    [InlineData("not_simpgenetic 1 add", false, false, false)]
+    [InlineData("selective_genetic_distance_bad + 1", false, false, false)]
+    [InlineData("selective_genetic_distance +", false, false, false)]
+    public void CustomGraphsRequestOnlyMetricsUsedByTheirExpression(string expression, bool selective, bool generational, bool slow)
+    {
+        var suite = new GraphSuiteViewModel();
+        suite.ConfigureCustomMetric(2, "Custom sample", expression);
+        Assert.Equal(new GraphSamplingSettings(selective, generational, slow),
+            suite.SamplingSettingsFor(GraphMetric.CustomizableGraph2));
+        Assert.Equal(new GraphSamplingSettings(), suite.SamplingSettingsFor(GraphMetric.CustomizableGraph1));
+    }
+
+    [Theory]
     [InlineData("pop 2 mult avgmut add", 13)]
     [InlineData("pop 0 div", 0)]
     [InlineData("pop 100 sub", 0)]
@@ -40,6 +69,61 @@ public sealed class GraphAndContestTests
             SpeciesGraphs = [new("First.txt", 0xff123456, new Dictionary<string, double> { ["population"] = 3 })],
         }] });
         Assert.Equal(3, graph.CurrentValue);
+    }
+
+    [Fact]
+    public void NativeGraphReusesItsLastSeriesSlotAtTheOriginalCapacity()
+    {
+        var suite = new GraphSuiteViewModel { SelectedChoice = GraphCatalog.For(GraphMetric.Population) };
+        suite.SetNativeFeed(true);
+        suite.OpenSelectedGraph();
+
+        var values = new Dictionary<GraphMetric, double>();
+        var firstSpecies = Enumerable.Range(1, 65).Select(Species).ToArray();
+        suite.AppendImmediatePoint(GraphMetric.Population, new(1, values, firstSpecies));
+        Assert.Equal(65, suite.RunningGraphs.Count);
+        var last = suite.RunningGraphs[^1];
+        Assert.Equal("Species 65.txt", last.SpeciesName);
+
+        suite.AppendImmediatePoint(GraphMetric.Population, new(2, values, [Species(66)]));
+        Assert.Equal(65, suite.RunningGraphs.Count);
+        Assert.Same(last, suite.RunningGraphs[^1]);
+        Assert.Equal("Species 66.txt", last.SpeciesName);
+        Assert.Equal(66, last.CurrentValue);
+        Assert.DoesNotContain(suite.RunningGraphs, series => series.SpeciesName == "Species 65.txt");
+
+        static SpeciesGraphSampleSnapshot Species(int index) => new($"Species {index}.txt", 0xff123456u,
+            new Dictionary<string, double> { ["population"] = index });
+    }
+
+    [Fact]
+    public void NativeOverflowDisplaysTheRecorderColumnsAndKeepsTheDisplacedColumnHistory()
+    {
+        var metric = GraphMetric.Population;
+        var suite = new GraphSuiteViewModel { SelectedChoice = GraphCatalog.For(metric) };
+        suite.SetNativeFeed(true);
+        suite.OpenSelectedGraph();
+        var recorder = new LegacyGraphAutoSave(() => throw new InvalidOperationException("Recording is disabled."), "Populations");
+
+        Feed(41, Enumerable.Range(1, 65).Select(index => Species(index, 66 - index)).ToArray());
+        Feed(41, Enumerable.Range(1, 65).Select(index => Species(index, 76 - index)).ToArray());
+        Feed(42, [.. Enumerable.Range(1, 64).Select(index => Species(index, 66 - index)), Species(66, 9)]);
+
+        Assert.Equal(65, suite.RunningGraphs.Count);
+        Assert.DoesNotContain(suite.RunningGraphs, series => series.SpeciesName == "Species 65.txt");
+        var replacement = Assert.Single(suite.RunningGraphs.Where(series => series.SpeciesName == "Species 66.txt"));
+        Assert.Equal(new[] { new GraphSample(41, 1), new GraphSample(41, 11), new GraphSample(42, 9) }, replacement.Samples);
+        Assert.Contains("Population · Species 66.txt,,41,11\r\n", suite.ExportCsv());
+
+        void Feed(ulong tick, IReadOnlyList<SpeciesGraphSampleSnapshot> species)
+        {
+            var point = new GraphMetricSample(tick, new Dictionary<GraphMetric, double>(), species);
+            recorder.AddPoint(suite.LegacyPoint(metric, point), suite.LegacyHeader(metric));
+            suite.AppendChartPoints(metric, [point], recorder);
+        }
+
+        static SpeciesGraphSampleSnapshot Species(int index, double value) => new($"Species {index}.txt", 0xff123456u,
+            new Dictionary<string, double> { ["population"] = value });
     }
 
     [Fact]
@@ -463,6 +547,34 @@ public sealed class GraphAndContestTests
         Assert.Equal(999, segments[0].Robots[0].Values.Count);
         Assert.Equal(998d, segments[0].Robots[0].Values[^1]);
         Assert.Equal(999d, segments[1].Robots[0].Values[0]);
+    }
+
+    [Fact]
+    public void OriginalGraphSegmentWritesColorRefAndDelimitedSingleValues()
+    {
+        var alpha = Enumerable.Range(0, LegacyGraphJoin.SamplesPerSegment).Select(value => (double)value).ToArray();
+        var beta = alpha.Select(value => -value).ToArray();
+        alpha[0] = 1.234567891d;
+        beta[0] = -2.5d;
+        const string query = " pop 2 mult ";
+        var text = LegacyGraphJoin.SerializeNativeSegment(query,
+        [
+            new LegacyGraphRobot("Alpha.txt", 0xff123456u, alpha),
+            new LegacyGraphRobot("ABCDEFGHIJKLMNOPQRSTUVWXYZABCD.txt", 0xffff0000u, beta),
+        ]);
+
+        var lines = text.Split("\r\n", StringSplitOptions.None);
+        Assert.Equal(LegacyGraphJoin.SamplesPerSegment + 3, lines.Length);
+        Assert.Equal(query, lines[0]);
+        Assert.Equal("5649426:Alpha,255:ABCDEFGHIJKLMNOPQRSTUVWXY...,", lines[1]);
+        Assert.Equal("1.234568\t-2.5\t", lines[2]);
+        Assert.Equal("998\t-998\t", lines[^2]);
+        Assert.Equal(string.Empty, lines[^1]);
+        Assert.Throws<ArgumentException>(() =>
+            LegacyGraphJoin.SerializeNativeSegment("normal", [new LegacyGraphRobot("Short", 0xff123456u, [1d])]));
+
+        var empty = LegacyGraphJoin.SerializeNativeSegment("normal", []);
+        Assert.Equal("normal\r\n" + string.Concat(Enumerable.Repeat("\r\n", LegacyGraphJoin.SamplesPerSegment + 1)), empty);
     }
 
     [Fact]
