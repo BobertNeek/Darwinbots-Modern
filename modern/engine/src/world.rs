@@ -1,4 +1,4 @@
-use crate::biology::resource_readback;
+use crate::biology::{MEM_SET_AIM, resource_readback};
 use crate::environment::{
     TeleporterBackflow, TrashCompactor, blocks_backflow, inside_teleporter,
     teleporter_blocked_by_obstacles,
@@ -4370,6 +4370,10 @@ impl Engine {
                         &mut organism.program.memory,
                         self.native_random.is_some(),
                     );
+                    organism
+                        .program
+                        .memory
+                        .write(MEM_SET_AIM, organism.materials.aim);
                     organism.program.memory.write(
                         MEM_XPOS,
                         native_sensing::position_word(
@@ -4461,6 +4465,7 @@ impl Engine {
         organism
             .materials
             .publish_for_profile(&mut organism.program.memory, self.native_random.is_some());
+        organism.program.memory.write(MEM_SET_AIM, normalized);
         self.publish_snapshot();
         Ok(())
     }
@@ -5502,6 +5507,10 @@ impl Engine {
                 &mut child_organism.program.memory,
                 self.native_random.is_some(),
             );
+            child_organism
+                .program
+                .memory
+                .write(MEM_SET_AIM, child_organism.materials.aim);
         }
         self.record_offspring([Some(first), second]);
         self.propagate_descendant_count([Some(first), second]);
