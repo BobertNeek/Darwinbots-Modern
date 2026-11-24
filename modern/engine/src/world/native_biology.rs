@@ -153,6 +153,55 @@ mod tests {
     }
 
     #[test]
+    fn native_venom_memory_tracks_the_original_writers() {
+        let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+        let dna = LegacyDna::parse("stop").unwrap();
+        let id = world.spawn_at(dna.clone(), [500.0; 2]).unwrap();
+        let robot = world.slots.get_mut(id).unwrap();
+        robot.materials.venom = 0.75;
+        robot.program.memory.write(824, 1);
+
+        world.tick().unwrap();
+        let robot = world.slots.get(id).unwrap();
+        assert_eq!(robot.materials.venom, 1.75);
+        assert_eq!(robot.program.memory.read(825), 1);
+        assert_eq!(robot.program.memory.read(824), 0);
+
+        world.tick().unwrap();
+        assert_eq!(world.memory_at(id, 825).unwrap(), 1);
+
+        let robot = world.slots.get_mut(id).unwrap();
+        robot.program.memory.write(824, 1);
+        robot.program.memory.write(7, -3);
+        // The default venom shot runs after storevenom and rounds its readback.
+        world.tick().unwrap();
+        let after_shot = 2.75_f32 - 2.75_f32 / 20.0;
+        assert_eq!(world.slots.get(id).unwrap().materials.venom, after_shot);
+        assert_eq!(world.memory_at(id, 825).unwrap(), 3);
+        assert_eq!(world.projectiles.kinds[0], -3);
+
+        world.projectiles.reset_native_slots(100);
+        let thief = world.spawn_at(dna, [600.0, 500.0]).unwrap();
+        assert!(world.native_make_tie(thief, id, 100, 0, 7));
+        let robot = world.slots.get_mut(thief).unwrap();
+        robot.program.memory.write(455, 7);
+        robot.program.memory.write(452, -3);
+        robot.program.memory.write(453, -2);
+
+        world.tick().unwrap();
+        let target = world.slots.get(id).unwrap();
+        assert_eq!(target.materials.venom, after_shot - 2.0);
+        assert_eq!(target.program.memory.read(825), 3);
+        let thief = world.slots.get(thief).unwrap();
+        assert_eq!(thief.materials.venom, 2.0);
+        assert_eq!(thief.program.memory.read(825), 2);
+
+        let mut portable_memory = VmMemory::default();
+        target.materials.publish(&mut portable_memory);
+        assert_eq!(portable_memory.read(825), 1);
+    }
+
+    #[test]
     fn shot_uses_body_and_energy_before_body_commands() {
         let (mut control, id) = world("start\n-1 .shoot store\nstop");
         let (mut store, store_id) = world("start\n100 .strbody store\n-1 .shoot store\nstop");

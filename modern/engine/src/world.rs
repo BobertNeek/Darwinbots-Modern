@@ -7162,6 +7162,7 @@ impl Engine {
 
     fn material_commands_phase(&mut self) {
         let runtime = SysvarRuntime::new();
+        let native = self.native_random.is_some();
         let mut actions = Vec::new();
         let costs = self.active_dna_costs();
         let population = self.cost_population();
@@ -7201,15 +7202,24 @@ impl Engine {
             } else {
                 1.0
             };
+            // storevenom is first in MakeStuff and leaves its readback alone if
+            // there is no command or the robot starts with nonpositive energy.
+            let stores_venom = native && commands.make_venom != 0 && robot.materials.energy > 0.0;
             robot.materials.make_stuff(
                 &mut robot.program.memory,
                 commands,
                 transaction_costs,
                 multibot_divisor,
             );
+            if stores_venom {
+                robot
+                    .program
+                    .memory
+                    .write(825, robot.materials.venom.floor() as i32);
+            }
             robot
                 .materials
-                .publish_for_profile(&mut robot.program.memory, self.native_random.is_some());
+                .publish_for_profile(&mut robot.program.memory, native);
         }
         for (id, action) in actions {
             self.native_disqualify_action(id, action);
@@ -9635,6 +9645,12 @@ impl Engine {
                         requested
                     };
                     attacker.materials.venom -= amount;
+                    if self.native_random.is_some() {
+                        attacker
+                            .program
+                            .memory
+                            .write(825, resource_readback(attacker.materials.venom));
+                    }
                     amount
                 }
                 -4 => {
@@ -13749,14 +13765,22 @@ fn apply_tie_venom(
 
     let amount = (-requested).min(target.materials.venom.max(0.0));
     if amount == 0.0 {
+        if native.is_some() && requested < 0.0 {
+            source
+                .program
+                .memory
+                .write(825, resource_readback(source.materials.venom));
+        }
         return None;
     }
     target.materials.venom -= amount;
     add_tie_store(&mut source.materials.venom, amount, true);
-    target
-        .program
-        .memory
-        .write(825, resource_readback(target.materials.venom));
+    if native.is_none() {
+        target
+            .program
+            .memory
+            .write(825, resource_readback(target.materials.venom));
+    }
     source
         .program
         .memory
