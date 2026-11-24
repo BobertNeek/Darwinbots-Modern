@@ -235,22 +235,20 @@ public sealed class WorldViewport : Control
 
         var scaleX = ScaleX;
         var scaleY = ScaleY;
+        List<MonitorFrame>? monitorFrames = _rgbMemoryMonitor is null ? null : [];
         if (_snapshot.RenderInstances.Count > 0)
-        {
-            DrawOrganisms(context, scaleX, scaleY);
-            DrawSelectedVision(context, scaleX, scaleY);
-            DrawMovementVectors(context, scaleX, scaleY, overlay);
-            DrawResourceGauges(context, scaleX, scaleY, overlay);
-            return;
-        }
+            DrawOrganisms(context, scaleX, scaleY, monitorFrames);
+        else
+            DrawFallbackOrganisms(context, scaleX, scaleY, monitorFrames);
 
-        DrawFallbackOrganisms(context, scaleX, scaleY);
         DrawSelectedVision(context, scaleX, scaleY);
         DrawMovementVectors(context, scaleX, scaleY, overlay);
         DrawResourceGauges(context, scaleX, scaleY, overlay);
+        if (_rgbMemoryMonitor is { } monitor && monitorFrames is { Count: > 0 })
+            DrawMonitorFrames(context, monitor, monitorFrames);
     }
 
-    private void DrawOrganisms(DrawingContext context, double scaleX, double scaleY)
+    private void DrawOrganisms(DrawingContext context, double scaleX, double scaleY, List<MonitorFrame>? monitorFrames)
     {
         var radiusScale = Math.Min(scaleX, scaleY);
         var stride = _snapshot.RenderInstances.Count > 100_000 && _zoom < 1 ? 8
@@ -264,14 +262,14 @@ public sealed class WorldViewport : Control
             var details = radius >= 3.25
                 && !(_snapshot.RenderInstances.Count > 20_000 && _zoom < 1)
                 && stride == 1;
-            DrawOrganism(context, instance, scaleX, scaleY, details);
+            DrawOrganism(context, instance, scaleX, scaleY, details, monitorFrames);
             selectedDrawn |= _selectedKeys.Contains(KeyOf(instance));
         }
 
         if (!selectedDrawn && _selectedKey is { } selected
             && _snapshot.RenderInstances.FirstOrDefault(candidate => KeyOf(candidate) == selected) is { } selectedInstance)
         {
-            DrawOrganism(context, selectedInstance, scaleX, scaleY, details: true);
+            DrawOrganism(context, selectedInstance, scaleX, scaleY, details: true, monitorFrames);
         }
     }
 
@@ -280,7 +278,8 @@ public sealed class WorldViewport : Control
         RenderInstanceSnapshot instance,
         double scaleX,
         double scaleY,
-        bool details)
+        bool details,
+        List<MonitorFrame>? monitorFrames)
     {
         var position = _dragKey == KeyOf(instance) && _dragPosition is not null ? _dragPosition : instance.Position;
         var center = ScreenPoint(position, scaleX, scaleY);
@@ -291,9 +290,9 @@ public sealed class WorldViewport : Control
         if (!IsOnScreen(center, radius + 7)) return;
         var organism = _organismsByKey.GetValueOrDefault(KeyOf(instance));
         if (organism?.IsHidden == true) return;
-        var color = organism is not null && _rgbMemoryMonitor is { } monitor
-            ? Color.FromUInt32(RgbMemoryMonitor.ColorFor(organism, monitor).ToArgb())
-            : Color.FromUInt32(instance.Color);
+        if (monitorFrames is not null && organism is not null && IsOnScreen(center, radius))
+            monitorFrames.Add(new MonitorFrame(organism, center, radius));
+        var color = Color.FromUInt32(instance.Color);
         var selected = _selectedKeys.Contains(KeyOf(instance));
         var edgeColor = ContrastColor(color, strong: false);
         context.DrawEllipse(
@@ -409,23 +408,40 @@ public sealed class WorldViewport : Control
         context.DrawGeometry(fill, edge, geometry);
     }
 
-    private void DrawFallbackOrganisms(DrawingContext context, double scaleX, double scaleY)
+    private void DrawFallbackOrganisms(DrawingContext context, double scaleX, double scaleY, List<MonitorFrame>? monitorFrames)
     {
         foreach (var organism in _visibleOrganisms)
         {
             if (organism.IsHidden) continue;
             var center = ScreenPoint(organism.Position, scaleX, scaleY);
             if (!IsOnScreen(center, 6)) continue;
-            var color = _rgbMemoryMonitor is { } monitor
-                ? Color.FromUInt32(RgbMemoryMonitor.ColorFor(organism, monitor).ToArgb())
-                : Color.FromUInt32(organism.Phenotype.Color);
+            const double radius = 3.2;
+            if (monitorFrames is not null && IsOnScreen(center, radius))
+                monitorFrames.Add(new MonitorFrame(organism, center, radius));
+            var color = Color.FromUInt32(organism.Phenotype.Color);
             var selected = _selectedKeys.Contains(KeyOf(organism));
             context.DrawEllipse(
                 new SolidColorBrush(color),
                 new Pen(selected ? Brushes.Black : new SolidColorBrush(ContrastColor(color, false)), selected ? 2.2 : 0.8),
                 center,
-                3.2,
-                3.2);
+                radius,
+                radius);
+        }
+    }
+
+    private readonly record struct MonitorFrame(OrganismSnapshot Robot, Point Center, double Radius);
+
+    private void DrawMonitorFrames(DrawingContext context, RgbMemoryMonitorSettings settings, List<MonitorFrame> frames)
+    {
+        // DrawMonitor uses a transparent, one-pixel square after the robot artwork.
+        using var renderOptions = context.PushRenderOptions(new RenderOptions { EdgeMode = EdgeMode.Aliased });
+        var stroke = 1 / RenderScale;
+        foreach (var frame in frames)
+        {
+            var halfExtent = frame.Radius * 1.1;
+            var rectangle = new Rect(frame.Center.X - halfExtent, frame.Center.Y - halfExtent, 2 * halfExtent, 2 * halfExtent);
+            var color = Color.FromUInt32(RgbMemoryMonitor.ColorFor(frame.Robot, settings).ToArgb());
+            context.DrawRectangle(null, new Pen(new SolidColorBrush(color), stroke), rectangle);
         }
     }
 
@@ -799,8 +815,6 @@ public sealed class WorldViewport : Control
     private Color ShotOwnerColor(OrganismKey owner)
     {
         var organism = _snapshot.Organisms.FirstOrDefault(value => KeyOf(value) == owner);
-        if (organism is not null && _rgbMemoryMonitor is { } monitor)
-            return Color.FromUInt32(RgbMemoryMonitor.ColorFor(organism, monitor).ToArgb());
         if (_snapshot.RenderInstances.FirstOrDefault(value => KeyOf(value) == owner) is { } instance)
             return Color.FromUInt32(instance.Color);
         if (organism is not null)
