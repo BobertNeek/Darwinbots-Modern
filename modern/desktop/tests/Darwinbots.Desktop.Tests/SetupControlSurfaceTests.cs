@@ -792,7 +792,12 @@ public sealed class SetupControlSurfaceTests
     [Fact]
     public async Task SetupLoadsSavesAndStartsWithTheOrdinaryRestartPreference()
     {
-        var encoded = LegacyDnaText.Decode(Db2SettingsCodec.Encode(new DesktopSettings { OrdinaryRestartOnExtinction = true }));
+        var settings = new DesktopSettings
+        {
+            OrdinaryRestartOnExtinction = true,
+            Species = [new("Restart Animal.txt", "start\nstop", false, 0xff239ac0, 1, 3000, 0, false, 0)],
+        };
+        var encoded = LegacyDnaText.Decode(Db2SettingsCodec.Encode(settings));
         int marker = encoded.IndexOf("#DARWINBOTS_MODERN_SETTINGS_V1#", StringComparison.Ordinal);
         var storage = new SettingsWorkflowStorage
         {
