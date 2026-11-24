@@ -258,7 +258,7 @@ public sealed class NativeRobotFileIntegrationTests
                 Assert.Equal("This robot is dead", memoryBeforeNextStep);
 
                 var restore = typeof(MainWindow).GetMethod("LoadSimulationAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
-                await Assert.IsAssignableFrom<Task>(restore.Invoke(window, [save, false]));
+                await Assert.IsAssignableFrom<Task>(restore.Invoke(window, [save]));
                 Assert.Contains(session.LatestSnapshot.Organisms,
                     actor => actor.Slot == first.Slot && actor.Generation == first.Generation);
                 Assert.Null(model.SelectedKey);
@@ -354,7 +354,7 @@ public sealed class NativeRobotFileIntegrationTests
                 Assert.Equal(second, session.LatestSnapshot.NativePostDnaMemory!.Focus);
 
                 var load = (Task)typeof(MainWindow).GetMethod("LoadSimulationAsync", BindingFlags.Instance | BindingFlags.NonPublic)!
-                    .Invoke(window, [save, false])!;
+                    .Invoke(window, [save])!;
                 await load;
                 Assert.Null(session.LatestSnapshot.NativePostDnaMemory);
                 Assert.Contains("\t-4321\t", memory.Text);
@@ -444,7 +444,7 @@ public sealed class NativeRobotFileIntegrationTests
                 Input(edit).Text = "Stale world edit";
                 var saved = await session.SaveAsync();
                 var load = (Task)typeof(MainWindow).GetMethod("LoadSimulationAsync", BindingFlags.Instance | BindingFlags.NonPublic)!
-                    .Invoke(window, [saved, false])!;
+                    .Invoke(window, [saved])!;
                 await load;
                 viewModel.Select(first);
                 await FinishAsync(edit, "APPLY");
