@@ -231,6 +231,9 @@ enum EngineCommand {
         left: crate::Obstacle,
         right: crate::Obstacle,
     },
+    AddNativeRandomObstacles {
+        count: usize,
+    },
     UpdateObstacle {
         obstacle: crate::Obstacle,
     },
@@ -1084,6 +1087,9 @@ fn db_engine_command_batch_impl(
             EngineCommand::AddTrashCompactor { left, right } => engine
                 .add_trash_compactor(left, right)
                 .map(|_| serde_json::Value::Null),
+            EngineCommand::AddNativeRandomObstacles { count } => engine
+                .add_native_random_obstacles(count)
+                .map(|added| serde_json::json!(added)),
             EngineCommand::UpdateObstacle { obstacle } => engine
                 .update_obstacle(obstacle)
                 .map(|_| serde_json::Value::Null),

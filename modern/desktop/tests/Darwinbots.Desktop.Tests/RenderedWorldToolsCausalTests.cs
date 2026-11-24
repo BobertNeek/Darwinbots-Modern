@@ -60,6 +60,9 @@ public sealed class RenderedWorldToolsCausalTests
                     Assert.InRange(shape.Minimum[1], 0f, shape.Maximum[1]);
                     Assert.InRange(shape.Maximum[0], 0f, 1_100f);
                     Assert.InRange(shape.Maximum[1], 0f, 800f);
+                    Assert.InRange(shape.Maximum[0] - shape.Minimum[0], 0f, 220f);
+                    Assert.InRange(shape.Maximum[1] - shape.Minimum[1], 0f, 160f);
+                    Assert.InRange(shape.Color & 0xff, 0u, 1u);
                 });
 
                 menu.FindCommandItem(LegacyCommandId.ObjectsTrashCompactor)!

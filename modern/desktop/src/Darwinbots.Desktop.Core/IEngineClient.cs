@@ -51,6 +51,7 @@ public interface IEngineClient : IDisposable
         AddObstacle(left);
         AddObstacle(right);
     }
+    int? AddNativeRandomObstacles(int count) => null;
     void UpdateObstacle(ObstacleSnapshot obstacle);
     void RemoveObstacle(uint id);
     void AddTeleporter(TeleporterSnapshot teleporter);
