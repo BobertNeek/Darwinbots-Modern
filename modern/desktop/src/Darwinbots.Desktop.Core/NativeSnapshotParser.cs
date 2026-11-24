@@ -71,6 +71,8 @@ public static class NativeSnapshotParser
             Descendants = organism.Descendants,
             SimulationId = organism.SimulationId,
             UniqueId = organism.UniqueId,
+            ParentAbsoluteId = organism.ParentAbsoluteId,
+            LineageGeneration = organism.LineageGeneration,
             VirusTimer = organism.VirusTimer,
             Touch = organism.Touch,
             Taste = organism.Taste,
@@ -133,6 +135,10 @@ public static class NativeSnapshotParser
         }).ToArray();
         var teleporters = (native.Teleporters ?? []).Select(value => new TeleporterSnapshot(value.Id, value.Center, value.Radius, value.Destination)
         {
+            Width = value.Width is > 0f ? value.Width : null,
+            Height = value.Height is > 0f ? value.Height : null,
+            RandomDestination = value.RandomDestination,
+            NativeTopLeft = value.NativeTopLeft is { Length: 2 } ? value.NativeTopLeft : null,
             Mode = TeleporterMode(value),
             Color = value.Color ?? 0xffb9bdb6u,
             Velocity = value.Velocity is { Length: 2 } ? value.Velocity : [0f, 0f],
@@ -236,6 +242,7 @@ public static class NativeSnapshotParser
         return new EngineSnapshot(native.Tick, organisms.Length, backend, organisms)
         {
             NativeCycle = native.NativeCycle,
+            NativeSunOn = native.NativeSunOn,
             RenderInstances = renderInstances,
             Species = species,
             MutationSettings = new MutationSettingsSnapshot(
@@ -261,6 +268,10 @@ public static class NativeSnapshotParser
             Ties = ties,
             PhaseTimings = timings,
             LocalMode = ParseLocalMode(native.LocalMode),
+            OrdinaryRestartOnExtinction = native.OrdinaryRestartOnExtinction,
+            OrdinaryRestartPending = native.OrdinaryRestartPending,
+            OrdinaryRestartCount = native.OrdinaryRestartCount,
+            OrdinaryRestartAvailable = native.OrdinaryRestartAvailable,
         };
     }
 
@@ -361,6 +372,10 @@ public static class NativeSnapshotParser
             Evolution = native.Evolution is { } evolution ? new StagedEvolutionSnapshot(evolution.Stage,
                 evolution.Phase ?? "evolving", evolution.Hidden, evolution.ReductionUnit, evolution.HideCycles,
                 evolution.TestWins, evolution.OpponentStage, evolution.Handicap - evolution.InverseHandicap) {
+                    CurrentDnaSize = evolution.CurrentDnaSize,
+                    TargetDnaSize = evolution.TargetDnaSize,
+                    RawHandicap = evolution.Handicap,
+                    InverseHandicap = evolution.InverseHandicap,
                     BaselineSpecies = evolution.BaselineSpecies ?? [], MutatorSpecies = evolution.MutatorSpecies ?? [],
                     TestResultCursor = evolution.TestResultCursor, FitnessWeight = evolution.FitnessWeight,
                 } : null,
@@ -524,6 +539,7 @@ public static class NativeSnapshotParser
     private sealed record NativeSnapshot(
         [property: JsonPropertyName("tick")] ulong Tick,
         [property: JsonPropertyName("native_cycle")] int? NativeCycle,
+        [property: JsonPropertyName("native_sun_on")] bool? NativeSunOn,
         [property: JsonPropertyName("world_size")] float[]? WorldSize,
         [property: JsonPropertyName("organisms")] NativeOrganism[] Organisms,
         [property: JsonPropertyName("render_instances")] NativeRenderInstance[]? RenderInstances,
@@ -546,7 +562,11 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("ties")] NativeTie[]? Ties,
         [property: JsonPropertyName("phase_timings")] NativePhaseTimings? PhaseTimings,
         [property: JsonPropertyName("local_mode")] NativeLocalMode? LocalMode,
-        [property: JsonPropertyName("death_poffs_enabled")] bool? DeathPoffsEnabled = null);
+        [property: JsonPropertyName("death_poffs_enabled")] bool? DeathPoffsEnabled = null,
+        [property: JsonPropertyName("ordinary_restart_on_extinction")] bool OrdinaryRestartOnExtinction = false,
+        [property: JsonPropertyName("ordinary_restart_pending")] bool OrdinaryRestartPending = false,
+        [property: JsonPropertyName("ordinary_restart_count")] ulong OrdinaryRestartCount = 0,
+        [property: JsonPropertyName("ordinary_restart_available")] bool OrdinaryRestartAvailable = false);
 
     private sealed record NativePlayerBot(
         [property: JsonPropertyName("enabled")] bool Enabled,
@@ -597,6 +617,8 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("hide_cycles")] uint HideCycles,
         [property: JsonPropertyName("test_wins")] uint TestWins,
         [property: JsonPropertyName("opponent_stage")] uint OpponentStage,
+        [property: JsonPropertyName("current_dna_size")] uint? CurrentDnaSize,
+        [property: JsonPropertyName("target_dna_size")] uint? TargetDnaSize,
         [property: JsonPropertyName("handicap")] double Handicap,
         [property: JsonPropertyName("inverse_handicap")] double InverseHandicap,
         [property: JsonPropertyName("baseline_species")] uint[]? BaselineSpecies,
@@ -810,7 +832,9 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("poll_interval")] uint? PollInterval = null,
         [property: JsonPropertyName("capacity")] int? Capacity = null,
         [property: JsonPropertyName("poll_countdown")] uint? PollCountdown = null,
-        [property: JsonPropertyName("backflow_limit")] uint? BackflowLimit = null);
+        [property: JsonPropertyName("backflow_limit")] uint? BackflowLimit = null,
+        [property: JsonPropertyName("random_destination")] bool RandomDestination = false,
+        [property: JsonPropertyName("native_top_left")] float[]? NativeTopLeft = null);
 
     private sealed record NativeFileTeleporter(
         [property: JsonPropertyName("id")] uint Id,
@@ -919,6 +943,8 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("descendants")] ulong Descendants,
         [property: JsonPropertyName("simulation_id")] ulong SimulationId,
         [property: JsonPropertyName("unique_id")] ulong UniqueId,
+        [property: JsonPropertyName("parent_absolute_id")] ulong? ParentAbsoluteId,
+        [property: JsonPropertyName("generation")] uint? LineageGeneration,
         [property: JsonPropertyName("virus_timer")] int VirusTimer,
         [property: JsonPropertyName("new_mutations")] ulong NewMutations,
         [property: JsonPropertyName("total_mutations")] ulong TotalMutations,

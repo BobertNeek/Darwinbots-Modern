@@ -12,94 +12,118 @@ public sealed partial class CustomSimulationCostsWindow : Window
     public CustomSimulationCostsWindow() : this(new GlobalSettings()) { }
 
     public CustomSimulationCostsWindow(GlobalSettings settings)
+        : this(settings?.Costs ?? throw new ArgumentNullException(nameof(settings)), stageForLiveSettings: false) { }
+
+    public CustomSimulationCostsWindow(GlobalSimulationCostSettings costs, bool stageForLiveSettings)
     {
-        ArgumentNullException.ThrowIfNull(settings);
-        Costs = settings.Costs;
+        Costs = costs ?? throw new ArgumentNullException(nameof(costs));
         InitializeComponent();
         Populate(Costs);
+        if (stageForLiveSettings)
+        {
+            CostScope.Text = "Edit costs for the running simulation";
+            CostDescription.Text = "Zero disables a cost.";
+            CostApplyNotice.Text = "Apply Physics and Costs to use these values.";
+            ApplyButton.Content = "STAGE COSTS";
+        }
     }
 
     private void Populate(GlobalSimulationCostSettings costs)
     {
-        GlobalCostMultiplier.Value = (decimal)costs.GlobalMultiplier;
-        DnaNumber.Value = (decimal)costs.DnaNumber;
-        DnaDereference.Value = (decimal)costs.DnaDereference;
-        DnaBasic.Value = (decimal)costs.DnaBasic;
-        DnaAdvanced.Value = (decimal)costs.DnaAdvanced;
-        DnaBitwise.Value = (decimal)costs.DnaBitwise;
-        DnaCondition.Value = (decimal)costs.DnaCondition;
-        DnaLogic.Value = (decimal)costs.DnaLogic;
-        DnaStore.Value = (decimal)costs.DnaStore;
-        DnaFlow.Value = (decimal)costs.DnaFlow;
-        DnaUpkeep.Value = (decimal)costs.DnaUpkeep;
-        DnaCopy.Value = (decimal)costs.DnaCopy;
-        MovementCost.Value = (decimal)costs.Movement;
-        RotationCost.Value = (decimal)costs.Rotation;
-        TieFormationCost.Value = (decimal)costs.TieFormation;
-        ShotFormationCost.Value = (decimal)costs.ShotFormation;
-        VenomCost.Value = (decimal)costs.Venom;
-        PoisonCost.Value = (decimal)costs.Poison;
-        SlimeCost.Value = (decimal)costs.Slime;
-        ShellCost.Value = (decimal)costs.Shell;
-        BodyUpkeep.Value = (decimal)costs.BodyUpkeep;
-        ChloroplastConstructionCost.Value = (decimal)costs.ChloroplastConstruction;
-        VirusCost.Value = (decimal)costs.Virus;
-        AgeBase.Value = (decimal)costs.AgeBase;
-        AgeStart.Value = (decimal)costs.AgeStart;
-        AgeLinear.Value = (decimal)costs.AgeLinear;
-        AgeLogarithmic.Value = (decimal)costs.AgeLogarithmic;
-        DynamicMultiplier.Value = (decimal)costs.DynamicMultiplier;
+        SetDisplayValue(GlobalCostMultiplier, costs.GlobalMultiplier);
+        SetDisplayValue(DnaNumber, costs.DnaNumber);
+        SetDisplayValue(DnaDereference, costs.DnaDereference);
+        SetDisplayValue(DnaBasic, costs.DnaBasic);
+        SetDisplayValue(DnaAdvanced, costs.DnaAdvanced);
+        SetDisplayValue(DnaBitwise, costs.DnaBitwise);
+        SetDisplayValue(DnaCondition, costs.DnaCondition);
+        SetDisplayValue(DnaLogic, costs.DnaLogic);
+        SetDisplayValue(DnaStore, costs.DnaStore);
+        SetDisplayValue(DnaFlow, costs.DnaFlow);
+        SetDisplayValue(DnaUpkeep, costs.DnaUpkeep);
+        SetDisplayValue(DnaCopy, costs.DnaCopy);
+        SetDisplayValue(MovementCost, costs.Movement);
+        SetDisplayValue(RotationCost, costs.Rotation);
+        SetDisplayValue(TieFormationCost, costs.TieFormation);
+        SetDisplayValue(ShotFormationCost, costs.ShotFormation);
+        SetDisplayValue(VenomCost, costs.Venom);
+        SetDisplayValue(PoisonCost, costs.Poison);
+        SetDisplayValue(SlimeCost, costs.Slime);
+        SetDisplayValue(ShellCost, costs.Shell);
+        SetDisplayValue(BodyUpkeep, costs.BodyUpkeep);
+        SetDisplayValue(ChloroplastConstructionCost, costs.ChloroplastConstruction);
+        SetDisplayValue(VirusCost, costs.Virus);
+        SetDisplayValue(AgeBase, costs.AgeBase);
+        SetDisplayValue(AgeStart, costs.AgeStart);
+        SetDisplayValue(AgeLinear, costs.AgeLinear);
+        SetDisplayValue(AgeLogarithmic, costs.AgeLogarithmic);
+        SetDisplayValue(DynamicMultiplier, costs.DynamicMultiplier);
         DynamicAllRobots.IsChecked = costs.DynamicAllRobots;
-        DynamicTargetPopulation.Value = costs.DynamicTargetPopulation;
-        DynamicPopulationRange.Value = costs.DynamicPopulationRange;
-        DynamicSensitivity.Value = (decimal)costs.DynamicSensitivity;
+        SetDisplayValue(DynamicTargetPopulation, costs.DynamicTargetPopulation);
+        SetDisplayValue(DynamicPopulationRange, costs.DynamicPopulationRange);
+        SetDisplayValue(DynamicSensitivity, costs.DynamicSensitivity);
         DynamicAllowNegative.IsChecked = costs.DynamicAllowNegative;
-        DynamicLowerZeroThreshold.Value = (decimal)costs.DynamicLowerZeroThreshold;
-        DynamicUpperZeroThreshold.Value = (decimal)costs.DynamicUpperZeroThreshold;
-        DynamicLowerReinstateThreshold.Value = (decimal)costs.DynamicLowerReinstateThreshold;
-        DynamicUpperReinstateThreshold.Value = (decimal)costs.DynamicUpperReinstateThreshold;
+        SetDisplayValue(DynamicLowerZeroThreshold, costs.DynamicLowerZeroThreshold);
+        SetDisplayValue(DynamicUpperZeroThreshold, costs.DynamicUpperZeroThreshold);
+        SetDisplayValue(DynamicLowerReinstateThreshold, costs.DynamicLowerReinstateThreshold);
+        SetDisplayValue(DynamicUpperReinstateThreshold, costs.DynamicUpperReinstateThreshold);
     }
 
-    private GlobalSimulationCostSettings ReadCosts() => new()
+    private GlobalSimulationCostSettings ReadCosts()
     {
-        GlobalMultiplier = (double)(GlobalCostMultiplier.Value ?? 1),
-        DnaNumber = (double)(DnaNumber.Value ?? 0),
-        DnaDereference = (double)(DnaDereference.Value ?? 0),
-        DnaBasic = (double)(DnaBasic.Value ?? 0),
-        DnaAdvanced = (double)(DnaAdvanced.Value ?? 0),
-        DnaBitwise = (double)(DnaBitwise.Value ?? 0),
-        DnaCondition = (double)(DnaCondition.Value ?? 0),
-        DnaLogic = (double)(DnaLogic.Value ?? 0),
-        DnaStore = (double)(DnaStore.Value ?? 0),
-        DnaFlow = (double)(DnaFlow.Value ?? 0),
-        DnaUpkeep = (double)(DnaUpkeep.Value ?? 0),
-        DnaCopy = (double)(DnaCopy.Value ?? 0),
-        Movement = (double)(MovementCost.Value ?? 0),
-        Rotation = (double)(RotationCost.Value ?? 0),
-        TieFormation = (double)(TieFormationCost.Value ?? 0),
-        ShotFormation = (double)(ShotFormationCost.Value ?? 0),
-        Venom = (double)(VenomCost.Value ?? 0),
-        Poison = (double)(PoisonCost.Value ?? 0),
-        Slime = (double)(SlimeCost.Value ?? 0),
-        Shell = (double)(ShellCost.Value ?? 0),
-        BodyUpkeep = (double)(BodyUpkeep.Value ?? 0),
-        ChloroplastConstruction = (double)(ChloroplastConstructionCost.Value ?? 0),
-        Virus = (double)(VirusCost.Value ?? 0),
-        AgeBase = (double)(AgeBase.Value ?? 0),
-        AgeStart = (double)(AgeStart.Value ?? 0),
-        AgeLinear = (double)(AgeLinear.Value ?? 0),
-        AgeLogarithmic = (double)(AgeLogarithmic.Value ?? 0),
-        DynamicMultiplier = (double)(DynamicMultiplier.Value ?? 0),
-        DynamicAllRobots = DynamicAllRobots.IsChecked == true,
-        DynamicTargetPopulation = (int)(DynamicTargetPopulation.Value ?? 0),
-        DynamicPopulationRange = (int)(DynamicPopulationRange.Value ?? 0),
-        DynamicSensitivity = (double)(DynamicSensitivity.Value ?? 1),
-        DynamicAllowNegative = DynamicAllowNegative.IsChecked == true,
-        DynamicLowerZeroThreshold = (double)(DynamicLowerZeroThreshold.Value ?? 0),
-        DynamicUpperZeroThreshold = (double)(DynamicUpperZeroThreshold.Value ?? 0),
-        DynamicLowerReinstateThreshold = (double)(DynamicLowerReinstateThreshold.Value ?? 0),
-        DynamicUpperReinstateThreshold = (double)(DynamicUpperReinstateThreshold.Value ?? 0),
-    };
+        var populationRange = (int)Read(DynamicPopulationRange, Costs.DynamicPopulationRange);
+        return Costs with
+        {
+            GlobalMultiplier = Read(GlobalCostMultiplier, Costs.GlobalMultiplier),
+            DnaNumber = Read(DnaNumber, Costs.DnaNumber),
+            DnaDereference = Read(DnaDereference, Costs.DnaDereference),
+            DnaBasic = Read(DnaBasic, Costs.DnaBasic),
+            DnaAdvanced = Read(DnaAdvanced, Costs.DnaAdvanced),
+            DnaBitwise = Read(DnaBitwise, Costs.DnaBitwise),
+            DnaCondition = Read(DnaCondition, Costs.DnaCondition),
+            DnaLogic = Read(DnaLogic, Costs.DnaLogic),
+            DnaStore = Read(DnaStore, Costs.DnaStore),
+            DnaFlow = Read(DnaFlow, Costs.DnaFlow),
+            DnaUpkeep = Read(DnaUpkeep, Costs.DnaUpkeep),
+            DnaCopy = Read(DnaCopy, Costs.DnaCopy),
+            Movement = Read(MovementCost, Costs.Movement),
+            Rotation = Read(RotationCost, Costs.Rotation),
+            TieFormation = Read(TieFormationCost, Costs.TieFormation),
+            ShotFormation = Read(ShotFormationCost, Costs.ShotFormation),
+            Venom = Read(VenomCost, Costs.Venom),
+            Poison = Read(PoisonCost, Costs.Poison),
+            Slime = Read(SlimeCost, Costs.Slime),
+            Shell = Read(ShellCost, Costs.Shell),
+            BodyUpkeep = Read(BodyUpkeep, Costs.BodyUpkeep),
+            ChloroplastConstruction = Read(ChloroplastConstructionCost, Costs.ChloroplastConstruction),
+            Virus = Read(VirusCost, Costs.Virus),
+            AgeBase = Read(AgeBase, Costs.AgeBase),
+            AgeStart = Read(AgeStart, Costs.AgeStart),
+            AgeLinear = Read(AgeLinear, Costs.AgeLinear),
+            AgeLogarithmic = Read(AgeLogarithmic, Costs.AgeLogarithmic),
+            DynamicMultiplier = Read(DynamicMultiplier, Costs.DynamicMultiplier),
+            DynamicAllRobots = DynamicAllRobots.IsChecked == true,
+            DynamicTargetPopulation = (int)Read(DynamicTargetPopulation, Costs.DynamicTargetPopulation),
+            DynamicPopulationRange = populationRange,
+            DynamicUpperRangePercent = populationRange != Costs.DynamicPopulationRange
+                ? populationRange : Costs.DynamicUpperRangePercent,
+            DynamicSensitivity = Read(DynamicSensitivity, Costs.DynamicSensitivity),
+            DynamicAllowNegative = DynamicAllowNegative.IsChecked == true,
+            DynamicLowerZeroThreshold = Read(DynamicLowerZeroThreshold, Costs.DynamicLowerZeroThreshold),
+            DynamicUpperZeroThreshold = Read(DynamicUpperZeroThreshold, Costs.DynamicUpperZeroThreshold),
+            DynamicLowerReinstateThreshold = Read(DynamicLowerReinstateThreshold, Costs.DynamicLowerReinstateThreshold),
+            DynamicUpperReinstateThreshold = Read(DynamicUpperReinstateThreshold, Costs.DynamicUpperReinstateThreshold),
+        };
+    }
+
+    private static decimal DisplayValue(NumericUpDown control, double value) =>
+        (decimal)Math.Clamp(value, (double)control.Minimum, (double)control.Maximum);
+
+    private static void SetDisplayValue(NumericUpDown control, double value) =>
+        control.Value = DisplayValue(control, value);
+
+    private static double Read(NumericUpDown control, double previous) =>
+        control.Value is { } value && value != DisplayValue(control, previous) ? (double)value : previous;
 
     private void Apply_Click(object? sender, RoutedEventArgs e)
     {

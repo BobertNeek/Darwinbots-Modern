@@ -4,7 +4,9 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data;
 using Avalonia.Input;
+using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
+using Avalonia.Layout;
 using Avalonia.Threading;
 using Darwinbots.Desktop;
 using Darwinbots.Desktop.Core;
@@ -15,11 +17,13 @@ using Darwinbots.Desktop.ViewModels;
 using Avalonia.VisualTree;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Globalization;
 
 namespace Darwinbots.Desktop.Views;
 
 public sealed partial class MainWindow : Window
 {
+    private const string NewTeleporterToolKey = "new-teleporter";
     private const string TrayPngBase64 = "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAlSURBVDhPY1BQV/1PCQYb4FNrQBYeNWDUABAeNYCaBpCPVf8DAN1j1wSVGu34AAAAAElFTkSuQmCC";
 
     private async void MainWindow_KeyDown(object? sender, KeyEventArgs e)
@@ -65,6 +69,18 @@ public sealed partial class MainWindow : Window
         e.Handled = true;
     }
 
+    private void MainWindow_KeyUp(object? sender, KeyEventArgs e)
+    {
+        if (HistoricMenuBar.FindCommandItem(LegacyCommandId.FilePauseSimulation)?.InputGesture?.Matches(e) != true)
+            return;
+
+        // A held F12 should toggle once even when the platform repeats key-down events.
+        e.Handled = true;
+        if (_runTimer.IsEnabled) Pause_Click(sender, e);
+        else if (_session is not null) Run_Click(sender, e);
+    }
+
+    private static readonly SemaphoreSlim DeadRecordingGate = new(1, 1);
     private readonly MainWindowViewModel _viewModel = new();
     private SimulationSession? _session;
     private readonly DispatcherTimer _runTimer;
@@ -78,10 +94,13 @@ public sealed partial class MainWindow : Window
     private GlobalSettings _globalSettings;
     private ulong? _lastGraphRefreshTick;
     private (LocalModeKind Kind, uint RestartCount)? _automaticEvolutionGraphBoundary;
+    private ulong _presentedOrdinaryRestartCount;
     private readonly IEngineClientFactory _engineFactory;
     private readonly IDesktopStorageService _storage;
+    private readonly Action? _launchSafeModeBackup;
     private bool _tickInFlight;
     private bool _navigationInFlight;
+    private bool _editingLiveSettings;
     private readonly SemaphoreSlim _advanceGate = new(1, 1);
     private volatile bool _loadingSimulation;
     private OrganismKey? _moveOrganism;
@@ -94,6 +113,10 @@ public sealed partial class MainWindow : Window
     private EnvironmentPlacement _environmentPlacement;
     private float[]? _placementOrigin;
     private WorldFeatureSelection? _selectedFeature;
+    private (SimulationSession Session, WorldFeatureSelection Selection, float[] Center)? _pendingTeleporterDrag;
+    private bool _sendingTeleporterDrag;
+    private int _teleporterDeletionsInFlight;
+    private TeleporterEditorWindow? _nativeTeleporterEditor;
     private readonly ZerobotProgressionController? _zerobotProgression;
     private bool _progressionInFlight;
     private const string EnergyOnlyFeederDna = "cond\r\nstart\r\n-2 .shoot store\r\n50 .shootval store\r\n314 rnd .aimdx store\r\nstop";
@@ -107,17 +130,25 @@ public sealed partial class MainWindow : Window
     private readonly OfflineDiagnosticRecovery _diagnostics = new();
     private bool _safemodeBackup;
     private ulong? _lastAutomaticSaveTick;
-    private bool _hasBackgroundImage;
     private bool _deadRecordingEnabled;
     private bool _excludeRepopulatingDead;
-    private int _recordedCorpseCount;
-    private bool _automaticTagByName;
+    private bool _startupComplete;
+    private bool _savingLastExit;
+    private bool _skipLastExitCheckpoint;
+    private bool _windowClosed;
     private bool _playerBotEnabled;
     private IReadOnlyList<PlayerBotBinding> _playerBotBindings = [];
+    private readonly HashSet<OrganismKey> _playerBotHighlights = [];
     private bool _rgbMemoryMonitorEnabled;
-    private RgbMemoryMonitorSettings _rgbMemorySettings = RgbMemoryMonitorSettings.Default;
+    private RgbMemoryMonitorSettings? _rgbMemorySettings;
     private const string RgbMonitorToolKey = "rgb-memory-monitor";
     private readonly PersistentToolWindowRegistry _toolWindows;
+    private readonly SeededSpawnPlacement _randomShapePlacement;
+    private ShapeCreationDimensions _shapeDimensions = ShapeCreationDimensions.Default;
+    private MazeDimensions _mazeDimensions = MazeDimensions.Default;
+    private Db2ShapeDriftOptions? _shapeDrift;
+    private int _shapeWorldGeneration;
+    private ShapesWindow? _shapesWindow;
     private readonly Stopwatch _runtimeClock = new();
     private double _activeCostMultiplier;
     private TrayIcon? _trayIcon;
@@ -136,10 +167,21 @@ public sealed partial class MainWindow : Window
         IReadOnlyList<string> arguments,
         WorldSetupOptions setup,
         IEngineClientFactory engineFactory,
-        IDesktopStorageService storage)
+        IDesktopStorageService storage) : this(arguments, setup, engineFactory, storage, null)
+    {
+    }
+
+    public MainWindow(
+        IReadOnlyList<string> arguments,
+        WorldSetupOptions setup,
+        IEngineClientFactory engineFactory,
+        IDesktopStorageService storage,
+        Action? launchSafeModeBackup)
     {
         _startupArguments = arguments.ToArray();
         _setup = setup with { NativeGaussianSpare = null, NativeSunChange = null, NativeProcessCaches = null };
+        _shapeDrift = setup.ShapeDrift;
+        _randomShapePlacement = new SeededSpawnPlacement(setup.Seed ^ 0x4d42UL);
         _initialNativeGaussianSpare = setup.NativeGaussianSpare;
         _initialNativeSunChange = setup.NativeSunChange;
         _initialNativeProcessCaches = setup.NativeProcessCaches;
@@ -151,6 +193,9 @@ public sealed partial class MainWindow : Window
             setup.GlobalSettings.Main.MainDirectory).Resolve(_startupArguments);
         _engineFactory = engineFactory ?? throw new ArgumentNullException(nameof(engineFactory));
         _storage = storage ?? throw new ArgumentNullException(nameof(storage));
+        _launchSafeModeBackup = launchSafeModeBackup ?? (storage is AvaloniaDesktopStorageService files
+            ? () => SafeModeBackupProcess.Start(files.AutosaveDirectory())
+            : null);
         _zerobotProgression = null;
         InitializeComponent();
         Viewport.FixedRatio = _globalSettings.Main.FixedRatio;
@@ -163,6 +208,7 @@ public sealed partial class MainWindow : Window
             };
             LocalModeKindSelector.SelectedIndex = (int)kind;
             _viewModel.LocalMode.SelectKind(kind);
+            UpdateLocalModeLimitMinimums(kind);
         }
         UiPreferencesController.Register(this);
         var numericCultureAppliedAfterExpansion = false;
@@ -186,8 +232,8 @@ public sealed partial class MainWindow : Window
             ToolbarSlot17.SelectedIndex = 0;
         }
         InitializeTray();
-        KeyDown += PlayerBot_KeyDown;
-        KeyUp += PlayerBot_KeyUp;
+        KeyDown += async (_, e) => await UpdatePlayerBotKeyAsync(e, pressed: true);
+        KeyUp += async (_, e) => await UpdatePlayerBotKeyAsync(e, pressed: false);
         _legacyCommands = CreateLegacyCommandRouter();
         HistoricMenuBar.CommandInvoked += HistoricMenuBar_CommandInvoked;
         _ticksPerUpdate = setup.TicksPerUpdate;
@@ -207,24 +253,39 @@ public sealed partial class MainWindow : Window
         Viewport.WrapY = _liveEnvironment.WrapY;
         RuntimeSpeed.SelectedIndex = _ticksPerUpdate switch { <= 1 => 0, <= 5 => 1, <= 20 => 2, _ => 3 };
         _maximumSpeed = DesktopControlRules.IsMaximumSpeed(RuntimeSpeed.SelectedIndex);
-        Viewport.OrganismKeySelected += key =>
+        Viewport.IsPlayerBotEnabled = () => _playerBotEnabled;
+        Viewport.CanAimPlayerBot = () => _playerBotEnabled && _insertion?.IsActive != true
+            && _moveOrganism is null && _environmentPlacement == EnvironmentPlacement.None;
+        Viewport.PlayerBotPointerChanged += position => _session?.SetPlayerBotPointer(position);
+        Viewport.PlayerBotHighlightRequested += async key =>
         {
+            if (_playerBotHighlights.Add(key))
+            {
+                Viewport.SelectKeys(_playerBotHighlights, SelectedRobotKey());
+                await SynchronizePlayerBotTargetsAsync();
+            }
+        };
+        Viewport.OrganismKeySelected += async key =>
+        {
+            if (!_playerBotEnabled || !_playerBotHighlights.Contains(key))
+                _playerBotHighlights.Clear();
             _viewModel.Select(key);
-            Viewport.SelectKey(key);
+            Viewport.SelectKeys(_playerBotHighlights, key);
             RefreshLegacyMenuStates();
+            await SynchronizePlayerBotTargetsAsync();
         };
         Viewport.ContextMenu = BuildViewportContextMenu();
         Viewport.OrganismContextRequested += (key, _) =>
         {
             _viewModel.Select(key);
-            Viewport.SelectKey(key);
+            Viewport.SelectKeys(_playerBotHighlights, key);
             RefreshLegacyMenuStates();
             Viewport.ContextMenu?.Open(Viewport);
         };
         Viewport.OrganismDoubleClicked += async key =>
         {
             _viewModel.Select(key);
-            Viewport.SelectKey(key);
+            Viewport.SelectKeys(_playerBotHighlights, key);
             var result = await _legacyCommands.ExecuteAsync(LegacyCommandId.RobotShowInfo);
             _viewModel.Status = result.Status;
             RefreshLegacyMenuStates();
@@ -281,11 +342,15 @@ public sealed partial class MainWindow : Window
             _placementOrigin = null;
             _environmentPlacement = EnvironmentPlacement.None;
         };
+        Viewport.CanDragNativeTeleporter = CanDragNativeTeleporter;
+        Viewport.NativeTeleporterDragMoved += (feature, center) => _ = ApplyNativeTeleporterDragAsync(feature, center);
+        Viewport.NativeTeleporterDoubleClicked += async () => await EditSelectedTeleporterAsync();
         Viewport.WorldFeatureSelected += feature =>
         {
             _selectedFeature = feature;
             _viewModel.Status = $"{feature.Kind.ToString().ToUpperInvariant()} {feature.Id} SELECTED";
             RefreshFeatureEditorButtons();
+            RefreshLegacyMenuStates();
         };
         RefreshFeatureEditorButtons();
         Viewport.OrganismDragCompleted += async (slot, position) =>
@@ -313,6 +378,7 @@ public sealed partial class MainWindow : Window
         if (setup.LoadSavePath is null && _globalSettings.Main.VideoOff)
             SetTurboMode(true);
         Opened += Window_Opened;
+        Closing += Window_Closing;
         Closed += Window_Closed;
         _controlsReady = true;
         SetIgnoreErrors(!_safemodeBackup);
@@ -470,9 +536,7 @@ public sealed partial class MainWindow : Window
             LiveMetabolism.Value = _liveEnvironment.MetabolismCost;
             LivePlantEnergy.Value = _liveEnvironment.Vegetation.MaxEnergyPerTick;
             LiveFeedingToBody.Value = (decimal)_liveEnvironment.Vegetation.FeedingToBody;
-            var sunLabel = _liveEnvironment.Vegetation.Daytime ? "SUN ON" : "SUN OFF";
-            SunButton.Content = sunLabel;
-            AutomationProperties.SetName(SunButton, sunLabel);
+            UpdateSunIndicator(_session?.LatestSnapshot.NativeSunOn ?? _liveEnvironment.Vegetation.Daytime);
             Viewport.ToroidalWorld = _liveEnvironment.ToroidalWorld;
             Viewport.WrapX = _liveEnvironment.WrapX;
             Viewport.WrapY = _liveEnvironment.WrapY;
@@ -480,22 +544,35 @@ public sealed partial class MainWindow : Window
         finally { _controlsReady = controlsReady; }
     }
 
+    private void UpdateSunIndicator(bool enabled)
+    {
+        var label = SunLabel(enabled);
+        SunButton.Content = label;
+        AutomationProperties.SetName(SunButton, label);
+    }
+
+    private static string SunLabel(bool enabled) => enabled ? "SUN ON" : "SUN OFF";
+
     private async void Sun_Click(object? sender, RoutedEventArgs e)
     {
-        var vegetation = _liveEnvironment.Vegetation with { Daytime = !_liveEnvironment.Vegetation.Daytime };
-        var update = _liveEnvironment with { Vegetation = vegetation };
-        _liveEnvironment = update;
-        SunButton.Content = vegetation.Daytime ? "SUN ON" : "SUN OFF";
-        AutomationProperties.SetName(SunButton, vegetation.Daytime ? "SUN ON" : "SUN OFF");
-        if (_session is null)
-        {
-            _viewModel.Status = vegetation.Daytime ? "SUN ON" : "SUN OFF";
-            return;
-        }
+        var session = _session;
         try
         {
-            await _session.UpdateEnvironmentAsync(update);
-            _viewModel.Status = vegetation.Daytime ? "SUN ON" : "SUN OFF";
+            if (session?.LatestSnapshot.NativeSunOn is not null)
+            {
+                if (await session.ToggleNativeSunAsync() is { } enabled && ReferenceEquals(_session, session))
+                {
+                    _liveEnvironment = _liveEnvironment with { Vegetation = _liveEnvironment.Vegetation with { Daytime = enabled } };
+                    _viewModel.Status = SunLabel(enabled);
+                }
+                return;
+            }
+
+            var vegetation = _liveEnvironment.Vegetation with { Daytime = !_liveEnvironment.Vegetation.Daytime };
+            _liveEnvironment = _liveEnvironment with { Vegetation = vegetation };
+            UpdateSunIndicator(vegetation.Daytime);
+            if (session is not null) await session.UpdateEnvironmentAsync(_liveEnvironment);
+            _viewModel.Status = SunLabel(vegetation.Daytime);
         }
         catch (Exception error)
         {
@@ -573,10 +650,8 @@ public sealed partial class MainWindow : Window
         _viewModel.Status = (await FindBestRobotAsync()).Status;
     }
 
-    private async void ToolbarSnapshot_Click(object? sender, RoutedEventArgs e)
-    {
-        _viewModel.Status = (await SaveLivingSnapshotAsync()).Status;
-    }
+    private async void ToolbarSnapshot_Click(object? sender, RoutedEventArgs e) =>
+        await ExecuteLegacyMenuCommandAsync(LegacyCommandId.RecordingSnapshotLiving);
 
     private void ToolbarIgnoreErrors_Click(object? sender, RoutedEventArgs e)
     {
@@ -640,13 +715,13 @@ public sealed partial class MainWindow : Window
             async _ => await SaveNativeSimulationCommandAsync());
         handlers[LegacyCommandId.FileSaveWithoutMutations] = Handler(
             EngineState,
-            async _ => await SaveSimulationCommandAsync("SAVED WITHOUT MUTATION SETTINGS", withoutMutations: true));
+            async _ => await SaveSimulationWithoutMutationsCommandAsync());
         handlers[LegacyCommandId.FileQuit] = Handler(
             () => LegacyCommandState.Available,
             _ => Task.FromResult(QuitApplication()));
         handlers[LegacyCommandId.EditInsertOrganism] = Handler(
             EngineState,
-            async _ => await ImportOrganismsCommandAsync());
+            async _ => await ImportOrganismCommandAsync());
         handlers[LegacyCommandId.EditRestartAndLeagues] = Handler(
             () => new LegacyCommandState(true, false),
             _ => Task.FromResult(OpenLeagueTab()));
@@ -657,16 +732,16 @@ public sealed partial class MainWindow : Window
             () => new LegacyCommandState(_session is not null, _session?.LatestSnapshot.AsexualReproductionAllowed == false, _session is null ? "Start a simulation first." : null),
             async _ => await ToggleLegacyRestrictionAsync(false));
         handlers[LegacyCommandId.EditAutomaticallyTagByName] = Handler(
-            () => new LegacyCommandState(true, _automaticTagByName),
-            _ => Task.FromResult(ToggleAutomaticTagging()));
+            EngineState,
+            async _ => await TagRobotsByNameAsync());
         handlers[LegacyCommandId.EditEnableAutomaticForking] = Handler(
             () => new LegacyCommandState(_session is not null, _liveEnvironment.AutoSpeciation, _session is null ? "Start a simulation first." : null),
             async _ => await ToggleAutomaticForkingAsync());
         handlers[LegacyCommandId.EditPlayerBotSettings] = Handler(
-            SelectedRobotState,
+            EngineState,
             async _ => await OpenPlayerBotSettingsAsync());
         handlers[LegacyCommandId.EditEnablePlayerBot] = Handler(
-            () => SelectedRobotState() with { Checked = _playerBotEnabled },
+            () => EngineState() with { Checked = _playerBotEnabled },
             async _ => await TogglePlayerBotAsync());
         handlers[LegacyCommandId.EditEyeDesigner] = Handler(
             SelectedRobotState,
@@ -706,20 +781,20 @@ public sealed partial class MainWindow : Window
             value => Viewport.ShowResourceGauges = value,
             "RESOURCE GAUGES");
         handlers[LegacyCommandId.ViewRgbMemoryMonitorSettings] = Handler(
-            SelectedRobotState,
+            () => LegacyCommandState.Available,
             async _ => await OpenRgbMonitorSettingsAsync());
         handlers[LegacyCommandId.ViewRgbMemoryMonitor] = Handler(
-            () => SelectedRobotState() with { Checked = _rgbMemoryMonitorEnabled },
+            () => LegacyCommandState.Available with { Checked = _rgbMemoryMonitorEnabled },
             _ => Task.FromResult(ToggleRgbMemoryMonitor()));
         handlers[LegacyCommandId.ViewImportBackground] = Handler(
             () => new LegacyCommandState(true, false),
             async _ => await ImportBackgroundAsync());
         handlers[LegacyCommandId.ViewRemoveBackground] = Handler(
-            () => new LegacyCommandState(_hasBackgroundImage, false, _hasBackgroundImage ? null : "No background picture is loaded."),
+            () => LegacyCommandState.Available,
             _ => Task.FromResult(RemoveBackground()));
         handlers[LegacyCommandId.ObjectsNewTeleporter] = Handler(
-            () => LegacyCommandState.Available,
-            _ => Task.FromResult(BeginObjectPlacementCommand(LegacyCommandId.ObjectsNewTeleporter)));
+            EngineState,
+            _ => Task.FromResult(OpenNewTeleporter()));
         handlers[LegacyCommandId.ObjectsDeleteTeleporter] = Handler(
             () => FeatureState(WorldFeatureKind.Teleporter),
             async _ => await RemoveSelectedFeatureCommandAsync());
@@ -741,7 +816,7 @@ public sealed partial class MainWindow : Window
             async _ => await ToggleTiesAsync());
         handlers[LegacyCommandId.ObjectsNewShape] = Handler(
             () => LegacyCommandState.Available,
-            _ => Task.FromResult(BeginObjectPlacementCommand(LegacyCommandId.ObjectsNewShape)));
+            _ => OpenShapesWindowAsync());
         handlers[LegacyCommandId.ObjectsDeleteShape] = Handler(
             () => FeatureState(WorldFeatureKind.Obstacle),
             async _ => await RemoveSelectedFeatureCommandAsync());
@@ -753,7 +828,7 @@ public sealed partial class MainWindow : Window
             async _ => await AddRandomObstaclesCommandAsync(10));
         handlers[LegacyCommandId.ObjectsDeleteTenRandomShapes] = Handler(
             EngineState,
-            async _ => await DeleteRandomObstaclesCommandAsync(10));
+            async _ => await DeleteRandomObstaclesCommandAsync());
         handlers[LegacyCommandId.ObjectsHorizontalMaze] = MazeHandler(MazePreset.Horizontal);
         handlers[LegacyCommandId.ObjectsVerticalMaze] = MazeHandler(MazePreset.Vertical);
         handlers[LegacyCommandId.ObjectsSprial] = MazeHandler(MazePreset.Spiral);
@@ -774,7 +849,7 @@ public sealed partial class MainWindow : Window
             async _ => await ShowSelectedPhylogenyAsync());
         handlers[LegacyCommandId.RobotChangeColor] = Handler(
             SelectedRobotState,
-            async _ => await ChangeSelectedSpeciesColorAsync());
+            async _ => await ChangeSelectedRobotColorAsync());
         handlers[LegacyCommandId.RobotOpenConsole] = Handler(
             SelectedRobotState,
             async _ => await ShowSelectedRobotConsoleAsync());
@@ -785,11 +860,11 @@ public sealed partial class MainWindow : Window
             SelectedRobotState,
             async _ => await SaveSelectedDnaCommandAsync());
         handlers[LegacyCommandId.RobotMakeNewSpecies] = Handler(
-            SelectedRobotState,
+            () => LegacyCommandState.Available,
             async _ => await MakeSelectedNewSpeciesAsync());
         handlers[LegacyCommandId.RobotSelectEntireOrganism] = Handler(
             SelectedRobotState,
-            _ => Task.FromResult(SelectEntireOrganism()));
+            async _ => await SelectEntireOrganismAsync());
         handlers[LegacyCommandId.RobotSaveEntireOrganism] = Handler(
             SelectedRobotState,
             async _ => await SaveEntireOrganismAsync());
@@ -797,8 +872,8 @@ public sealed partial class MainWindow : Window
             EngineState,
             _ => FindBestRobotAsync());
         handlers[LegacyCommandId.RecordingSafemodeBackup] = Handler(
-            () => new LegacyCommandState(true, _safemodeBackup),
-            async _ => await ToggleSafemodeBackupAsync());
+            () => LegacyCommandState.Available,
+            _ => Task.FromResult(OpenSafeModeBackup()));
         handlers[LegacyCommandId.RecordingRecoverLatestAutosave] = Handler(
             () => new LegacyCommandState(
                 _session is not null && RecoveryArtifactPath() is not null,
@@ -822,8 +897,10 @@ public sealed partial class MainWindow : Window
         handlers[LegacyCommandId.EGridMedium] = EnergyGridSizeHandler(EnergyGridSize.Medium);
         handlers[LegacyCommandId.EGridSmall] = EnergyGridSizeHandler(EnergyGridSize.Small);
         handlers[LegacyCommandId.HelpDna] = HelpHandler(LegacyCommandId.HelpDna);
-        handlers[LegacyCommandId.HelpRobotTagInformation] = HelpHandler(LegacyCommandId.HelpRobotTagInformation);
-        handlers[LegacyCommandId.HelpSurvivalInfo] = HelpHandler(LegacyCommandId.HelpSurvivalInfo);
+        handlers[LegacyCommandId.HelpRobotTagInformation] = Handler(EngineState, _ => CopyRobotTagReportAsync());
+        handlers[LegacyCommandId.HelpSurvivalInfo] = Handler(
+            () => ActiveStagedSurvival() is not null ? LegacyCommandState.Available : new(false, false, Visible: false),
+            _ => ShowSurvivalInfoAsync());
         handlers[LegacyCommandId.HelpAbout] = HelpHandler(LegacyCommandId.HelpAbout);
 
         return new LegacyCommandRouter(handlers);
@@ -969,14 +1046,37 @@ public sealed partial class MainWindow : Window
             : EnvironmentPlacement.Teleporter);
     }
 
+    private LegacyCommandResult OpenNewTeleporter()
+    {
+        if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        if (_navigationInFlight || _loadingSimulation)
+            return LegacyCommandResult.Failure("THE SIMULATION IS CHANGING");
+        _toolWindows.ShowOrActivate(NewTeleporterToolKey, () => new NewTeleporterWindow(
+            (dialog, options) => CreateNativeTeleporterAsync(dialog, session, options)));
+        return LegacyCommandResult.Success("NEW TELEPORTER OPEN");
+    }
+
+    private async Task CreateNativeTeleporterAsync(NewTeleporterWindow dialog, SimulationSession session, NativeTeleporterOptions options)
+    {
+        await _advanceGate.WaitAsync();
+        try
+        {
+            // A load that took the gate first closes the draft before queued edits run.
+            if (!dialog.IsVisible) return;
+            if (_navigationInFlight || !ReferenceEquals(session, _session))
+                throw new InvalidOperationException("The simulation is changing.");
+            await session.AddNativeTeleporterAsync(options);
+            _viewModel.Status = "TELEPORTER CREATED";
+        }
+        finally { _advanceGate.Release(); }
+    }
+
     private async Task<LegacyCommandResult> KillSelectedAsync()
     {
         if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
         if (_viewModel.SelectedOrganism is not { } organism)
             return LegacyCommandResult.Failure("SELECT A ROBOT FIRST");
-        await _session.RemoveAsync(organism.Slot, organism.Generation);
-        Viewport.SelectSlot(null);
-        return LegacyCommandResult.Success("ROBOT KILLED");
+        return await KillRobotsAsync(_session, [new OrganismKey(organism.Slot, organism.Generation)], false, "ROBOT KILLED");
     }
 
     private async Task<LegacyCommandResult> KillSelectedOrganismAsync()
@@ -985,16 +1085,43 @@ public sealed partial class MainWindow : Window
         var group = SelectedOrganismGroup();
         if (group.Count == 0) return LegacyCommandResult.Failure("SELECT A ROBOT FIRST");
         OrganismKey[] keys = [.. group.Select(value => new OrganismKey(value.Slot, value.Generation))];
-        await _session.RemoveManyAsync(keys, suppressDeathPoffs: true);
-        _viewModel.ClearSelection();
-        Viewport.SelectSlot(null);
-        return LegacyCommandResult.Success($"ORGANISM KILLED · {keys.Length:N0} BOT(S)");
+        return await KillRobotsAsync(_session, keys, true, $"ORGANISM KILLED · {keys.Length:N0} BOT(S)");
+    }
+
+    private async Task<LegacyCommandResult> KillRobotsAsync(
+        SimulationSession session, OrganismKey[] keys, bool suppressDeathPoffs, string status)
+    {
+        IReadOnlyList<DeathRecordSnapshot> removed = [];
+        if (_deadRecordingEnabled)
+            removed = await session.RemoveRecordingDeathsAsync(keys, suppressDeathPoffs, _excludeRepopulatingDead,
+                _globalSettings.Main.EffectiveFindBestWeight);
+        else if (suppressDeathPoffs)
+            await session.RemoveManyAsync(keys, suppressDeathPoffs: true);
+        else
+            await session.RemoveAsync(keys[0].Slot, keys[0].Generation);
+        if (!session.LatestSnapshot.PlayerBot.Enabled)
+        {
+            _viewModel.ClearSelection();
+            Viewport.SelectSlot(null);
+        }
+        if (removed.Count > 0)
+        {
+            await DeadRecordingGate.WaitAsync();
+            try
+            {
+                var (appended, error) = await AppendDeadRecordsAsync(removed);
+                if (!appended) status = $"{status} · {error ?? "DEAD RECORDING UNAVAILABLE"}";
+            }
+            finally { DeadRecordingGate.Release(); }
+        }
+        return LegacyCommandResult.Success(status);
     }
 
     private Task<LegacyCommandResult> OpenNewSimulationSetupAsync() => ReplaceSimulationAsync(openSetup: true);
 
     private async Task<LegacyCommandResult> ReplaceSimulationAsync(bool openSetup, WorldSetupOptions? editedSetup = null)
     {
+        if (_savingLastExit) return LegacyCommandResult.Failure("LAST SIMULATION IS BEING SAVED");
         if (_navigationInFlight) return LegacyCommandResult.Failure("NEW SIMULATION ALREADY OPENING");
         _navigationInFlight = true;
         _runTimer.Stop();
@@ -1006,6 +1133,7 @@ public sealed partial class MainWindow : Window
             var spare = _initialNativeGaussianSpare;
             var sunChange = _initialNativeSunChange;
             var caches = _initialNativeProcessCaches;
+            var mazeDimensions = _mazeDimensions;
             if (_session is not null)
             {
                 var context = await _session.ReadNativeProcessStateAsync();
@@ -1015,10 +1143,14 @@ public sealed partial class MainWindow : Window
             }
             if (openSetup)
             {
-                var setupWindow = new SetupWindow(_storage, spare, sunChange, caches);
+                var setupWindow = new SetupWindow(_storage, spare, sunChange, caches,
+                    allowLastExitResume: _startupArguments.Count == 0);
                 setupWindow.WorldCreated += options =>
                 {
-                    var replacement = new MainWindow(_startupArguments, options, _engineFactory, _storage);
+                    var replacement = new MainWindow(_startupArguments, options, _engineFactory, _storage, _launchSafeModeBackup)
+                    {
+                        _mazeDimensions = mazeDimensions,
+                    };
                     SetApplicationMainWindow(replacement);
                     replacement.Show();
                     setupWindow.Close();
@@ -1029,10 +1161,14 @@ public sealed partial class MainWindow : Window
             else
             {
                 var replacement = new MainWindow(_startupArguments,
-                    (editedSetup ?? CreateNextWorldSetup()) with { NativeGaussianSpare = spare, NativeSunChange = sunChange, NativeProcessCaches = caches }, _engineFactory, _storage);
+                    (editedSetup ?? CreateNextWorldSetup()) with { NativeGaussianSpare = spare, NativeSunChange = sunChange, NativeProcessCaches = caches }, _engineFactory, _storage, _launchSafeModeBackup)
+                {
+                    _mazeDimensions = mazeDimensions,
+                };
                 SetApplicationMainWindow(replacement);
                 replacement.Show();
             }
+            _skipLastExitCheckpoint = true;
             Close();
             return LegacyCommandResult.Success(openSetup ? "NEW SIMULATION SETUP" : "WORLD RESET");
         }
@@ -1063,27 +1199,35 @@ public sealed partial class MainWindow : Window
     private LegacyCommandResult QuitApplication()
     {
         Close();
-        return LegacyCommandResult.Success("QUIT");
+        return LegacyCommandResult.Success(_savingLastExit ? "SAVING LAST SIMULATION" : "QUIT");
     }
 
-    private async Task<LegacyCommandResult> SaveSimulationCommandAsync(string status, bool withoutMutations)
+    private async Task<LegacyCommandResult> SaveSimulationWithoutMutationsCommandAsync()
     {
-        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        var bytes = withoutMutations
-            ? await _session.SaveWithoutMutationsAsync()
-            : await _session.SaveAsync();
-        return await _storage.SaveSimulationAsync(this, bytes)
-            ? LegacyCommandResult.Success(status)
-            : LegacyCommandResult.Cancel();
+        if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        var format = await _storage.SaveSimulationWithMutationOptionsAsync(this, format =>
+            format == SimulationSaveFormat.Legacy
+                ? session.SaveLegacyWithoutMutationDetailsAsync()
+                : session.SaveWithoutMutationsAsync());
+        return format switch
+        {
+            SimulationSaveFormat.Legacy => LegacyCommandResult.Success("DARWINBOTS 2 SIMULATION SAVED WITHOUT MUTATION DETAILS"),
+            SimulationSaveFormat.Modern => LegacyCommandResult.Success("SAVED WITHOUT MUTATION SETTINGS"),
+            _ => LegacyCommandResult.Cancel(),
+        };
     }
 
     private async Task<LegacyCommandResult> SaveSimulationCommandAsync()
     {
-        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        var bytes = await _session.SaveAsync();
-        return await _storage.SaveSimulationAsync(this, bytes)
-            ? LegacyCommandResult.Success("SAVED")
-            : LegacyCommandResult.Cancel();
+        if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        var format = await _storage.SaveSimulationWithFormatAsync(this, format =>
+            format == SimulationSaveFormat.Legacy ? session.SaveLegacyAsync() : session.SaveAsync());
+        return format switch
+        {
+            SimulationSaveFormat.Legacy => LegacyCommandResult.Success("DARWINBOTS 2 SIMULATION SAVED"),
+            SimulationSaveFormat.Modern => LegacyCommandResult.Success("SAVED"),
+            _ => LegacyCommandResult.Cancel(),
+        };
     }
 
     private async Task<LegacyCommandResult> SaveNativeSimulationCommandAsync()
@@ -1104,37 +1248,21 @@ public sealed partial class MainWindow : Window
         return LegacyCommandResult.Success("LOADED");
     }
 
-    private async Task<LegacyCommandResult> ImportOrganismsCommandAsync()
+    private async Task<LegacyCommandResult> ImportOrganismCommandAsync()
     {
-        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        if (await _storage.OpenOrganismAsync(this) is { } organismPayload)
+        if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        if (await _storage.OpenOrganismAsync(this) is not { } organismPayload)
+            return LegacyCommandResult.Cancel();
+        try
         {
-            try
-            {
-                var imported = await _session.ImportOrganismAsync(organismPayload);
-                return LegacyCommandResult.Success($"IMPORTED ORGANISM · {imported:N0} BOT(S)");
-            }
-            catch (Exception error)
-            {
-                await HandleEngineErrorAsync(error, attemptRecovery: false);
-                return LegacyCommandResult.Failure(_viewModel.Status);
-            }
+            var imported = await session.ImportOrganismAsync(organismPayload);
+            return LegacyCommandResult.Success($"IMPORTED ORGANISM · {imported:N0} BOT(S)");
         }
-        var files = await _storage.OpenDnaFilesAsync(this);
-        if (files.Count == 0) return LegacyCommandResult.Cancel();
-        var warnings = new List<string>();
-        foreach (var file in files)
+        catch (Exception error)
         {
-            var species = new SpeciesImport(
-                Path.GetFileNameWithoutExtension(file.Name), file.Content, false, 0xffd07a2d,
-                1, 1_000, 0, false, 1f) { MutationProfile = file.MutationProfile, DnaPath = file.LocalPath };
-            var report = await _session.ImportSpeciesAsync(species);
-            RegisterInsertionSpecies(species);
-            warnings.AddRange(report.CompatibilityWarnings);
+            await HandleEngineErrorAsync(error, attemptRecovery: false);
+            return LegacyCommandResult.Failure(_viewModel.Status);
         }
-        return warnings.Count == 0
-            ? LegacyCommandResult.Success($"IMPORTED {files.Count} BOT FILE(S)")
-            : LegacyCommandResult.Success($"DNA COMPATIBILITY · {string.Join(" · ", warnings.Distinct())}");
     }
 
     private async Task<LegacyCommandResult> ToggleLegacyRestrictionAsync(bool fixing)
@@ -1149,18 +1277,45 @@ public sealed partial class MainWindow : Window
             : $"ASEXUAL REPRODUCTION · {(asexualAllowed ? "ALLOWED" : "BLOCKED FOR NON-REPOPULATING SPECIES")}");
     }
 
-    private LegacyCommandResult ToggleAutomaticTagging()
+    private async Task<LegacyCommandResult> TagRobotsByNameAsync()
     {
-        _automaticTagByName = !_automaticTagByName;
-        return LegacyCommandResult.Success($"AUTOMATIC NAME TAGS · {(_automaticTagByName ? "ON" : "OFF")}");
+        if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        var name = new LegacyValueWindow("Automatically Tag by Name", "Founder name", "", "Enter the exact robot founder name.");
+        await name.ShowDialog(this);
+        if (!name.Accepted || name.RawValue.Length == 0) return LegacyCommandResult.Cancel();
+
+        var tag = new LegacyValueWindow("Automatically Tag by Name", "New tag", "", "Tags can contain up to 45 characters. Apply a blank tag to clear it.");
+        await tag.ShowDialog(this);
+        if (!tag.Accepted || _session != session) return LegacyCommandResult.Cancel();
+
+        var count = await session.TagOrganismsByNameAsync(name.RawValue, tag.RawValue);
+        return LegacyCommandResult.Success(count == 0 ? "NO ROBOTS MATCH THAT NAME" : $"TAGGED · {count:N0} ROBOT(S)");
     }
 
     private async Task<LegacyCommandResult> ToggleAutomaticForkingAsync()
     {
-        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        _liveEnvironment = _liveEnvironment with { AutoSpeciation = !_liveEnvironment.AutoSpeciation };
-        await _session.UpdateEnvironmentAsync(_liveEnvironment);
-        return LegacyCommandResult.Success($"AUTOMATIC FORKING · {(_liveEnvironment.AutoSpeciation ? "ON" : "OFF")}");
+        if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        var enabled = !_liveEnvironment.AutoSpeciation;
+        var threshold = _liveEnvironment.SpeciationGeneticDistancePercent;
+        if (enabled)
+        {
+            const int maximumPercent = 10_000;
+            var culture = DesktopUiPreferences.Culture;
+            var maximum = maximumPercent.ToString("N0", culture);
+            var dialog = new LegacyValueWindow("Automatic Forking", "Mutation distance threshold (%)",
+                threshold.ToString(culture), $"Enter the percentage of DNA mutations that triggers a new species, from 0 to {maximum}.");
+            await dialog.ShowDialog(this);
+            if (!dialog.Accepted) return LegacyCommandResult.Cancel();
+            if (!decimal.TryParse(dialog.Value, NumberStyles.Number, culture, out var value)
+                || value is < 0 or > maximumPercent)
+                return LegacyCommandResult.Failure($"MUTATION DISTANCE MUST BE 0–{maximum}%");
+            threshold = (float)value;
+        }
+
+        var update = _liveEnvironment with { AutoSpeciation = enabled, SpeciationGeneticDistancePercent = threshold };
+        await session.UpdateEnvironmentAsync(update);
+        _liveEnvironment = update;
+        return LegacyCommandResult.Success($"AUTOMATIC FORKING · {(enabled ? "ON" : "OFF")}");
     }
 
     private async Task<LegacyCommandResult> OpenPlayerBotSettingsAsync()
@@ -1184,40 +1339,37 @@ public sealed partial class MainWindow : Window
     {
         if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
         var next = !_playerBotEnabled;
-        if (next && SelectedRobotKey() is null)
-            return LegacyCommandResult.Failure("SELECT A ROBOT BEFORE ENABLING PLAYERBOT");
         _playerBotBindings = _session.LatestSnapshot.PlayerBot.Bindings.Count > 0
             ? _session.LatestSnapshot.PlayerBot.Bindings
             : _playerBotBindings;
         await _session.ConfigurePlayerBotAsync(new PlayerBotConfig(next, SelectedRobotKey(), _playerBotBindings));
         _playerBotEnabled = next;
+        if (next)
+            await SynchronizePlayerBotTargetsAsync();
+        else
+            _session.SetPlayerBotPointer(null);
         return LegacyCommandResult.Success($"PLAYERBOT MODE · {(next ? "ON · MAPPED KEYS WRITE AFTER SENSE CLEAR" : "OFF")}");
     }
 
-    private async void PlayerBot_KeyDown(object? sender, Avalonia.Input.KeyEventArgs e)
+    private async Task UpdatePlayerBotKeyAsync(Avalonia.Input.KeyEventArgs e, bool pressed)
     {
-        if (!_playerBotEnabled || _session is null || SelectedRobotKey() is not { } focus) return;
+        if (!_playerBotEnabled || _session is not { } session) return;
         var keyCode = (int)e.Key;
-        if (!_session.LatestSnapshot.PlayerBot.Bindings.Any(binding => binding.KeyCode == keyCode)
+        if (!session.LatestSnapshot.PlayerBot.Bindings.Any(binding => binding.KeyCode == keyCode)
             && !_playerBotBindings.Any(binding => binding.KeyCode == keyCode)) return;
-        await _session.SetPlayerBotKeyAsync(focus, keyCode, pressed: true);
         e.Handled = true;
-    }
-
-    private async void PlayerBot_KeyUp(object? sender, Avalonia.Input.KeyEventArgs e)
-    {
-        if (!_playerBotEnabled || _session is null || SelectedRobotKey() is not { } focus) return;
-        var keyCode = (int)e.Key;
-        if (!_session.LatestSnapshot.PlayerBot.Bindings.Any(binding => binding.KeyCode == keyCode)
-            && !_playerBotBindings.Any(binding => binding.KeyCode == keyCode)) return;
-        await _session.SetPlayerBotKeyAsync(focus, keyCode, pressed: false);
-        e.Handled = true;
+        await session.SetPlayerBotKeyStateAsync(keyCode, pressed);
     }
 
     private OrganismKey? SelectedRobotKey() =>
         _viewModel.SelectedOrganism is { } organism
             ? new OrganismKey(organism.Slot, organism.Generation)
             : null;
+
+    private Task SynchronizePlayerBotTargetsAsync() =>
+        _playerBotEnabled && _session is { } session
+            ? session.SetPlayerBotTargetsAsync(SelectedRobotKey(), _playerBotHighlights.ToArray())
+            : Task.CompletedTask;
 
     private Task<LegacyCommandResult> OpenEyeDesignerAsync()
     {
@@ -1242,18 +1394,13 @@ public sealed partial class MainWindow : Window
 
     private async Task<LegacyCommandResult> OpenRgbMonitorSettingsAsync()
     {
-        if (_session is null || SelectedRobotKey() is not { } focus)
-            return LegacyCommandResult.Failure("NO ROBOT SELECTED");
         var dialog = new RgbMemoryMonitorWindow(
-            focus,
-            _rgbMemorySettings,
-            settings =>
-            {
-                _rgbMemorySettings = settings;
-                if (_rgbMemoryMonitorEnabled) Viewport.SetRgbMemoryMonitor(settings);
-            },
-            closeOnApply: true);
-        dialog.SetSnapshot(_session.LatestSnapshot);
+            SelectedRobotKey(),
+            _rgbMemorySettings ?? RgbMemoryMonitorSettings.LegacyDefaults,
+            ApplyRgbMonitorSettings,
+            closeOnApply: true,
+            storage: _storage);
+        if (_session is { } session) dialog.SetSnapshot(session.LatestSnapshot);
         await dialog.ShowDialog(this);
         return dialog.Accepted
             ? LegacyCommandResult.Success("RGB SETTINGS APPLIED")
@@ -1264,39 +1411,34 @@ public sealed partial class MainWindow : Window
     {
         if (_rgbMemoryMonitorEnabled)
         {
-            CloseRgbMonitor();
+            _rgbMemoryMonitorEnabled = false;
+            Viewport.SetRgbMemoryMonitor(null);
+            _toolWindows.Close(RgbMonitorToolKey);
             return LegacyCommandResult.Success("RGB MEMORY MONITOR · OFF");
         }
-        if (SelectedRobotKey() is not { } focus) return LegacyCommandResult.Failure("NO ROBOT SELECTED");
-        Viewport.SetRgbMemoryMonitor(_rgbMemorySettings);
-        var window = _toolWindows.ShowOrActivate(RgbMonitorToolKey, () =>
-        {
-            var tool = new RgbMemoryMonitorWindow(
-                focus,
-                _rgbMemorySettings,
-                settings =>
-                {
-                    _rgbMemorySettings = settings;
-                    Viewport.SetRgbMemoryMonitor(settings);
-                });
-            tool.Closed += (_, _) =>
-            {
-                _rgbMemoryMonitorEnabled = false;
-                Viewport.SetRgbMemoryMonitor(null);
-                RefreshLegacyMenuStates();
-            };
-            return tool;
-        });
-        window.SetSnapshot(_session!.LatestSnapshot);
+        if (_rgbMemorySettings is not { } settings)
+            return LegacyCommandResult.Failure("CONFIGURE RGB MONITOR SETTINGS FIRST");
         _rgbMemoryMonitorEnabled = true;
+        Viewport.SetRgbMemoryMonitor(settings);
+        if (_session is { } session && SelectedRobotKey() is { } focus)
+        {
+            var window = _toolWindows.ShowOrActivate(RgbMonitorToolKey,
+                () => new RgbMemoryMonitorWindow(focus, settings, ApplyRgbMonitorSettings));
+            window.SetSnapshot(session.LatestSnapshot);
+        }
         return LegacyCommandResult.Success("RGB MEMORY MONITOR · ON");
     }
 
-    private void CloseRgbMonitor()
+    private void ApplyRgbMonitorSettings(RgbMemoryMonitorSettings settings)
     {
-        _rgbMemoryMonitorEnabled = false;
-        Viewport.SetRgbMemoryMonitor(null);
-        _toolWindows.Close(RgbMonitorToolKey);
+        _rgbMemorySettings = settings;
+        if (_rgbMemoryMonitorEnabled) Viewport.SetRgbMemoryMonitor(settings);
+        if (_session is { } session && OwnedWindows.OfType<RgbMemoryMonitorWindow>()
+            .FirstOrDefault(window => !window.CloseOnApply) is { } inspector)
+        {
+            inspector.SetSettings(settings);
+            inspector.SetSnapshot(session.LatestSnapshot);
+        }
     }
 
     private async Task<LegacyCommandResult> ImportBackgroundAsync()
@@ -1313,27 +1455,30 @@ public sealed partial class MainWindow : Window
         if (files.Count == 0) return LegacyCommandResult.Cancel();
         await using var stream = await files[0].OpenReadAsync();
         Viewport.SetBackgroundImage(new Avalonia.Media.Imaging.Bitmap(stream));
-        _hasBackgroundImage = true;
         return LegacyCommandResult.Success($"BACKGROUND · {files[0].Name}");
     }
 
     private LegacyCommandResult RemoveBackground()
     {
         Viewport.SetBackgroundImage(null);
-        _hasBackgroundImage = false;
         return LegacyCommandResult.Success("BACKGROUND REMOVED");
     }
 
     private async Task<LegacyCommandResult> ToggleShotDecayAsync(bool energy)
     {
-        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        var shots = energy
-            ? _liveEnvironment.Shots with { EnergyShotsDoNotDecay = !_liveEnvironment.Shots.EnergyShotsDoNotDecay }
-            : _liveEnvironment.Shots with { WasteShotsDoNotDecay = !_liveEnvironment.Shots.WasteShotsDoNotDecay };
-        _liveEnvironment = _liveEnvironment with { Shots = shots };
-        await _session.UpdateEnvironmentAsync(_liveEnvironment);
-        var enabled = energy ? shots.EnergyShotsDoNotDecay : shots.WasteShotsDoNotDecay;
-        return LegacyCommandResult.Success($"{(energy ? "ENERGY" : "WASTE")} SHOT DECAY · {(enabled ? "OFF" : "ON")}");
+        await _advanceGate.WaitAsync();
+        try
+        {
+            if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+            var noDecay = energy ? !_liveEnvironment.Shots.EnergyShotsDoNotDecay
+                : !_liveEnvironment.Shots.WasteShotsDoNotDecay;
+            await session.SetShotDecayAsync(energy, noDecay);
+            var shots = energy ? _liveEnvironment.Shots with { EnergyShotsDoNotDecay = noDecay }
+                : _liveEnvironment.Shots with { WasteShotsDoNotDecay = noDecay };
+            _liveEnvironment = _liveEnvironment with { Shots = shots };
+            return LegacyCommandResult.Success($"{(energy ? "ENERGY" : "WASTE")} SHOT DECAY · {(noDecay ? "OFF" : "ON")}");
+        }
+        finally { _advanceGate.Release(); }
     }
 
     private async Task<LegacyCommandResult> ToggleTiesAsync()
@@ -1347,27 +1492,58 @@ public sealed partial class MainWindow : Window
     private async Task<LegacyCommandResult> SaveLivingSnapshotAsync()
     {
         if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        var snapshot = _session.LatestSnapshot;
-        var suggestedFileName = $"darwinbots-living-{snapshot.Tick}.snp";
-        var dna = new Dictionary<OrganismKey, string>();
-        foreach (var organism in snapshot.Organisms)
-            dna[new OrganismKey(organism.Slot, organism.Generation)] =
-                await _session.ExportDnaAsync(organism.Slot, organism.Generation);
-        var format = LegacyRecordingSerializer.Select(LegacyCommandId.RecordingSnapshotLiving).Format;
-        var bytes = LegacyDnaText.Encode(LegacyRecordingSerializer.SerializeLiving(snapshot, dna, format));
-        var saved = await _storage.SaveLivingSnapshotAsync(this, suggestedFileName, async stream =>
-            await stream.WriteAsync(bytes));
+        var capture = await _session.CaptureLivingSnpAsync(_globalSettings.Main.EffectiveFindBestWeight);
+        var suggestedFileName = $"darwinbots-living-{capture.Tick}.snp";
+        var bytes = LegacyDnaText.Encode(Db2GenomeRecordFile.EncodeGenomeRecords(capture.Records, includeHeader: true));
+        var saved = await _storage.SaveLivingSnapshotAsync(this, suggestedFileName, bytes, async () =>
+            await ChooseLivingMutationHistoryAsync()
+                ? LegacyDnaText.Encode(Db2GenomeRecordFile.EncodeMutationHistory(MutationHistories(capture.Records), includeHeader: true))
+                : null);
         return saved
             ? LegacyCommandResult.Success($"LIVING SNAPSHOT · {suggestedFileName}")
             : LegacyCommandResult.Cancel();
     }
 
-    private void SynchronizeRecordingPreferences(bool resetCorpseCursor = false)
+    private Task<bool> ChooseLivingMutationHistoryAsync()
+    {
+        var dialog = new Window
+        {
+            Title = "Snapshot of the living",
+            Width = 430,
+            SizeToContent = SizeToContent.Height,
+            CanResize = false,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+        };
+        var withoutHistory = new Button { Content = "NO", IsCancel = true };
+        var withHistory = new Button { Content = "YES", IsDefault = true };
+        withoutHistory.Click += (_, _) => dialog.Close(false);
+        withHistory.Click += (_, _) => dialog.Close(true);
+        dialog.Content = new StackPanel
+        {
+            Margin = new Thickness(18),
+            Spacing = 16,
+            Children =
+            {
+                new TextBlock { Text = "Save mutation history alongside this snapshot?" },
+                new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    HorizontalAlignment = HorizontalAlignment.Right,
+                    Spacing = 8,
+                    Children = { withoutHistory, withHistory },
+                },
+            },
+        };
+        return dialog.ShowDialog<bool>(this);
+    }
+
+    private static IEnumerable<(ulong Id, IReadOnlyList<string> Log)> MutationHistories(
+        IEnumerable<DeathRecordSnapshot> records) => records.Select(record => (record.Id, record.MutationLog));
+
+    private void SynchronizeRecordingPreferences()
     {
         var recording = _liveEnvironment.Recording ?? new();
         SynchronizeSafemodePreference(recording.SafeModeBackup);
-        if (resetCorpseCursor || _deadRecordingEnabled != recording.DeadSnapshotEnabled)
-            _recordedCorpseCount = _session?.LatestSnapshot.Corpses.Count ?? 0;
         _deadRecordingEnabled = recording.DeadSnapshotEnabled;
         _excludeRepopulatingDead = recording.ExcludeRepopulatingRobots;
     }
@@ -1397,32 +1573,29 @@ public sealed partial class MainWindow : Window
         return LegacyCommandResult.Success($"REPOPULATING DEAD · {(_excludeRepopulatingDead ? "EXCLUDED" : "INCLUDED")}");
     }
 
-    private async Task RecordDeadSnapshotAsync(EngineSnapshot snapshot)
+    private async Task RecordSimulationDeathsAsync(IReadOnlyList<DeathRecordSnapshot> deaths)
     {
-        if (!_deadRecordingEnabled)
-        {
-            _recordedCorpseCount = snapshot.Corpses.Count;
-            return;
-        }
-        if (snapshot.Corpses.Count < _recordedCorpseCount) _recordedCorpseCount = 0;
-        if (snapshot.Corpses.Count == _recordedCorpseCount) return;
-        var corpses = snapshot.Corpses.Skip(_recordedCorpseCount)
-            .Where(corpse => !_excludeRepopulatingDead || !corpse.Repopulating)
-            .ToArray();
-        if (!corpses.Any(corpse => !string.IsNullOrWhiteSpace(corpse.Dna)))
-        {
-            _recordedCorpseCount = snapshot.Corpses.Count;
-            return;
-        }
+        if (deaths.Count == 0) return;
+        await DeadRecordingGate.WaitAsync();
         try
         {
-            var appended = await _storage.AppendDeadSnapshotAsync(async stream =>
-            {
-                var format = LegacyRecordingSerializer.Select(LegacyCommandId.RecordingDeadEnable).Format;
-                var text = LegacyRecordingSerializer.SerializeDead(corpses, snapshot.Species, stream.Length == 0, format);
-                await stream.WriteAsync(LegacyDnaText.Encode(text));
-            });
-            if (appended) _recordedCorpseCount = snapshot.Corpses.Count;
+            var (appended, error) = await AppendDeadRecordsAsync(deaths);
+            if (!appended) _viewModel.Status = error ?? "DEAD RECORDING UNAVAILABLE";
+        }
+        finally { DeadRecordingGate.Release(); }
+    }
+
+    private async Task<(bool Appended, string? Error)> AppendDeadRecordsAsync(
+        IReadOnlyList<DeathRecordSnapshot> records)
+    {
+        try
+        {
+            var appended = await _storage.AppendDeadSnapshotAsync(
+                async stream => await stream.WriteAsync(LegacyDnaText.Encode(
+                    Db2GenomeRecordFile.EncodeGenomeRecords(records, includeHeader: stream.Length == 0))),
+                async stream => await stream.WriteAsync(LegacyDnaText.Encode(
+                    Db2GenomeRecordFile.EncodeMutationHistory(MutationHistories(records), includeHeader: stream.Length == 0))));
+            return (appended, null);
         }
         catch (Exception error)
         {
@@ -1431,12 +1604,41 @@ public sealed partial class MainWindow : Window
                 await ApplyRecordingPreferencesAsync((_liveEnvironment.Recording ?? new()) with { DeadSnapshotEnabled = false });
             }
             catch { /* The recording error remains the useful diagnostic when the engine also fails. */ }
-            _viewModel.Status = $"DEAD RECORDING FAILED · {error.Message}";
+            return (false, $"DEAD RECORDING FAILED · {error.Message}");
         }
     }
 
     private Task<LegacyCommandResult> ShowDocumentAsync(LegacyHelpTopic topic) =>
         ShowDocumentAsync(topic.Title, topic.Section, topic.Content);
+
+    private LocalModeSnapshot? ActiveStagedSurvival() => _session?.LatestSnapshot.LocalMode is
+    {
+        Kind: LocalModeKind.SimpleSurvival or LocalModeKind.EcoSurvival,
+        Status: LocalModeStatus.Running or LocalModeStatus.RoundComplete or LocalModeStatus.Completed,
+        Evolution: not null,
+    } mode ? mode : null;
+
+    private async Task<LegacyCommandResult> ShowSurvivalInfoAsync()
+    {
+        if (ActiveStagedSurvival() is not { Evolution: { } evolution } mode)
+            return LegacyCommandResult.Failure("STAGED SURVIVAL IS NOT ACTIVE");
+
+        var normalized = mode.Configuration?.StagedEvolution?.NormalizeDnaSize == true;
+        string DnaSize(uint? size) => normalized ? size?.ToString() ?? "N/A" : "N/A";
+        var lines = new List<string>
+        {
+            $"Target DNA size: {DnaSize(evolution.CurrentDnaSize)}",
+            $"Next DNA size change: {DnaSize(evolution.TargetDnaSize)}",
+            $"Reduction unit: {evolution.ReductionUnit}",
+            $"On/Off cycles: {evolution.HideCycles}",
+        };
+        if (evolution.Phase == "evolving")
+            lines.Add($"Current Handicap: {evolution.RawHandicap} - {evolution.InverseHandicap} = {evolution.Handicap}");
+
+        var section = mode.Kind == LocalModeKind.EcoSurvival ? "Eco Survival" : "Simple Survival";
+        await new LegacyDocumentWindow("Survival information", section, string.Join('\n', lines)).ShowDialog(this);
+        return LegacyCommandResult.Success("SURVIVAL INFORMATION");
+    }
 
     private Task<LegacyCommandResult> ShowDocumentAsync(string title, string section, string content)
     {
@@ -1444,6 +1646,15 @@ public sealed partial class MainWindow : Window
         var window = _toolWindows.ShowOrActivate(key, () => new LegacyDocumentWindow(title, section, content));
         window.SetDocument(title, section, content);
         return Task.FromResult(LegacyCommandResult.Success(title.ToUpperInvariant()));
+    }
+
+    private async Task<LegacyCommandResult> CopyRobotTagReportAsync()
+    {
+        if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        if (Clipboard is not { } clipboard) return LegacyCommandResult.Failure("CLIPBOARD UNAVAILABLE");
+
+        await clipboard.SetTextAsync(await session.ReadRobotTagReportAsync());
+        return LegacyCommandResult.Success("ROBOT TAG INFORMATION COPIED");
     }
 
     private async Task<LegacyCommandResult> OpenSpeciesSettingsCommandAsync()
@@ -1477,38 +1688,64 @@ public sealed partial class MainWindow : Window
         return await ReplaceSimulationAsync(false, startNew);
     }
 
-    private async Task<LegacyCommandResult> OpenAdvancedSettingsCommandAsync(int selectedTab = 0)
+    private async Task<LegacyCommandResult> OpenAdvancedSettingsCommandAsync(int selectedTab)
     {
-        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        var dialog = new AdvancedSettingsWindow(_liveEnvironment, _session.LatestSnapshot, selectedTab);
-        await dialog.ShowDialog(this);
-        if (!dialog.Accepted) return LegacyCommandResult.Cancel();
-        await _session.UpdateEnvironmentAsync(dialog.Update);
-        await _session.UpdateMutationSettingsAsync(dialog.MutationUpdate);
-        _liveEnvironment = dialog.Update;
-        SynchronizeRecordingPreferences();
-        RefreshEnvironmentControls();
-        return LegacyCommandResult.Success("LIVE SETTINGS APPLIED");
+        if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        if (_editingLiveSettings) return LegacyCommandResult.Failure("LIVE SETTINGS ALREADY OPEN");
+        _editingLiveSettings = true;
+        try
+        {
+            var costs = (await session.ReadConfigurationAsync())?.Costs ?? _globalSettings.Costs;
+            var dialog = new AdvancedSettingsWindow(_liveEnvironment, session.LatestSnapshot, selectedTab, costs);
+            await dialog.ShowDialog(this);
+            if (!dialog.Accepted) return LegacyCommandResult.Cancel();
+            var costUpdate = dialog.CostUpdate;
+            if (dialog.LiveSettingsEdited)
+            {
+                var update = dialog.Update;
+                await session.UpdateLiveSettingsAsync(update, dialog.MutationUpdate, costUpdate);
+                _liveEnvironment = update;
+                SynchronizeRecordingPreferences();
+                RefreshEnvironmentControls();
+            }
+            else if (costUpdate is not null)
+            {
+                await session.UpdateCostSettingsAsync(costUpdate);
+            }
+            if (costUpdate is not null)
+                _activeCostMultiplier = (await session.ReadConfigurationAsync())?.GlobalCostMultiplier ?? costUpdate.GlobalMultiplier;
+            return LegacyCommandResult.Success("LIVE SETTINGS APPLIED");
+        }
+        finally
+        {
+            _editingLiveSettings = false;
+        }
     }
 
     private async Task<LegacyCommandResult> OpenGlobalMutationRatesCommandAsync()
     {
         if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        var snapshot = _session.LatestSnapshot;
-        var dialog = new MutationRatesWindow(snapshot.MutationSettings.Profile);
+        var session = _session;
+        var configuration = await session.ReadConfigurationAsync();
+        var advanced = configuration?.AdvancedMutation ?? _globalSettings.AdvancedMutation;
+        var dialog = new MutationRatesWindow(session.LatestSnapshot.MutationSettings, advanced);
         await dialog.ShowDialog(this);
         if (!dialog.Accepted) return LegacyCommandResult.Cancel();
-        var speciesRates = snapshot.Species
-            .Select((species, index) => new SpeciesMutationRateUpdate((uint)index, species.MutationRate))
-            .ToArray();
-        var update = new MutationSettingsUpdate(
-            snapshot.MutationSettings.Enabled,
-            snapshot.MutationSettings.GlobalMultiplier,
-            speciesRates)
+        var update = dialog.ReadGlobalMutationUpdate();
+        var oscillation = dialog.ReadOscillation(advanced);
+        // Native readback already includes the main epigenetic factors.
+        var main = configuration is null ? _globalSettings.Main : new GlobalMainSettings();
+        await session.UpdateGlobalMutationSettingsAsync(update, oscillation == advanced ? null : oscillation, main);
+        _globalSettings = _globalSettings with { AdvancedMutation = dialog.ReadOscillation(_globalSettings.AdvancedMutation) };
+        _setup = _setup with
         {
-            Profile = dialog.Profile,
+            MutationSettings = _setup.MutationSettings with
+            {
+                Enabled = update.Enabled,
+                GlobalMultiplier = update.GlobalMultiplier,
+                Profile = update.Profile ?? _setup.MutationSettings.Profile,
+            },
         };
-        await _session.UpdateMutationSettingsAsync(update);
         return LegacyCommandResult.Success("GLOBAL MUTATION RATES APPLIED");
     }
 
@@ -1575,6 +1812,7 @@ public sealed partial class MainWindow : Window
         GlobalSettings = _globalSettings,
         Recording = _liveEnvironment.Recording ?? new(),
         ShapesVisible = _liveEnvironment.ShapesVisible ?? _setup.ShapesVisible,
+        ShapeDrift = _shapeDrift,
     };
 
     private async Task<LegacyCommandResult> ShowSelectedRobotInfoAsync()
@@ -1614,13 +1852,12 @@ public sealed partial class MainWindow : Window
         return Task.FromResult(LegacyCommandResult.Success("PHILOGENY OPEN"));
     }
 
-    private async Task<LegacyCommandResult> ChangeSelectedSpeciesColorAsync()
+    private async Task<LegacyCommandResult> ChangeSelectedRobotColorAsync()
     {
         var organism = _viewModel.SelectedOrganism!;
         var session = _session!;
-        var species = session.LatestSnapshot.Species.ElementAtOrDefault((int)organism.Species);
         var dialog = new RobotColorEditorWindow(
-            species?.Color ?? organism.Phenotype.Color,
+            organism.Phenotype.Color,
             async edit =>
             {
                 if (edit.WriteToDna)
@@ -1632,11 +1869,11 @@ public sealed partial class MainWindow : Window
                         RobotColorDna.Apply(dna, edit.Color));
                 }
 
-                await session.SetSpeciesColorAsync(organism.Species, edit.Color);
+                await session.SetOrganismColorAsync(organism.Slot, organism.Generation, edit.Color);
             });
         await dialog.ShowDialog(this);
         if (!dialog.Accepted) return LegacyCommandResult.Cancel();
-        var status = dialog.WriteToDna ? "SPECIES COLOR + DNA METADATA" : "SPECIES COLOR";
+        var status = dialog.WriteToDna ? "ROBOT COLOR + DNA METADATA" : "ROBOT COLOR";
         return LegacyCommandResult.Success($"{status} · {dialog.PreviewHex}");
     }
 
@@ -1672,16 +1909,13 @@ public sealed partial class MainWindow : Window
 
     private async Task<LegacyCommandResult> MakeSelectedNewSpeciesAsync()
     {
-        var organism = _viewModel.SelectedOrganism!;
-        var source = _session!.LatestSnapshot.Species.ElementAtOrDefault((int)organism.Species);
-        var dialog = new LegacyValueWindow("Make New Species", "New species name", $"{source?.Name ?? "Species"} descendant", "Only the selected robot moves to the new species; its DNA and current state are preserved.");
-        await dialog.ShowDialog(this);
-        if (!dialog.Accepted) return LegacyCommandResult.Cancel();
-        if (string.IsNullOrWhiteSpace(dialog.Value)) return LegacyCommandResult.Failure("SPECIES NAME IS REQUIRED");
-        var sourceColor = source?.Color ?? organism.Phenotype.Color;
-        var color = 0xff000000 | (((sourceColor & 0x00ffffff) + 0x00130d17) & 0x00ffffff);
-        await _session.MakeNewSpeciesAsync(organism.Slot, organism.Generation, dialog.Value, color);
-        return LegacyCommandResult.Success($"NEW SPECIES · {dialog.Value.ToUpperInvariant()}");
+        if (_session is not { } session || _viewModel.SelectedOrganism is not { } organism)
+            return LegacyCommandResult.Cancel();
+        if (organism.IsCorpse) return LegacyCommandResult.Failure("A CORPSE CANNOT START A NEW SPECIES");
+        var dialog = new LegacyConfirmationWindow("Make New Species", "Start new species using this robot?");
+        if (!await dialog.ShowDialog<bool>(this)) return LegacyCommandResult.Cancel();
+        var name = await session.ForkRobotAndDescendantsAsync(organism.Slot, organism.Generation);
+        return LegacyCommandResult.Success($"NEW SPECIES · {name.ToUpperInvariant()}");
     }
 
     private IReadOnlyList<OrganismSnapshot> SelectedOrganismGroup()
@@ -1711,13 +1945,15 @@ public sealed partial class MainWindow : Window
             .ToArray();
     }
 
-    private LegacyCommandResult SelectEntireOrganism()
+    private async Task<LegacyCommandResult> SelectEntireOrganismAsync()
     {
         var group = SelectedOrganismGroup();
         var selected = _viewModel.SelectedOrganism!;
-        Viewport.SelectKeys(
-            group.Select(value => new OrganismKey(value.Slot, value.Generation)),
-            new OrganismKey(selected.Slot, selected.Generation));
+        if (!_playerBotEnabled)
+            _playerBotHighlights.Clear();
+        _playerBotHighlights.UnionWith(group.Select(value => new OrganismKey(value.Slot, value.Generation)));
+        Viewport.SelectKeys(_playerBotHighlights, new OrganismKey(selected.Slot, selected.Generation));
+        await SynchronizePlayerBotTargetsAsync();
         return LegacyCommandResult.Success($"ORGANISM SELECTED · {group.Count:N0} BOT(S)");
     }
 
@@ -1741,10 +1977,7 @@ public sealed partial class MainWindow : Window
         if (_session is null || _viewModel.SelectedOrganism is not { } organism)
             return LegacyCommandResult.Failure("SELECT A ROBOT FIRST");
         var file = await _session.ExportRobotFileAsync(organism.Slot, organism.Generation);
-        var species = organism.Species < _session.LatestSnapshot.Species.Count
-            ? _session.LatestSnapshot.Species[(int)organism.Species].Name
-            : $"Robot-{organism.Slot}-{organism.Generation}";
-        var suggestedName = _automaticTagByName ? $"{species}.txt" : $"Robot-{organism.Slot}-{organism.Generation}.txt";
+        var suggestedName = $"Robot-{organism.Slot}-{organism.Generation}.txt";
         return await _storage.SaveDnaAsync(this, suggestedName, file.Dna, file.MutationProfile)
             ? LegacyCommandResult.Success("ROBOT DNA SAVED")
             : LegacyCommandResult.Cancel();
@@ -1757,79 +1990,207 @@ public sealed partial class MainWindow : Window
         if (result.Restarted) {
             _viewModel.ClearSelection();
             Viewport.SelectKey(null);
+            await SynchronizePlayerBotTargetsAsync();
             return LegacyCommandResult.Success("ZEROBOT ADVANCED TO TESTING");
         }
         if (result.Robot is not { } key) return LegacyCommandResult.Failure("NO LIVING ROBOTS");
         _viewModel.Select(key);
         Viewport.SelectKey(key);
+        await SynchronizePlayerBotTargetsAsync();
         return LegacyCommandResult.Success($"BEST FAMILY · {key.Slot}:{key.Generation}");
     }
 
     private async Task<LegacyCommandResult> RemoveSelectedFeatureCommandAsync()
     {
-        if (_session is null || _selectedFeature is not { } feature)
+        if (_session is not { } session || _selectedFeature is not { } feature)
             return LegacyCommandResult.Failure("SELECT A WORLD OBJECT FIRST");
         var route = ObjectEditorPolicy.RouteDelete(ToObjectEditorKind(feature.Kind), SelectedObject());
         if (!route.Allowed)
             return LegacyCommandResult.Failure(route.DisabledReason ?? "SELECT A WORLD OBJECT FIRST");
-        if (feature.Kind == WorldFeatureKind.Obstacle)
+        await _advanceGate.WaitAsync();
+        try
         {
-            if (!await ConfirmObstacleDeletionAsync(1))
-                return LegacyCommandResult.Failure("DELETION CANCELLED");
-            await _session.RemoveObstacleAsync(feature.Id);
+            if (_loadingSimulation || _navigationInFlight || !IsVisible || _session != session)
+                return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+            var snapshot = session.LatestSnapshot;
+            if (feature.Kind == WorldFeatureKind.Obstacle && snapshot.Obstacles.Any(obstacle => obstacle.Id == feature.Id))
+                await session.RemoveObstacleAsync(feature.Id);
+            else if (feature.Kind == WorldFeatureKind.Teleporter
+                && (snapshot.FileTeleporters.Any(teleporter => teleporter.Id == feature.Id)
+                    || snapshot.Teleporters.Any(teleporter => teleporter.Id == feature.Id)))
+                await DeleteSelectedTeleporterAsync(session, feature.Id);
+            else return LegacyCommandResult.Failure("SELECT A WORLD OBJECT FIRST");
+            if (_selectedFeature == feature)
+            {
+                _selectedFeature = null;
+                Viewport.SelectFeature(null);
+                RefreshFeatureEditorButtons();
+            }
+            return LegacyCommandResult.Success($"{feature.Kind.ToString().ToUpperInvariant()} {feature.Id} REMOVED");
         }
-        else if (_session.LatestSnapshot.FileTeleporters.Any(value => value.Id == feature.Id)) await _session.RemoveFileTeleporterAsync(feature.Id);
-        else await _session.RemoveTeleporterAsync(feature.Id);
-        _selectedFeature = null;
-        Viewport.SelectFeature(null);
-        RefreshFeatureEditorButtons();
-        return LegacyCommandResult.Success($"{feature.Kind.ToString().ToUpperInvariant()} {feature.Id} REMOVED");
+        finally { _advanceGate.Release(); }
     }
 
     private async Task<LegacyCommandResult> DeleteAllTeleportersCommandAsync()
     {
-        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        var teleporters = _session.LatestSnapshot.Teleporters.ToArray();
-        var fileTeleporters = _session.LatestSnapshot.FileTeleporters.ToArray();
-        foreach (var teleporter in teleporters) await _session.RemoveTeleporterAsync(teleporter.Id);
-        foreach (var teleporter in fileTeleporters) await _session.RemoveFileTeleporterAsync(teleporter.Id);
-        return LegacyCommandResult.Success($"DELETED {teleporters.Length + fileTeleporters.Length} TELEPORTER(S)");
+        if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        var snapshot = session.LatestSnapshot;
+        var teleporterIds = snapshot.Teleporters.Select(teleporter => teleporter.Id).ToArray();
+        var fileTeleporterIds = snapshot.FileTeleporters.Select(teleporter => teleporter.Id).ToArray();
+        await DeleteTeleportersAsync(session, teleporterIds, fileTeleporterIds);
+        return LegacyCommandResult.Success($"DELETED {teleporterIds.Length + fileTeleporterIds.Length} TELEPORTER(S)");
+    }
+
+    private Task DeleteSelectedTeleporterAsync(SimulationSession session, uint id) =>
+        session.LatestSnapshot.FileTeleporters.Any(teleporter => teleporter.Id == id)
+            ? DeleteTeleportersAsync(session, [], [id])
+            : DeleteTeleportersAsync(session, [id], []);
+
+    private async Task DeleteTeleportersAsync(SimulationSession session, IReadOnlyList<uint> teleporterIds,
+        IReadOnlyList<uint> fileTeleporterIds)
+    {
+        _teleporterDeletionsInFlight++;
+        try
+        {
+            InvalidateTeleporterDrag();
+            if (_nativeTeleporterEditor is { } editor && teleporterIds.Contains(editor.TeleporterId))
+                CloseNativeTeleporterEditor();
+            foreach (var id in teleporterIds) await session.RemoveTeleporterAsync(id);
+            foreach (var id in fileTeleporterIds) await session.RemoveFileTeleporterAsync(id);
+        }
+        finally { _teleporterDeletionsInFlight--; }
     }
 
     private async Task<LegacyCommandResult> DeleteAllObstaclesCommandAsync()
     {
-        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        var obstacles = _session.LatestSnapshot.Obstacles.ToArray();
-        if (obstacles.Length == 0) return LegacyCommandResult.Success("DELETED 0 SHAPES");
-        if (!await ConfirmObstacleDeletionAsync(obstacles.Length))
-            return LegacyCommandResult.Failure("DELETION CANCELLED");
-        foreach (var obstacle in obstacles) await _session.RemoveObstacleAsync(obstacle.Id);
-        return LegacyCommandResult.Success($"DELETED {obstacles.Length} SHAPE(S)");
+        if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        await _advanceGate.WaitAsync();
+        try
+        {
+            if (_loadingSimulation || _navigationInFlight || !IsVisible || _session != session)
+                return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+            var ids = session.LatestSnapshot.Obstacles.Select(obstacle => obstacle.Id).ToArray();
+            if (ids.Length == 0) return LegacyCommandResult.Success("DELETED 0 SHAPES");
+            await session.RemoveObstaclesAsync(ids);
+            if (_selectedFeature is { Kind: WorldFeatureKind.Obstacle })
+            {
+                _selectedFeature = null;
+                Viewport.SelectFeature(null);
+                RefreshFeatureEditorButtons();
+            }
+            return LegacyCommandResult.Success($"DELETED {ids.Length} SHAPE(S)");
+        }
+        finally { _advanceGate.Release(); }
     }
 
-    private async Task<LegacyCommandResult> AddRandomObstaclesCommandAsync(int count)
+    private async Task<LegacyCommandResult> OpenShapesWindowAsync()
     {
-        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        var placement = new SeededSpawnPlacement(
-            _setup.Seed ^ _session.LatestSnapshot.Tick ^ 0x4d42UL);
-        var width = (float)_setup.WorldWidth;
-        var height = (float)_setup.WorldHeight;
-        var shapes = placement.NextObstacles(count, width, height);
-        await AddObstaclesAsync(shapes);
-        return LegacyCommandResult.Success($"ADDED {count} RANDOM SHAPES");
+        await _advanceGate.WaitAsync();
+        try
+        {
+            if (_session is { } session)
+                _shapeDrift = (await session.ReadConfigurationAsync())?.ShapeDrift;
+            _shapesWindow = _toolWindows.ShowOrActivate("shapes", () =>
+            {
+                var window = new ShapesWindow(
+                    _shapeDimensions,
+                    dimensions => _shapeDimensions = dimensions,
+                    () => AddGeneratedShapesAsync(1, centered: true),
+                    _shapeDrift,
+                    SetShapeDriftAsync,
+                    _mazeDimensions,
+                    dimensions => _mazeDimensions = dimensions);
+                window.Closed += (_, _) => _shapesWindow = null;
+                return window;
+            });
+            return LegacyCommandResult.Success("SHAPES OPENED");
+        }
+        finally { _advanceGate.Release(); }
     }
 
-    private async Task<LegacyCommandResult> DeleteRandomObstaclesCommandAsync(int count)
+    private async Task<LegacyCommandResult> SetShapeDriftAsync(bool? horizontal, bool? vertical, short? rate)
     {
-        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        var selected = _session.LatestSnapshot.Obstacles
-            .OrderBy(obstacle => HashCode.Combine(obstacle.Id, _session.LatestSnapshot.Tick))
-            .Take(count)
+        if (_session is not { } session || _loadingSimulation)
+            return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        var generation = _shapeWorldGeneration;
+        await _advanceGate.WaitAsync();
+        try
+        {
+            if (_loadingSimulation || _navigationInFlight || !IsVisible || _session != session
+                || generation != _shapeWorldGeneration)
+                return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+            if (await session.SetShapeDriftAsync(horizontal, vertical, rate) is not { } settings)
+                return LegacyCommandResult.Failure("SHAPE MOVEMENT SETTINGS UNAVAILABLE");
+            _shapeDrift = settings;
+            return LegacyCommandResult.Success(string.Empty);
+        }
+        finally { _advanceGate.Release(); }
+    }
+
+    private Task<LegacyCommandResult> AddRandomObstaclesCommandAsync(int count) =>
+        AddGeneratedShapesAsync(count, centered: false);
+
+    private async Task<LegacyCommandResult> AddGeneratedShapesAsync(int count, bool centered)
+    {
+        var dimensions = _shapeDimensions;
+        await _advanceGate.WaitAsync();
+        try
+        {
+            if (_session is not { } session || _navigationInFlight || !IsVisible)
+                return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+
+            var added = centered
+                ? await session.AddNativeCenteredObstacleAsync(dimensions)
+                : await session.AddNativeRandomObstaclesAsync(count, dimensions);
+            if (added is null)
+            {
+                var size = session.LatestSnapshot.WorldSize;
+                (float[] Minimum, float[] Maximum)[] shapes = centered
+                    ? [_randomShapePlacement.NextCenteredObstacle(size[0], size[1], dimensions)]
+                    : _randomShapePlacement.NextObstacles(count, size[0], size[1], dimensions);
+                await AddObstaclesAsync(shapes);
+                added = count;
+            }
+
+            if (!centered) return LegacyCommandResult.Success($"ADDED {added} RANDOM SHAPES");
+            return added == 1
+                ? LegacyCommandResult.Success("ADDED SHAPE")
+                : LegacyCommandResult.Failure("SHAPE LIMIT REACHED");
+        }
+        finally { _advanceGate.Release(); }
+    }
+
+    private async Task<LegacyCommandResult> DeleteRandomObstaclesCommandAsync()
+    {
+        if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        await _advanceGate.WaitAsync();
+        try
+        {
+            if (_navigationInFlight || !IsVisible || !ReferenceEquals(_session, session))
+                return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+            if (await session.RemoveNativeRandomObstaclesAsync() is { } removed)
+            {
+                if (_selectedFeature is { Kind: WorldFeatureKind.Obstacle } feature
+                    && !session.LatestSnapshot.Obstacles.Any(obstacle => obstacle.Id == feature.Id))
+                {
+                    _selectedFeature = null;
+                    Viewport.SelectFeature(null);
+                    RefreshFeatureEditorButtons();
+                }
+                return LegacyCommandResult.Success($"DELETED {removed} RANDOM SHAPES");
+            }
+        }
+        finally { _advanceGate.Release(); }
+
+        var snapshot = session.LatestSnapshot;
+        var selected = snapshot.Obstacles
+            .OrderBy(obstacle => HashCode.Combine(obstacle.Id, snapshot.Tick))
+            .Take(10)
             .ToArray();
         if (selected.Length == 0) return LegacyCommandResult.Success("DELETED 0 RANDOM SHAPES");
         if (!await ConfirmObstacleDeletionAsync(selected.Length))
             return LegacyCommandResult.Failure("DELETION CANCELLED");
-        foreach (var obstacle in selected) await _session.RemoveObstacleAsync(obstacle.Id);
+        foreach (var obstacle in selected) await session.RemoveObstacleAsync(obstacle.Id);
         return LegacyCommandResult.Success($"DELETED {selected.Length} RANDOM SHAPES");
     }
 
@@ -1843,10 +2204,60 @@ public sealed partial class MainWindow : Window
 
     private async Task<LegacyCommandResult> AddMazeCommandAsync(MazePreset pattern)
     {
-        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        var shapes = MazePresetBuilder.Build(pattern, _setup.WorldWidth, _setup.WorldHeight);
-        await AddObstaclesAsync(shapes);
+        if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        if (pattern != MazePreset.TrashCompactor)
+            return await AddNativeMazeAsync(session, pattern);
+        var snapshot = session.LatestSnapshot;
+        var size = snapshot.WorldSize;
+        var shapes = MazePresetBuilder.Build(pattern, size[0], size[1]);
+        var id = checked(snapshot.Obstacles.Select(obstacle => obstacle.Id).DefaultIfEmpty().Max() + 1);
+        await session.AddTrashCompactorAsync(
+            new ObstacleSnapshot(id, shapes[0].Minimum, shapes[0].Maximum) { Drift = shapes[0].Drift },
+            new ObstacleSnapshot(checked(id + 1), shapes[1].Minimum, shapes[1].Maximum) { Drift = shapes[1].Drift });
         return LegacyCommandResult.Success($"{pattern.ToString().ToUpperInvariant()} MAZE ADDED · {shapes.Count} SHAPES");
+    }
+
+    private async Task<LegacyCommandResult> AddNativeMazeAsync(SimulationSession session, MazePreset pattern)
+    {
+        var generation = _shapeWorldGeneration;
+        var dimensions = _mazeDimensions;
+        await _advanceGate.WaitAsync();
+        try
+        {
+            if (_loadingSimulation || _navigationInFlight || !IsVisible || _session != session
+                || generation != _shapeWorldGeneration)
+                return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+
+            int? added;
+            if (pattern == MazePreset.PolarIce)
+            {
+                var polarIce = await session.AddNativePolarIceAsync();
+                added = polarIce?.Added;
+                if (polarIce is { } result)
+                {
+                    _shapeDrift = result.Drift;
+                    _shapesWindow?.SetDrift(result.Drift);
+                }
+            }
+            else if (pattern is MazePreset.Horizontal or MazePreset.Vertical)
+            {
+                added = await session.AddNativeSimpleMazeAsync(pattern == MazePreset.Horizontal, dimensions);
+            }
+            else
+            {
+                added = await session.AddNativePatternMazeAsync(pattern, dimensions);
+            }
+
+            if (added is null)
+            {
+                var size = session.LatestSnapshot.WorldSize;
+                var shapes = MazePresetBuilder.BuildWithDimensions(pattern, size[0], size[1], dimensions);
+                await AddObstaclesAsync(shapes);
+                added = shapes.Count;
+            }
+            return LegacyCommandResult.Success($"{pattern.ToString().ToUpperInvariant()} MAZE ADDED · {added} SHAPES");
+        }
+        finally { _advanceGate.Release(); }
     }
 
     private async Task AddObstaclesAsync(IEnumerable<MazePresetShape> shapes)
@@ -1870,11 +2281,12 @@ public sealed partial class MainWindow : Window
         };
     }
 
-    private async Task<LegacyCommandResult> ToggleSafemodeBackupAsync()
+    private LegacyCommandResult OpenSafeModeBackup()
     {
-        SynchronizeSafemodePreference(!_safemodeBackup);
-        if (_session is not null) await _session.UpdateEnvironmentAsync(_liveEnvironment);
-        return LegacyCommandResult.Success(_safemodeBackup ? "SAFEMODE BACKUP ON" : "SAFEMODE BACKUP OFF");
+        if (_launchSafeModeBackup is null)
+            return LegacyCommandResult.Failure("SAFEMODE BACKUP REQUIRES AN AUTOSAVE DIRECTORY");
+        _launchSafeModeBackup();
+        return LegacyCommandResult.Success("SAFEMODE BACKUP OPEN");
     }
 
     private string? RecoveryArtifactPath()
@@ -1914,6 +2326,7 @@ public sealed partial class MainWindow : Window
 
     private async Task HandleEngineErrorAsync(Exception error, bool attemptRecovery)
     {
+        if (_windowClosed || _savingLastExit) return;
         var tick = _session?.LatestSnapshot.Tick ?? 0;
         if (_diagnostics.IgnoreErrors)
         {
@@ -1985,6 +2398,7 @@ public sealed partial class MainWindow : Window
         {
             await _storage.SaveLastStartAsync(
                 System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(CreateNextWorldSetup()));
+            if (_windowClosed) return;
             _diagnostics.BeginSession(_storage.FindLastStart());
             _runtimeClock.Restart();
             var worldSetup = CreateNextWorldSetup() with
@@ -2002,18 +2416,30 @@ public sealed partial class MainWindow : Window
             _session.SnapshotPublished += snapshot =>
             {
                 var loading = _loadingSimulation;
+                if (!loading && snapshot.OrdinaryRestartPending) return;
                 Dispatcher.UIThread.Post(async () =>
                 {
+                    if (_windowClosed) return;
+                    if (!loading && snapshot.OrdinaryRestartCount > _presentedOrdinaryRestartCount)
+                        _runtimeClock.Restart();
+                    _presentedOrdinaryRestartCount = snapshot.OrdinaryRestartCount;
+                    SynchronizeOrdinaryRestartControl(snapshot);
                     _playerBotEnabled = snapshot.PlayerBot.Enabled;
                     _playerBotBindings = snapshot.PlayerBot.Bindings;
+                    var previousSelection = _viewModel.SelectedKey;
                     _viewModel.Update(snapshot, _runtimeClock.Elapsed, _activeCostMultiplier);
                     SynchronizeDeathPoffPolicy(snapshot.DeathPoffsEnabled);
+                    if (snapshot.NativeSunOn is { } sunOn) UpdateSunIndicator(sunOn);
                     if (snapshot.LocalMode.Evolution is { Phase: "complete" }) {
                         _runTimer.Stop();
                         _viewModel.Status = "ZEROBOT EVOLUTION COMPLETE";
                     }
                     Viewport.SetSnapshot(snapshot);
-                    Viewport.SelectKey(_viewModel.SelectedKey);
+                    if (_nativeTeleporterEditor is { } editor
+                        && (!snapshot.NativeCycle.HasValue
+                            || !snapshot.Teleporters.Any(teleporter => teleporter.Id == editor.TeleporterId && !teleporter.Internet)))
+                        CloseNativeTeleporterEditor();
+                    Viewport.SelectKeys(_playerBotHighlights, _viewModel.SelectedKey);
                     var graphInterval = (ulong)Math.Max(1, _globalSettings.Main.GraphUpdatesPerTick);
                     var updateGraphs = _lastGraphRefreshTick is not { } lastTick
                         || snapshot.Tick < lastTick || snapshot.Tick - lastTick >= graphInterval;
@@ -2028,16 +2454,18 @@ public sealed partial class MainWindow : Window
                     BuoyancyWarning.IsVisible = !_globalSettings.Main.SuppressBuoyancy
                         && (_liveEnvironment.Gravity[1] == 0 || !_liveEnvironment.Vegetation.PondMode || _liveEnvironment.WrapY)
                         && snapshot.Organisms.Any(robot => robot.Memory.Any(cell => cell.Address == 315 && cell.Value > 0));
-                    if (loading) _recordedCorpseCount = snapshot.Corpses.Count;
-                    else await RecordDeadSnapshotAsync(snapshot);
                     RefreshLegacyMenuStates();
                     if (_zerobotProgression is not null && !_progressionInFlight
                         && _zerobotProgression.Observe(snapshot) is { } transition)
                         _ = ApplyZerobotTransitionAsync(transition);
+                    if (!loading && previousSelection is not null && _viewModel.SelectedKey is null
+                        && snapshot.PlayerBot.Focus is not null)
+                        await SynchronizePlayerBotTargetsAsync();
                 });
             };
             _viewModel.Status = "ENGINE READY — IMPORT A LEGACY BOT";
             await _session.RefreshSnapshotAsync();
+            if (_windowClosed) return;
             var compatibilityWarnings = new List<string>();
             if (_setup.LoadSavePath is { } savePath)
             {
@@ -2045,10 +2473,14 @@ public sealed partial class MainWindow : Window
             }
             else
                 foreach (var species in _setup.Species)
+                {
+                    if (_windowClosed) return;
                     compatibilityWarnings.AddRange((await _session.ImportSpeciesAsync(species)).CompatibilityWarnings);
+                }
             foreach (var bot in _startupBots)
             {
                 var file = await Db2RobotFileStorage.ReadAsync(bot.Path);
+                if (_windowClosed) return;
                 if (file.MutationProfile is null)
                 {
                     compatibilityWarnings.AddRange((await _session.ImportDnaAsync(
@@ -2069,13 +2501,16 @@ public sealed partial class MainWindow : Window
             // Worker completion means the snapshot was queued for presentation.
             // Do not announce readiness ahead of those normal-priority UI posts.
             await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
+            if (_windowClosed) return;
             if (compatibilityWarnings.Count > 0) _viewModel.Status = $"DNA COMPATIBILITY · {string.Join(" · ", compatibilityWarnings.Distinct())}";
             else if (_startupBots.Count > 0) _viewModel.Status = $"IMPORTED {_startupBots.Count} STARTUP BOT(S)";
             else if (_setup.Species.Count > 0) _viewModel.Status = $"WORLD READY · {_setup.Species.Count} SPECIES";
             else if (_setup.LoadSavePath is not null) _viewModel.Status = _setup.IsAutosaveRecovery ? "AUTOSAVE RECOVERED" : "LOADED";
             if (_setup.StartingMode is StartingMode.Zerobots or StartingMode.ZerobotsAndVegetables)
                 await ConfigureZerobotModeAsync();
+            if (_windowClosed) return;
             SetIgnoreErrors(!_safemodeBackup);
+            _startupComplete = true;
         }
         catch (Exception error)
         {
@@ -2086,6 +2521,7 @@ public sealed partial class MainWindow : Window
     private async Task ConfigureZerobotModeAsync()
     {
         if (_session is null) return;
+        LocalModeKindSelector.SelectedIndex = (int)LocalModeKind.Zerobot;
         _viewModel.LocalMode.SelectKind(LocalModeKind.Zerobot);
         var config = _viewModel.LocalMode.BuildConfiguration() with
         {
@@ -2115,7 +2551,9 @@ public sealed partial class MainWindow : Window
         try
         {
             _liveEnvironment = configuration.Environment;
-            SynchronizeRecordingPreferences(resetCorpseCursor: true);
+            _shapeDrift = configuration.ShapeDrift;
+            _shapesWindow?.SetDrift(_shapeDrift);
+            SynchronizeRecordingPreferences();
             _lastAutomaticSaveTick = _session.LatestSnapshot.Tick;
             _activeCostMultiplier = configuration.GlobalCostMultiplier;
             _globalSettings = _globalSettings with
@@ -2146,6 +2584,7 @@ public sealed partial class MainWindow : Window
                 _viewModel.LocalMode.Observe(_session.LatestSnapshot.LocalMode,
                     _session.LatestSnapshot.NativeCycle, _session.LatestSnapshot.Species);
                 LocalModeKindSelector.SelectedIndex = (int)localMode.Kind;
+                UpdateLocalModeLimitMinimums(localMode.Kind);
                 LocalModePreset.SelectedIndex = (int)localMode.Preset;
                 LocalModeWorkflow.SelectedIndex = (int)localMode.Workflow;
                 ModeEntrantOrder.Text = string.Join(", ", localMode.EntrantOrder);
@@ -2294,10 +2733,11 @@ public sealed partial class MainWindow : Window
         var child = await _session.ReproduceAsync(request);
         if (request.Focus)
         {
-            Dispatcher.UIThread.Post(() =>
+            Dispatcher.UIThread.Post(async () =>
             {
                 _viewModel.Select(child);
                 Viewport.SelectKey(child);
+                await SynchronizePlayerBotTargetsAsync();
             });
         }
         _viewModel.Status = "MANUAL REPRODUCTION COMPLETE · 50% SPLIT";
@@ -2449,14 +2889,23 @@ public sealed partial class MainWindow : Window
         _viewModel.Status = $"SHAPE {result.Id} UPDATED";
     }
 
-    private async void EditTeleporter_Click(object? sender, RoutedEventArgs e)
+    private async void EditTeleporter_Click(object? sender, RoutedEventArgs e) =>
+        await EditSelectedTeleporterAsync();
+
+    private async Task EditSelectedTeleporterAsync()
     {
-        if (_session is null || _selectedFeature is not { Kind: WorldFeatureKind.Teleporter } feature
+        if (_session is not { } session || _selectedFeature is not { Kind: WorldFeatureKind.Teleporter } feature
             || !ObjectEditorPolicy.CanEdit(ObjectEditorKind.Teleporter, SelectedObject())) return;
-        var localTeleporter = _session.LatestSnapshot.Teleporters.FirstOrDefault(value => value.Id == feature.Id);
+        var snapshot = session.LatestSnapshot;
+        var localTeleporter = snapshot.Teleporters.FirstOrDefault(value => value.Id == feature.Id);
         if (localTeleporter is not null)
         {
             if (localTeleporter.Internet || string.Equals(localTeleporter.Mode.Trim(), "internet", StringComparison.OrdinalIgnoreCase)) return;
+            if (snapshot.NativeCycle.HasValue)
+            {
+                OpenNativeTeleporterEditor(session, localTeleporter);
+                return;
+            }
             var dialog = new TeleporterEditorWindow(localTeleporter);
             await dialog.ShowDialog(this);
             if (dialog.Result is not { } result) return;
@@ -2477,6 +2926,79 @@ public sealed partial class MainWindow : Window
         _viewModel.Status = $"FILE TELEPORTER {fileResult.Id} UPDATED · OFFLINE";
     }
 
+    private void OpenNativeTeleporterEditor(SimulationSession session, TeleporterSnapshot teleporter)
+    {
+        if (_loadingSimulation || _navigationInFlight || _teleporterDeletionsInFlight > 0) return;
+        if (_nativeTeleporterEditor is { } existing)
+        {
+            if (!existing.IsVisible) return;
+            existing.LoadTeleporter(teleporter);
+            existing.Activate();
+            return;
+        }
+
+        var editor = new TeleporterEditorWindow(teleporter) { Topmost = true };
+        _nativeTeleporterEditor = editor;
+        editor.Activated += (_, _) =>
+        {
+            if (!ReferenceEquals(_nativeTeleporterEditor, editor)) return;
+            if (CurrentNativeTeleporter(session) is { } focused)
+                editor.LoadTeleporter(focused);
+            else
+                CloseNativeTeleporterEditor();
+        };
+        editor.Closed += async (_, _) =>
+        {
+            try
+            {
+                if (editor.Result is not null && CurrentNativeTeleporter(session)?.Id == editor.TeleporterId)
+                    await ApplyNativeTeleporterEditAsync(session, editor);
+            }
+            finally
+            {
+                if (ReferenceEquals(_nativeTeleporterEditor, editor)) _nativeTeleporterEditor = null;
+            }
+        };
+        editor.Show(this);
+    }
+
+    private async Task ApplyNativeTeleporterEditAsync(SimulationSession session, TeleporterEditorWindow editor)
+    {
+        await _advanceGate.WaitAsync();
+        try
+        {
+            if (!IsVisible || _loadingSimulation || _navigationInFlight || !ReferenceEquals(_session, session)
+                || !ReferenceEquals(_nativeTeleporterEditor, editor)) return;
+            var current = session.LatestSnapshot.Teleporters
+                .FirstOrDefault(teleporter => teleporter.Id == editor.TeleporterId && !teleporter.Internet);
+            if (current is null) return;
+            await session.UpdateTeleporterAsync(editor.BuildResult(current));
+            if (ReferenceEquals(_nativeTeleporterEditor, editor))
+                _viewModel.Status = $"TELEPORTER {current.Id} UPDATED · OFFLINE";
+        }
+        catch (Exception error) { await HandleEngineErrorAsync(error, attemptRecovery: false); }
+        finally { _advanceGate.Release(); }
+    }
+
+    private void CloseNativeTeleporterEditor()
+    {
+        var editor = _nativeTeleporterEditor;
+        _nativeTeleporterEditor = null;
+        if (editor?.IsVisible == true) editor.Close();
+    }
+
+    private TeleporterSnapshot? CurrentNativeTeleporter(SimulationSession session)
+    {
+        if (_loadingSimulation || _navigationInFlight || !ReferenceEquals(_session, session)
+            || _selectedFeature is not { Kind: WorldFeatureKind.Teleporter } feature)
+            return null;
+        var snapshot = session.LatestSnapshot;
+        if (!snapshot.NativeCycle.HasValue) return null;
+        return snapshot.Teleporters.FirstOrDefault(teleporter =>
+            teleporter.Id == feature.Id && !teleporter.Internet
+            && !string.Equals(teleporter.Mode.Trim(), "internet", StringComparison.OrdinalIgnoreCase));
+    }
+
     private async void RemoveFeature_Click(object? sender, RoutedEventArgs e)
     {
         if (_session is null || _selectedFeature is not { } feature) return;
@@ -2491,8 +3013,7 @@ public sealed partial class MainWindow : Window
             }
             await _session.RemoveObstacleAsync(feature.Id);
         }
-        else if (_session.LatestSnapshot.FileTeleporters.Any(value => value.Id == feature.Id)) await _session.RemoveFileTeleporterAsync(feature.Id);
-        else await _session.RemoveTeleporterAsync(feature.Id);
+        else await DeleteSelectedTeleporterAsync(_session, feature.Id);
         _selectedFeature = null;
         Viewport.SelectFeature(null);
         RefreshFeatureEditorButtons();
@@ -2540,7 +3061,19 @@ public sealed partial class MainWindow : Window
     private void LocalModeKind_Changed(object? sender, SelectionChangedEventArgs e)
     {
         if (!_controlsReady) return;
-        _viewModel.LocalMode.SelectKind(LocalModeKindFromIndex(LocalModeKindSelector.SelectedIndex));
+        var kind = LocalModeKindFromIndex(LocalModeKindSelector.SelectedIndex);
+        _viewModel.LocalMode.SelectKind(kind);
+        UpdateLocalModeLimitMinimums(kind);
+    }
+
+    private void UpdateLocalModeLimitMinimums(LocalModeKind kind)
+    {
+        var minimum = kind is LocalModeKind.League or LocalModeKind.Contest ? 0m : 1m;
+        foreach (var limit in new[] { ModeMaximumRounds, ModeMaximumCycles, ModePopulationCap })
+        {
+            limit.Minimum = minimum;
+            if (limit.Value < minimum) limit.Value = minimum;
+        }
     }
 
     private void LocalModePreset_Changed(object? sender, SelectionChangedEventArgs e)
@@ -2597,6 +3130,32 @@ public sealed partial class MainWindow : Window
             _viewModel.Status = "LOCAL MODE RESTARTED";
         }
         catch (Exception error) { _viewModel.Status = $"LOCAL MODE RESTART FAILED · {error.Message}"; }
+    }
+
+    private async void OrdinaryRestart_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_session is not { } session) return;
+        var enabled = OrdinaryRestartToggle.IsChecked == true;
+        await _advanceGate.WaitAsync();
+        try
+        {
+            if (!session.LatestSnapshot.OrdinaryRestartAvailable) return;
+            await session.SetOrdinaryRestartAsync(enabled);
+            _viewModel.Status = $"ORDINARY EXTINCTION RESTART · {(enabled ? "ON" : "OFF")}";
+        }
+        catch (Exception error) { _viewModel.Status = $"ORDINARY RESTART SETTING FAILED · {error.Message}"; }
+        finally
+        {
+            SynchronizeOrdinaryRestartControl(session.LatestSnapshot);
+            _advanceGate.Release();
+        }
+    }
+
+    private void SynchronizeOrdinaryRestartControl(EngineSnapshot snapshot)
+    {
+        OrdinaryRestartToggle.IsChecked = snapshot.OrdinaryRestartOnExtinction;
+        OrdinaryRestartToggle.IsEnabled = snapshot.OrdinaryRestartAvailable;
+        OrdinaryRestartUnavailable.IsVisible = !snapshot.OrdinaryRestartAvailable;
     }
 
     private async void AdjudicateLocalMode_Click(object? sender, RoutedEventArgs e)
@@ -2740,10 +3299,12 @@ public sealed partial class MainWindow : Window
         _viewModel.LocalMode.SeedingOpponent = _viewModel.LocalMode.Workflow == LeagueWorkflow.Seeding
             ? (uint)Math.Clamp(ModeSeedingOpponent.Value ?? 0m, 0m, uint.MaxValue) : null;
         _viewModel.LocalMode.FinishWithLadder = ModeFinishWithLadder.IsChecked == true;
-        _viewModel.LocalMode.MinimumRounds = ReadUInt(ModeMinimumRounds.Value, 5);
-        _viewModel.LocalMode.MaximumRounds = ReadUInt(ModeMaximumRounds.Value, 1);
-        _viewModel.LocalMode.MaximumCycles = ReadULong(ModeMaximumCycles.Value, 15_000);
-        _viewModel.LocalMode.MaximumPopulation = (int)Math.Clamp(ModePopulationCap.Value ?? 700m, 1m, 1_000_000m);
+        _viewModel.LocalMode.MinimumRounds = ReadUInt(ModeMinimumRounds, 5);
+        _viewModel.LocalMode.MaximumRounds = ReadUInt(ModeMaximumRounds, 1);
+        _viewModel.LocalMode.MaximumCycles = (ulong)Math.Clamp(ModeMaximumCycles.Value ?? 15_000m,
+            ModeMaximumCycles.Minimum, ulong.MaxValue);
+        _viewModel.LocalMode.MaximumPopulation = (int)Math.Clamp(ModePopulationCap.Value ?? 700m,
+            ModePopulationCap.Minimum, ModePopulationCap.Maximum);
         _viewModel.LocalMode.EnergyHandicap = (int)Math.Clamp(ModeEnergyHandicap.Value ?? 0m, -100_000m, 100_000m);
         _viewModel.LocalMode.RestartOnExtinction = ModeRestartOnExtinction.IsChecked == true;
         _viewModel.LocalMode.ProhibitInformationShots = ModeProhibitInformation.IsChecked == true;
@@ -2771,26 +3332,11 @@ public sealed partial class MainWindow : Window
         _ => LeaguePreset.F1,
     };
 
-    private static uint ReadUInt(decimal? value, uint fallback) =>
-        (uint)Math.Clamp(value ?? fallback, 1m, uint.MaxValue);
+    private static uint ReadUInt(NumericUpDown input, uint fallback) =>
+        (uint)Math.Clamp(input.Value ?? fallback, input.Minimum, uint.MaxValue);
 
-    private static ulong ReadULong(decimal? value, ulong fallback) =>
-        (ulong)Math.Clamp(value ?? fallback, 1m, ulong.MaxValue);
-
-    private async void LiveAdvanced_Click(object? sender, RoutedEventArgs e)
-    {
-        if (_session is null) return;
-        var dialog = new AdvancedSettingsWindow(_liveEnvironment, _session.LatestSnapshot, selectedTab: 2);
-        await dialog.ShowDialog(this);
-        if (!dialog.Accepted) return;
-        var update = dialog.Update;
-        await _session.UpdateEnvironmentAsync(update);
-        await _session.UpdateMutationSettingsAsync(dialog.MutationUpdate);
-        _liveEnvironment = update;
-        SynchronizeRecordingPreferences();
-        RefreshEnvironmentControls();
-        _viewModel.Status = "LIVE SETTINGS APPLIED";
-    }
+    private async void LiveAdvanced_Click(object? sender, RoutedEventArgs e) =>
+        await ExecuteLegacyMenuCommandAsync(LegacyCommandId.EditPhysicsAndCosts);
 
     private async void ToroidalWorld_Changed(object? sender, RoutedEventArgs e)
     {
@@ -2914,10 +3460,10 @@ public sealed partial class MainWindow : Window
 
     private async void RunTimer_Tick(object? sender, EventArgs e)
     {
-        if (_session is null || _tickInFlight) return;
+        if (_session is null || _tickInFlight || !_runTimer.IsEnabled) return;
         _tickInFlight = true;
-        var adaptive = _turbo || _maximumSpeed;
-        var batch = adaptive ? _maximumBatch : _ticksPerUpdate;
+        var adaptive = !_limitMode && (_turbo || _maximumSpeed);
+        var batch = _limitMode ? 1u : adaptive ? _maximumBatch : _ticksPerUpdate;
         var started = Stopwatch.GetTimestamp();
         try
         {
@@ -2929,7 +3475,63 @@ public sealed partial class MainWindow : Window
         {
             await HandleEngineErrorAsync(error, attemptRecovery: true);
         }
-        finally { _tickInFlight = false; }
+        finally
+        {
+            // The original limiter waits after UpdateSim and Redraw. Re-arm
+            // only if the user still has the limiter and simulation running.
+            if (_limitMode && _runTimer.IsEnabled)
+            {
+                _runTimer.Stop();
+                _runTimer.Start();
+            }
+            _tickInFlight = false;
+        }
+    }
+
+    private bool CanDragNativeTeleporter() => _session is not null && IsVisible && !_loadingSimulation
+        && !_navigationInFlight && _teleporterDeletionsInFlight == 0 && !RecoveryPanel.IsVisible
+        && _insertion?.IsActive != true && _moveOrganism is null && _environmentPlacement == EnvironmentPlacement.None;
+
+    private void InvalidateTeleporterDrag()
+    {
+        _pendingTeleporterDrag = null;
+        Viewport.CancelNativeTeleporterDrag();
+    }
+
+    private async Task ApplyNativeTeleporterDragAsync(WorldFeatureSelection selection, float[] center)
+    {
+        if (!CanDragNativeTeleporter() || _session is not { } session) return;
+        _pendingTeleporterDrag = (session, selection, center);
+        if (_sendingTeleporterDrag) return;
+        _sendingTeleporterDrag = true;
+        try
+        {
+            // Read the newest sample only after taking the gate, so a load can discard pending input.
+            while (_pendingTeleporterDrag is not null)
+            {
+                await _advanceGate.WaitAsync();
+                try
+                {
+                    var pending = _pendingTeleporterDrag;
+                    _pendingTeleporterDrag = null;
+                    if (pending is not { } move || !CanDragNativeTeleporter()
+                        || _session != move.Session || !ReferenceEquals(_selectedFeature, move.Selection)) continue;
+                    if (!move.Session.LatestSnapshot.Teleporters.Any(portal =>
+                            portal.Id == move.Selection.Id && portal.NativeTopLeft is not null && !portal.Internet)) continue;
+                    await move.Session.DragNativeTeleporterAsync(move.Selection.Id, move.Center);
+                }
+                finally { _advanceGate.Release(); }
+            }
+        }
+        catch (Exception error)
+        {
+            await HandleEngineErrorAsync(error, attemptRecovery: false);
+        }
+        finally
+        {
+            _pendingTeleporterDrag = null;
+            _sendingTeleporterDrag = false;
+        }
     }
 
     private async Task LoadSimulationAsync(byte[] save)
@@ -2938,9 +3540,16 @@ public sealed partial class MainWindow : Window
         await _advanceGate.WaitAsync();
         try
         {
-            if (_session is null) return;
+            if (_session is null || _savingLastExit) return;
             _loadingSimulation = true;
+            InvalidateTeleporterDrag();
             await _session.LoadAsync(save);
+            CloseNativeTeleporterEditor();
+            _toolWindows.Close(NewTeleporterToolKey);
+            _playerBotHighlights.Clear();
+            _shapeWorldGeneration++;
+            _shapeDimensions = ShapeCreationDimensions.Default;
+            _shapesWindow?.SetDimensions(_shapeDimensions);
             // A rejected load publishes no snapshot and must keep user-closed
             // graphs closed. Loading publications defer this until success.
             _automaticEvolutionGraphBoundary = null;
@@ -2959,20 +3568,35 @@ public sealed partial class MainWindow : Window
         await _advanceGate.WaitAsync();
         try
         {
-            if (_session is null) return;
+            if (_session is not { } session || count == 0 || _savingLastExit) return;
+            // A recovered pending checkpoint already contains the completed cycle.
+            if (session.LatestSnapshot.OrdinaryRestartPending)
+                await session.FinishOrdinaryRestartAsync();
             while (count > 0)
             {
-                var before = _session.LatestSnapshot;
+                var before = session.LatestSnapshot;
                 if (_lastAutomaticSaveTick is { } savedTick && before.Tick < savedTick)
                     _lastAutomaticSaveTick = null;
                 var interval = _liveEnvironment.Recording?.AutosaveInterval ?? 0;
-                var batch = CycleAutosavePolicy.LimitBatch(before.Tick, count, _safemodeBackup, interval, before.LocalMode, before.NativeCycle);
-                await _session.StepAsync(batch);
+                // With restart enabled, let the host retain the completed cycle
+                // before another engine tick can consume the pending restart.
+                var batch = before.OrdinaryRestartAvailable && before.OrdinaryRestartOnExtinction
+                    ? 1u
+                    : CycleAutosavePolicy.LimitBatch(before.Tick, count, _safemodeBackup, interval, before.LocalMode, before.NativeCycle);
+                if (_deadRecordingEnabled)
+                {
+                    var deaths = new List<DeathRecordSnapshot>();
+                    try { await session.StepRecordingDeathsAsync(batch, _globalSettings.Main.EffectiveFindBestWeight, deaths.AddRange); }
+                    finally { await RecordSimulationDeathsAsync(deaths); }
+                }
+                else await session.StepAsync(batch);
                 count -= batch;
-                var after = _session.LatestSnapshot;
+                var after = session.LatestSnapshot;
                 if (_lastAutomaticSaveTick != after.Tick
                     && CycleAutosavePolicy.IsDue(after.Tick, _safemodeBackup, interval, after.LocalMode, after.NativeCycle))
                     await SaveAutomaticCheckpointAsync();
+                if (after.OrdinaryRestartPending)
+                    await session.FinishOrdinaryRestartAsync();
             }
         }
         finally { _advanceGate.Release(); }
@@ -2991,13 +3615,53 @@ public sealed partial class MainWindow : Window
         catch (Exception error) { _viewModel.Status = $"AUTOSAVE ERROR · {error.Message}"; }
     }
 
+    private async void Window_Closing(object? sender, WindowClosingEventArgs e)
+    {
+        if (e.Cancel || e.CloseReason is not (WindowCloseReason.WindowClosing or WindowCloseReason.Undefined)
+            || _skipLastExitCheckpoint || !_startupComplete || !_storage.SupportsLastExitSimulation
+            || _session is not { } session)
+            return;
+
+        e.Cancel = true;
+        if (_savingLastExit || _navigationInFlight) return;
+
+        _savingLastExit = true;
+        _runTimer.Stop();
+        IsEnabled = false;
+        _viewModel.Status = "SAVING LAST SIMULATION";
+        await _advanceGate.WaitAsync();
+        try
+        {
+            if (_windowClosed) return;
+            await _storage.SaveLastExitSimulationAsync(await session.SaveAsync());
+            _skipLastExitCheckpoint = true;
+            Dispatcher.UIThread.Post(() => { if (!_windowClosed) Close(); });
+        }
+        catch (Exception error)
+        {
+            _skipLastExitCheckpoint = true;
+            _savingLastExit = false;
+            if (!_windowClosed)
+            {
+                IsEnabled = true;
+                _viewModel.Status = $"LAST SIMULATION SAVE FAILED · {error.Message} · CLOSE AGAIN TO EXIT";
+            }
+        }
+        finally { _advanceGate.Release(); }
+    }
+
     private async void Window_Closed(object? sender, EventArgs e)
     {
+        _windowClosed = true;
+        CloseNativeTeleporterEditor();
+        InvalidateTeleporterDrag();
         _runTimer.Stop();
         _runtimeClock.Stop();
         _toolWindows.CloseAll();
         _trayIcon?.Dispose();
-        if (_session is not null) await _session.DisposeAsync();
+        var session = _session;
+        _session = null;
+        if (session is not null) await session.DisposeAsync();
     }
 
     private void Graphs_Click(object? sender, RoutedEventArgs e) => ShowGraphSuite();

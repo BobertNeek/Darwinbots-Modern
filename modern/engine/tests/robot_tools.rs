@@ -1,11 +1,98 @@
 use darwinbots_engine::{
     CycleEvent, CyclePhase, Engine, EngineConfig, LegacyDna, PlayerBotBinding, RestrictionColumn,
-    RestrictionOptions,
+    RestrictionOptions, SaveFile, SpeciesDefinition, SpeciesSettings,
     ffi::{
         DbBuffer, DbStatus, db_buffer_free, db_engine_command_batch, db_engine_create,
         db_engine_destroy, db_engine_snapshot_json,
     },
+    native_binary::NativeRecordFile,
 };
+
+#[test]
+fn auto_tag_uses_exact_founder_names_and_persists_the_native_tag() {
+    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    let founder = engine.register_species(SpeciesDefinition {
+        name: "Founder.txt".into(),
+        ..SpeciesDefinition::default()
+    });
+    let lowercase = engine.register_species(SpeciesDefinition {
+        name: "founder.txt".into(),
+        ..SpeciesDefinition::default()
+    });
+    let dna = LegacyDna::parse("start stop\n'#tag: Old tag").unwrap();
+    let first = engine
+        .spawn_species_at(dna.clone(), founder, [100.0; 2])
+        .unwrap();
+    let second = engine
+        .spawn_species_at(dna.clone(), founder, [200.0; 2])
+        .unwrap();
+    let unrelated = engine.spawn_species_at(dna, lowercase, [300.0; 2]).unwrap();
+
+    engine
+        .update_species_settings(vec![SpeciesSettings {
+            species_id: Some(founder),
+            definition: SpeciesDefinition {
+                name: "Edited roster name".into(),
+                ..SpeciesDefinition::default()
+            },
+            dna: "start stop".into(),
+            initial_count: 2,
+            initial_energy: 1000,
+            comment: String::new(),
+        }])
+        .unwrap();
+    let before = SaveFile::encode(&engine).unwrap();
+    assert!(engine.tag_organisms_by_name("", "Other tag").is_err());
+    assert_eq!(
+        engine
+            .tag_organisms_by_name(" Founder.txt", "Other tag")
+            .unwrap(),
+        0
+    );
+    assert_eq!(
+        engine
+            .tag_organisms_by_name("Edited roster name", "Other tag")
+            .unwrap(),
+        0
+    );
+    assert_eq!(SaveFile::encode(&engine).unwrap(), before);
+
+    let tag = format!("\0Alpha\x1f\x7fé€ÿ{}", "z".repeat(60));
+    let expected = format!("?Alpha????ÿ{}", "z".repeat(34));
+    assert_eq!(
+        engine.tag_organisms_by_name("Founder.txt", &tag).unwrap(),
+        2
+    );
+    assert_eq!(engine.snapshot().tick, 0);
+
+    let mut resumed = SaveFile::decode(&SaveFile::encode(&engine).unwrap()).unwrap();
+    let exported =
+        NativeRecordFile::decode(&resumed.export_native_organisms(&[first, second]).unwrap())
+            .unwrap();
+    let mut expected_native = b"?Alpha????\xff".to_vec();
+    expected_native.extend([b'z'; 34]);
+    expected_native.resize(50, b' ');
+    for (id, record) in [first, second].into_iter().zip(exported.robots) {
+        assert_eq!(record.bytes("species_name").unwrap(), b"Founder.txt");
+        assert_eq!(record.bytes("tag").unwrap(), expected_native);
+        assert!(
+            resumed
+                .export_dna(id)
+                .unwrap()
+                .ends_with(&format!("'#tag: {expected}"))
+        );
+    }
+    assert!(
+        resumed
+            .export_dna(unrelated)
+            .unwrap()
+            .ends_with("'#tag: Old tag")
+    );
+    assert_eq!(resumed.tag_organisms_by_name("Founder.txt", "").unwrap(), 2);
+    for id in [first, second] {
+        assert!(!resumed.export_dna(id).unwrap().contains("'#tag:"));
+    }
+}
 
 fn binding(key: u32, memory_address: u16, value: i32, invert: bool) -> PlayerBotBinding {
     PlayerBotBinding {
@@ -81,6 +168,165 @@ fn player_bot_release_and_invert_follow_pressed_xor_invert() {
     engine.tick().unwrap();
     assert_eq!(engine.memory_at(id, 50).unwrap(), 11);
     assert_eq!(engine.memory_at(id, 51).unwrap(), 22);
+}
+
+#[test]
+fn player_bot_tracks_keys_without_a_focused_organism() {
+    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    let dna = LegacyDna::parse("start\nstop").unwrap();
+    let highlight = engine.spawn_at(dna.clone(), [900.0, 500.0]).unwrap();
+    let focus = engine.spawn_at(dna, [1300.0, 500.0]).unwrap();
+    engine
+        .configure_player_bot(true, None, vec![binding(65, 50, 77, false)])
+        .unwrap();
+    engine.set_player_bot_key_state(65, true).unwrap();
+    assert_eq!(engine.snapshot().player_bot.focus, None);
+    engine.tick().unwrap();
+    assert_eq!(engine.memory_at(highlight, 50).unwrap(), 0);
+    assert_eq!(engine.memory_at(focus, 50).unwrap(), 0);
+
+    engine.set_player_bot_targets(None, vec![highlight]);
+    engine.tick().unwrap();
+    assert_eq!(engine.memory_at(highlight, 50).unwrap(), 77);
+    assert_eq!(engine.memory_at(focus, 50).unwrap(), 0);
+
+    engine.set_player_bot_targets(Some(focus), vec![]);
+    engine.set_player_bot_key_state(65, true).unwrap();
+    assert_eq!(engine.snapshot().player_bot.focus, Some(focus));
+    engine.remove(focus).unwrap();
+    assert_eq!(engine.snapshot().player_bot.focus, None);
+    engine.set_player_bot_targets(None, vec![highlight]);
+    engine.set_player_bot_key_state(65, false).unwrap();
+    engine.set_organism_memory(highlight, 50, 0).unwrap();
+    engine.tick().unwrap();
+    assert!(engine.snapshot().player_bot.enabled);
+    assert_eq!(engine.snapshot().player_bot.focus, None);
+    assert_eq!(engine.memory_at(highlight, 50).unwrap(), 0);
+}
+
+#[test]
+fn player_bot_follows_the_highest_existing_highlight_after_manual_and_natural_removal() {
+    let mut engine = Engine::new_native(EngineConfig::testing()).unwrap();
+    let dna = LegacyDna::parse("start\nstop").unwrap();
+    let focus = engine.spawn_at(dna.clone(), [200.0, 500.0]).unwrap();
+    let lower = engine.spawn_at(dna.clone(), [400.0, 500.0]).unwrap();
+    let higher = engine
+        .spawn_at(
+            LegacyDna::parse("start\n100 .strbody store\nstop").unwrap(),
+            [600.0, 500.0],
+        )
+        .unwrap();
+    let stale = engine.spawn_at(dna.clone(), [800.0, 500.0]).unwrap();
+    engine.remove(stale).unwrap();
+    let replacement = engine.spawn_at(dna, [800.0, 500.0]).unwrap();
+    assert_eq!(stale.slot(), replacement.slot());
+    assert_ne!(stale.generation(), replacement.generation());
+
+    engine
+        .configure_player_bot(true, Some(focus), vec![])
+        .unwrap();
+    engine.set_player_bot_targets(Some(focus), vec![higher, stale, focus, lower]);
+    engine.remove(focus).unwrap();
+    assert_eq!(engine.snapshot().player_bot.focus, Some(higher));
+
+    engine.set_organism_energy(higher, 1).unwrap();
+    engine.tick().unwrap();
+    assert!(engine.memory_at(higher, 50).is_err());
+    assert_eq!(engine.snapshot().player_bot.focus, Some(lower));
+    assert!(engine.snapshot().player_bot.enabled);
+
+    engine.remove(lower).unwrap();
+    assert_eq!(engine.snapshot().player_bot.focus, None);
+    assert_eq!(engine.memory_at(replacement, 50).unwrap(), 0);
+}
+
+#[test]
+fn player_bot_keeps_focus_while_the_robot_still_exists_as_a_corpse() {
+    let mut config = EngineConfig::testing();
+    config.corpse_decay.enabled = true;
+    let mut engine = Engine::new_native(config).unwrap();
+    let dna = LegacyDna::parse("start\nstop").unwrap();
+    let focus = engine.spawn_at(dna.clone(), [500.0, 500.0]).unwrap();
+    let highlight = engine.spawn_at(dna, [900.0, 500.0]).unwrap();
+    engine
+        .configure_player_bot(true, Some(focus), vec![])
+        .unwrap();
+    engine.set_player_bot_targets(Some(focus), vec![highlight]);
+
+    engine.tick().unwrap();
+    engine.set_organism_energy(focus, 1).unwrap();
+    engine.tick().unwrap();
+    assert!(
+        engine
+            .snapshot()
+            .organisms
+            .iter()
+            .any(|robot| robot.id == focus && robot.flags.corpse)
+    );
+    assert_eq!(engine.snapshot().player_bot.focus, Some(focus));
+
+    engine.remove(focus).unwrap();
+    assert_eq!(engine.snapshot().player_bot.focus, Some(highlight));
+}
+
+#[test]
+fn player_bot_aims_at_current_pointer_for_focus_and_stable_highlights_only() {
+    let mut engine = Engine::new_native(EngineConfig::testing()).unwrap();
+    let dna = LegacyDna::parse("start\nstop").unwrap();
+    let focus = engine.spawn_at(dna.clone(), [500.0, 500.0]).unwrap();
+    let highlighted = engine.spawn_at(dna.clone(), [900.0, 500.0]).unwrap();
+    let stale = engine.spawn_at(dna.clone(), [1300.0, 500.0]).unwrap();
+    engine.remove(stale).unwrap();
+    let replacement = engine.spawn_at(dna, [1300.0, 500.0]).unwrap();
+    assert_eq!(stale.slot(), replacement.slot());
+    engine
+        .configure_player_bot(true, Some(focus), vec![binding(65, 19, 77, false)])
+        .unwrap();
+    engine.set_player_bot_key(focus, 65, true).unwrap();
+    let baseline = SaveFile::encode(&engine).unwrap();
+
+    engine.set_player_bot_targets(Some(focus), vec![highlighted, focus, stale]);
+    engine.set_player_bot_pointer(Some([500.0, 300.0])).unwrap();
+    assert_eq!(SaveFile::encode(&engine).unwrap(), baseline);
+
+    let mut restored = SaveFile::decode(&baseline).unwrap();
+    assert_eq!(player_bot_aim_writes(&mut restored), [(focus, 77)]);
+    // The older candidate path must see pointer aim before the user's key
+    // mapping overwrites the same address in the pre-shot PlayerBot phase.
+    assert_eq!(
+        player_bot_aim_writes(&mut engine),
+        [
+            (focus, 314),
+            (focus, 77),
+            (highlighted, 536),
+            (highlighted, 77)
+        ],
+    );
+
+    engine.set_player_bot_key(focus, 65, false).unwrap();
+    engine.set_player_bot_pointer(None).unwrap();
+    assert!(player_bot_aim_writes(&mut engine).is_empty());
+    engine.set_player_bot_pointer(Some([0.0, 0.0])).unwrap();
+    assert!(player_bot_aim_writes(&mut engine).is_empty());
+}
+
+fn player_bot_aim_writes(engine: &mut Engine) -> Vec<(darwinbots_engine::OrganismId, i32)> {
+    engine
+        .tick_with_trace()
+        .unwrap()
+        .events
+        .into_iter()
+        .filter_map(|event| match event {
+            CycleEvent::MemoryWrite {
+                phase: CyclePhase::PlayerBot,
+                id,
+                address: 19,
+                after,
+                ..
+            } => Some((id, after)),
+            _ => None,
+        })
+        .collect()
 }
 
 #[test]
@@ -179,4 +425,77 @@ fn robot_tools_commands_round_trip_through_native_batch_and_snapshot() {
     );
     assert_eq!(db_buffer_free(&mut snapshot), DbStatus::Ok);
     assert_eq!(db_engine_destroy(engine), DbStatus::Ok);
+}
+
+#[test]
+fn robot_tag_report_copies_distinct_native_rows_in_live_slot_order() {
+    use darwinbots_engine::{
+        SaveFile,
+        native_binary::{NativeRecordFile, NativeValue},
+    };
+
+    let mut file =
+        NativeRecordFile::decode(include_bytes!("fixtures/db24832-movement-start-48032.sim"))
+            .unwrap();
+    let template = file.robots.pop().unwrap();
+    let founder = std::str::from_utf8(template.bytes("species_name").unwrap()).unwrap();
+    let full_tag = "A".repeat(45);
+    for (index, (tag, owner, exists, is_corpse)) in [
+        (format!("{full_tag}12345"), "Original user", true, false),
+        (format!("{full_tag}67890"), "Original user", true, false),
+        (String::new(), "Corpse keeper", true, true),
+        ("Inactive slot".into(), "Other user", false, false),
+        (format!("{full_tag}12345"), "Other user", true, false),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let mut record = template.clone();
+        let slot = (index + 1) as i16;
+        record
+            .set_value("old_slot", NativeValue::Word(slot))
+            .unwrap();
+        record
+            .set_value("absolute_id", NativeValue::Long(i32::from(slot)))
+            .unwrap();
+        record
+            .set_value("exists", NativeValue::Word(if exists { -1 } else { 0 }))
+            .unwrap();
+        record
+            .set_value("owner_length", NativeValue::Word(owner.len() as i16))
+            .unwrap();
+        record
+            .set_value("owner", NativeValue::Bytes(owner.as_bytes().to_vec()))
+            .unwrap();
+        let mut tag = tag.into_bytes();
+        tag.resize(50, b' ');
+        record.set_value("tag", NativeValue::Bytes(tag)).unwrap();
+        if is_corpse {
+            record.set_value("corpse", NativeValue::Word(-1)).unwrap();
+            record
+                .set_value("species_name_length", NativeValue::Word(6))
+                .unwrap();
+            record
+                .set_value("species_name", NativeValue::Bytes(b"Corpse".to_vec()))
+                .unwrap();
+        }
+        file.robots.push(record);
+    }
+
+    let engine = Engine::from_native_sim(&file.encode().unwrap()).unwrap();
+    let before = SaveFile::encode(&engine).unwrap();
+    assert_eq!(
+        engine.robot_tag_report(),
+        format!(
+            "Tag:FileName:User\r\n~~~\r\n\r\n{full_tag}:{founder}:Original user\r\n{}:Corpse:Corpse keeper\r\n{full_tag}:{founder}:Other user",
+            " ".repeat(45),
+        )
+    );
+    assert_eq!(SaveFile::encode(&engine).unwrap(), before);
+    assert_eq!(
+        Engine::new(EngineConfig::testing())
+            .unwrap()
+            .robot_tag_report(),
+        "Tag:FileName:User\r\n~~~\r\n"
+    );
 }

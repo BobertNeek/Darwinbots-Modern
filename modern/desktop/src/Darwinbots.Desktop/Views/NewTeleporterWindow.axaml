@@ -1,0 +1,40 @@
+<Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Darwinbots.Desktop.Views.NewTeleporterWindow"
+        Title="New Teleporter" Width="450" SizeToContent="Height" CanResize="False"
+        ShowInTaskbar="False" WindowStartupLocation="CenterOwner" Background="#F4F0E6">
+  <StackPanel Margin="18" Spacing="10">
+    <Grid ColumnDefinitions="*,200">
+      <TextBlock Text="Teleporter type" VerticalAlignment="Center" />
+      <ComboBox x:Name="Mode" Grid.Column="1" SelectedIndex="0" HorizontalAlignment="Stretch">
+        <ComboBoxItem Content="Intrasim" />
+        <ComboBoxItem Content="Inbound" />
+        <ComboBoxItem Content="Outbound" />
+      </ComboBox>
+    </Grid>
+    <Grid ColumnDefinitions="*,200">
+      <TextBlock Text="Size" VerticalAlignment="Center" />
+      <NumericUpDown x:Name="PortalSize" Grid.Column="1" Minimum="100" Maximum="1000" Value="300" Increment="10" FormatString="0" />
+    </Grid>
+    <CheckBox x:Name="FixedPosition" Content="Fixed position" />
+    <StackPanel x:Name="PathSettings" Spacing="4">
+      <TextBlock Text="File path" />
+      <TextBox x:Name="FilePath" />
+    </StackPanel>
+    <StackPanel x:Name="TransferFilters">
+      <CheckBox x:Name="TeleportVegetables" Content="Teleport vegetables" IsChecked="True" />
+      <CheckBox x:Name="TeleportCorpses" Content="Teleport corpses" IsChecked="True" />
+      <CheckBox x:Name="TeleportHeterotrophs" Content="Teleport heterotrophs" IsChecked="True" />
+    </StackPanel>
+    <Grid x:Name="PollingSettings" ColumnDefinitions="*,200" RowDefinitions="Auto,Auto" RowSpacing="8">
+      <TextBlock Text="Cycles per poll" VerticalAlignment="Center" />
+      <NumericUpDown x:Name="PollInterval" Grid.Column="1" Minimum="1" Maximum="31999" Value="10" FormatString="0" />
+      <TextBlock Grid.Row="1" Text="Robots per poll" VerticalAlignment="Center" />
+      <NumericUpDown x:Name="Capacity" Grid.Row="1" Grid.Column="1" Minimum="1" Maximum="31999" Value="10" FormatString="0" />
+    </Grid>
+    <TextBlock x:Name="ErrorText" IsVisible="False" Foreground="#9D3829" TextWrapping="Wrap" />
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+      <Button x:Name="CancelButton" Content="CANCEL" IsCancel="True" Click="Cancel_Click" />
+      <Button x:Name="ApplyButton" Content="OK" IsDefault="True" Background="#416E35" Foreground="White" Click="Apply_Click" />
+    </StackPanel>
+  </StackPanel>
+</Window>

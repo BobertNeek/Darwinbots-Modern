@@ -8,7 +8,7 @@
         Title="Darwinbots Modern"
          Width="940" Height="650" MinWidth="720" MinHeight="520"
          WindowStartupLocation="CenterScreen" WindowState="Maximized"
-         KeyDown="MainWindow_KeyDown" SizeChanged="MainWindow_SizeChanged">
+         KeyDown="MainWindow_KeyDown" KeyUp="MainWindow_KeyUp" SizeChanged="MainWindow_SizeChanged">
   <Grid RowDefinitions="34,*" Background="{DynamicResource WindowBrush}">
     <controls:LegacyMenuBar x:Name="HistoricMenuBar" Grid.Row="0" />
   <Grid x:Name="MainSurfaceGrid" Grid.Row="1" RowDefinitions="Auto,0,*,170,62,40" ColumnDefinitions="250,*,280">
@@ -120,6 +120,10 @@
             </Expander>
             <Expander x:Name="LeagueExpander" Header="League / Local modes" IsExpanded="True" HorizontalContentAlignment="Stretch">
               <StackPanel Spacing="6" Margin="4,6,0,5">
+                <CheckBox x:Name="OrdinaryRestartToggle" IsEnabled="False" Click="OrdinaryRestart_Click" FontSize="10" AutomationProperties.Name="Restart ordinary world after extinction">
+                  <TextBlock Text="RESTART ORDINARY WORLD AFTER EXTINCTION" TextWrapping="Wrap" />
+                </CheckBox>
+                <TextBlock x:Name="OrdinaryRestartUnavailable" Text="Available in ordinary simulations with a startup roster." FontSize="10" TextWrapping="Wrap" />
                 <TextBlock Classes="section" Text="LEAGUE TAB" />
                 <StackPanel Spacing="5">
                   <ComboBox x:Name="LocalModeKindSelector" HorizontalAlignment="Stretch" SelectedIndex="0" SelectionChanged="LocalModeKind_Changed">
@@ -155,11 +159,11 @@
                 </StackPanel>
                 <StackPanel Spacing="5" IsEnabled="{Binding LocalMode.UsesCompetitiveSettings}">
                   <StackPanel Spacing="2"><TextBlock Text="Rounds" FontSize="10"/><NumericUpDown x:Name="ModeMinimumRounds" Minimum="1" Maximum="100" Value="5" /></StackPanel>
-                  <StackPanel Spacing="2"><TextBlock Text="Round cap / contest win target" FontSize="10"/><NumericUpDown x:Name="ModeMaximumRounds" Minimum="1" Maximum="100" Value="1" /></StackPanel>
+                  <StackPanel Spacing="2"><TextBlock Text="Round cap / contest win target" FontSize="10"/><NumericUpDown x:Name="ModeMaximumRounds" Minimum="0" Maximum="100" Value="1" ToolTip.Tip="Use 0 for adaptive rounds in League or Contest." /></StackPanel>
                 </StackPanel>
                 <StackPanel Spacing="5" IsEnabled="{Binding LocalMode.UsesCompetitiveSettings}">
-                  <StackPanel Spacing="2"><TextBlock Text="Cycles" FontSize="10"/><NumericUpDown x:Name="ModeMaximumCycles" Minimum="1" Maximum="1000000000" Value="15000" /></StackPanel>
-                  <StackPanel Spacing="2"><TextBlock Text="Population cap" FontSize="10"/><NumericUpDown x:Name="ModePopulationCap" Minimum="1" Maximum="1000000" Value="700" /></StackPanel>
+                  <StackPanel Spacing="2"><TextBlock Text="Cycles" FontSize="10"/><NumericUpDown x:Name="ModeMaximumCycles" Minimum="0" Maximum="1000000000" Value="15000" ToolTip.Tip="Use 0 to disable the cycle limit in League or Contest." /></StackPanel>
+                  <StackPanel Spacing="2"><TextBlock Text="Population cap" FontSize="10"/><NumericUpDown x:Name="ModePopulationCap" Minimum="0" Maximum="1000000" Value="700" ToolTip.Tip="Use 0 to disable this population cap in League or Contest." /></StackPanel>
                 </StackPanel>
                 <StackPanel Spacing="2"><TextBlock Text="Energy handicap" FontSize="10"/><NumericUpDown x:Name="ModeEnergyHandicap" Minimum="-100000" Maximum="100000" Value="0" /></StackPanel>
                 <CheckBox x:Name="ModeRestartOnExtinction" IsEnabled="{Binding LocalMode.UsesCompetitiveSettings}" Content="RESTART AFTER EXTINCTION" IsChecked="True" FontSize="10" />

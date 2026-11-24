@@ -363,6 +363,9 @@ pub struct RobotState {
     pub(crate) native_record_index: Option<usize>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) native_record_override: Option<Box<crate::native_binary::NativeRobotRecord>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) native_mutation_spare_entries:
+        Option<Box<crate::native_binary::NativeMutationSpareEntries>>,
     pub identity: RobotIdentity,
     pub flags: RobotFlags,
     pub kinematics: RobotKinematics,
@@ -378,6 +381,8 @@ pub struct RobotState {
     #[serde(default)]
     pub heredity: RobotHeredityState,
     pub ties: [Option<TieEndpointState>; 10],
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub(crate) native_tie_count_pending: bool,
     pub phenotype: VisualPhenotype,
     #[serde(skip)]
     pub(crate) teleporter_backflow: Option<TeleporterBackflow>,
@@ -401,6 +406,7 @@ impl RobotState {
         let mut state = Self {
             native_record_index: None,
             native_record_override: None,
+            native_mutation_spare_entries: None,
             identity: RobotIdentity {
                 species,
                 parents,
@@ -421,6 +427,7 @@ impl RobotState {
             native_virtual_body: None,
             heredity: RobotHeredityState::default(),
             ties: [None; 10],
+            native_tie_count_pending: false,
             phenotype,
             teleporter_backflow: None,
         };
@@ -544,7 +551,24 @@ impl RobotArena {
     }
 
     pub(crate) fn spawn(&mut self, state: RobotState) -> OrganismId {
-        let slot_index = if let Some(slot_index) = self.free_slots.pop() {
+        let free_slot = self.free_slots.pop();
+        self.insert_robot(state, free_slot)
+    }
+
+    pub(crate) fn spawn_first_free(&mut self, state: RobotState) -> OrganismId {
+        // Robots.bas posto scans from slot 1 for every insertion.
+        let first = self
+            .free_slots
+            .iter()
+            .copied()
+            .enumerate()
+            .min_by_key(|&(_, slot)| slot);
+        let free_slot = first.map(|(index, _)| self.free_slots.remove(index));
+        self.insert_robot(state, free_slot)
+    }
+
+    fn insert_robot(&mut self, state: RobotState, free_slot: Option<u32>) -> OrganismId {
+        let slot_index = if let Some(slot_index) = free_slot {
             self.slots[slot_index as usize].organism = Some(state);
             slot_index
         } else {

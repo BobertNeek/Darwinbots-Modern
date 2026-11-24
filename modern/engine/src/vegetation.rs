@@ -39,6 +39,9 @@ pub(crate) struct VegetationRuntime {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     native_repopulation_counter: Option<i32>,
     day_night_counter: u64,
+    /// The Sun button can show temporary feeding that differs from SimOpts.Daytime.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    native_sun_override: Option<bool>,
     sun_position: f64,
     sun_range: f64,
     sun_change: u8,
@@ -58,6 +61,7 @@ impl Default for VegetationRuntime {
             repopulation_counter: 0,
             native_repopulation_counter: None,
             day_night_counter: 0,
+            native_sun_override: None,
             sun_position: 0.5,
             sun_range: 1.0,
             sun_change: 10,
@@ -68,6 +72,14 @@ impl Default for VegetationRuntime {
 }
 
 impl VegetationRuntime {
+    pub(crate) fn native_sun_on(&self, daytime: bool) -> bool {
+        self.native_sun_override.unwrap_or(daytime)
+    }
+
+    pub(crate) fn set_native_sun_indicator(&mut self, daytime: bool, feed_this_cycle: bool) {
+        self.native_sun_override = (daytime != feed_this_cycle).then_some(feed_this_cycle);
+    }
+
     pub(crate) fn native_light_availability(&self) -> f64 {
         self.native_light_availability
     }
@@ -421,9 +433,12 @@ fn native_photosynthesis_delta(input: PlantLightInput, availability: f64) -> f32
         token = (f64::from(token.max(0.0)) / 3.5) as f32;
         let area_correction = ((1.0 - availability).powi(2) * 4.0) as f32;
         let chloroplast_correction = input.chloroplasts / 16_000.0;
-        let add_rate = (f64::from(area_correction * chloroplast_correction) * 1.25) as f32;
+        // FeedVeg stores AddEnergyRate after both multiplications.
+        let add_rate =
+            (f64::from(area_correction) * f64::from(chloroplast_correction) * 1.25) as f32;
         let subtract_rate = f64::from(input.chloroplasts / 32_000.0).powi(2) as f32;
-        delta = (add_rate - subtract_rate) * token;
+        // FeedVeg retains the difference through multiplication, then stores acttok.
+        delta = ((f64::from(add_rate) - f64::from(subtract_rate)) * f64::from(token)) as f32;
     }
     // Both CSng operands multiply as Single, but /1000000000# and the
     // subtraction are Double before assignment back to Single acttok.
@@ -515,6 +530,7 @@ mod native_weather_tests {
             repopulation_counter: 17,
             native_repopulation_counter: None,
             day_night_counter: 23,
+            native_sun_override: None,
             sun_position: 0.125,
             sun_range: 0.75,
             sun_change: 22,
@@ -557,6 +573,7 @@ mod native_weather_tests {
             repopulation_counter: 17,
             native_repopulation_counter: None,
             day_night_counter: 23,
+            native_sun_override: None,
             sun_position: 0.125,
             sun_range: 0.75,
             sun_change: 22,
@@ -588,6 +605,7 @@ mod native_weather_tests {
             repopulation_counter: 17,
             native_repopulation_counter: None,
             day_night_counter: 23,
+            native_sun_override: None,
             sun_position: 0.125,
             sun_range: 0.75,
             sun_change: 22,
@@ -693,6 +711,49 @@ mod native_feed_precision55_tests {
         nonpond.light_intensity = 0.0;
         assert_eq!(runtime.feed_native(nonpond).delta.to_bits(), 0x3fff_fffe);
         assert_eq!(runtime.feed(nonpond).delta, 0.0);
+    }
+
+    #[test]
+    fn native_feed_retains_the_rate_difference_until_the_acttok_assignment() {
+        let mut runtime = VegetationRuntime::fresh_native_process();
+        runtime.set_native_light_availability(0.083_561_473_958_333_33);
+        // Robot 75 in the original cycle 283, immediately before FeedVeg.
+        let input = PlantLightInput {
+            age: 224,
+            chloroplasts: f32::from_bits(0x46b7_b4c6),
+            max_energy_per_tick: 100,
+            ..input()
+        };
+        let delta = runtime.feed_native(input).delta;
+        let mut stores = crate::RobotMaterials {
+            energy: f32::from_bits(0x459f_55d6),
+            body: f32::from_bits(0x44c9_fd53),
+            ..Default::default()
+        };
+        stores.apply_native_plant_delta(delta, 0.75);
+        assert_eq!(stores.energy.to_bits(), 0x45a0_97a0);
+        assert_eq!(stores.body.to_bits(), 0x44cb_7f79);
+    }
+
+    #[test]
+    fn native_feed_retains_the_chloroplast_product_until_the_add_rate_assignment() {
+        let mut runtime = VegetationRuntime::fresh_native_process();
+        runtime.set_native_light_availability(0.080_423_119_791_666_66);
+        // Robot 148 in the original cycle 288, immediately before FeedVeg.
+        let input = PlantLightInput {
+            age: 142,
+            chloroplasts: f32::from_bits(0x46e5_f4a6),
+            max_energy_per_tick: 100,
+            ..input()
+        };
+        let delta = runtime.feed_native(input).delta;
+        assert_eq!(delta.to_bits(), 0x4346_0e9f);
+        let mut stores = crate::RobotMaterials {
+            energy: f32::from_bits(0x4573_818f),
+            ..Default::default()
+        };
+        stores.apply_native_plant_delta(delta, 0.75);
+        assert_eq!(stores.energy.to_bits(), 0x4576_99c9);
     }
 
     #[test]

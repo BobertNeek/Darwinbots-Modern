@@ -152,7 +152,7 @@ impl DnaVm {
         memory: &mut VmMemory,
         context: VmContext<'_>,
     ) -> Result<VmReport, EngineError> {
-        Ok(self.execute_blocks(program.blocks(), memory, context, None))
+        Ok(self.execute_blocks(program.blocks(), memory, context, None, false))
     }
 
     pub(crate) fn execute_with_energy(
@@ -161,8 +161,9 @@ impl DnaVm {
         memory: &mut VmMemory,
         context: VmContext<'_>,
         energy: &mut f32,
+        native_flow: bool,
     ) -> Result<VmReport, EngineError> {
-        Ok(self.execute_blocks(program.blocks(), memory, context, Some(energy)))
+        Ok(self.execute_blocks(program.blocks(), memory, context, Some(energy), native_flow))
     }
 
     fn execute_blocks(
@@ -171,6 +172,7 @@ impl DnaVm {
         memory: &mut VmMemory,
         context: VmContext<'_>,
         mut energy: Option<&mut f32>,
+        native_flow: bool,
     ) -> VmReport {
         let mut integers = IntegerStack::new();
         let mut booleans = BooleanStack::new();
@@ -307,7 +309,7 @@ impl DnaVm {
                                 ensure_activation_slot(&mut report, context.record_activations);
                             }
                             in_gene = false;
-                            conditioned_else_pending = follows_condition;
+                            conditioned_else_pending = follows_condition && !native_flow;
                             flow = if branch_condition {
                                 Flow::Body
                             } else {
@@ -316,6 +318,11 @@ impl DnaVm {
                         }
                         3 => {
                             if !in_gene && !conditioned_else_pending {
+                                // DNA.bas resets the branch flag after the
+                                // first start or else consumes the condition.
+                                if native_flow {
+                                    branch_condition = true;
+                                }
                                 report.current_gene = report.current_gene.saturating_add(1);
                                 ensure_activation_slot(&mut report, context.record_activations);
                             }

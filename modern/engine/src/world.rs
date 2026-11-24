@@ -1,6 +1,7 @@
-use crate::biology::resource_readback;
+use crate::biology::{MEM_SET_AIM, resource_readback};
 use crate::environment::{
-    TeleporterBackflow, blocks_backflow, inside_teleporter, teleporter_blocked_by_obstacles,
+    TeleporterBackflow, TrashCompactor, blocks_backflow, inside_teleporter,
+    teleporter_blocked_by_obstacles,
 };
 use crate::modes::{
     LocalModeAdjudication, LocalModeConfig, LocalModeKind, LocalModeResult, LocalModeState,
@@ -37,6 +38,15 @@ use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::fs;
 use std::time::Instant;
 
+pub(crate) const DEFAULT_NATIVE_SHAPE_DIMENSIONS: [u16; 2] = [200; 2];
+
+#[derive(Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum NativePatternMaze {
+    Spiral,
+    Checkerboard,
+}
+
 use crate::physics::{
     MovementInput, MovementState, apply_angular_damping, apply_resistance, apply_static_friction,
     apply_voluntary_impulse, brownian_rotation, derived_mass, environment_impulse,
@@ -48,6 +58,10 @@ mod native_io;
 
 #[path = "world/native_reproduction.rs"]
 mod native_reproduction;
+
+#[path = "world/ordinary_restart.rs"]
+mod ordinary_restart;
+use ordinary_restart::OrdinaryRestart;
 
 #[path = "world/native_shots.rs"]
 mod native_shots;
@@ -73,6 +87,8 @@ mod player_insertion;
 
 #[path = "world/file_teleporters.rs"]
 mod file_teleporters;
+#[path = "world/native_teleporters.rs"]
+mod native_teleporters;
 mod species_settings;
 
 #[path = "world/file_transfer_transaction.rs"]
@@ -81,6 +97,10 @@ use file_transfer_transaction::FileTransferTransaction;
 
 #[path = "world/native_corpses.rs"]
 mod native_corpses;
+
+#[path = "world/death_recording.rs"]
+mod death_recording;
+use death_recording::DeathRecording;
 
 #[path = "world/native_graphs.rs"]
 mod native_graphs;
@@ -269,6 +289,7 @@ const MEM_MY_EYE: i32 = 728;
 const MEM_XPOS: i32 = 219;
 const MEM_YPOS: i32 = 217;
 const MEM_DAYTIME: i32 = 218;
+const MEM_SUN: i32 = 400;
 const MEM_EDGE: i32 = 214;
 const MEM_LIGHT: i32 = 923;
 const BIRTH_BORDER_SMUDGE: f32 = 50.0;
@@ -408,7 +429,7 @@ fn write_shot_taste(robot: &mut RobotState, event_point: [f32; 2], kind: i32) {
     robot.program.memory.write(MEM_SHOT_FLAVOR, kind);
 }
 
-fn publish_reproductive_readbacks(robot: &mut RobotState) {
+fn publish_reproductive_readbacks(robot: &mut RobotState, native_flow: bool) {
     robot
         .program
         .memory
@@ -417,10 +438,10 @@ fn publish_reproductive_readbacks(robot: &mut RobotState) {
         .program
         .memory
         .write(MEM_DNA_LENGTH, robot.program.dna.blocks().len() as i32);
-    robot
-        .program
-        .memory
-        .write(MEM_GENES, robot.program.dna.gene_count());
+    robot.program.memory.write(
+        MEM_GENES,
+        robot.program.dna.gene_count_for_world(native_flow),
+    );
     robot
         .program
         .memory
@@ -469,6 +490,8 @@ pub struct OrganismSnapshot {
     pub species: SpeciesId,
     pub vegetable: bool,
     pub parents: [Option<OrganismId>; 2],
+    #[serde(default)]
+    pub parent_absolute_id: u64,
     pub body: i32,
     #[serde(default)]
     pub mass: f32,
@@ -541,8 +564,19 @@ pub struct Snapshot {
     /// Original signed SimOpts.TotRunCycle, separate from the monotonic API tick.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub native_cycle: Option<i32>,
+    /// Last effective state of the original Sun button.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub native_sun_on: Option<bool>,
     #[serde(default = "default_true")]
     pub death_poffs_enabled: bool,
+    #[serde(default)]
+    pub ordinary_restart_available: bool,
+    #[serde(default)]
+    pub ordinary_restart_on_extinction: bool,
+    #[serde(default)]
+    pub ordinary_restart_pending: bool,
+    #[serde(default)]
+    pub ordinary_restart_count: u64,
     #[serde(default = "default_world_size")]
     pub world_size: [f32; 2],
     pub organisms: Vec<OrganismSnapshot>,
@@ -592,7 +626,12 @@ impl Default for Snapshot {
             schema_version: 0,
             tick: 0,
             native_cycle: None,
+            native_sun_on: None,
             death_poffs_enabled: true,
+            ordinary_restart_available: false,
+            ordinary_restart_on_extinction: false,
+            ordinary_restart_pending: false,
+            ordinary_restart_count: 0,
             world_size: [0.0; 2],
             organisms: Vec::new(),
             corpses: Vec::new(),
@@ -623,7 +662,12 @@ impl PartialEq for Snapshot {
     fn eq(&self, other: &Self) -> bool {
         self.tick == other.tick
             && self.native_cycle == other.native_cycle
+            && self.native_sun_on == other.native_sun_on
             && self.death_poffs_enabled == other.death_poffs_enabled
+            && self.ordinary_restart_available == other.ordinary_restart_available
+            && self.ordinary_restart_on_extinction == other.ordinary_restart_on_extinction
+            && self.ordinary_restart_pending == other.ordinary_restart_pending
+            && self.ordinary_restart_count == other.ordinary_restart_count
             && self.schema_version == other.schema_version
             && self.world_size == other.world_size
             && self.organisms == other.organisms
@@ -1039,6 +1083,8 @@ impl From<Db3sV2EngineConfig> for EngineConfig {
             recognition_fudging: 0,
             disqualification: 0,
             shapes_visible: false,
+            shape_drift: None,
+            shape_creation: None,
             greedy_reproduction: false,
             body_cutoff: 0,
             seed: value.seed,
@@ -1634,6 +1680,7 @@ impl From<Db3sV2OrganismSnapshot> for OrganismSnapshot {
             species: value.species.into(),
             vegetable: value.vegetable,
             parents: value.parents.map(|parent| parent.map(Into::into)),
+            parent_absolute_id: 0,
             body: value.body,
             mass: 0.0,
             radius: 0.0,
@@ -1976,7 +2023,12 @@ impl From<Db3sV2Snapshot> for Snapshot {
             schema_version: default_snapshot_schema_version(),
             tick: value.tick,
             native_cycle: None,
+            native_sun_on: None,
             death_poffs_enabled: true,
+            ordinary_restart_available: false,
+            ordinary_restart_on_extinction: false,
+            ordinary_restart_pending: false,
+            ordinary_restart_count: 0,
             world_size: value.world_size,
             organisms: value.organisms.into_iter().map(Into::into).collect(),
             corpses: value.corpses.into_iter().map(Into::into).collect(),
@@ -2324,10 +2376,19 @@ struct EngineCycleCheckpoint {
     native_energy: native_energy::NativeEnergyRuntime,
     native_skin_timer_seconds: Option<[f32; 2]>,
     death_poffs_enabled: bool,
+    ordinary_restart: OrdinaryRestart,
+}
+
+#[derive(Clone, Default)]
+pub(crate) struct PlayerBotInput {
+    pointer: Option<[f32; 2]>,
+    highlights: Vec<OrganismId>,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct Engine {
+    #[serde(skip)]
+    pub(crate) player_bot_input: PlayerBotInput,
     #[serde(default)]
     native_buckets: native_collisions::NativeBuckets,
     #[serde(skip, default)]
@@ -2366,6 +2427,10 @@ pub struct Engine {
     native_skin_timer_seconds: Option<[f32; 2]>,
     #[serde(default = "default_true", skip_serializing_if = "is_true")]
     death_poffs_enabled: bool,
+    #[serde(skip)]
+    recorded_deaths: Option<DeathRecording>,
+    #[serde(default, skip_serializing_if = "OrdinaryRestart::is_default")]
+    ordinary_restart: OrdinaryRestart,
     config: EngineConfig,
     #[serde(flatten)]
     slots: RobotArena,
@@ -2424,6 +2489,11 @@ pub struct Engine {
     zerobot_checkpoint_score: i64,
     #[serde(default)]
     obstacles: Vec<Obstacle>,
+    /// Original shapes keep Single width and height independently of their origin.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    native_obstacle_extents: BTreeMap<u32, [f32; 2]>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    trash_compactor: Option<TrashCompactor>,
     #[serde(default)]
     teleporters: Vec<Teleporter>,
     #[serde(default)]
@@ -2478,6 +2548,8 @@ struct CycleCheckpoint {
     zerobot_checkpoint: Option<RobotState>,
     zerobot_checkpoint_score: i64,
     obstacles: Vec<Obstacle>,
+    native_obstacle_extents: BTreeMap<u32, [f32; 2]>,
+    trash_compactor: Option<TrashCompactor>,
     teleporters: Vec<Teleporter>,
     file_teleporters: Vec<FileTeleporter>,
     corpses: Vec<CorpseSnapshot>,
@@ -2489,6 +2561,45 @@ struct CycleCheckpoint {
     pending_gpu_render_instances: Option<Vec<RenderInstance>>,
     pending_gpu_collision_pairs: Option<Vec<(usize, usize)>>,
     snapshot_publication_count: u64,
+}
+
+struct NativeShapeAppender<'a> {
+    random: &'a mut crate::native_random::NativeRandom,
+    obstacles: &'a mut Vec<Obstacle>,
+    extents: &'a mut BTreeMap<u32, [f32; 2]>,
+    last_id: u32,
+    capacity: usize,
+    appearance: (bool, bool, ShapeVisionPolicy, ShapeShotPolicy),
+    added: usize,
+}
+
+impl NativeShapeAppender<'_> {
+    fn add(&mut self, [(left, width), (top, height)]: [(f32, f32); 2]) -> bool {
+        if self.added == self.capacity {
+            return false;
+        }
+        let id = self.last_id + self.added as u32 + 1;
+        let mut shape = Obstacle::new(id, [left, top], [left + width, top + height]);
+        let (black, transparent, vision, shot) = self.appearance;
+        let bgr = if black {
+            0
+        } else {
+            (f64::from(self.random.unit()) * 65_536.0
+                + f64::from(self.random.unit()) * 255.0
+                + f64::from(self.random.unit()))
+            .round_ties_even() as i32
+        };
+        shape.color = native_io::color(bgr);
+        if transparent {
+            shape.opacity = 0.0;
+        }
+        shape.vision_policy = vision;
+        shape.shot_policy = shot;
+        self.extents.insert(id, [width, height]);
+        self.obstacles.push(shape);
+        self.added += 1;
+        true
+    }
 }
 
 impl Engine {
@@ -2624,6 +2735,7 @@ impl Engine {
             robot_fixing_allowed: legacy.robot_fixing_allowed,
             asexual_reproduction_allowed: legacy.asexual_reproduction_allowed,
             player_bot: PlayerBotState::default(),
+            player_bot_input: PlayerBotInput::default(),
             restriction_options: RestrictionOptions::default(),
             local_mode: LocalModeState::default(),
             next_lineage_id: legacy.next_lineage_id,
@@ -2633,6 +2745,8 @@ impl Engine {
             zerobot_checkpoint: None,
             zerobot_checkpoint_score: 0,
             obstacles: legacy.obstacles.into_iter().map(Into::into).collect(),
+            native_obstacle_extents: BTreeMap::new(),
+            trash_compactor: None,
             teleporters: legacy.teleporters.into_iter().map(Into::into).collect(),
             file_teleporters: Vec::new(),
             corpses: legacy.corpses.into_iter().map(Into::into).collect(),
@@ -2661,6 +2775,8 @@ impl Engine {
             native_energy: native_energy::NativeEnergyRuntime::default(),
             native_skin_timer_seconds: None,
             death_poffs_enabled: true,
+            recorded_deaths: None,
+            ordinary_restart: OrdinaryRestart::default(),
         })
     }
 
@@ -2794,7 +2910,12 @@ impl Engine {
                 schema_version: default_snapshot_schema_version(),
                 tick: 0,
                 native_cycle: None,
+                native_sun_on: None,
                 death_poffs_enabled: true,
+                ordinary_restart_available: true,
+                ordinary_restart_on_extinction: false,
+                ordinary_restart_pending: false,
+                ordinary_restart_count: 0,
                 world_size,
                 organisms: Vec::new(),
                 corpses: Vec::new(),
@@ -2837,6 +2958,7 @@ impl Engine {
             robot_fixing_allowed: true,
             asexual_reproduction_allowed: true,
             player_bot: PlayerBotState::default(),
+            player_bot_input: PlayerBotInput::default(),
             restriction_options: RestrictionOptions::default(),
             local_mode: LocalModeState::default(),
             next_lineage_id: 2,
@@ -2846,6 +2968,8 @@ impl Engine {
             zerobot_checkpoint: None,
             zerobot_checkpoint_score: 0,
             obstacles: Vec::new(),
+            native_obstacle_extents: BTreeMap::new(),
+            trash_compactor: None,
             teleporters: Vec::new(),
             file_teleporters: Vec::new(),
             corpses: Vec::new(),
@@ -2874,6 +2998,8 @@ impl Engine {
             native_energy: native_energy::NativeEnergyRuntime::default(),
             native_skin_timer_seconds: None,
             death_poffs_enabled: true,
+            recorded_deaths: None,
+            ordinary_restart: OrdinaryRestart::default(),
         };
         // Match restore publication without advancing a cycle or publishing a snapshot.
         engine.project_native_energy_stats();
@@ -3015,6 +3141,24 @@ impl Engine {
 
     /// Authoritative rules and available seed genomes for world editors.
     /// Reading this view does not execute DNA or mutate the simulation.
+    pub fn robot_tag_report(&self) -> String {
+        let mut report = String::from("Tag:FileName:User\r\n~~~\r\n");
+        let mut seen = HashSet::new();
+        for robot in self.slots.iter().filter_map(|slot| slot.organism.as_ref()) {
+            if !robot.flags.exists {
+                continue;
+            }
+            let tag = effective_robot_tag(robot);
+            let founder = native_census_filename(robot, &self.species);
+            let row = format!("{tag:<45.45}:{founder}:{}", robot.identity.owner);
+            if seen.insert(row.clone()) {
+                report.push_str("\r\n");
+                report.push_str(&row);
+            }
+        }
+        report
+    }
+
     pub fn configuration_view(&self) -> Result<serde_json::Value, EngineError> {
         let species = self
             .species
@@ -3063,9 +3207,16 @@ impl Engine {
                     "initial_energy".into(),
                     serde_json::json!(template.map_or(3000, |value| value.initial_energy)),
                 );
+                // Native organism imports set the roster quantity before a template exists.
                 fields.insert(
                     "initial_count".into(),
-                    serde_json::json!(template.map_or(1, |value| value.initial_population)),
+                    serde_json::json!(template.map_or_else(
+                        || {
+                            self.native_cycle
+                                .map_or(1, |_| definition.minimum_population)
+                        },
+                        |value| value.initial_population,
+                    )),
                 );
                 Ok(value)
             })
@@ -3106,6 +3257,15 @@ impl Engine {
         Ok(())
     }
 
+    pub(crate) fn set_shot_decay(&mut self, energy: bool, do_not_decay: bool) {
+        if energy {
+            self.config.shots.energy_shots_do_not_decay = do_not_decay;
+        } else {
+            self.config.shots.waste_shots_do_not_decay = do_not_decay;
+        }
+        self.publish_snapshot();
+    }
+
     pub fn set_ties_enabled(&mut self, enabled: bool) {
         self.ties_enabled = enabled;
         // VB6 DisableTies gates DNA requests; existing bonds keep working.
@@ -3130,6 +3290,16 @@ impl Engine {
                 organism.phenotype.color = color;
             }
         }
+        self.publish_snapshot();
+        Ok(())
+    }
+
+    pub(crate) fn set_organism_color(
+        &mut self,
+        id: OrganismId,
+        color: u32,
+    ) -> Result<(), EngineError> {
+        self.slots.get_mut(id)?.phenotype.color = color;
         self.publish_snapshot();
         Ok(())
     }
@@ -3636,7 +3806,7 @@ impl Engine {
                 .count();
             // Master.ReStart invokes KillRobot, not ManageDeath. Validate the
             // whole deletion batch before changing any actor or shot slot.
-            self.remove_many_at_boundary(&removed, false)?;
+            self.remove_many_at_boundary(&removed, false, true)?;
             self.stats.deaths = self.stats.deaths.saturating_add(living as u64);
             for id in removed {
                 trace.queue_change(CyclePhase::Restart, id, QueueChangeKind::DeathCommitted);
@@ -3666,11 +3836,19 @@ impl Engine {
         let mut species = Vec::with_capacity(self.species.len());
         let mut species_templates = Vec::with_capacity(self.species_templates.len());
         let mut subspecies_counters = Vec::with_capacity(self.subspecies_counters.len());
+        let keep_startup_roster =
+            self.ordinary_restart.enabled && self.ordinary_restart_available();
         for (index, definition) in self.species.iter().enumerate() {
             let keep = index == 0
                 || populations[index] > 0
                 || definition.reseed
-                || definition.minimum_population > 0;
+                || definition.minimum_population > 0
+                || (keep_startup_roster
+                    && self
+                        .species_templates
+                        .get(index)
+                        .and_then(Option::as_ref)
+                        .is_some_and(|template| !template.retired));
             if keep {
                 remap[index] = Some(SpeciesId(species.len() as u32));
                 species.push(definition.clone());
@@ -4180,20 +4358,7 @@ impl Engine {
         {
             self.prepare_classic_skin_profiles()?;
         }
-        let ids: Vec<_> = self
-            .slots
-            .iter()
-            .enumerate()
-            .filter_map(|(slot, entry)| {
-                entry
-                    .organism
-                    .as_ref()
-                    .map(|_| OrganismId::new(slot as u32, entry.generation))
-            })
-            .collect();
-        for id in ids {
-            self.slots.remove(id)?;
-        }
+        self.clear_restart_actors()?;
         if self.local_mode.series.population_seeding_phase.is_some() {
             // Original starts a fresh slot array, while modern handles retain
             // generations. Allocate source-order actors into ascending slots.
@@ -4202,16 +4367,6 @@ impl Engine {
                 self.next_absolute_id = 1;
             }
         }
-        self.ties.clear();
-        self.native_tie_index = None;
-        self.native_buckets = native_collisions::NativeBuckets::default();
-        self.projectiles = ProjectilePool::default();
-        if self.native_random.is_some() {
-            self.projectiles.reset_native_slots(50);
-        }
-        self.pending_projectile_requests.clear();
-        self.pending_mutations.clear();
-        self.corpses.clear();
         let max_population = self
             .local_mode_config()
             .map_or(self.config.organism_capacity, |config| {
@@ -4339,6 +4494,10 @@ impl Engine {
                         &mut organism.program.memory,
                         self.native_random.is_some(),
                     );
+                    organism
+                        .program
+                        .memory
+                        .write(MEM_SET_AIM, organism.materials.aim);
                     organism.program.memory.write(
                         MEM_XPOS,
                         native_sensing::position_word(
@@ -4372,6 +4531,23 @@ impl Engine {
                 spawned += 1;
             }
         }
+        Ok(())
+    }
+
+    fn clear_restart_actors(&mut self) -> Result<(), EngineError> {
+        for id in self.slots.ids_in_slot_order() {
+            self.slots.remove(id)?;
+        }
+        self.ties.clear();
+        self.native_tie_index = None;
+        self.native_buckets = native_collisions::NativeBuckets::default();
+        self.projectiles = ProjectilePool::default();
+        if self.native_random.is_some() {
+            self.projectiles.reset_native_slots(50);
+        }
+        self.pending_projectile_requests.clear();
+        self.pending_mutations.clear();
+        self.corpses.clear();
         Ok(())
     }
 
@@ -4417,7 +4593,7 @@ impl Engine {
             .map(|(_, id)| id)
             .collect();
         if !remove.is_empty() {
-            self.remove_many_at_boundary(&remove, false)?;
+            self.remove_many_at_boundary(&remove, false, true)?;
         }
         Ok(())
     }
@@ -4430,6 +4606,7 @@ impl Engine {
         organism
             .materials
             .publish_for_profile(&mut organism.program.memory, self.native_random.is_some());
+        organism.program.memory.write(MEM_SET_AIM, normalized);
         self.publish_snapshot();
         Ok(())
     }
@@ -4451,6 +4628,7 @@ impl Engine {
         self.player_bot.bindings = bindings;
         if !enabled {
             self.player_bot.pressed_keys.clear();
+            self.player_bot_input.pointer = None;
         }
         self.publish_snapshot();
         Ok(())
@@ -4463,12 +4641,27 @@ impl Engine {
         pressed: bool,
     ) -> Result<(), EngineError> {
         self.valid_slot(focus)?;
+        self.update_player_bot_key(Some(focus), key, pressed)
+    }
+
+    pub fn set_player_bot_key_state(&mut self, key: u32, pressed: bool) -> Result<(), EngineError> {
+        self.update_player_bot_key(None, key, pressed)
+    }
+
+    fn update_player_bot_key(
+        &mut self,
+        legacy_focus: Option<OrganismId>,
+        key: u32,
+        pressed: bool,
+    ) -> Result<(), EngineError> {
         if key > 65_535 {
             return Err(EngineError::Invariant(
                 "PlayerBot key codes must be between 0 and 65535".to_owned(),
             ));
         }
-        self.player_bot.focus = Some(focus);
+        if let Some(focus) = legacy_focus {
+            self.player_bot.focus = Some(focus);
+        }
         if pressed {
             if !self.player_bot.pressed_keys.contains(&key) {
                 self.player_bot.pressed_keys.push(key);
@@ -4477,6 +4670,48 @@ impl Engine {
             self.player_bot.pressed_keys.retain(|value| *value != key);
         }
         self.publish_snapshot();
+        Ok(())
+    }
+
+    pub fn set_player_bot_targets(
+        &mut self,
+        focus: Option<OrganismId>,
+        highlights: Vec<OrganismId>,
+    ) {
+        // Input can follow the preceding published frame. Match a stable key,
+        // never a newly born occupant of a reused slot.
+        self.player_bot.focus = focus.filter(|id| self.slots.get(*id).is_ok());
+        self.player_bot_input.highlights = highlights;
+        self.publish_snapshot();
+    }
+
+    fn transfer_player_bot_focus_after_death(&mut self, id: OrganismId) {
+        if self.player_bot.focus != Some(id) {
+            return;
+        }
+        self.player_bot.focus = if self.player_bot.enabled {
+            // KillRobot walks ascending slots and keeps the last existing highlight.
+            self.player_bot_input
+                .highlights
+                .iter()
+                .copied()
+                .filter(|&target| self.slots.get(target).is_ok_and(|robot| robot.flags.exists))
+                .max_by_key(|target| target.slot())
+        } else {
+            None
+        };
+    }
+
+    pub fn set_player_bot_pointer(
+        &mut self,
+        position: Option<[f32; 2]>,
+    ) -> Result<(), EngineError> {
+        if position.is_some_and(|point| point.iter().any(|coordinate| !coordinate.is_finite())) {
+            return Err(EngineError::Invariant(
+                "PlayerBot pointer needs finite coordinates".into(),
+            ));
+        }
+        self.player_bot_input.pointer = position.filter(|point| *point != [0.0, 0.0]);
         Ok(())
     }
 
@@ -4717,6 +4952,9 @@ impl Engine {
         let mut memory = VmMemory::default();
         memory.write(MEM_NRG, 1_000);
         memory.write(468, 32_000);
+        if self.native_cycle.is_some() {
+            memory.write(MEM_GENES, dna.native_gene_count());
+        }
         memory.write(
             MEM_XPOS,
             native_sensing::position_word(
@@ -4745,6 +4983,19 @@ impl Engine {
             initial_biology,
             phenotype,
         );
+        if self.native_cycle.is_some()
+            && self.native_random.is_some()
+            && (species != SpeciesId::default() || self.native_origin.is_some())
+        {
+            // Module1.preparerob keeps the filename from the loaded script.
+            // Fresh row zero is the unnamed placeholder; imported row zero is real.
+            state.identity.species_file = self.species[species.0 as usize]
+                .name
+                .rsplit('\\')
+                .next()
+                .unwrap_or_default()
+                .to_owned();
+        }
         if self.native_random.is_some() {
             state.program.initialize_native_dna_context();
         }
@@ -4762,7 +5013,16 @@ impl Engine {
             });
         apply_restriction_column(&mut state, &restriction_column);
         state.identity.absolute_id = self.allocate_absolute_identity();
-        Ok(self.slots.spawn(state))
+        Ok(self.insert_live_robot(state))
+    }
+
+    fn insert_live_robot(&mut self, state: RobotState) -> OrganismId {
+        // The bare API also seeds the native RNG. Only original-clock worlds use posto.
+        if self.native_cycle.is_some() {
+            self.slots.spawn_first_free(state)
+        } else {
+            self.slots.spawn(state)
+        }
     }
 
     pub fn remove(&mut self, id: OrganismId) -> Result<(), EngineError> {
@@ -4778,7 +5038,7 @@ impl Engine {
         ids: &[OrganismId],
         suppress_death_poffs: bool,
     ) -> Result<(), EngineError> {
-        self.remove_many_at_boundary(ids, suppress_death_poffs)?;
+        self.remove_many_at_boundary(ids, suppress_death_poffs, false)?;
         self.publish_snapshot();
         Ok(())
     }
@@ -4787,6 +5047,7 @@ impl Engine {
         &mut self,
         ids: &[OrganismId],
         suppress_death_poffs: bool,
+        record_deaths: bool,
     ) -> Result<(), EngineError> {
         if ids.is_empty() {
             return Err(EngineError::Invariant(
@@ -4807,6 +5068,9 @@ impl Engine {
         }
         let plan = self.preflight_native_deaths(ids, suppress_death_poffs)?;
         for &id in ids {
+            if record_deaths {
+                self.capture_death_record(id)?;
+            }
             if self.native_random.is_some() {
                 // KillRobot deletes ties before its poffs; the preflight plan
                 // already preserves each actor's poff/stored-virus slot order.
@@ -4823,10 +5087,11 @@ impl Engine {
                     })
                     .collect::<Vec<_>>();
                 for other in others {
-                    self.native_delete_pair(id, other);
+                    self.remove_native_tie_pair(id, other);
                 }
             }
             self.slots.remove(id)?;
+            self.transfer_player_bot_focus_after_death(id);
         }
         if self.native_random.is_some() {
             self.commit_native_deaths(plan);
@@ -4889,12 +5154,23 @@ impl Engine {
     }
 
     pub fn organism(&self, id: OrganismId) -> Result<OrganismSnapshot, EngineError> {
+        let organism = self.slots.get(id)?;
         Ok(snapshot_organism(
             id,
-            self.slots.get(id)?,
-            &self.species,
+            organism,
+            self.absolute_parent_id(organism),
             &self.config,
+            self.native_cycle.is_some(),
         ))
+    }
+
+    fn absolute_parent_id(&self, organism: &RobotState) -> u64 {
+        if organism.identity.parent_absolute_id != 0 {
+            return organism.identity.parent_absolute_id;
+        }
+        organism.identity.parents[0]
+            .and_then(|parent| self.slots.get(parent).ok())
+            .map_or(0, |parent| parent.identity.absolute_id)
     }
 
     /// DB2 main.fittest: living animal families, up to ten descendant levels.
@@ -5122,6 +5398,7 @@ impl Engine {
         }
         let birth_cycle = self.native_cycle_or_tick();
         let mut cloned_organism = self.slots.get(id)?.clone();
+        cloned_organism.native_tie_count_pending = false;
         cloned_organism.identity.parents = [Some(id), None];
         cloned_organism.identity.parent_absolute_id = cloned_organism.identity.absolute_id;
         cloned_organism.identity.absolute_id = self.allocate_absolute_identity();
@@ -5151,7 +5428,7 @@ impl Engine {
                 self.native_random.is_some(),
             ),
         );
-        let clone = self.slots.spawn(cloned_organism);
+        let clone = self.insert_live_robot(cloned_organism);
         self.record_offspring([Some(id), None]);
         self.propagate_descendant_count([Some(id), None]);
         self.stats.births = self.stats.births.saturating_add(1);
@@ -5175,9 +5452,55 @@ impl Engine {
             organism.program.initialize_native_dna_context();
             organism.flags.new_move = organism.program.dna.uses_new_move();
         }
+        if self.native_cycle.is_some() {
+            organism
+                .program
+                .memory
+                .write(MEM_GENES, organism.program.dna.native_gene_count());
+        }
         organism.refresh_occurrence_census();
         self.publish_snapshot();
         Ok(())
+    }
+
+    pub fn tag_organisms_by_name(
+        &mut self,
+        founder_name: &str,
+        tag: &str,
+    ) -> Result<usize, EngineError> {
+        if founder_name.is_empty() {
+            return Err(EngineError::Invariant("A founder name is required.".into()));
+        }
+        // VB6 replacechars replaces ANSI bytes 0–31 and 127–254. Preserve
+        // byte 255 (ÿ in Windows-1252) and map unsupported input to '?'.
+        let tag: String = tag
+            .chars()
+            .take(45)
+            .map(|ch| match ch {
+                ' '..='~' | 'ÿ' => ch,
+                _ => '?',
+            })
+            .collect();
+        let mut count = 0;
+        for robot in self
+            .slots
+            .iter_mut()
+            .filter_map(|slot| slot.organism.as_mut())
+        {
+            if !robot.flags.exists || native_census_filename(robot, &self.species) != founder_name {
+                continue;
+            }
+            robot.identity.tag.clone_from(&tag);
+            // A blank runtime tag must also clear the DNA export's metadata fallback.
+            let dna = &mut robot.program.dna;
+            let (generation, mutations) = (dna.metadata().generation, dna.metadata().mutations);
+            dna.synchronize_runtime_metadata(generation, mutations, &tag);
+            count += 1;
+        }
+        if count != 0 {
+            self.publish_snapshot();
+        }
+        Ok(count)
     }
 
     pub fn export_dna(&self, id: OrganismId) -> Result<String, EngineError> {
@@ -5192,9 +5515,7 @@ impl Engine {
             .metadata()
             .mutations
             .saturating_add(organism.program.mutation_metadata.total_mutations);
-        let tag = (!organism.identity.tag.is_empty())
-            .then_some(organism.identity.tag.as_str())
-            .or_else(|| (!dna.metadata().tag.is_empty()).then_some(dna.metadata().tag.as_str()));
+        let tag = effective_robot_tag(organism);
         let mut exported = dna.clone();
         if self
             .config
@@ -5222,7 +5543,7 @@ impl Engine {
                 );
             }
         }
-        Ok(exported.to_source_with_runtime_metadata(generation, mutations, tag))
+        Ok(exported.to_source_with_runtime_metadata(generation, mutations, Some(tag)))
     }
 
     /// Export the retained startup genome even if no living candidate remains.
@@ -5335,6 +5656,8 @@ impl Engine {
                     .to_owned(),
             ));
         }
+        let native_mutation_spare_entries =
+            self.inherit_native_mutation_spare_entries(&first_organism)?;
         let mut dna = if let Some(second) = second {
             let second_dna = self.slots.get(second)?.program.dna.clone();
             if let Some(random) = self.native_random.as_mut() {
@@ -5381,6 +5704,7 @@ impl Engine {
                 first_organism.program.mutation_metadata.clone();
             child_organism.program.mutation_profile =
                 first_organism.program.mutation_profile.clone();
+            child_organism.native_mutation_spare_entries = native_mutation_spare_entries;
             child_organism.flags.new_move = first_organism.flags.new_move;
             child_organism.flags.can_mutate = first_organism.flags.can_mutate;
             for address in 971..=975 {
@@ -5432,6 +5756,10 @@ impl Engine {
                 &mut child_organism.program.memory,
                 self.native_random.is_some(),
             );
+            child_organism
+                .program
+                .memory
+                .write(MEM_SET_AIM, child_organism.materials.aim);
         }
         self.record_offspring([Some(first), second]);
         self.propagate_descendant_count([Some(first), second]);
@@ -5475,6 +5803,9 @@ impl Engine {
         publish: bool,
         trace_enabled: bool,
     ) -> Result<Option<crate::CycleTrace>, EngineError> {
+        // A headless or batched caller may continue without the desktop's
+        // explicit post-recording restart command.
+        self.finish_pending_ordinary_restart(publish)?;
         if self
             .local_mode
             .evolution
@@ -5552,6 +5883,8 @@ impl Engine {
                 zerobot_checkpoint: self.zerobot_checkpoint.clone(),
                 zerobot_checkpoint_score: self.zerobot_checkpoint_score,
                 obstacles: self.obstacles.clone(),
+                native_obstacle_extents: self.native_obstacle_extents.clone(),
+                trash_compactor: self.trash_compactor,
                 teleporters: self.teleporters.clone(),
                 file_teleporters: self.file_teleporters.clone(),
                 corpses: self.corpses.clone(),
@@ -5575,6 +5908,7 @@ impl Engine {
             native_energy: self.native_energy.clone(),
             native_skin_timer_seconds: self.native_skin_timer_seconds,
             death_poffs_enabled: self.death_poffs_enabled,
+            ordinary_restart: self.ordinary_restart.clone(),
         }
     }
 
@@ -5593,6 +5927,7 @@ impl Engine {
         self.native_energy = checkpoint.native_energy;
         self.native_skin_timer_seconds = checkpoint.native_skin_timer_seconds;
         self.death_poffs_enabled = checkpoint.death_poffs_enabled;
+        self.ordinary_restart = checkpoint.ordinary_restart;
         let checkpoint = checkpoint.checkpoint;
         self.config = checkpoint.config;
         self.slots = checkpoint.slots;
@@ -5623,6 +5958,8 @@ impl Engine {
         self.zerobot_checkpoint = checkpoint.zerobot_checkpoint;
         self.zerobot_checkpoint_score = checkpoint.zerobot_checkpoint_score;
         self.obstacles = checkpoint.obstacles;
+        self.native_obstacle_extents = checkpoint.native_obstacle_extents;
+        self.trash_compactor = checkpoint.trash_compactor;
         self.teleporters = checkpoint.teleporters;
         self.file_teleporters = checkpoint.file_teleporters;
         self.corpses = checkpoint.corpses;
@@ -5763,9 +6100,12 @@ impl Engine {
         }
         self.trace_robot_phase(&mut trace, CyclePhase::CorpseDecay);
         self.decay_corpses_phase()?;
+        let check_ordinary_restart =
+            self.ordinary_restart.enabled && self.ordinary_restart_available();
+        let mut ordinary_extinct = false;
         if self.native_random.is_some() {
-            if let Some(census) = self.native_population_census.as_mut() {
-                census[0] = self
+            if check_ordinary_restart || self.native_population_census.is_some() {
+                let heterotrophs = self
                     .slots
                     .iter()
                     .filter_map(|slot| slot.organism.as_ref())
@@ -5776,6 +6116,10 @@ impl Engine {
                             && !robot.flags.hidden
                     })
                     .count();
+                if let Some(census) = self.native_population_census.as_mut() {
+                    census[0] = heterotrophs;
+                }
+                ordinary_extinct = check_ordinary_restart && heterotrophs == 0;
             }
             self.native_mid_robot_pipeline(&mut trace)?;
         } else {
@@ -5843,6 +6187,7 @@ impl Engine {
         self.record_actual_velocities();
         trace.phase(CyclePhase::ObjectsTeleporters);
         self.move_obstacles();
+        self.move_native_teleporters();
         trace.phase(CyclePhase::Repopulation);
         let started = Instant::now();
         self.vegetation_repopulation_phase()?;
@@ -5861,6 +6206,9 @@ impl Engine {
         self.native_tie_index = None;
         trace.phase(CyclePhase::Publication);
         self.stats.completed_cycles = self.stats.completed_cycles.saturating_add(1);
+        // A dying robot still counted in UpdateCounters. The original
+        // completes this cycle, including recording and Safe Mode, first.
+        self.ordinary_restart.pending = ordinary_extinct;
         self.finish_cycle_timing(publish, cycle_started);
         Ok(trace.finish())
     }
@@ -5928,6 +6276,8 @@ impl Engine {
             native_energy: self.native_energy.clone(),
             native_skin_timer_seconds: self.native_skin_timer_seconds,
             death_poffs_enabled: self.death_poffs_enabled,
+            recorded_deaths: None,
+            ordinary_restart: self.ordinary_restart.clone(),
             config: self.config.clone(),
             slots: self.slots.clone(),
             tick: self.tick,
@@ -5951,6 +6301,7 @@ impl Engine {
             robot_fixing_allowed: self.robot_fixing_allowed,
             asexual_reproduction_allowed: self.asexual_reproduction_allowed,
             player_bot: self.player_bot.clone(),
+            player_bot_input: self.player_bot_input.clone(),
             restriction_options: self.restriction_options.clone(),
             local_mode: self.local_mode.clone(),
             next_lineage_id: self.next_lineage_id,
@@ -5960,6 +6311,8 @@ impl Engine {
             zerobot_checkpoint: self.zerobot_checkpoint.clone(),
             zerobot_checkpoint_score: self.zerobot_checkpoint_score,
             obstacles: self.obstacles.clone(),
+            native_obstacle_extents: self.native_obstacle_extents.clone(),
+            trash_compactor: self.trash_compactor,
             teleporters: self.teleporters.clone(),
             file_teleporters: self.file_teleporters.clone(),
             corpses: self.corpses.clone(),
@@ -6014,7 +6367,385 @@ impl Engine {
         Ok(())
     }
 
-    pub fn add_obstacle(&mut self, obstacle: Obstacle) -> Result<(), EngineError> {
+    pub(crate) fn add_native_random_obstacles(
+        &mut self,
+        count: usize,
+        dimensions_permille: [u16; 2],
+    ) -> Result<Option<usize>, EngineError> {
+        self.add_native_shapes(count, dimensions_permille, false)
+    }
+
+    pub(crate) fn add_native_centered_obstacle(
+        &mut self,
+        dimensions_permille: [u16; 2],
+    ) -> Result<Option<usize>, EngineError> {
+        self.add_native_shapes(1, dimensions_permille, true)
+    }
+
+    fn add_native_shapes(
+        &mut self,
+        count: usize,
+        dimensions_permille: [u16; 2],
+        centered: bool,
+    ) -> Result<Option<usize>, EngineError> {
+        if dimensions_permille
+            .iter()
+            .any(|size| !(1..=1000).contains(size))
+        {
+            return Err(EngineError::Invariant(
+                "shape width and height must be within 1 to 1000 per mille".to_owned(),
+            ));
+        }
+        if self.native_random.is_none() {
+            return Ok(None);
+        }
+        let dimensions = [self.config.world_width, self.config.world_height].map(f64::from);
+        if dimensions.iter().any(|dimension| {
+            !dimension.is_finite()
+                || *dimension <= 0.0
+                || centered && dimension.round_ties_even() > f64::from(i32::MAX)
+        }) {
+            return Err(EngineError::Invariant(
+                "native shape creation requires valid field dimensions".to_owned(),
+            ));
+        }
+        // Each original slider scales the integer value and stores it as Single.
+        let extent_fractions =
+            dimensions_permille.map(|size| f64::from((f64::from(size) * 0.001) as f32));
+        let added = self.append_native_shapes(count, |shapes| {
+            for _ in 0..count {
+                let random = &mut *shapes.random;
+                let geometry = if centered {
+                    // ObstacleForm.MakeShape uses integer centers and full fixed extents.
+                    [0, 1].map(|axis| {
+                        let dimension = dimensions[axis];
+                        let fraction = extent_fractions[axis];
+                        let center = random.integer(0, dimension.round_ties_even() as i32);
+                        let minimum = (f64::from(center) - dimension * (fraction / 2.0)) as f32;
+                        (minimum, (dimension * fraction) as f32)
+                    })
+                } else {
+                    let position = [random.unit(), random.unit()];
+                    let extent = [random.unit(), random.unit()];
+                    [0, 1].map(|axis| {
+                        let dimension = dimensions[axis];
+                        let fraction = extent_fractions[axis];
+                        let coordinate = (f64::from(position[axis]) * dimension) as f32;
+                        let minimum = ((f64::from(coordinate) - dimension * (fraction / 2.0))
+                            as f32)
+                            .max(0.0);
+                        let size = (f64::from(extent[axis]) * dimension * fraction) as f32;
+                        let limit = dimension as f32;
+                        if minimum + size > limit {
+                            (minimum, limit - minimum)
+                        } else {
+                            (minimum, size)
+                        }
+                    })
+                };
+                // Random and centered creation draw geometry before checking capacity.
+                if !shapes.add(geometry) {
+                    break;
+                }
+            }
+        })?;
+        if added.is_some_and(|count| count != 0) {
+            self.publish_snapshot();
+        }
+        Ok(added)
+    }
+
+    pub(crate) fn add_native_polar_ice(
+        &mut self,
+    ) -> Result<Option<(usize, crate::ShapeDriftSettings)>, EngineError> {
+        if self.native_random.is_none() {
+            return Ok(None);
+        }
+        let field_size = [self.config.world_width, self.config.world_height];
+        if field_size
+            .iter()
+            .any(|field| !field.is_finite() || *field <= 0.0)
+        {
+            return Err(EngineError::Invariant(
+                "native shape creation requires valid field dimensions".to_owned(),
+            ));
+        }
+        let geometry = field_size.map(|field| {
+            let extent = field / 2.0;
+            (extent / 2.0, extent)
+        });
+        let Some(added) = self.append_native_shapes(9, |shapes| {
+            for _ in 0..9 {
+                if !shapes.add(geometry) {
+                    break;
+                }
+            }
+        })?
+        else {
+            return Ok(None);
+        };
+        // The maze changes SimOpts directly. Only the Shapes slider immediately
+        // rescales an existing trash compactor's velocity.
+        let drift = crate::ShapeDriftSettings {
+            horizontal: true,
+            vertical: true,
+            rate: 20,
+        };
+        self.config.shape_drift = Some(drift);
+        for shape in &self.obstacles {
+            self.native_obstacle_extents
+                .entry(shape.id)
+                .or_insert_with(|| shape.extents());
+        }
+        self.publish_snapshot();
+        Ok(Some((added, drift)))
+    }
+
+    pub(crate) fn add_native_simple_maze(
+        &mut self,
+        horizontal: bool,
+        corridor: u16,
+        thickness: u16,
+    ) -> Result<Option<usize>, EngineError> {
+        let Some(field) = self.native_maze_field(corridor, thickness)? else {
+            return Ok(None);
+        };
+        let [across, along] = if horizontal {
+            field
+        } else {
+            [field[1], field[0]]
+        };
+        let pitch = f64::from(corridor + thickness);
+        let lines = Self::native_maze_line_count(across, pitch)?;
+        let added = self.append_native_shapes(2 * lines, |shapes| {
+            for line in 1..=lines {
+                let opening = shapes.random.integer(0, along as i32 - i32::from(corridor));
+                let across_position = (line as f64 * pitch) as f32;
+                let wall = |position: f32, extent: f32| {
+                    let cross = (across_position, f32::from(thickness));
+                    let span = (position, extent);
+                    if horizontal {
+                        [cross, span]
+                    } else {
+                        [span, cross]
+                    }
+                };
+                // NewObstacle accepts raw signed extents. Failed appends consume no color
+                // draws, but the original maze keeps drawing one opening for each line.
+                shapes.add(wall(-100.0, opening as f32));
+                let end = f64::from(opening) + f64::from(corridor);
+                if end < along + 100.0 {
+                    shapes.add(wall(end as f32, (along + 100.0 - end) as f32));
+                }
+            }
+        })?;
+        if added.is_some_and(|count| count != 0) {
+            self.publish_snapshot();
+        }
+        Ok(added)
+    }
+
+    pub(crate) fn add_native_pattern_maze(
+        &mut self,
+        pattern: NativePatternMaze,
+        corridor: u16,
+        thickness: u16,
+    ) -> Result<Option<usize>, EngineError> {
+        let Some(field) = self.native_maze_field(corridor, thickness)? else {
+            return Ok(None);
+        };
+        let added = match pattern {
+            NativePatternMaze::Spiral => self.append_native_spiral(field, corridor, thickness),
+            NativePatternMaze::Checkerboard => self.append_native_checkerboard(field, corridor),
+        }?;
+        if added.is_some_and(|count| count != 0) {
+            self.publish_snapshot();
+        }
+        Ok(added)
+    }
+
+    fn native_maze_field(
+        &self,
+        corridor: u16,
+        thickness: u16,
+    ) -> Result<Option<[f64; 2]>, EngineError> {
+        if !(300..=5000).contains(&corridor) || !(1..=500).contains(&thickness) {
+            return Err(EngineError::Invariant(
+                "maze dimensions are outside the Shapes slider ranges".into(),
+            ));
+        }
+        if self.native_random.is_none() {
+            return Ok(None);
+        }
+        let field = [self.config.world_width, self.config.world_height]
+            .map(|extent| f64::from(extent).round_ties_even());
+        if field
+            .iter()
+            .any(|extent| !(1.0..=f64::from(i32::MAX)).contains(extent))
+        {
+            return Err(EngineError::Invariant(
+                "native mazes require valid field dimensions".into(),
+            ));
+        }
+        Ok(Some(field))
+    }
+
+    fn native_maze_line_count(across: f64, pitch: f64) -> Result<usize, EngineError> {
+        let lines = (across / pitch).round_ties_even();
+        if lines > f64::from(i16::MAX) {
+            return Err(EngineError::Invariant(
+                "maze line count exceeds the original Integer range".into(),
+            ));
+        }
+        Ok((lines as usize).saturating_sub(1))
+    }
+
+    fn append_native_spiral(
+        &mut self,
+        [width, height]: [f64; 2],
+        corridor: u16,
+        thickness: u16,
+    ) -> Result<Option<usize>, EngineError> {
+        let pitch = f64::from(corridor + thickness);
+        let layers = Self::native_maze_line_count(width, pitch)?
+            .min(Self::native_maze_line_count(height, pitch)?)
+            / 2;
+        let corridor = f32::from(corridor);
+        let thickness = f32::from(thickness);
+        // Field dimensions are Long. The inner CSng expressions round before subtraction.
+        let horizontal = |extent: f32| (width - f64::from(extent)) as f32;
+        let vertical = |extent: f32| (height - f64::from(extent)) as f32;
+        self.append_native_shapes(4 * layers, |shapes| {
+            'layers: for layer in 1..=layers {
+                let i = layer as f32;
+                let edge = corridor * i;
+                let bottom_inset =
+                    (f64::from(corridor) * 2.0 * f64::from(i) - f64::from(thickness)) as f32;
+                for wall in [
+                    [
+                        (
+                            (i - 1.0) * corridor,
+                            horizontal(corridor * (2.0 * (i - 1.0) + 1.0)),
+                        ),
+                        (edge, thickness),
+                    ],
+                    [
+                        (edge, horizontal(bottom_inset)),
+                        (vertical(edge), thickness),
+                    ],
+                    [
+                        (horizontal(edge), thickness),
+                        (edge, vertical(corridor * (2.0 * i))),
+                    ],
+                    [
+                        (edge, thickness),
+                        ((i + 1.0) * corridor, vertical(corridor * (2.0 * i + 1.0))),
+                    ],
+                ] {
+                    if !shapes.add(wall) {
+                        break 'layers;
+                    }
+                }
+            }
+        })
+    }
+
+    fn append_native_checkerboard(
+        &mut self,
+        [width, height]: [f64; 2],
+        corridor: u16,
+    ) -> Result<Option<usize>, EngineError> {
+        let corridor = f32::from(corridor);
+        let block = ((width / 10.0) as f32).min(5000.0);
+        let pitch = block + corridor;
+        let [columns, rows] = [width, height].map(|field| (field / f64::from(pitch)).floor());
+        if columns.max(rows) > f64::from(i16::MAX) {
+            return Err(EngineError::Invariant(
+                "checkerboard count exceeds the original Integer range".into(),
+            ));
+        }
+        let gap =
+            |count: f64, field| ((f64::from(count as f32 * pitch + corridor) - field) / 2.0) as f32;
+        let across_gap = gap(columns, width);
+        let down_gap = gap(rows, height);
+        let position =
+            |index: usize, gap| index as f32 * block + (index + 1) as f32 * corridor - gap;
+        let (columns, rows) = (columns as usize, rows as usize);
+        self.append_native_shapes(columns * rows, |shapes| {
+            'columns: for column in 0..columns {
+                let x = position(column, across_gap);
+                for row in 0..rows {
+                    if !shapes.add([(x, block), (position(row, down_gap), block)]) {
+                        break 'columns;
+                    }
+                }
+            }
+        })
+    }
+
+    fn append_native_shapes(
+        &mut self,
+        maximum: usize,
+        emit: impl FnOnce(&mut NativeShapeAppender<'_>),
+    ) -> Result<Option<usize>, EngineError> {
+        let Some(random) = self.native_random.as_mut() else {
+            return Ok(None);
+        };
+        let capacity = maximum.min(1000_usize.saturating_sub(self.obstacles.len()));
+        let last_id = self
+            .obstacles
+            .iter()
+            .map(|shape| shape.id)
+            .max()
+            .unwrap_or(0);
+        last_id
+            .checked_add(capacity as u32)
+            .ok_or_else(|| EngineError::Invariant("shape ID capacity exhausted".to_owned()))?;
+
+        let appearance = if let Some(settings) = self.config.shape_creation {
+            (
+                settings.black,
+                settings.transparent,
+                settings.vision_policy(),
+                settings.shot_policy(),
+            )
+        } else {
+            let origin = self.native_origin.as_ref().and_then(|origin| {
+                crate::native_binary::NativeSimulationTail::decode(&origin.tail).ok()
+            });
+            let native_flag = |name| origin.as_ref().and_then(|tail| tail.integer(name).ok());
+            let black = native_flag("shapes_black").is_some_and(|value| value != 0);
+            let transparent = native_flag("shapes_transparent").is_some_and(|value| value != 0);
+            let (vision, shot) = self.obstacles.first().map_or_else(
+                || {
+                    let vision = match native_flag("shapes_see_through") {
+                        Some(value) if value != 0 => ShapeVisionPolicy::SeeThrough,
+                        _ => ShapeVisionPolicy::default(),
+                    };
+                    let shot = match native_flag("shapes_absorb") {
+                        Some(0) => ShapeShotPolicy::Reflect,
+                        _ => ShapeShotPolicy::default(),
+                    };
+                    (vision, shot)
+                },
+                |shape| (shape.vision_policy, shape.shot_policy),
+            );
+            (black, transparent, vision, shot)
+        };
+        let mut shapes = NativeShapeAppender {
+            random,
+            obstacles: &mut self.obstacles,
+            extents: &mut self.native_obstacle_extents,
+            last_id,
+            capacity,
+            appearance,
+            added: 0,
+        };
+        emit(&mut shapes);
+        Ok(Some(shapes.added))
+    }
+
+    fn validate_obstacle_addition(&self, obstacle: &Obstacle) -> Result<(), EngineError> {
         if obstacle
             .minimum
             .iter()
@@ -6041,7 +6772,106 @@ impl Engine {
                 obstacle.id
             )));
         }
+        Ok(())
+    }
+
+    pub fn add_obstacle(&mut self, obstacle: Obstacle) -> Result<(), EngineError> {
+        self.validate_obstacle_addition(&obstacle)?;
+        if self.config.shape_drift.is_some() && self.native_random.is_some() {
+            self.native_obstacle_extents
+                .insert(obstacle.id, obstacle.extents());
+        }
         self.obstacles.push(obstacle);
+        self.publish_snapshot();
+        Ok(())
+    }
+
+    pub(crate) fn set_shape_drift(
+        &mut self,
+        horizontal: Option<bool>,
+        vertical: Option<bool>,
+        rate: Option<i16>,
+    ) -> Result<Option<crate::ShapeDriftSettings>, EngineError> {
+        if self.native_random.is_none() {
+            return Ok(None);
+        }
+        if horizontal.is_none() && vertical.is_none() && rate.is_none() {
+            return Ok(self.config.shape_drift);
+        }
+        if rate.is_some_and(|rate| !(1..=1000).contains(&rate)) {
+            return Err(EngineError::Invariant(
+                "shape drift rate must be between 1 and 1000".into(),
+            ));
+        }
+        let drift = self.config.shape_drift.get_or_insert_with(Default::default);
+        if let Some(horizontal) = horizontal {
+            drift.horizontal = horizontal;
+        }
+        if let Some(vertical) = vertical {
+            drift.vertical = vertical;
+        }
+        let wall_speed = rate.map(|rate| {
+            drift.rate = rate;
+            (f64::from(rate) * 0.1) as f32
+        });
+        let settings = *drift;
+        for shape in &mut self.obstacles {
+            self.native_obstacle_extents
+                .entry(shape.id)
+                .or_insert_with(|| shape.extents());
+            if horizontal == Some(false) {
+                shape.drift[0] = 0.0;
+            }
+            if vertical == Some(false) {
+                shape.drift[1] = 0.0;
+            }
+            if let Some(speed) = wall_speed
+                && self
+                    .trash_compactor
+                    .is_some_and(|pair| pair.contains(shape.id))
+                && shape.drift[0] != 0.0
+            {
+                shape.drift[0] = speed.copysign(shape.drift[0]);
+            }
+        }
+        if let Some(speed) = wall_speed
+            && let Some(compactor) = self.trash_compactor.as_mut()
+        {
+            compactor.speed = speed;
+        }
+        self.publish_snapshot();
+        Ok(Some(settings))
+    }
+
+    pub fn add_trash_compactor(
+        &mut self,
+        left: Obstacle,
+        right: Obstacle,
+    ) -> Result<(), EngineError> {
+        self.validate_obstacle_addition(&left)?;
+        self.validate_obstacle_addition(&right)?;
+        let speed = left.drift[0];
+        if left.id == right.id
+            || left.minimum[0] >= right.minimum[0]
+            || speed <= 0.0
+            || right.drift != [-speed, 0.0]
+            || left.drift[1] != 0.0
+        {
+            return Err(EngineError::Invariant(
+                "trash compactor walls are invalid".into(),
+            ));
+        }
+        self.trash_compactor = Some(TrashCompactor {
+            left: left.id,
+            right: right.id,
+            speed,
+        });
+        if self.config.shape_drift.is_some() && self.native_random.is_some() {
+            self.native_obstacle_extents.insert(left.id, left.extents());
+            self.native_obstacle_extents
+                .insert(right.id, right.extents());
+        }
+        self.obstacles.extend([left, right]);
         self.publish_snapshot();
         Ok(())
     }
@@ -6069,9 +6899,39 @@ impl Engine {
                 "obstacle geometry or properties are invalid".to_owned(),
             ));
         }
+        let previous = &self.obstacles[index];
+        if (previous.minimum != obstacle.minimum || previous.maximum != obstacle.maximum)
+            && let Some(extents) = self.native_obstacle_extents.get_mut(&obstacle.id)
+        {
+            *extents = obstacle.extents();
+        }
         self.obstacles[index] = obstacle;
         self.publish_snapshot();
         Ok(())
+    }
+
+    pub(crate) fn remove_native_random_obstacles(&mut self) -> Result<Option<usize>, EngineError> {
+        if self.native_random.is_none() {
+            return Ok(None);
+        }
+        let initial = i32::try_from(self.obstacles.len()).map_err(|_| {
+            EngineError::Invariant("too many shapes for native deletion".to_owned())
+        })?;
+        if initial == 0 {
+            return Ok(Some(0));
+        }
+
+        let mut remaining = initial;
+        for _ in 0..10 {
+            let slot = self.native_random.as_mut().unwrap().integer(1, remaining);
+            // Random(1, 0) still advances the stream and returns zero.
+            if slot != 0 {
+                let id = self.obstacles[(slot - 1) as usize].id;
+                self.remove_obstacle(id)?;
+                remaining = self.obstacles.len() as i32;
+            }
+        }
+        Ok(Some((initial - remaining) as usize))
     }
 
     pub fn remove_obstacle(&mut self, id: u32) -> Result<(), EngineError> {
@@ -6081,6 +6941,13 @@ impl Engine {
             return Err(EngineError::Invariant(format!(
                 "obstacle {id} does not exist"
             )));
+        }
+        self.native_obstacle_extents.remove(&id);
+        if self
+            .trash_compactor
+            .is_some_and(|compactor| compactor.contains(id))
+        {
+            self.trash_compactor = None;
         }
         self.publish_snapshot();
         Ok(())
@@ -6112,6 +6979,8 @@ impl Engine {
         teleporter.poll_interval = teleporter.poll_interval.max(1);
         teleporter.capacity = teleporter.capacity.max(1);
         teleporter.poll_countdown = teleporter.poll_countdown.min(teleporter.poll_interval);
+        teleporter.native_top_left = None;
+        teleporter.native_contact_center = None;
         self.teleporters.push(teleporter);
         self.publish_snapshot();
         Ok(())
@@ -6140,6 +7009,7 @@ impl Engine {
         teleporter.poll_interval = teleporter.poll_interval.max(1);
         teleporter.capacity = teleporter.capacity.max(1);
         teleporter.poll_countdown = teleporter.poll_countdown.min(teleporter.poll_interval);
+        teleporter.retain_native_movement(&self.teleporters[index])?;
         self.teleporters[index] = teleporter;
         for slot in &mut self.slots.slots {
             if let Some(robot) = slot.organism.as_mut() {
@@ -6306,7 +7176,11 @@ impl Engine {
             self.config.shots = shots;
         }
         if let Some(vegetation) = vegetation {
+            let sun_on = self.native_sun_on();
             self.config.vegetation = vegetation;
+            if let Some(sun_on) = sun_on {
+                self.remember_native_sun_indicator(sun_on);
+            }
         }
         if let Some(corpse_decay) = corpse_decay {
             self.config.corpse_decay = corpse_decay;
@@ -6399,6 +7273,11 @@ impl Engine {
     }
 
     pub fn validate_invariants(&self) -> Result<(), EngineError> {
+        if self.ordinary_restart.pending && !self.ordinary_restart.enabled {
+            return Err(EngineError::Invariant(
+                "Pending ordinary restart requires the option to be enabled.".into(),
+            ));
+        }
         self.projectiles.validate_native_slots()?;
         self.native_energy.validate()?;
         if !self.native_light_availability().is_finite()
@@ -6633,6 +7512,7 @@ impl Engine {
                     record_activations: true,
                 },
                 &mut organism.materials.energy,
+                self.native_cycle.is_some(),
             )?;
             organism.program.rng_state = vm.random_state();
             if self.native_random.is_some() {
@@ -6926,7 +7806,7 @@ impl Engine {
                 }
                 *timer = -2;
             }
-            publish_reproductive_readbacks(robot);
+            publish_reproductive_readbacks(robot, self.native_cycle.is_some());
         }
     }
 
@@ -6946,6 +7826,7 @@ impl Engine {
 
     fn material_commands_phase(&mut self) {
         let runtime = SysvarRuntime::new();
+        let native = self.native_random.is_some();
         let mut actions = Vec::new();
         let costs = self.active_dna_costs();
         let population = self.cost_population();
@@ -6985,15 +7866,24 @@ impl Engine {
             } else {
                 1.0
             };
+            // storevenom is first in MakeStuff and leaves its readback alone if
+            // there is no command or the robot starts with nonpositive energy.
+            let stores_venom = native && commands.make_venom != 0 && robot.materials.energy > 0.0;
             robot.materials.make_stuff(
                 &mut robot.program.memory,
                 commands,
                 transaction_costs,
                 multibot_divisor,
             );
+            if stores_venom {
+                robot
+                    .program
+                    .memory
+                    .write(825, robot.materials.venom.floor() as i32);
+            }
             robot
                 .materials
-                .publish_for_profile(&mut robot.program.memory, self.native_random.is_some());
+                .publish_for_profile(&mut robot.program.memory, native);
         }
         for (id, action) in actions {
             self.native_disqualify_action(id, action);
@@ -7056,6 +7946,15 @@ impl Engine {
                 continue;
             }
             if self.native_random.is_some() {
+                if robot.flags.exists && !robot.flags.hidden {
+                    // Senses.LandMark compares the raw Single heading to
+                    // Double literals and refreshes before the next DNA pass.
+                    let heading = f64::from(robot.heading());
+                    robot
+                        .program
+                        .memory
+                        .write(MEM_SUN, i32::from(heading > 1.39 && heading < 1.75));
+                }
                 // WriteSenses changes the physical coordinates as well as
                 // publishing zero when collision separation left them negative.
                 robot.kinematics.position = robot.kinematics.position.map(|value| value.max(0.0));
@@ -7169,38 +8068,51 @@ impl Engine {
         if !self.player_bot.enabled {
             return;
         }
-        let Some(focus) = self.player_bot.focus else {
-            return;
-        };
-        let bindings = self.player_bot.bindings.clone();
-        let pressed_keys = self.player_bot.pressed_keys.clone();
-        let Some(slot) = self.slots.slots.get_mut(focus.slot() as usize) else {
-            return;
-        };
-        if slot.generation != focus.generation() {
-            return;
-        }
-        let Some(robot) = slot.organism.as_mut() else {
-            return;
-        };
-        for binding in bindings {
-            if pressed_keys.contains(&binding.key) == binding.invert {
+        let mut targets = self.player_bot_input.highlights.clone();
+        targets.extend(self.player_bot.focus);
+        targets.sort_unstable_by_key(|id| (id.slot(), id.generation()));
+        targets.dedup();
+        for id in targets {
+            let Ok(robot) = self.slots.get_mut(id) else {
                 continue;
+            };
+            if let Some(point) = self.player_bot_input.pointer {
+                let [x, y] = robot.kinematics.position;
+                let radians = Self::native_angle_from_delta(point[0] - x, y - point[1]);
+                let aim = (radians * 200.0).round_ties_even() as i32;
+                Self::write_player_bot_memory(robot, id, 19, aim, trace);
             }
-            let address = binding.memory_address;
-            let before = robot.program.memory.read(address as i32);
-            robot.program.memory.write(address as i32, binding.value);
-            robot
-                .effects
-                .mark_reproduction_input(address as i32, binding.value);
-            trace.memory_write(
-                CyclePhase::PlayerBot,
-                focus,
-                address,
-                before,
-                robot.program.memory.read(address as i32),
-            );
+            for binding in &self.player_bot.bindings {
+                if self.player_bot.pressed_keys.contains(&binding.key) != binding.invert {
+                    Self::write_player_bot_memory(
+                        robot,
+                        id,
+                        binding.memory_address,
+                        binding.value,
+                        trace,
+                    );
+                }
+            }
         }
+    }
+
+    fn write_player_bot_memory(
+        robot: &mut RobotState,
+        id: OrganismId,
+        address: u16,
+        value: i32,
+        trace: &mut CycleRecorder,
+    ) {
+        let before = robot.program.memory.read(address as i32);
+        robot.program.memory.write(address as i32, value);
+        robot.effects.mark_reproduction_input(address as i32, value);
+        trace.memory_write(
+            CyclePhase::PlayerBot,
+            id,
+            address,
+            before,
+            robot.program.memory.read(address as i32),
+        );
     }
 
     fn tide_scaling(&self) -> f32 {
@@ -7967,11 +8879,9 @@ impl Engine {
                 let Some(source) = self.slots[source_slot].organism.as_ref() else {
                     continue;
                 };
-                if self
-                    .native_phase
-                    .as_ref()
-                    .is_some_and(|phase| phase.actor.slot() as usize != source_slot)
-                    || source.flags.corpse
+                if self.native_phase.as_ref().is_some_and(|phase| {
+                    phase.actor.slot() as usize != source_slot || source.native_tie_count_pending
+                }) || source.flags.corpse
                     || !source.flags.can_execute_dna
                 {
                     continue;
@@ -8281,6 +9191,7 @@ impl Engine {
                 let id = OrganismId::new(slot as u32, self.slots[slot].generation);
                 let count = self.tie_indices_for(id).len();
                 let robot = self.slots.get_mut(id).unwrap();
+                robot.native_tie_count_pending = false;
                 robot.program.memory.write(MEM_NUMBER_OF_TIES, count as i32);
                 if count == 0 {
                     // Update_Ties does not clear multibot merely because the
@@ -8409,7 +9320,15 @@ impl Engine {
                     .get(source_id)
                     .ok()
                     .zip(self.slots.get(target_id).ok())
-                    .is_some_and(|(a, b)| a.identity.species_file != b.identity.species_file);
+                    .is_some_and(|(a, b)| {
+                        if self.native_cycle.is_some() && self.native_random.is_some() {
+                            // Earlier DB3S versions left a fresh founder's filename empty.
+                            native_census_filename(a, &self.species)
+                                != native_census_filename(b, &self.species)
+                        } else {
+                            a.identity.species_file != b.identity.species_file
+                        }
+                    });
                 if opponent {
                     let action = match location {
                         -1 => Some(DisqualificationAction::OpponentEnergy(value > 0)),
@@ -8765,11 +9684,9 @@ impl Engine {
         angle
     }
 
-    fn native_tie_geometry(source: &RobotState, target: &RobotState) -> [i32; 3] {
+    fn native_angle_from_delta(dx: f32, dy: f32) -> f32 {
         // Physics.angle evaluates the Single ratio before Double Atn, then
         // assigns its Single result. atan2 changes the source rounding points.
-        let dx = target.kinematics.position[0] - source.kinematics.position[0];
-        let dy = source.kinematics.position[1] - target.kinematics.position[1];
         let angle = if dx == 0.0 {
             if dy < 0.0 {
                 std::f32::consts::FRAC_PI_2 * 3.0
@@ -8784,7 +9701,13 @@ impl Engine {
                 angle
             }
         };
-        let angle = Self::native_normalize_tie_angle(angle);
+        Self::native_normalize_tie_angle(angle)
+    }
+
+    fn native_tie_geometry(source: &RobotState, target: &RobotState) -> [i32; 3] {
+        let dx = target.kinematics.position[0] - source.kinematics.position[0];
+        let dy = source.kinematics.position[1] - target.kinematics.position[1];
+        let angle = Self::native_angle_from_delta(dx, dy);
         let heading = Self::native_normalize_tie_angle(source.heading());
         let mut difference = angle - heading;
         if difference > std::f32::consts::PI {
@@ -9412,6 +10335,12 @@ impl Engine {
                         requested
                     };
                     attacker.materials.venom -= amount;
+                    if self.native_random.is_some() {
+                        attacker
+                            .program
+                            .memory
+                            .write(825, resource_readback(attacker.materials.venom));
+                    }
                     amount
                 }
                 -4 => {
@@ -9668,17 +10597,19 @@ impl Engine {
                 .map(|species| species.name.clone());
             let owner_id = OrganismId::new(slot as u32, self.slots[slot].generation);
             let owner_virtual_body = self.virtual_body_for(owner_id);
-            let (toxin_memory_location, toxin_memory_value) = match request.kind {
-                -3 => (
-                    owner.program.memory.read(835),
-                    owner.program.memory.read(836),
-                ),
-                -5 => (
-                    owner.program.memory.read(834),
-                    owner.program.memory.read(839),
-                ),
-                _ => (0, 0),
-            };
+            // Shots.newshot stores the shooter's venom cells for every shot kind.
+            let (toxin_memory_location, toxin_memory_value) =
+                match (self.native_random.is_some(), request.kind) {
+                    (true, _) | (false, -3) => (
+                        owner.program.memory.read(835),
+                        owner.program.memory.read(836),
+                    ),
+                    (false, -5) => (
+                        owner.program.memory.read(834),
+                        owner.program.memory.read(839),
+                    ),
+                    _ => (0, 0),
+                };
             self.projectiles.try_spawn(
                 ProjectileSpawn {
                     owner: OrganismId::new(slot as u32, self.slots[slot].generation),
@@ -9998,6 +10929,11 @@ impl Engine {
         projectile_energy: f32,
         native_boundary: bool,
     ) -> Result<bool, EngineError> {
+        let radius_after_hit: fn(f32, f32, bool) -> f32 = if native_boundary {
+            crate::physics::native_organism_radius
+        } else {
+            crate::physics::organism_radius
+        };
         Ok(match target {
             ProjectileTarget::Obstacle => false,
             ProjectileTarget::Corpse(corpse) => {
@@ -10145,7 +11081,7 @@ impl Engine {
                             let body_loss = scale_tie_amount(packet_value, 0.01);
                             target_robot.materials.body =
                                 (target_robot.materials.body - body_loss).max(0.0);
-                            target_robot.materials.radius = crate::physics::organism_radius(
+                            target_robot.materials.radius = radius_after_hit(
                                 target_robot.materials.body,
                                 target_robot.materials.chloroplasts,
                                 self.config.fixed_bot_radii,
@@ -10211,7 +11147,7 @@ impl Engine {
                             target_robot.materials.waste += packet_waste;
                             packet_energy
                         };
-                        target_robot.materials.radius = crate::physics::organism_radius(
+                        target_robot.materials.radius = radius_after_hit(
                             target_robot.materials.body,
                             target_robot.materials.chloroplasts,
                             self.config.fixed_bot_radii,
@@ -10349,7 +11285,7 @@ impl Engine {
                                 )
                                 .clamp(1.0, 32_000.0);
                             }
-                            target_robot.materials.radius = crate::physics::organism_radius(
+                            target_robot.materials.radius = radius_after_hit(
                                 target_robot.materials.body,
                                 target_robot.materials.chloroplasts,
                                 self.config.fixed_bot_radii,
@@ -10399,7 +11335,7 @@ impl Engine {
                             source: Some(owner),
                         });
                         target_robot.effects.fertilization_timer = FERTILIZATION_WINDOW;
-                        publish_reproductive_readbacks(target_robot);
+                        publish_reproductive_readbacks(target_robot, self.native_cycle.is_some());
                         true
                     }
                     ProjectileEffect::WriteMemory { address, value } => {
@@ -10537,11 +11473,16 @@ impl Engine {
     }
 
     fn record_actual_velocities(&mut self) {
+        let native = self.native_random.is_some();
         for robot in self
             .slots
             .iter_mut()
             .filter_map(|slot| slot.organism.as_mut())
         {
+            // Master.UpdateSim keeps actvel when no old position was recorded.
+            if native && robot.kinematics.previous_position == [0.0; 2] {
+                continue;
+            }
             robot.kinematics.actual_velocity = [
                 robot.kinematics.position[0] - robot.kinematics.previous_position[0],
                 robot.kinematics.position[1] - robot.kinematics.previous_position[1],
@@ -10549,15 +11490,93 @@ impl Engine {
         }
     }
 
+    fn obstacle_extents(&self, obstacle: &Obstacle) -> [f32; 2] {
+        self.native_obstacle_extents
+            .get(&obstacle.id)
+            .copied()
+            .unwrap_or_else(|| obstacle.extents())
+    }
+
     fn move_obstacles(&mut self) {
         let world_size = [self.config.world_width, self.config.world_height];
+        let compactor = self.trash_compactor;
+        let native_world = self.native_random.is_some();
+        let native_drift = self.native_random.as_ref().and(self.config.shape_drift);
+        if let Some(drift) = native_drift
+            && (drift.horizontal || drift.vertical)
+            && let Some(random) = self.native_random.as_mut()
+        {
+            let rate = i32::from(drift.rate);
+            let max_velocity = self.config.physics.max_velocity;
+            for obstacle in &mut self.obstacles {
+                if compactor.is_some_and(|pair| pair.contains(obstacle.id)) {
+                    continue;
+                }
+                for (velocity, enabled) in obstacle
+                    .drift
+                    .iter_mut()
+                    .zip([drift.horizontal, drift.vertical])
+                {
+                    if enabled {
+                        let magnitude = random.integer(-rate, rate);
+                        let factor = random.unit();
+                        *velocity = (f64::from(*velocity)
+                            + f64::from(magnitude) * f64::from(factor) * 0.01)
+                            as f32;
+                    }
+                }
+                let speed = crate::physics::native_magnitude(obstacle.drift);
+                if speed > max_velocity {
+                    // Obstacles.bas passes this ratio to VectorScalar, which multiplies.
+                    obstacle.drift =
+                        crate::physics::native_scalar(obstacle.drift, speed / max_velocity);
+                }
+            }
+        }
+        if let Some(compactor) = compactor {
+            let indices = compactor
+                .wall_indices(&self.obstacles)
+                .expect("active compactor walls exist");
+            let extents = indices.map(|index| self.obstacle_extents(&self.obstacles[index]));
+            let [left, right] = self
+                .obstacles
+                .get_disjoint_mut(indices)
+                .expect("compactor walls are distinct");
+            compactor.move_walls(
+                left,
+                right,
+                world_size,
+                extents,
+                native_drift.map(|drift| drift.rate),
+            );
+        }
         for obstacle in &mut self.obstacles {
+            if compactor.is_some_and(|compactor| compactor.contains(obstacle.id)) {
+                continue;
+            }
+            let native_extents = self.native_obstacle_extents.get(&obstacle.id).copied();
+            let widths = native_extents.unwrap_or_else(|| obstacle.extents());
+            // Native-created shapes keep their original bounds with an implicit rate of 0.
+            let bounds_rate = native_drift
+                .map(|drift| drift.rate)
+                .or_else(|| (native_world && native_extents.is_some()).then_some(0));
             for (axis, extent) in world_size.iter().enumerate() {
-                let extent = extent.max(1.0);
                 let delta = obstacle.drift[axis];
-                let width = obstacle.maximum[axis] - obstacle.minimum[axis];
-                let minimum =
-                    (obstacle.minimum[axis] + delta).clamp(0.0, (extent - width).max(0.0));
+                let width = widths[axis];
+                let mut minimum = obstacle.minimum[axis] + delta;
+                if let Some(rate) = bounds_rate {
+                    let rate = i32::from(rate);
+                    if minimum < -width {
+                        minimum = -width;
+                        obstacle.drift[axis] = (f64::from(rate) * 0.01) as f32;
+                    }
+                    if minimum > *extent {
+                        minimum = *extent;
+                        obstacle.drift[axis] = (f64::from(-rate) * 0.01) as f32;
+                    }
+                } else {
+                    minimum = minimum.clamp(0.0, (extent.max(1.0) - width).max(0.0));
+                }
                 obstacle.minimum[axis] = minimum;
                 obstacle.maximum[axis] = minimum + width;
             }
@@ -10766,6 +11785,7 @@ impl Engine {
 
     fn apply_teleporter_relocation(&mut self) {
         let world_size = [self.config.world_width, self.config.world_height];
+        let mut fallback_random = self.config.seed ^ self.tick.rotate_left(23);
         let mut positions: Vec<_> = self
             .slots
             .iter()
@@ -10818,7 +11838,7 @@ impl Engine {
                 if teleporter.internet
                     || !teleporter.local
                     || used_capacity[teleporter_index] >= teleporter.capacity.max(1)
-                    || !inside_teleporter(teleporter, positions[seed])
+                    || !inside_teleporter(teleporter, positions[seed], robot.materials.radius)
                     || !teleporter
                         .filters
                         .accepts(robot.flags.vegetable, robot.flags.corpse)
@@ -10836,10 +11856,12 @@ impl Engine {
                     continue;
                 }
 
-                let destination = [
-                    teleporter.destination[0].clamp(0.0, world_size[0]),
-                    teleporter.destination[1].clamp(0.0, world_size[1]),
-                ];
+                let destination = local_teleporter_destination(
+                    teleporter,
+                    world_size,
+                    &mut self.native_random,
+                    &mut fallback_random,
+                );
                 let delta = [
                     destination[0] - positions[seed][0],
                     destination[1] - positions[seed][1],
@@ -10885,20 +11907,31 @@ impl Engine {
                 ..state
             });
             for (teleporter_index, teleporter) in self.teleporters.iter().enumerate() {
+                let radius = if teleporter.native_top_left.is_some() {
+                    crate::physics::organism_radius(
+                        corpse.body as f32 + corpse.body_fraction,
+                        0.0,
+                        self.config.fixed_bot_radii,
+                    )
+                } else {
+                    0.0
+                };
                 if teleporter.internet
                     || !teleporter.local
                     || used_capacity[teleporter_index] >= teleporter.capacity.max(1)
-                    || !inside_teleporter(teleporter, corpse.position)
+                    || !inside_teleporter(teleporter, corpse.position, radius)
                     || !teleporter.filters.accepts(false, true)
                     || teleporter_blocked_by_obstacles(teleporter, &self.obstacles)
                     || blocks_backflow(teleporter, prior)
                 {
                     continue;
                 }
-                corpse.position = [
-                    teleporter.destination[0].clamp(0.0, world_size[0]),
-                    teleporter.destination[1].clamp(0.0, world_size[1]),
-                ];
+                corpse.position = local_teleporter_destination(
+                    teleporter,
+                    world_size,
+                    &mut self.native_random,
+                    &mut fallback_random,
+                );
                 next = Some(TeleporterBackflow {
                     source: teleporter.center,
                     remaining: teleporter.backflow_limit,
@@ -11222,6 +12255,7 @@ impl Engine {
             self.total_simulation_energy()
         };
         let weather_seed = self.config.seed ^ self.tick.rotate_left(17);
+        let sun_on = self.native_sun_on();
         let daylight = self.vegetation_runtime.advance_daylight(
             &mut self.config.vegetation,
             total_energy,
@@ -11229,6 +12263,14 @@ impl Engine {
             self.native_random.as_mut(),
         );
         let daytime = daylight.feed_this_cycle;
+        if let Some(sun_on) = sun_on {
+            // Vegs.bas assigns the graphical VB6 CheckBox. A changed Value
+            // fires SunButton_Click and writes back the new state to Daytime.
+            if sun_on != daytime {
+                self.config.vegetation.daytime = daytime;
+            }
+            self.remember_native_sun_indicator(daytime);
+        }
         if native && daytime {
             // FeedVeg skips this assignment entirely on non-feeding cycles.
             self.refresh_native_light_availability();
@@ -11297,6 +12339,12 @@ impl Engine {
             }
             if native && !daytime {
                 continue;
+            }
+            if native && organism.materials.chloroplasts > 0.0 {
+                // Vegs.feedvegs ages the share delay on feeding cycles,
+                // even outside the sun band and with DNA disabled.
+                organism.counters.chloroplast_share_delay =
+                    organism.counters.chloroplast_share_delay.saturating_sub(1);
             }
             if organism.materials.energy <= 0.0 {
                 if !native {
@@ -11369,10 +12417,11 @@ impl Engine {
                     .apply_plant_delta(feeding.delta * tide_factor, settings.feeding_to_body)
             };
             if organism.materials.chloroplasts > 0.0 {
-                organism.materials.radius = crate::physics::organism_radius(
+                organism.materials.radius = crate::physics::organism_radius_for_profile(
                     organism.materials.body,
                     organism.materials.chloroplasts,
                     self.config.fixed_bot_radii,
+                    native,
                 );
             }
             if feeding.light
@@ -11729,6 +12778,7 @@ impl Engine {
                 {
                     self.become_native_corpse(id)?;
                 } else {
+                    self.capture_death_record(id)?;
                     if self.native_random.is_some() {
                         let partners = self
                             .tie_indices_for(id)
@@ -11743,10 +12793,11 @@ impl Engine {
                             })
                             .collect::<Vec<_>>();
                         for partner in partners {
-                            self.native_delete_pair(id, partner);
+                            self.remove_native_tie_pair(id, partner);
                         }
                     }
                     self.slots.remove(id)?;
+                    self.transfer_player_bot_focus_after_death(id);
                 }
                 if was_living {
                     self.stats.deaths = self.stats.deaths.saturating_add(1);
@@ -11787,16 +12838,17 @@ impl Engine {
                 .get(species.0 as usize)
                 .is_some_and(|value| value.vegetable);
             let native = self.native_random.is_some();
+            let body_too_small = if native || !birth.sexual {
+                parent_state.materials.body < 5.0
+            } else {
+                parent_state.materials.body <= 2.0
+            };
             if available_births == 0
                 || parent_state.flags.corpse
                 || (!native && parent_state.flags.dead)
                 || !parent_state.flags.can_reproduce
-                || parent_state.materials.energy <= 0.0
-                || if birth.sexual {
-                    parent_state.materials.body <= 2.0
-                } else {
-                    parent_state.materials.body < 5.0
-                }
+                || (!native && parent_state.materials.energy <= 0.0)
+                || body_too_small
                 || (!native
                     && vegetable_birth
                     && vegetable_population >= self.config.vegetable_population_cap)
@@ -11833,7 +12885,9 @@ impl Engine {
             if self.config.greedy_reproduction && birth.percentage < 3 {
                 self.slots.get_mut(birth.parent)?.flags.dead = true;
             }
-            if birth.percentage <= 0 {
+            // Both VB6 reproduction routines test energy after the eager
+            // population draw and before checking placement or creating a child.
+            if birth.percentage <= 0 || (native && parent_state.materials.energy <= 0.0) {
                 continue;
             }
 
@@ -11841,14 +12895,16 @@ impl Engine {
             // their Single sum to the Long sondist before computing absx/absy.
             let ratio = (f64::from(birth.percentage) / 100.0) as f32;
             let remaining = (f64::from(100 - birth.percentage) / 100.0) as f32;
-            let separation = (crate::physics::organism_radius(
+            let separation = (crate::physics::organism_radius_for_profile(
                 parent_state.materials.body * ratio,
                 parent_state.materials.chloroplasts * ratio,
                 self.config.fixed_bot_radii,
-            ) + crate::physics::organism_radius(
+                native,
+            ) + crate::physics::organism_radius_for_profile(
                 parent_state.materials.body * remaining,
                 parent_state.materials.chloroplasts * remaining,
                 self.config.fixed_bot_radii,
+                native,
             ))
             .round_ties_even();
             let parent_angle = f64::from(parent_state.heading());
@@ -11875,7 +12931,7 @@ impl Engine {
             {
                 let parent = self.slots.get_mut(birth.parent)?;
                 parent.effects.fertilization_timer = -18;
-                publish_reproductive_readbacks(parent);
+                publish_reproductive_readbacks(parent, self.native_cycle.is_some());
                 continue;
             }
             if birth.sexual {
@@ -11912,6 +12968,8 @@ impl Engine {
                 birth.mutation_reproduction
                     || ((next_rng % 10_000) as f32) < configured_rate * 100.0
             };
+            let native_mutation_spare_entries =
+                self.inherit_native_mutation_spare_entries(&parent_state)?;
             let mut child_dna = if birth.sexual {
                 if let Some(stored) = parent_state.effects.stored_sperm.as_ref() {
                     if let Some(random) = self.native_random.as_mut() {
@@ -11953,10 +13011,11 @@ impl Engine {
             };
             child_materials.mass =
                 child_materials.body.max(0.0) / 1_000.0 + child_materials.shell.max(0.0) / 200.0;
-            child_materials.radius = crate::physics::organism_radius(
+            child_materials.radius = crate::physics::organism_radius_for_profile(
                 child_materials.body,
                 child_materials.chloroplasts,
                 self.config.fixed_bot_radii,
+                native,
             );
             child_materials.synchronize_energy();
             let native_birth = native;
@@ -11966,6 +13025,9 @@ impl Engine {
                     // Reproduce erases the new robot VM before its explicit
                     // birth readbacks and epigenetic cells are assigned.
                     child_organism.program.memory = VmMemory::default();
+                    // posto clears the slot after this cycle's old positions
+                    // have been captured. The child inherits actvel below.
+                    child_organism.kinematics.previous_position = [0.0; 2];
                 }
                 child_organism.identity = parent_state.identity.clone();
                 child_organism.identity.parents = [
@@ -12003,6 +13065,7 @@ impl Engine {
                 child_organism.program.rng_state = next_rng;
                 child_organism.program.mutation_profile =
                     parent_state.program.mutation_profile.clone();
+                child_organism.native_mutation_spare_entries = native_mutation_spare_entries;
                 child_organism.program.point_mutation_schedule = None;
                 child_organism.program.point2_mutation_schedule = None;
                 child_organism.program.mutation_metadata =
@@ -12059,10 +13122,11 @@ impl Engine {
             }
 
             if let Ok(parent_organism) = self.slots.get_mut(birth.parent) {
-                parent_materials.radius = crate::physics::organism_radius(
+                parent_materials.radius = crate::physics::organism_radius_for_profile(
                     parent_materials.body,
                     parent_state.materials.chloroplasts,
                     self.config.fixed_bot_radii,
+                    native,
                 );
                 parent_materials.synchronize_energy();
                 parent_organism.materials = parent_materials;
@@ -12096,7 +13160,7 @@ impl Engine {
                 self.native_birth_mutations(child, birth.mutation_reproduction);
                 let child_state = self.slots.get_mut(child)?;
                 child_state.refresh_occurrence_census();
-                publish_reproductive_readbacks(child_state);
+                publish_reproductive_readbacks(child_state, self.native_cycle.is_some());
             }
             if self.create_birth_tie(birth.parent, child) {
                 trace.effect(
@@ -12139,7 +13203,7 @@ impl Engine {
                 parent_organism.effects.reproduction_assistance = 0;
                 if birth.sexual {
                     parent_organism.effects.fertilization_timer = -1;
-                    publish_reproductive_readbacks(parent_organism);
+                    publish_reproductive_readbacks(parent_organism, self.native_cycle.is_some());
                 }
             }
             trace.effect(
@@ -12539,6 +13603,12 @@ impl Engine {
                 organism.refresh_occurrence_census();
             }
             if report.changes > 0 {
+                if self.native_cycle.is_some() {
+                    organism
+                        .program
+                        .memory
+                        .write(MEM_GENES, organism.program.dna.native_gene_count());
+                }
                 if self.native_random.is_some()
                     && settings.epigenetic.reset_enabled
                     && matches!(context, MutationContext::Lifelong)
@@ -12879,8 +13949,9 @@ impl Engine {
                     snapshot_organism(
                         OrganismId::new(index as u32, slot.generation),
                         organism,
-                        &self.species,
+                        self.absolute_parent_id(organism),
                         &self.config,
+                        self.native_cycle.is_some(),
                     )
                 })
             })
@@ -12939,7 +14010,12 @@ impl Engine {
             schema_version: default_snapshot_schema_version(),
             tick: self.tick,
             native_cycle: self.native_cycle,
+            native_sun_on: self.native_sun_on(),
             death_poffs_enabled: self.death_poffs_enabled,
+            ordinary_restart_available: self.ordinary_restart_available(),
+            ordinary_restart_on_extinction: self.ordinary_restart.enabled,
+            ordinary_restart_pending: self.ordinary_restart.pending,
+            ordinary_restart_count: self.ordinary_restart.count,
             world_size: [self.config.world_width, self.config.world_height],
             organisms,
             corpses: self.corpse_views(),
@@ -12981,6 +14057,15 @@ impl Engine {
     }
 
     pub(crate) fn restore(mut engine: Self) -> Result<Self, EngineError> {
+        if engine.trash_compactor.is_some_and(|compactor| {
+            !compactor.speed.is_finite()
+                || compactor.speed <= 0.0
+                || compactor.wall_indices(&engine.obstacles).is_none()
+        }) {
+            return Err(EngineError::InvalidSave(
+                "invalid trash compactor walls".into(),
+            ));
+        }
         // Reject process caches before migration or snapshot-derived ring indexing.
         engine.native_energy.validate().map_err(|error| {
             EngineError::InvalidSave(format!("invalid native energy cache: {error}"))
@@ -13005,17 +14090,36 @@ impl Engine {
                 "native population census exceeds robot capacity".into(),
             ));
         }
-        // Older DB3S files retained the original tail before F1 was projected.
-        if engine.native_f1.is_none()
+        // Older DB3S files retained native metadata before it was projected.
+        if (engine.native_f1.is_none() || engine.config.shape_drift.is_none())
             && let Some(origin) = engine
                 .native_origin
                 .as_ref()
                 .filter(|file| !file.tail.is_empty())
         {
-            engine.native_f1 = Some(
-                crate::native_binary::NativeSimulationTail::decode(&origin.tail)?.integer("f1")?
-                    != 0,
-            );
+            let tail = crate::native_binary::NativeSimulationTail::decode(&origin.tail)?;
+            if engine.native_f1.is_none() {
+                engine.native_f1 = Some(tail.integer("f1")? != 0);
+            }
+            if engine.config.shape_drift.is_none() {
+                engine.config.shape_drift = Some(native_io::shape_drift(&tail)?);
+            }
+        }
+        if !engine.native_obstacle_extents.is_empty() {
+            let ids: HashSet<_> = engine.obstacles.iter().map(|shape| shape.id).collect();
+            engine
+                .native_obstacle_extents
+                .retain(|id, _| ids.contains(id));
+        }
+        if engine.config.shape_drift.is_some() && engine.native_random.is_some() {
+            for obstacle in &engine.obstacles {
+                // Older DB3S files only kept endpoints. Stabilize those live dimensions
+                // without attributing historical .sim geometry to a reused obstacle ID.
+                engine
+                    .native_obstacle_extents
+                    .entry(obstacle.id)
+                    .or_insert_with(|| obstacle.extents());
+            }
         }
         engine.migrate_complete_archived_corpses()?;
         for (index, slot) in engine.slots.iter().enumerate() {
@@ -13085,21 +14189,33 @@ impl Engine {
             }
         }
         engine.next_lineage_id = next_lineage_id;
-        let next_observed_absolute_id = engine
-            .slots
-            .iter()
-            .filter_map(|slot| slot.organism.as_ref())
-            .map(|organism| organism.identity.absolute_id)
-            .max()
-            .unwrap_or(0)
-            .saturating_add(1)
-            .max(1);
-        engine.next_absolute_id = engine.next_absolute_id.max(next_observed_absolute_id);
+        // The original allocator advances from its saved counter, even if
+        // a foreign .dbo supplies an absolute ID above that counter.
+        if engine.native_cycle.is_none() || engine.next_absolute_id == 0 {
+            let next_observed_absolute_id = engine
+                .slots
+                .iter()
+                .filter_map(|slot| slot.organism.as_ref())
+                .map(|organism| organism.identity.absolute_id)
+                .max()
+                .unwrap_or(0)
+                .saturating_add(1)
+                .max(1);
+            engine.next_absolute_id = engine.next_absolute_id.max(next_observed_absolute_id);
+        }
         let (capabilities, physics) = select_backend(&engine.config)?;
         engine.capabilities = capabilities;
         engine.physics = physics;
         engine.publish_snapshot();
         Ok(engine)
+    }
+}
+
+fn effective_robot_tag(robot: &RobotState) -> &str {
+    if robot.identity.tag.is_empty() {
+        &robot.program.dna.metadata().tag
+    } else {
+        &robot.identity.tag
     }
 }
 
@@ -13214,36 +14330,45 @@ fn apply_tie_resource(
         _ => None,
     };
     if result.is_some() {
-        source.materials.previous_energy = source.materials.energy;
-        target.materials.previous_energy = target.materials.energy;
+        let native_energy_transfer = native.is_some() && location == -1;
+        // In the native energy path, WriteSenses refreshes the prior-cycle energy.
+        if !native_energy_transfer {
+            source.materials.previous_energy = source.materials.energy;
+            target.materials.previous_energy = target.materials.energy;
+        }
         source
             .materials
             .publish_for_profile(&mut source.program.memory, native.is_some());
         target
             .materials
             .publish_for_profile(&mut target.program.memory, native.is_some());
-        source.materials.mass = derived_mass(
-            source.materials.body,
-            source.materials.shell,
-            source.materials.chloroplasts,
-        )
-        .clamp(1.0, 32_000.0);
-        source.materials.radius = crate::physics::organism_radius(
-            source.materials.body,
-            source.materials.chloroplasts,
-            fixed_bot_radii,
-        );
-        target.materials.mass = derived_mass(
-            target.materials.body,
-            target.materials.shell,
-            target.materials.chloroplasts,
-        )
-        .clamp(1.0, 32_000.0);
-        target.materials.radius = crate::physics::organism_radius(
-            target.materials.body,
-            target.materials.chloroplasts,
-            fixed_bot_radii,
-        );
+        // The original CalcMass precedes tie updates. Keep that mass through movement.
+        if native.is_none() {
+            for robot in [&mut *source, &mut *target] {
+                robot.materials.mass = derived_mass(
+                    robot.materials.body,
+                    robot.materials.shell,
+                    robot.materials.chloroplasts,
+                )
+                .clamp(1.0, 32_000.0);
+            }
+        }
+        // Native energy ties refresh the receiver's radius after storing body.
+        // The payer may still carry its body-only radius from LoadRobotBody.
+        if !native_energy_transfer || requested < 0 {
+            source.materials.radius = crate::physics::organism_radius(
+                source.materials.body,
+                source.materials.chloroplasts,
+                fixed_bot_radii,
+            );
+        }
+        if !native_energy_transfer || requested > 0 {
+            target.materials.radius = crate::physics::organism_radius(
+                target.materials.body,
+                target.materials.chloroplasts,
+                fixed_bot_radii,
+            );
+        }
     }
     result
 }
@@ -13283,29 +14408,43 @@ fn apply_tie_energy(
     }
 
     let amount = (-requested).min(target.materials.energy.max(0.0));
-    if amount == 0.0 {
-        return None;
+    let result = if amount == 0.0 {
+        None
+    } else if apply_tie_poison_defense(source, target, amount, native) {
+        Some("tie_resource_poison_defense")
+    } else {
+        target.materials.energy -= amount;
+        add_tie_store(
+            &mut source.materials.energy,
+            scale_tie_amount(amount, 0.70),
+            true,
+        );
+        add_tie_store(
+            &mut source.materials.body,
+            scale_tie_amount(amount, 0.029),
+            true,
+        );
+        add_tie_store(
+            &mut source.materials.waste,
+            scale_tie_amount(amount, 0.01),
+            false,
+        );
+        Some("tie_resource_energy")
+    };
+    // Update_Ties can credit another thief while the victim still awaits ManageDeath.
+    if native.is_some()
+        && requested < 0.0
+        && target.materials.energy <= 0.0
+        && !target.flags.dead
+        && !target.flags.corpse
+    {
+        source.counters.kills = source.counters.kills.saturating_add(1).min(32_000);
+        source
+            .program
+            .memory
+            .write(220, source.counters.kills as i32);
     }
-    if apply_tie_poison_defense(source, target, amount, native) {
-        return Some("tie_resource_poison_defense");
-    }
-    target.materials.energy -= amount;
-    add_tie_store(
-        &mut source.materials.energy,
-        scale_tie_amount(amount, 0.70),
-        true,
-    );
-    add_tie_store(
-        &mut source.materials.body,
-        scale_tie_amount(amount, 0.029),
-        true,
-    );
-    add_tie_store(
-        &mut source.materials.waste,
-        scale_tie_amount(amount, 0.01),
-        false,
-    );
-    Some("tie_resource_energy")
+    result
 }
 
 fn apply_tie_venom(
@@ -13336,14 +14475,22 @@ fn apply_tie_venom(
 
     let amount = (-requested).min(target.materials.venom.max(0.0));
     if amount == 0.0 {
+        if native.is_some() && requested < 0.0 {
+            source
+                .program
+                .memory
+                .write(825, resource_readback(source.materials.venom));
+        }
         return None;
     }
     target.materials.venom -= amount;
     add_tie_store(&mut source.materials.venom, amount, true);
-    target
-        .program
-        .memory
-        .write(825, resource_readback(target.materials.venom));
+    if native.is_none() {
+        target
+            .program
+            .memory
+            .write(825, resource_readback(target.materials.venom));
+    }
     source
         .program
         .memory
@@ -13613,8 +14760,9 @@ impl RuntimePhysics {
 fn snapshot_organism(
     id: OrganismId,
     organism: &RobotState,
-    _species: &[SpeciesDefinition],
+    parent_absolute_id: u64,
     config: &EngineConfig,
+    native_flow: bool,
 ) -> OrganismSnapshot {
     OrganismSnapshot {
         id,
@@ -13643,6 +14791,7 @@ fn snapshot_organism(
         species: organism.identity.species,
         vegetable: organism.flags.vegetable,
         parents: organism.identity.parents,
+        parent_absolute_id,
         body: resource_readback(organism.materials.body),
         mass: organism.materials.mass,
         radius: organism.materials.radius,
@@ -13677,7 +14826,7 @@ fn snapshot_organism(
         subspecies: organism.program.mutation_metadata.subspecies,
         mutation_profile: organism.program.mutation_profile.clone(),
         dna_length: organism.program.dna.blocks().len() as u32,
-        gene_count: organism.program.dna.gene_count().max(0) as u32,
+        gene_count: organism.program.dna.gene_count_for_world(native_flow) as u32,
         phenotype: organism.phenotype.clone(),
         vision: VisionSnapshot::from_heading(
             &organism.program.memory,
@@ -13697,6 +14846,28 @@ fn distance_squared(left: [f32; 2], right: [f32; 2]) -> f32 {
     let x = right[0] - left[0];
     let y = right[1] - left[1];
     x * x + y * y
+}
+
+fn local_teleporter_destination(
+    teleporter: &Teleporter,
+    world_size: [f32; 2],
+    native: &mut Option<crate::native_random::NativeRandom>,
+    fallback: &mut u64,
+) -> [f32; 2] {
+    if teleporter.random_destination {
+        // VB6 multiplies each field extent by a Single random draw, then
+        // converts the result to Long before respawning the organism.
+        world_size.map(|extent| {
+            (extent * world_random_unit(native, fallback) as f32)
+                .round_ties_even()
+                .clamp(0.0, extent)
+        })
+    } else {
+        [
+            teleporter.destination[0].clamp(0.0, world_size[0]),
+            teleporter.destination[1].clamp(0.0, world_size[1]),
+        ]
+    }
 }
 
 fn world_random_unit(
@@ -13964,6 +15135,873 @@ const fn default_snapshot_schema_version() -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::SaveFile;
+
+    #[test]
+    fn native_spiral_preserves_wall_order_and_signed_last_wall() {
+        let mut world = Engine::new_native(EngineConfig {
+            world_width: 2700.0,
+            world_height: 2255.0,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        world.native_random = Some(Default::default());
+        assert_eq!(
+            world
+                .add_native_pattern_maze(NativePatternMaze::Spiral, 500, 1)
+                .unwrap(),
+            Some(8)
+        );
+        let expected = [
+            ([0.0, 500.0], [2200.0, 501.0], 0xff27_b500),
+            ([500.0, 1755.0], [2201.0, 1756.0], 0xff6f_4a00),
+            ([2200.0, 500.0], [2201.0, 1755.0], 0xff59_0400),
+            ([500.0, 1000.0], [501.0, 1755.0], 0xff8f_b500),
+            ([500.0, 1000.0], [1700.0, 1001.0], 0xff9f_dd00),
+            ([1000.0, 1255.0], [1701.0, 1256.0], 0xff21_f700),
+            ([1700.0, 1000.0], [1701.0, 1255.0], 0xff73_f300),
+            ([1000.0, 1500.0], [1001.0, 1255.0], 0xff70_c400),
+        ];
+        for (wall, (minimum, maximum, color)) in world.obstacles.iter().zip(expected) {
+            assert_eq!(
+                (wall.minimum, wall.maximum, wall.color),
+                (minimum, maximum, color)
+            );
+            assert_eq!(wall.drift, [0.0; 2]);
+        }
+        let last = world.obstacles.last().unwrap();
+        assert_eq!(world.native_obstacle_extents[&last.id], [1.0, -245.0]);
+        assert_eq!(world.native_random.as_ref().unwrap().state(), 0x97_ab58);
+    }
+
+    #[test]
+    fn native_checkerboard_preserves_single_precision_column_order_and_ignores_thickness() {
+        for thickness in [1, 500] {
+            let mut world = Engine::new_native(EngineConfig {
+                world_width: 1253.0,
+                world_height: 950.0,
+                shape_creation: Some(crate::ShapeCreationSettings {
+                    black: false,
+                    transparent: true,
+                    see_through: true,
+                    absorb_shots: false,
+                }),
+                ..EngineConfig::testing()
+            })
+            .unwrap();
+            world.native_random = Some(Default::default());
+            assert_eq!(
+                world
+                    .add_native_pattern_maze(NativePatternMaze::Checkerboard, 300, thickness)
+                    .unwrap(),
+                Some(4)
+            );
+            let expected = [
+                (
+                    [0x43af_999a, 0x4347_b334],
+                    [0x43ee_4000, 0x43a2_8000],
+                    0xff27_b500,
+                ),
+                (
+                    [0x43af_999a, 0x441c_4000],
+                    [0x43ee_4000, 0x443b_9333],
+                    0xff6f_4a00,
+                ),
+                (
+                    [0x4442_2000, 0x4347_b334],
+                    [0x4461_7333, 0x43a2_8000],
+                    0xff59_0400,
+                ),
+                (
+                    [0x4442_2000, 0x441c_4000],
+                    [0x4461_7333, 0x443b_9333],
+                    0xff8f_b500,
+                ),
+            ];
+            for (block, (minimum, maximum, color)) in world.obstacles.iter().zip(expected) {
+                assert_eq!(
+                    (
+                        block.minimum.map(f32::to_bits),
+                        block.maximum.map(f32::to_bits),
+                        block.color
+                    ),
+                    (minimum, maximum, color)
+                );
+                assert_eq!(
+                    world.native_obstacle_extents[&block.id].map(f32::to_bits),
+                    [0x42fa_999a; 2]
+                );
+                assert_eq!(block.opacity, 0.0);
+                assert_eq!(block.vision_policy, ShapeVisionPolicy::SeeThrough);
+                assert_eq!(block.shot_policy, ShapeShotPolicy::Reflect);
+            }
+            assert_eq!(world.native_random.as_ref().unwrap().state(), 0x69_fe0c);
+        }
+    }
+
+    #[test]
+    fn native_pattern_mazes_only_draw_color_for_available_slots() {
+        for (pattern, extent) in [
+            (NativePatternMaze::Spiral, [59700.0, 1.0]),
+            (NativePatternMaze::Checkerboard, [5000.0; 2]),
+        ] {
+            let mut world = Engine::new_native(EngineConfig {
+                world_width: 60_000.0,
+                world_height: 30_000.0,
+                ..EngineConfig::testing()
+            })
+            .unwrap();
+            world.obstacles = (1..=999)
+                .map(|id| Obstacle::new(id, [0.0; 2], [1.0; 2]))
+                .collect();
+            world.native_random = Some(Default::default());
+            assert_eq!(
+                world.add_native_pattern_maze(pattern, 300, 1).unwrap(),
+                Some(1)
+            );
+            let shape = world.obstacles.last().unwrap();
+            assert_eq!(shape.color, 0xff27_b500);
+            assert_eq!(world.native_obstacle_extents[&shape.id], extent);
+            let random = world.native_random.clone();
+            assert_eq!(
+                world
+                    .add_native_pattern_maze(NativePatternMaze::Spiral, 300, 1)
+                    .unwrap(),
+                Some(0)
+            );
+            assert_eq!(
+                world
+                    .add_native_pattern_maze(NativePatternMaze::Checkerboard, 300, 1)
+                    .unwrap(),
+                Some(0)
+            );
+            assert_eq!(world.obstacles.len(), 1000);
+            assert_eq!(world.native_random, random);
+        }
+    }
+
+    #[test]
+    fn native_simple_mazes_use_ties_even_counts_and_interleaved_live_openings_and_colors() {
+        let mut world = Engine::new_native(EngineConfig {
+            world_width: 1260.0,
+            world_height: 900.0,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        world.native_random = Some(Default::default());
+        assert_eq!(
+            world.add_native_simple_maze(true, 300, 60).unwrap(),
+            Some(6)
+        );
+        let pairs: Vec<_> = world
+            .obstacles
+            .chunks_exact(2)
+            .map(|walls| {
+                (
+                    [walls[0].minimum, walls[0].maximum],
+                    [walls[1].minimum, walls[1].maximum],
+                    [walls[0].color, walls[1].color],
+                )
+            })
+            .collect();
+        assert_eq!(
+            pairs,
+            [
+                (
+                    [[360.0, -100.0], [420.0, 324.0]],
+                    [[360.0, 724.0], [420.0, 1000.0]],
+                    [0xff23_8900, 0xff12_4e00]
+                ),
+                (
+                    [[720.0, -100.0], [780.0, 357.0]],
+                    [[720.0, 757.0], [780.0, 1000.0]],
+                    [0xff37_d100, 0xffdb_6a00]
+                ),
+                (
+                    [[1080.0, -100.0], [1140.0, 124.0]],
+                    [[1080.0, 524.0], [1140.0, 1000.0]],
+                    [0xff21_f700, 0xff73_f300]
+                ),
+            ]
+        );
+        assert_eq!(world.native_random.as_ref().unwrap().state(), 0x86_5dc7);
+
+        assert_eq!(
+            world.add_native_simple_maze(true, 300, 60).unwrap(),
+            Some(6)
+        );
+        assert_eq!(world.obstacles[6].maximum[1], 361.0);
+        assert_eq!(world.native_random.as_ref().unwrap().state(), 0xff_d9a2);
+
+        assert_eq!(
+            world.add_native_simple_maze(false, 300, 60).unwrap(),
+            Some(2)
+        );
+        let walls = &world.obstacles[12..];
+        assert_eq!(walls[0].minimum, [-100.0, 360.0]);
+        assert_eq!(walls[0].maximum, [549.0, 420.0]);
+        assert_eq!(walls[1].minimum, [949.0, 360.0]);
+        assert_eq!(walls[1].maximum, [1360.0, 420.0]);
+        assert_eq!(walls[0].color, 0xff98_0400);
+        assert_eq!(world.native_random.as_ref().unwrap().state(), 0x48_d3b3);
+    }
+
+    #[test]
+    fn native_simple_maze_keeps_opening_draws_after_running_out_of_slots() {
+        let mut world = Engine::new_native(EngineConfig {
+            world_width: 1260.0,
+            world_height: 900.0,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        world.obstacles = (1..=999)
+            .map(|id| Obstacle::new(id, [0.0; 2], [1.0; 2]))
+            .collect();
+        world.native_random = Some(Default::default());
+        assert_eq!(
+            world.add_native_simple_maze(true, 300, 60).unwrap(),
+            Some(1)
+        );
+        assert_eq!(world.obstacles.last().unwrap().color, 0xff23_8900);
+        assert_eq!(world.obstacles.len(), 1000);
+        assert_eq!(world.native_random.as_ref().unwrap().state(), 0xc6_555e);
+        assert_eq!(
+            world.add_native_simple_maze(true, 300, 60).unwrap(),
+            Some(0)
+        );
+        assert_eq!(world.obstacles.len(), 1000);
+        assert_eq!(world.native_random.as_ref().unwrap().state(), 0xd0_826b);
+    }
+
+    #[test]
+    fn native_simple_maze_keeps_inclusive_zero_and_negative_opening_extents() {
+        for (height, opening) in [(301.0_f32, 1.0_f32), (300.0, 0.0), (100.0, -141.0)] {
+            let mut world = Engine::new_native(EngineConfig {
+                world_width: 720.0,
+                world_height: height,
+                ..EngineConfig::testing()
+            })
+            .unwrap();
+            world.native_random = Some(Default::default());
+            assert_eq!(
+                world.add_native_simple_maze(true, 300, 60).unwrap(),
+                Some(2)
+            );
+            assert!(world.config.shape_drift.is_none());
+            let first = &world.obstacles[0];
+            assert_eq!(first.minimum, [360.0, -100.0]);
+            assert_eq!(first.maximum, [420.0, -100.0 + opening]);
+            assert_eq!(world.native_obstacle_extents[&first.id], [60.0, opening]);
+            assert_eq!(world.native_random.as_ref().unwrap().state(), 0x03_96a9);
+
+            if opening <= 0.0 {
+                let invalid = Obstacle::new(10, first.minimum, first.maximum);
+                assert!(world.add_obstacle(invalid).is_err());
+            }
+            let restored = SaveFile::decode(&SaveFile::encode(&world).unwrap()).unwrap();
+            assert_eq!(world.obstacles, restored.obstacles);
+            assert_eq!(
+                world.native_obstacle_extents,
+                restored.native_obstacle_extents
+            );
+
+            world.move_obstacles();
+            assert_eq!(world.obstacles[0].minimum[1], (-opening).min(height));
+            assert_eq!(
+                world.native_obstacle_extents[&world.obstacles[0].id],
+                [60.0, opening]
+            );
+        }
+    }
+
+    #[test]
+    fn native_polar_ice_starts_stationary_then_drifts_with_the_existing_shapes() {
+        let mut world = Engine::new_native(EngineConfig {
+            world_width: 16_001.0,
+            world_height: 12_003.0,
+            shape_drift: Some(crate::ShapeDriftSettings {
+                horizontal: false,
+                vertical: true,
+                rate: 37,
+            }),
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        world
+            .add_obstacle(Obstacle::new(1, [100.0; 2], [110.0; 2]))
+            .unwrap();
+        let mut left = Obstacle::new(2, [0.0; 2], [100.0; 2]);
+        left.drift[0] = 3.7;
+        let mut right = Obstacle::new(3, [900.0, 0.0], [1000.0, 100.0]);
+        right.drift[0] = -3.7;
+        world.add_trash_compactor(left, right).unwrap();
+        let existing = world.obstacles.clone();
+        let mut random = world.native_random.clone().unwrap();
+        for _ in 0..27 {
+            random.unit();
+        }
+
+        let (added, drift) = world.add_native_polar_ice().unwrap().unwrap();
+        assert_eq!(added, 9);
+        assert_eq!(
+            drift,
+            crate::ShapeDriftSettings {
+                horizontal: true,
+                vertical: true,
+                rate: 20
+            }
+        );
+        assert_eq!(world.config.shape_drift, Some(drift));
+        assert_eq!(&world.obstacles[..3], existing.as_slice());
+        assert_eq!(world.native_random.as_ref(), Some(&random));
+        for ice in &world.obstacles[3..] {
+            assert_eq!(ice.minimum, [4000.25, 3000.75]);
+            assert_eq!(ice.maximum, [12000.75, 9002.25]);
+            assert_eq!(ice.drift, [0.0; 2]);
+            assert_eq!(world.native_obstacle_extents[&ice.id], [8000.5, 6001.5]);
+        }
+
+        let expected = [0; 2].map(|_| {
+            let magnitude = random.integer(-20, 20);
+            (f64::from(magnitude) * f64::from(random.unit()) * 0.01) as f32
+        });
+        let mut restored = SaveFile::decode(&SaveFile::encode(&world).unwrap()).unwrap();
+        world.move_obstacles();
+        restored.move_obstacles();
+        assert_eq!(world.obstacles[0].drift, expected);
+        assert_eq!(world.obstacles[1].drift, [3.7, 0.0]);
+        assert_eq!(world.obstacles[2].drift, [-3.7, 0.0]);
+        assert_eq!(world.obstacles, restored.obstacles);
+        assert_eq!(world.native_random, restored.native_random);
+    }
+
+    #[test]
+    fn native_polar_ice_honors_shape_appearance_and_sets_drift_at_capacity() {
+        let mut world = Engine::new_native(EngineConfig {
+            shape_creation: Some(crate::ShapeCreationSettings {
+                black: true,
+                transparent: true,
+                see_through: true,
+                absorb_shots: false,
+            }),
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        world.obstacles = (1..=998)
+            .map(|id| Obstacle::new(id, [0.0; 2], [1.0; 2]))
+            .collect();
+        let random = world.native_random.clone();
+        let (added, drift) = world.add_native_polar_ice().unwrap().unwrap();
+        assert_eq!(added, 2);
+        assert_eq!(world.obstacles.len(), 1000);
+        assert_eq!(world.native_obstacle_extents.len(), 1000);
+        for ice in &world.obstacles[998..] {
+            assert_eq!(ice.color, 0xff00_0000);
+            assert_eq!(ice.opacity, 0.0);
+            assert_eq!(ice.vision_policy, ShapeVisionPolicy::SeeThrough);
+            assert_eq!(ice.shot_policy, ShapeShotPolicy::Reflect);
+        }
+        world
+            .set_shape_drift(Some(false), Some(false), Some(1))
+            .unwrap();
+        assert_eq!(world.add_native_polar_ice().unwrap(), Some((0, drift)));
+        assert_eq!(world.config.shape_drift, Some(drift));
+        assert_eq!(world.native_random, random);
+    }
+
+    #[test]
+    fn live_shape_drift_preserves_zero_and_edits_only_the_requested_motion() {
+        let mut world = Engine::new_native(EngineConfig {
+            shape_drift: Some(crate::ShapeDriftSettings::default()),
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let mut ordinary = Obstacle::new(1, [120.0; 2], [140.0; 2]);
+        ordinary.drift = [3.5, -4.0];
+        world.add_obstacle(ordinary).unwrap();
+        let mut left = Obstacle::new(2, [0.0, 0.0], [100.0, 100.0]);
+        left.drift[0] = 2.0;
+        let mut right = Obstacle::new(3, [900.0, 0.0], [1000.0, 100.0]);
+        right.drift[0] = -2.0;
+        world.add_trash_compactor(left, right).unwrap();
+        world.obstacles[1].drift = [-2.0, 6.0];
+        world.obstacles[2].drift = [2.0, -7.0];
+        let random = world.native_random.clone();
+
+        let rejected = world.set_shape_drift(Some(false), None, Some(0));
+        assert!(rejected.is_err());
+        assert_eq!(world.obstacles[0].drift, [3.5, -4.0]);
+
+        let movement = world
+            .set_shape_drift(Some(true), Some(true), None)
+            .unwrap()
+            .unwrap();
+        assert_eq!(movement.rate, 0);
+        assert_eq!(world.obstacles[0].drift, [3.5, -4.0]);
+        world.set_shape_drift(None, None, Some(1)).unwrap();
+        assert_eq!(world.obstacles[0].drift, [3.5, -4.0]);
+        assert_eq!(world.obstacles[1].drift, [-0.1_f32, 6.0]);
+        assert_eq!(world.obstacles[2].drift, [0.1_f32, -7.0]);
+
+        world.set_shape_drift(Some(false), None, None).unwrap();
+        world.set_shape_drift(Some(true), None, Some(27)).unwrap();
+        assert_eq!(world.obstacles[0].drift, [0.0, -4.0]);
+        assert_eq!(world.obstacles[1].drift, [0.0, 6.0]);
+        assert_eq!(world.obstacles[2].drift, [0.0, -7.0]);
+        assert_eq!(world.obstacles[1].drift[0].to_bits(), 0);
+        assert_eq!(world.trash_compactor.unwrap().speed, 2.7_f32);
+        let settings = world.set_shape_drift(None, Some(false), None).unwrap();
+        assert!(world.obstacles.iter().all(|shape| shape.drift == [0.0; 2]));
+        assert_eq!(world.native_random, random);
+
+        let restored = SaveFile::decode(&SaveFile::encode(&world).unwrap()).unwrap();
+        assert_eq!(restored.config.shape_drift, settings);
+        assert_eq!(restored.obstacles, world.obstacles);
+        assert_eq!(restored.trash_compactor.unwrap().speed, 2.7_f32);
+    }
+
+    #[test]
+    fn live_shape_drift_uses_original_compactor_turnaround_and_rebound_rates() {
+        let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+        let mut left = Obstacle::new(1, [-100.0, 100.0], [0.0, 200.0]);
+        left.drift[0] = 2.0;
+        let mut right = Obstacle::new(2, [900.0, -100.0], [1000.0, 0.0]);
+        right.drift[0] = -2.0;
+        world.add_trash_compactor(left, right).unwrap();
+        world.set_shape_drift(Some(false), None, Some(1)).unwrap();
+        world.obstacles[1].drift[1] = -1.0;
+        world.move_obstacles();
+
+        assert_eq!(world.obstacles[0].drift[0], 0.1_f32);
+        assert_eq!(world.obstacles[1].drift[0], -0.1_f32);
+        assert_eq!(world.obstacles[1].minimum[1], -100.0);
+        assert_eq!(world.obstacles[1].drift[1].to_bits(), 0.01_f32.to_bits());
+    }
+
+    #[test]
+    fn native_shape_drift_uses_axis_order_and_skips_trash_compactor_walls() {
+        let cases = [
+            (false, false, [[0, 0], [0, 0]], 0x82_a500),
+            (true, false, [[0xbe34_fa2f, 0], [0x3d46_d42e, 0]], 0x9b_55c4),
+            (false, true, [[0, 0xbe34_fa2f], [0, 0x3d46_d42e]], 0x9b_55c4),
+            (
+                true,
+                true,
+                [[0xbe34_fa2f, 0x3d46_d42e], [0xbb9e_320d, 0x39b8_eccd]],
+                0x04_83c8,
+            ),
+        ];
+
+        for (horizontal, vertical, expected_drift, expected_rng) in cases {
+            let mut world = Engine::new(EngineConfig {
+                seed: 1338,
+                world_width: 1000.0,
+                world_height: 800.0,
+                shape_drift: Some(crate::ShapeDriftSettings {
+                    horizontal,
+                    vertical,
+                    rate: 20,
+                }),
+                ..EngineConfig::testing()
+            })
+            .unwrap();
+            world
+                .add_obstacle(Obstacle::new(27, [100.0, 110.0], [130.0, 150.0]))
+                .unwrap();
+            let mut left = Obstacle::new(61, [-999.0, -80.0], [1.0, 880.0]);
+            let mut right = Obstacle::new(30, [999.0, -80.0], [1999.0, 880.0]);
+            left.drift = [2.0, 0.0];
+            right.drift = [-2.0, 0.0];
+            world.add_trash_compactor(left, right).unwrap();
+            world
+                .add_obstacle(Obstacle::new(3, [400.0, 410.0], [430.0, 450.0]))
+                .unwrap();
+
+            world.move_obstacles();
+
+            assert_eq!(
+                world.obstacles[0].drift.map(f32::to_bits),
+                expected_drift[0]
+            );
+            assert_eq!(
+                world.obstacles[3].drift.map(f32::to_bits),
+                expected_drift[1]
+            );
+            assert_eq!(world.native_random.as_ref().unwrap().state(), expected_rng);
+            assert_eq!(world.obstacles[1].minimum, [-997.0, -80.0]);
+            assert_eq!(world.obstacles[2].minimum, [997.0, -80.0]);
+            assert_eq!(world.obstacles[1].drift, [2.0, 0.0]);
+            assert_eq!(world.obstacles[2].drift, [-2.0, 0.0]);
+        }
+    }
+
+    #[test]
+    fn native_shape_drift_multiplies_overspeed_velocity_and_draws_at_zero_rate() {
+        let mut world = Engine::new(EngineConfig {
+            seed: 1338,
+            shape_drift: Some(crate::ShapeDriftSettings {
+                horizontal: true,
+                vertical: false,
+                rate: 0,
+            }),
+            physics: PhysicsSettings {
+                max_velocity: 5.0,
+                ..Default::default()
+            },
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let mut obstacle = Obstacle::new(1, [100.0, 100.0], [120.0, 120.0]);
+        obstacle.drift = [6.0, 8.0];
+        world.add_obstacle(obstacle).unwrap();
+
+        world.move_obstacles();
+
+        assert_eq!(world.native_random.as_ref().unwrap().state(), 0xfb_5b7a);
+        assert_eq!(world.obstacles[0].drift, [12.0, 16.0]);
+        assert_eq!(world.obstacles[0].minimum, [112.0, 116.0]);
+    }
+
+    #[test]
+    fn native_shape_drift_keeps_overhang_and_rebounds_even_with_both_axes_disabled() {
+        let policy = crate::ShapeDriftSettings {
+            horizontal: false,
+            vertical: false,
+            rate: 20,
+        };
+        for (configured, rebound) in [
+            (Some(policy), [-0.2_f32, 0.2_f32]),
+            (
+                Some(crate::ShapeDriftSettings { rate: 0, ..policy }),
+                [0.0; 2],
+            ),
+            (None, [2.0, -2.0]),
+        ] {
+            let mut world = Engine::new(EngineConfig {
+                seed: 1338,
+                world_width: 1000.0,
+                world_height: 800.0,
+                shape_drift: configured,
+                ..EngineConfig::testing()
+            })
+            .unwrap();
+            let mut shape = Obstacle::new(1, [999.0, -29.0], [1019.0, 1.0]);
+            shape.drift = [2.0, -2.0];
+            world.add_obstacle(shape).unwrap();
+            world
+                .add_obstacle(Obstacle::new(2, [-5.0, 795.0], [15.0, 825.0]))
+                .unwrap();
+
+            world.move_obstacles();
+
+            let shape = &world.obstacles[0];
+            let stationary = &world.obstacles[1];
+            if configured.is_some() {
+                assert_eq!(shape.minimum, [1000.0, -30.0]);
+                assert_eq!(shape.maximum, [1020.0, 0.0]);
+                assert_eq!(stationary.minimum, [-5.0, 795.0]);
+                assert_eq!(stationary.maximum, [15.0, 825.0]);
+            } else {
+                assert_eq!(shape.minimum, [980.0, 0.0]);
+                assert_eq!(shape.maximum, [1000.0, 30.0]);
+                assert_eq!(stationary.minimum, [0.0, 770.0]);
+            }
+            assert_eq!(shape.drift.map(f32::to_bits), rebound.map(f32::to_bits));
+            assert_eq!(world.native_random.as_ref().unwrap().state(), 0x82_a500);
+        }
+    }
+
+    #[test]
+    fn native_random_obstacle_deletion_draws_from_the_shrinking_slot_order() {
+        let mut world = Engine::new(EngineConfig {
+            seed: 1338,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        world.obstacles = [42, 17, 99, 5, 31, 8, 74, 62, 21, 93, 13, 44]
+            .into_iter()
+            .map(|id| Obstacle::new(id, [0.0; 2], [1.0; 2]))
+            .collect();
+
+        assert_eq!(world.remove_native_random_obstacles().unwrap(), Some(10));
+        // Expected 1-based draws: 1, 11, 7, 6, 4, 2, 4, 1, 2, 1.
+        let survivor_ids: Vec<_> = world.obstacles.iter().map(|shape| shape.id).collect();
+        assert_eq!(survivor_ids, [93, 13]);
+        assert_eq!(world.native_random.as_ref().unwrap().state(), 0x0d_7082);
+
+        let save = crate::SaveFile::encode(&world).unwrap();
+        let mut restored = crate::SaveFile::decode(&save).unwrap();
+        assert_eq!(world.remove_native_random_obstacles().unwrap(), Some(2));
+        assert_eq!(restored.remove_native_random_obstacles().unwrap(), Some(2));
+        assert!(restored.obstacles.is_empty());
+        assert_eq!(world.native_random, restored.native_random);
+    }
+
+    #[test]
+    fn native_random_obstacle_deletion_draws_ten_times_if_initially_nonempty() {
+        let mut world = Engine::new(EngineConfig::testing()).unwrap();
+        let mut expected = world.native_random.clone().unwrap();
+        assert_eq!(world.remove_native_random_obstacles().unwrap(), Some(0));
+        assert_eq!(world.native_random.as_ref(), Some(&expected));
+
+        world.obstacles.push(Obstacle::new(99, [0.0; 2], [1.0; 2]));
+        for _ in 0..10 {
+            expected.unit();
+        }
+        assert_eq!(world.remove_native_random_obstacles().unwrap(), Some(1));
+        assert!(world.obstacles.is_empty());
+        assert_eq!(world.native_random.as_ref(), Some(&expected));
+        assert_eq!(world.remove_native_random_obstacles().unwrap(), Some(0));
+        assert_eq!(world.native_random.as_ref(), Some(&expected));
+    }
+
+    #[test]
+    fn native_random_obstacle_deletion_safely_frees_slots_at_capacity() {
+        let mut world = Engine::new(EngineConfig::testing()).unwrap();
+        world.obstacles = (1..=1000)
+            .map(|id| Obstacle::new(id, [0.0; 2], [1.0; 2]))
+            .collect();
+        assert_eq!(world.remove_native_random_obstacles().unwrap(), Some(10));
+        assert_eq!(world.snapshot().obstacles.len(), 990);
+        assert!(
+            world
+                .obstacles
+                .windows(2)
+                .all(|pair| pair[0].id < pair[1].id)
+        );
+        assert_eq!(
+            world
+                .add_native_random_obstacles(10, DEFAULT_NATIVE_SHAPE_DIMENSIONS)
+                .unwrap(),
+            Some(10)
+        );
+        assert_eq!(world.snapshot().obstacles.len(), 1000);
+
+        world.native_random = None;
+        assert_eq!(world.remove_native_random_obstacles().unwrap(), None);
+        assert_eq!(world.snapshot().obstacles.len(), 1000);
+    }
+
+    #[test]
+    fn native_shapes_dialog_uses_fixed_extents_integer_centers_and_unclipped_edges() {
+        let mut world = Engine::new(EngineConfig {
+            world_width: 1100.0,
+            world_height: 800.0,
+            seed: 1338,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let before = world.native_random.clone();
+        assert!(world.add_native_centered_obstacle([0, 250]).is_err());
+        assert!(world.add_native_random_obstacles(10, [400, 1001]).is_err());
+        assert_eq!(world.native_random, before);
+        assert!(world.obstacles.is_empty());
+
+        assert_eq!(
+            world.add_native_centered_obstacle([400, 250]).unwrap(),
+            Some(1)
+        );
+        let shape = &world.obstacles[0];
+        // The first two inclusive integer draws produce a center of (67, 786).
+        assert_eq!(shape.minimum, [-153.0, 686.0]);
+        assert_eq!(shape.maximum, [287.0, 886.0]);
+        assert_eq!(shape.color, 0xff8f_b000);
+        assert_eq!(world.native_random.as_ref().unwrap().state(), 0x6d_ad77);
+
+        assert_eq!(
+            world.add_native_random_obstacles(1, [400, 250]).unwrap(),
+            Some(1)
+        );
+        let shape = &world.obstacles[1];
+        assert_eq!(shape.minimum.map(f32::to_bits), [0, 0x43ad_6f78]);
+        assert_eq!(shape.maximum.map(f32::to_bits), [0x40f8_4ff8, 0x43d2_9f8e]);
+        assert_eq!(world.native_random.as_ref().unwrap().state(), 0xc9_530c);
+    }
+
+    #[test]
+    fn native_shapes_dialog_consumes_only_two_position_draws_at_capacity() {
+        let mut world = Engine::new(EngineConfig::testing()).unwrap();
+        world.obstacles = (1..=1000)
+            .map(|id| Obstacle::new(id, [0.0; 2], [1.0; 2]))
+            .collect();
+        let mut expected = world.native_random.clone().unwrap();
+        expected.unit();
+        expected.unit();
+        assert_eq!(
+            world
+                .add_native_centered_obstacle(DEFAULT_NATIVE_SHAPE_DIMENSIONS)
+                .unwrap(),
+            Some(0)
+        );
+        assert_eq!(world.obstacles.len(), 1000);
+        assert_eq!(world.native_random.as_ref(), Some(&expected));
+    }
+
+    #[test]
+    fn native_random_shapes_use_ordered_draws_clipped_geometry_and_saved_stream() {
+        let mut world = Engine::new(EngineConfig {
+            world_width: 1100.0,
+            world_height: 800.0,
+            seed: 1338,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        assert_eq!(
+            world
+                .add_native_random_obstacles(1, DEFAULT_NATIVE_SHAPE_DIMENSIONS)
+                .unwrap(),
+            Some(1)
+        );
+        let shape = &world.snapshot().obstacles[0];
+        // VB6 seed 1338 clamps X to zero and clips the far edge of Y.
+        assert_eq!(shape.minimum.map(f32::to_bits), [0, 0x4430_5f77]);
+        assert_eq!(shape.maximum.map(f32::to_bits), [0x4317_35f9, 0x4448_0000]);
+        assert_eq!(shape.color, 0xffd7_6d00);
+        assert_eq!(shape.drift, [0.0; 2]);
+        assert_eq!(world.native_random.as_ref().unwrap().state(), 0x8e_ffa9);
+
+        let saved = crate::SaveFile::encode(&world).unwrap();
+        let mut restored = crate::SaveFile::decode(&saved).unwrap();
+        assert_eq!(
+            world
+                .add_native_random_obstacles(10, DEFAULT_NATIVE_SHAPE_DIMENSIONS)
+                .unwrap(),
+            Some(10)
+        );
+        assert_eq!(
+            restored
+                .add_native_random_obstacles(10, DEFAULT_NATIVE_SHAPE_DIMENSIONS)
+                .unwrap(),
+            Some(10)
+        );
+        assert_eq!(world.obstacles, restored.obstacles);
+        assert_eq!(world.native_random, restored.native_random);
+        assert_eq!(world.snapshot().tick, 0);
+    }
+
+    #[test]
+    fn native_random_shapes_stop_at_capacity_after_a_failed_geometry_draw() {
+        let mut world = Engine::new(EngineConfig::testing()).unwrap();
+        world.obstacles = (1..1000)
+            .map(|id| Obstacle::new(id, [0.0; 2], [1.0; 2]))
+            .collect();
+        let mut expected = world.native_random.clone().unwrap();
+        for _ in 0..11 {
+            expected.unit();
+        }
+        assert_eq!(
+            world
+                .add_native_random_obstacles(10, DEFAULT_NATIVE_SHAPE_DIMENSIONS)
+                .unwrap(),
+            Some(1)
+        );
+        assert_eq!(world.snapshot().obstacles.len(), 1000);
+        assert_eq!(world.snapshot().obstacles.last().unwrap().id, 1000);
+        assert_eq!(world.native_random.as_ref(), Some(&expected));
+
+        for _ in 0..4 {
+            expected.unit();
+        }
+        assert_eq!(
+            world
+                .add_native_random_obstacles(10, DEFAULT_NATIVE_SHAPE_DIMENSIONS)
+                .unwrap(),
+            Some(0)
+        );
+        assert_eq!(world.native_random.as_ref(), Some(&expected));
+
+        world.native_random = None;
+        assert_eq!(
+            world
+                .add_native_random_obstacles(10, DEFAULT_NATIVE_SHAPE_DIMENSIONS)
+                .unwrap(),
+            None
+        );
+        assert_eq!(world.snapshot().obstacles.len(), 1000);
+    }
+
+    #[test]
+    fn native_random_shapes_honor_imported_global_options_from_an_empty_world() {
+        use crate::native_binary::{NativeRecordFile, NativeSimulationTail, NativeValue};
+
+        let initial = Engine::new(EngineConfig::testing()).unwrap();
+        let mut file = NativeRecordFile::decode(&initial.export_native_sim().unwrap()).unwrap();
+        let mut tail = NativeSimulationTail::decode(&file.tail).unwrap();
+        for name in ["shapes_black", "shapes_transparent", "shapes_see_through"] {
+            tail.set_value(name, NativeValue::Word(-1)).unwrap();
+        }
+        tail.set_value("shapes_absorb", NativeValue::Word(0))
+            .unwrap();
+        file.tail = tail.encode().unwrap();
+        let mut world = Engine::from_native_sim(&file.encode().unwrap()).unwrap();
+        assert!(world.config.shape_creation.is_none());
+        assert!(world.obstacles.is_empty());
+        let mut expected = world.native_random.clone().unwrap();
+        for _ in 0..8 {
+            expected.unit();
+        }
+        assert_eq!(
+            world
+                .add_native_random_obstacles(2, DEFAULT_NATIVE_SHAPE_DIMENSIONS)
+                .unwrap(),
+            Some(2)
+        );
+        assert_eq!(world.native_random.as_ref(), Some(&expected));
+        let saved = crate::SaveFile::encode(&world).unwrap();
+        let mut restored = crate::SaveFile::decode(&saved).unwrap();
+        assert!(restored.config.shape_creation.is_none());
+        assert_eq!(
+            restored
+                .add_native_random_obstacles(1, DEFAULT_NATIVE_SHAPE_DIMENSIONS)
+                .unwrap(),
+            Some(1)
+        );
+        let encoded = restored.export_native_sim().unwrap();
+        let imported = Engine::from_native_sim(&encoded).unwrap();
+        assert_eq!(imported.obstacles.len(), 3);
+        for shape in imported.obstacles {
+            assert_eq!(shape.color, 0xff00_0000);
+            assert_eq!(shape.opacity, 0.0);
+            assert_eq!(shape.vision_policy, ShapeVisionPolicy::SeeThrough);
+            assert_eq!(shape.shot_policy, ShapeShotPolicy::Reflect);
+        }
+    }
+
+    #[test]
+    fn explicit_shape_creation_policies_survive_empty_modern_and_native_saves() {
+        let world = Engine::new_native(EngineConfig {
+            shape_creation: Some(crate::ShapeCreationSettings {
+                black: true,
+                transparent: true,
+                see_through: true,
+                absorb_shots: false,
+            }),
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let mut restored =
+            crate::SaveFile::decode(&crate::SaveFile::encode(&world).unwrap()).unwrap();
+        let mut imported = Engine::from_native_sim(&restored.export_native_sim().unwrap()).unwrap();
+        for engine in [&mut restored, &mut imported] {
+            assert!(engine.obstacles.is_empty());
+            let mut expected = engine.native_random.clone().unwrap();
+            for _ in 0..4 {
+                expected.unit();
+            }
+            assert_eq!(
+                engine
+                    .add_native_random_obstacles(1, DEFAULT_NATIVE_SHAPE_DIMENSIONS)
+                    .unwrap(),
+                Some(1)
+            );
+            assert_eq!(engine.native_random.as_ref(), Some(&expected));
+            let shape = &engine.obstacles[0];
+            assert_eq!(shape.color, 0xff00_0000);
+            assert_eq!(shape.opacity, 0.0);
+            assert_eq!(shape.vision_policy, ShapeVisionPolicy::SeeThrough);
+            assert_eq!(shape.shot_policy, ShapeShotPolicy::Reflect);
+        }
+    }
 
     #[test]
     fn render_readout_publication_preserves_native_edge_positions() {
@@ -14596,6 +16634,25 @@ mod tests {
     }
 
     #[test]
+    fn player_bot_focus_skips_nonexisting_records_and_accepts_existing_corpses() {
+        let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+        let dna = LegacyDna::parse("stop").unwrap();
+        let [focused, corpse, absent] =
+            [200.0, 400.0, 600.0].map(|x| world.spawn_at(dna.clone(), [x, 500.0]).unwrap());
+        world.become_native_corpse(corpse).unwrap();
+        world.slots.get_mut(absent).unwrap().flags.exists = false;
+        world
+            .configure_player_bot(true, Some(focused), vec![])
+            .unwrap();
+        world.set_player_bot_targets(Some(focused), vec![corpse, absent]);
+
+        world.remove(focused).unwrap();
+        assert_eq!(world.snapshot().player_bot.focus, Some(corpse));
+        world.remove(corpse).unwrap();
+        assert_eq!(world.snapshot().player_bot.focus, None);
+    }
+
+    #[test]
     fn exhausted_corpse_is_removed_when_energy_remains() {
         let mut engine = Engine::new(EngineConfig {
             corpse_decay: CorpseDecaySettings {
@@ -15118,6 +17175,44 @@ mod native_publication55_tests {
 #[cfg(test)]
 mod native_feed_eligibility55_tests {
     use super::*;
+
+    #[test]
+    fn native_chloroplast_share_delay_ages_in_daylight_even_in_shade() {
+        let mut config = EngineConfig::testing();
+        config.world_width = 8_000.0;
+        config.world_height = 6_000.0;
+        config.vegetation.daytime = false;
+        let mut world = Engine::new_native(config).unwrap();
+        world.vegetation_runtime =
+            serde_json::from_value(serde_json::json!({"sun_position": 0.5, "sun_range": 0.0}))
+                .unwrap();
+        let mut ids = Vec::new();
+        for x in [4_000.0, 1_500.0] {
+            let id = world
+                .spawn_at(LegacyDna::parse("stop").unwrap(), [x, 3_000.0])
+                .unwrap();
+            let robot = world.slots.get_mut(id).unwrap();
+            robot.materials.chloroplasts = 16_000.0;
+            robot.counters.chloroplast_share_delay = 2;
+            ids.push(id);
+        }
+        world.slots.get_mut(ids[1]).unwrap().flags.can_execute_dna = false;
+
+        world.tick().unwrap();
+        for id in &ids {
+            let robot = world.slots.get(*id).unwrap();
+            assert_eq!(robot.counters.chloroplast_share_delay, 2);
+            assert_eq!(robot.program.memory.read(MEM_DAYTIME), 0);
+        }
+
+        world.config.vegetation.daytime = true;
+        world.tick().unwrap();
+        for (id, sunlight) in ids.into_iter().zip([1, 0]) {
+            let robot = world.slots.get(id).unwrap();
+            assert_eq!(robot.counters.chloroplast_share_delay, 1);
+            assert_eq!(robot.program.memory.read(MEM_DAYTIME), sunlight);
+        }
+    }
 
     #[test]
     fn native_feed_excludes_hidden_and_missing_area_but_no_chloroplast_commands_still_feed() {

@@ -5,6 +5,13 @@ public interface IEngineClient : IDisposable
     string Backend { get; }
     EngineCapabilities Capabilities();
     void Tick(uint count = 1);
+    void TickRecordingDeaths(uint count, Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted) => Tick(count);
+    void TickRecordingDeaths(uint count, int weightPercent, Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted) =>
+        TickRecordingDeaths(count, onCommitted);
+    GenomeRecordCapture? CaptureLivingSnp(int weightPercent) => null;
+    // A null result means recording removal is unavailable and nothing was removed.
+    IReadOnlyList<DeathRecordSnapshot>? RemoveRecordingDeaths(
+        IReadOnlyList<OrganismKey> organisms, bool suppressDeathPoffs, bool excludeVegetables, int weightPercent) => null;
     DnaImportReport ImportDna(string dna, float[]? position = null);
     int ImportOrganism(ReadOnlyMemory<byte> payload) => throw new NotSupportedException("This engine client does not support organism interchange.");
     DnaImportReport ImportSpecies(SpeciesImport species);
@@ -22,6 +29,8 @@ public interface IEngineClient : IDisposable
     void Move(uint slot, uint generation, float[] position);
     OrganismKey CloneOrganism(uint slot, uint generation, float[] position);
     void ReplaceDna(uint slot, uint generation, string dna);
+    int TagOrganismsByName(string founderName, string tag) =>
+        throw new NotSupportedException("Robot tagging is unavailable in this engine client.");
     string ExportDna(uint slot, uint generation);
     string ExportSpeciesTemplateDna(uint species) =>
         throw new NotSupportedException("This engine client does not support startup species DNA export.");
@@ -37,9 +46,29 @@ public interface IEngineClient : IDisposable
             request.Position);
     void SwitchBackend(string backend);
     void AddObstacle(ObstacleSnapshot obstacle);
+    (int Added, Db2ShapeDriftOptions Drift)? AddNativePolarIce() => null;
+    int? AddNativeSimpleMaze(bool horizontal, MazeDimensions dimensions) => null;
+    int? AddNativePatternMaze(MazePreset pattern, MazeDimensions dimensions) => null;
+    void AddTrashCompactor(ObstacleSnapshot left, ObstacleSnapshot right)
+    {
+        AddObstacle(left);
+        AddObstacle(right);
+    }
+    int? AddNativeRandomObstacles(int count, ShapeCreationDimensions? dimensions = null) => null;
+    int? AddNativeCenteredObstacle(ShapeCreationDimensions dimensions) => null;
+    Db2ShapeDriftOptions? SetShapeDrift(bool? horizontal, bool? vertical, short? rate) => null;
     void UpdateObstacle(ObstacleSnapshot obstacle);
     void RemoveObstacle(uint id);
+    void RemoveObstacles(IReadOnlyList<uint> ids)
+    {
+        foreach (var id in ids) RemoveObstacle(id);
+    }
+    int? RemoveNativeRandomObstacles() => null;
     void AddTeleporter(TeleporterSnapshot teleporter);
+    void AddNativeTeleporter(NativeTeleporterOptions options) =>
+        throw new NotSupportedException("Original teleporter creation is unavailable in this engine client.");
+    void DragNativeTeleporter(uint id, float[] center) =>
+        throw new NotSupportedException("Original teleporter dragging is unavailable in this engine client.");
     void UpdateTeleporter(TeleporterSnapshot teleporter);
     void RemoveTeleporter(uint id);
     void AddFileTeleporter(FileTeleporterSnapshot teleporter);
@@ -47,16 +76,37 @@ public interface IEngineClient : IDisposable
     void RemoveFileTeleporter(uint id);
     void SetBrownianMotion(float value);
     void UpdateMutationSettings(MutationSettingsUpdate update);
+    void UpdateLiveSettings(EnvironmentUpdate environment, MutationSettingsUpdate mutation, GlobalSimulationCostSettings? costs)
+    {
+        UpdateEnvironment(environment);
+        UpdateMutationSettings(mutation);
+        if (costs is not null) UpdateCostSettings(costs);
+    }
+    void UpdateGlobalMutationSettings(MutationSettingsUpdate update, GlobalAdvancedMutationSettings? advanced, GlobalMainSettings main)
+    {
+        UpdateMutationSettings(update);
+        if (advanced is not null) UpdateAdvancedMutationSettings(advanced, main);
+    }
     void UpdateOrganismMutationProfile(uint slot, uint generation, MutationProfileUpdate profile) =>
         throw new NotSupportedException("This engine client does not support per-organism mutation profiles.");
+    void SetShotDecay(bool energy, bool doNotDecay) =>
+        throw new NotSupportedException("This engine client does not support changing shot decay.");
     void SetTiesEnabled(bool enabled);
     void UpdateSpeciesSettings(IReadOnlyList<SpeciesImport> species) =>
         throw new NotSupportedException("Species settings are unavailable in this engine client.");
     void SetSpeciesColor(uint species, uint color);
+    void SetOrganismColor(uint slot, uint generation, uint color) =>
+        throw new NotSupportedException("Robot color editing is unavailable in this engine client.");
     void MakeNewSpecies(uint slot, uint generation, string name, uint color);
+    string ForkRobotAndDescendants(uint slot, uint generation) =>
+        throw new NotSupportedException("Forking robot descendants is unavailable in this engine client.");
     void UpdateLegacyRestrictions(bool robotFixingAllowed, bool asexualReproductionAllowed);
     void ConfigurePlayerBot(PlayerBotConfig config);
     void SetPlayerBotKey(uint slot, uint generation, int keyCode, bool pressed);
+    void SetPlayerBotKeyState(int keyCode, bool pressed) =>
+        throw new NotSupportedException("This engine client does not support independent PlayerBot key state.");
+    void SetPlayerBotTargets(OrganismKey? focus, IReadOnlyList<OrganismKey> highlights) { }
+    void SetPlayerBotPointer(float[]? position) { }
     void SetOrganismMemory(uint slot, uint generation, ushort address, int value);
     ushort ResolveMemoryAddress(string name) => ushort.TryParse(name, out var address) && address is >= 1 and <= 1000
         ? address : throw new FormatException($"Unknown memory address '{name}'.");
@@ -74,6 +124,10 @@ public interface IEngineClient : IDisposable
     void ConfigureLocalMode(LocalModeConfig config);
     void StartLocalMode();
     void RestartLocalMode();
+    void SetOrdinaryRestart(bool enabled) =>
+        throw new NotSupportedException("Ordinary simulation restart is unavailable in this engine client.");
+    void FinishOrdinaryRestart() =>
+        throw new NotSupportedException("Ordinary simulation restart is unavailable in this engine client.");
     void AdjudicateLocalRound(uint? winner, string reason);
     void SetOrganismAim(uint slot, uint generation, int aim);
     void UpdateEnvironment(EnvironmentUpdate update);
@@ -84,11 +138,14 @@ public interface IEngineClient : IDisposable
     }
     byte[] Save();
     byte[] SaveLegacy() => throw new NotSupportedException("This engine client does not support legacy simulation export.");
+    byte[] SaveLegacyWithoutMutationDetails() => throw new NotSupportedException("This engine client does not support legacy simulation export without mutation details.");
     byte[] SaveWithoutMutations();
     void Load(byte[] save);
     EngineSnapshot Snapshot();
     WorldConfiguration? ReadConfiguration() => null;
     float? ReadNativeGaussianSpare() => null;
     byte ReadNativeSunChange() => 0;
+    bool? ToggleNativeSun() => null;
     NativeProcessCachesSnapshot ReadNativeProcessCaches() => NativeProcessCachesSnapshot.Empty;
+    string ReadRobotTagReport() => throw new NotSupportedException("Robot tag information is unavailable in this engine client.");
 }

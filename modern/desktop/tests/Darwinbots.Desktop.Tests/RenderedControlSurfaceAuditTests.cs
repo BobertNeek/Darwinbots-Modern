@@ -778,6 +778,7 @@ public sealed class RenderedControlSurfaceAuditTests
         {
             await DesktopTestApplication.Session.Dispatch(async () =>
             {
+                var backupLaunches = 0;
                 var window = new MainWindow(
                     [],
                     new WorldSetupOptions
@@ -786,7 +787,8 @@ public sealed class RenderedControlSurfaceAuditTests
                         GlobalSettings = new GlobalSettings { Main = new GlobalMainSettings { SafeMode = true } },
                     },
                     factory,
-                    storage);
+                    storage,
+                    launchSafeModeBackup: () => backupLaunches++);
                 try
                 {
                     ShowForInteraction(window, 1_200, 820);
@@ -795,13 +797,12 @@ public sealed class RenderedControlSurfaceAuditTests
 
                     var menu = Named<LegacyMenuBar>(window, "HistoricMenuBar");
                     var safemode = menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.RecordingSafemodeBackup)!;
-                    Assert.True(safemode.IsChecked);
+                    Assert.Equal(MenuItemToggleType.None, safemode.ToggleType);
                     safemode.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
-                    await WaitFor(() => safemode.IsChecked == false);
-                    Assert.Equal("SAFEMODE BACKUP OFF", viewModel.Status);
-                    safemode.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
-                    await WaitFor(() => safemode.IsChecked == true);
-                    Assert.Equal("SAFEMODE BACKUP ON", viewModel.Status);
+                    await WaitFor(() => viewModel.Status == "SAFEMODE BACKUP OPEN");
+                    Assert.Equal(1, backupLaunches);
+                    Assert.Empty(window.OwnedWindows.OfType<SafeModeBackupWindow>());
+                    Assert.True(Field<EnvironmentUpdate>(window, "_liveEnvironment").Recording!.SafeModeBackup);
 
                     var handleError = typeof(MainWindow).GetMethod("HandleEngineErrorAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
                     await (Task)handleError.Invoke(window, [new AccessViolationException("IO-05 rendered recovery fault"), true])!;
@@ -1060,6 +1061,68 @@ public sealed class RenderedControlSurfaceAuditTests
             {
                 foreach (var ownedWindow in window.OwnedWindows.ToArray()) ownedWindow.Close();
                 window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task AutomaticForkingMenuPromptsBeforeEnablingAndRetainsTheThresholdWhenDisabled()
+    {
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var factory = new AuditEngineClientFactory();
+            var setup = new WorldSetupOptions { SpeciationGeneticDistancePercent = 20.5f };
+            var window = new MainWindow([], setup, factory, new AuditStorageService());
+            var priorCulture = DesktopUiPreferences.Culture.Name;
+            try
+            {
+                DesktopUiPreferences.ApplyCulture("de-DE");
+                ShowForInteraction(window, 1_200, 820);
+                var menu = Named<LegacyMenuBar>(window, "HistoricMenuBar");
+                var command = menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.EditEnableAutomaticForking)!;
+                var viewModel = Field<MainWindowViewModel>(window, "_viewModel");
+                await WaitFor(() => command.IsEnabled);
+                var engine = factory.Clients.Single();
+
+                async Task Submit(string initial, string text, string action, string status)
+                {
+                    ActivateMenu(command);
+                    await WaitFor(() => window.OwnedWindows.OfType<LegacyValueWindow>().Any() || command.IsChecked);
+                    var dialog = Assert.Single(window.OwnedWindows.OfType<LegacyValueWindow>());
+                    var input = Assert.Single(dialog.GetVisualDescendants().OfType<TextBox>());
+                    Assert.Equal(initial, input.Text);
+                    input.Text = text;
+                    Click(dialog, dialog.GetVisualDescendants().OfType<Button>().Single(button => Equals(button.Content, action)));
+                    await WaitFor(() => !dialog.IsVisible && viewModel.Status == status);
+                }
+
+                await Submit("20,5", "25,5", "CANCEL", "CANCELED");
+                Assert.False(command.IsChecked);
+                Assert.Empty(engine.EnvironmentUpdates);
+
+                await Submit("20,5", "12,5", "APPLY", "AUTOMATIC FORKING · ON");
+                Assert.True(command.IsChecked);
+                var enabled = Assert.Single(engine.EnvironmentUpdates);
+                Assert.True(enabled.AutoSpeciation);
+                Assert.Equal(12.5f, enabled.SpeciationGeneticDistancePercent);
+
+                ActivateMenu(command);
+                await WaitFor(() => viewModel.Status == "AUTOMATIC FORKING · OFF");
+                Assert.False(command.IsChecked);
+                Assert.Empty(window.OwnedWindows.OfType<LegacyValueWindow>());
+                Assert.Collection(engine.EnvironmentUpdates,
+                    update => Assert.Equal(enabled, update),
+                    update => Assert.Equal(enabled with { AutoSpeciation = false }, update));
+
+                await Submit("12,5", "10000,1", "APPLY", "MUTATION DISTANCE MUST BE 0–10.000%");
+                Assert.False(command.IsChecked);
+                Assert.Equal(2, engine.EnvironmentUpdates.Count);
+            }
+            finally
+            {
+                foreach (var owned in window.OwnedWindows.ToArray()) owned.Close();
+                window.Close();
+                DesktopUiPreferences.ApplyCulture(priorCulture);
             }
         }, CancellationToken.None);
     }
@@ -1647,6 +1710,7 @@ public sealed class RenderedControlSurfaceAuditTests
 
                 var generalSettingsCommand = menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.EditGeneralSettings)!;
                 ActivateMenu(generalSettingsCommand);
+                await WaitFor(() => window.OwnedWindows.OfType<AdvancedSettingsWindow>().Any(), () => viewModel.Status);
                 var generalSettings = Assert.Single(window.OwnedWindows.OfType<AdvancedSettingsWindow>());
                 Assert.True(generalSettings.IsVisible);
                 // Render the actual Energy tab before editing its numeric text
@@ -1679,6 +1743,7 @@ public sealed class RenderedControlSurfaceAuditTests
 
                 var mutationSettingsCommand = menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.EditGeneralSettings)!;
                 ActivateMenu(mutationSettingsCommand);
+                await WaitFor(() => window.OwnedWindows.OfType<AdvancedSettingsWindow>().Any(), () => viewModel.Status);
                 var mutationSettings = Assert.Single(window.OwnedWindows.OfType<AdvancedSettingsWindow>());
                 Assert.True(mutationSettings.IsVisible);
                 Named<TabControl>(mutationSettings, "SettingsTabs").SelectedIndex = 0;
@@ -1824,7 +1889,8 @@ public sealed class RenderedControlSurfaceAuditTests
                 Assert.Equal(2.25f, staged.GlobalMultiplier);
                 Assert.Equal(12.5f, Assert.Single(staged.SpeciesRates).Rate);
                 Click(settings, Named<Button>(settings, "ApplyButton"));
-                await WaitFor(() => engine.MutationUpdates.Count == 1);
+                await WaitFor(() => engine.MutationUpdates.Count == 1
+                    && Field<MainWindowViewModel>(window, "_viewModel").Status == "LIVE SETTINGS APPLIED");
                 var applied = engine.MutationUpdates.Single();
                 Assert.Equal(2.25f, applied.GlobalMultiplier);
                 Assert.Equal(12.5f, Assert.Single(applied.SpeciesRates).Rate);
@@ -2038,7 +2104,11 @@ internal sealed class AuditStorageService : IDesktopStorageService
     public string? PickedSimulationPath { get; init; }
     public byte[]? OpenedSimulation { get; set; }
     public DesktopSettings? SettingsToOpen { get; init; }
+    public byte[]? RgbMonitorPresetToOpen { get; set; }
+    public byte[]? SavedRgbMonitorPreset { get; private set; }
+    public bool AcceptRgbMonitorPresetSave { get; set; } = true;
     public string? LatestAutosave { get; init; }
+    public Func<DateTime, CancellationToken, Task<string?>>? ArchiveAutosave { get; init; }
     public byte[]? SavedSimulation { get; private set; }
     public string? SavedDna { get; private set; }
     public string? PickedPopulationSeedDirectory { get; set; }
@@ -2049,13 +2119,18 @@ internal sealed class AuditStorageService : IDesktopStorageService
         return Task.FromResult(PickedPopulationSeedDirectory);
     }
     public byte[]? SavedLivingSnapshot { get; private set; }
+    public bool PromptForLivingMutationHistory { get; init; }
+    public byte[]? SavedLivingMutationHistory { get; private set; }
     public List<byte[]> DeadSnapshotWrites { get; } = [];
+    public List<byte[]> DeadMutationHistoryWrites { get; } = [];
+    public Exception? DeadSnapshotWriteError { get; init; }
     public bool AcceptOrganismSave { get; init; } = true;
     public string? SavedOrganismSuggestedFileName { get; private set; }
     public byte[]? SavedOrganism { get; private set; }
     public byte[]? Autosave { get; private set; }
     public List<byte[]> AutosaveWrites { get; } = [];
     public bool PersistAutosaves { get; init; }
+    public Func<Task>? BeforeAutosaveWrite { get; init; }
     public DesktopSettings? SavedSettings { get; private set; }
     public ConcurrentQueue<byte[]> LastStartWrites { get; } = [];
 
@@ -2067,6 +2142,15 @@ internal sealed class AuditStorageService : IDesktopStorageService
 
     public Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner) => Task.FromResult(DnaFiles);
     public Task<DesktopSettings?> OpenSettingsAsync(TopLevel owner) => Task.FromResult(SettingsToOpen);
+    public Task<byte[]?> OpenRgbMonitorPresetAsync(TopLevel owner) => Task.FromResult(RgbMonitorPresetToOpen);
+
+    public Task<bool> SaveRgbMonitorPresetAsync(TopLevel owner, ReadOnlyMemory<byte> preset)
+    {
+        if (!AcceptRgbMonitorPresetSave) return Task.FromResult(false);
+        SavedRgbMonitorPreset = preset.ToArray();
+        return Task.FromResult(true);
+    }
+
     public Task<string?> PickSimulationPathAsync(TopLevel owner) => Task.FromResult(PickedSimulationPath);
     public Task<byte[]?> OpenSimulationAsync(TopLevel owner) => Task.FromResult(OpenedSimulation);
 
@@ -2091,18 +2175,26 @@ internal sealed class AuditStorageService : IDesktopStorageService
         return Task.FromResult(true);
     }
 
-    public async Task<bool> SaveLivingSnapshotAsync(TopLevel owner, string suggestedFileName, Func<Stream, Task> writeAsync)
+    public async Task<bool> SaveLivingSnapshotAsync(
+        TopLevel owner, string suggestedFileName, byte[] snapshot, Func<Task<byte[]?>> chooseMutationHistoryAsync)
     {
-        using var stream = new MemoryStream();
-        await writeAsync(stream);
-        SavedLivingSnapshot = stream.ToArray();
+        if (PromptForLivingMutationHistory)
+            SavedLivingMutationHistory = await chooseMutationHistoryAsync();
+        SavedLivingSnapshot = snapshot;
         return true;
     }
 
-    public async Task<bool> AppendDeadSnapshotAsync(Func<Stream, Task> writeAsync)
+    public async Task<bool> AppendDeadSnapshotAsync(Func<Stream, Task> writeAsync, Func<Stream, Task>? writeMutationHistoryAsync)
     {
+        if (DeadSnapshotWriteError is { } error) throw error;
         using var stream = new MemoryStream();
         await writeAsync(stream);
+        if (writeMutationHistoryAsync is not null)
+        {
+            using var history = new MemoryStream();
+            await writeMutationHistoryAsync(history);
+            DeadMutationHistoryWrites.Add(history.ToArray());
+        }
         DeadSnapshotWrites.Add(stream.ToArray());
         return true;
     }
@@ -2119,8 +2211,13 @@ internal sealed class AuditStorageService : IDesktopStorageService
 
     public string? FindLatestAutosave() => LatestAutosave;
 
+    public Task<string?> ArchiveLatestAutosaveAsync(DateTime localBoundary, CancellationToken cancellationToken) =>
+        ArchiveAutosave?.Invoke(localBoundary, cancellationToken) ?? Task.FromResult<string?>(null);
+
     public async Task SaveAutosaveAsync(ReadOnlyMemory<byte> save)
     {
+        if (BeforeAutosaveWrite is { } beforeWrite)
+            await beforeWrite();
         Autosave = save.ToArray();
         AutosaveWrites.Add(Autosave);
         if (PersistAutosaves)

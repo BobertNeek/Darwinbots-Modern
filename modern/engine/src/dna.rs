@@ -440,19 +440,95 @@ impl LegacyDna {
         self.gene_ranges().len().min(i32::MAX as usize) as i32
     }
 
+    pub(crate) fn gene_count_for_world(&self, native_flow: bool) -> i32 {
+        if native_flow {
+            self.native_gene_count()
+        } else {
+            self.gene_count()
+        }
+    }
+
+    pub(crate) fn native_gene_count(&self) -> i32 {
+        self.native_gene_starts().count() as i32
+    }
+
+    fn native_gene_starts(&self) -> impl Iterator<Item = usize> + '_ {
+        // Module1.CountGenes assigns the first start or else to its cond.
+        // Subsequent starts and elses begin new genes even without a stop.
+        let mut awaiting_branch = false;
+        self.blocks
+            .iter()
+            .take(MAX_DNA_BLOCKS)
+            .enumerate()
+            .take_while(|(_, block)| (block.class, block.value) != (TokenClass::End, 1))
+            .filter_map(move |(index, block)| match (block.class, block.value) {
+                (TokenClass::Flow, 1) => {
+                    awaiting_branch = true;
+                    Some(index)
+                }
+                (TokenClass::Flow, 2 | 3) => {
+                    let begins_gene = !awaiting_branch;
+                    awaiting_branch = false;
+                    begins_gene.then_some(index)
+                }
+                (TokenClass::Flow, 4) => {
+                    awaiting_branch = false;
+                    None
+                }
+                _ => None,
+            })
+    }
+
+    fn native_gene_range(&self, index: usize) -> Option<(usize, usize)> {
+        let start = self.native_gene_starts().nth(index)?;
+        let limit = self.blocks.len().min(MAX_DNA_BLOCKS);
+        let mut awaiting_branch = self.blocks[start].value == 1;
+        // Module1.GeneEnd includes an explicit stop and stops before the next
+        // gene start or any master flow token.
+        let end = self.blocks[..limit]
+            .iter()
+            .enumerate()
+            .skip(start + 1)
+            .find_map(|(index, block)| match (block.class, block.value) {
+                (TokenClass::End, _) | (TokenClass::Flow, 1) => Some(index),
+                (TokenClass::Flow, 4) => Some(index + 1),
+                (TokenClass::Flow, 2 | 3) if !awaiting_branch => Some(index),
+                (TokenClass::Flow, 2 | 3) => {
+                    awaiting_branch = false;
+                    None
+                }
+                _ => None,
+            })
+            .unwrap_or(limit);
+        Some((start, end))
+    }
+
     pub(crate) fn gene(&self, requested: i32) -> Option<Self> {
         let index = usize::try_from(requested.saturating_sub(1)).ok()?;
         let (start, end) = *self.gene_ranges().get(index)?;
         Some(self.with_blocks(self.blocks[start..end].to_vec()))
     }
 
-    pub(crate) fn delete_gene(&self, requested: i32) -> Option<Self> {
-        let index = usize::try_from(requested.saturating_sub(1)).ok()?;
-        let ranges = self.gene_ranges();
-        if ranges.len() <= 1 {
-            return None;
+    pub(crate) fn gene_for_virus(&self, requested: i32, native_flow: bool) -> Option<Self> {
+        if !native_flow {
+            return self.gene(requested);
         }
-        let (start, end) = *ranges.get(index)?;
+        let index = usize::try_from(requested.saturating_sub(1)).ok()?;
+        let (start, end) = self.native_gene_range(index)?;
+        Some(self.with_blocks(self.blocks[start..end].to_vec()))
+    }
+
+    pub(crate) fn delete_gene(&self, requested: i32, native_flow: bool) -> Option<Self> {
+        let index = usize::try_from(requested.saturating_sub(1)).ok()?;
+        let (start, end) = if native_flow {
+            self.native_gene_range(index)?
+        } else {
+            let ranges = self.gene_ranges();
+            if ranges.len() <= 1 {
+                return None;
+            }
+            *ranges.get(index)?
+        };
         let mut blocks = self.blocks[..start].to_vec();
         blocks.extend_from_slice(&self.blocks[end..]);
         Some(self.with_blocks(blocks))
@@ -478,6 +554,30 @@ impl LegacyDna {
         );
         blocks.extend(self.blocks[insert_at..].iter().copied());
         self.with_blocks(blocks)
+    }
+
+    pub(crate) fn insert_native_virus(&self, payload: &Self, after_gene: usize) -> Option<Self> {
+        // Shots.addgene inserts after GeneEnd or at the beginning if the
+        // selected gene is zero. The projectile's internal end is not copied.
+        let insert_at = match after_gene.checked_sub(1) {
+            Some(index) => self.native_gene_range(index)?.1,
+            None => 0,
+        };
+        let payload_len = payload
+            .blocks
+            .iter()
+            .position(|block| block.class == TokenClass::End)
+            .unwrap_or(payload.blocks.len());
+        if payload_len == 0
+            || insert_at >= self.blocks.len()
+            || self.blocks.len() + payload_len > MAX_DNA_BLOCKS
+        {
+            return None;
+        }
+        let mut blocks = self.blocks[..insert_at].to_vec();
+        blocks.extend_from_slice(&payload.blocks[..payload_len]);
+        blocks.extend_from_slice(&self.blocks[insert_at..]);
+        Some(self.with_blocks(blocks))
     }
 
     /// DB2 `DNAtoInt` and `simplematch`: align insertions before counting unmatched bases.
@@ -584,6 +684,100 @@ impl LegacyDna {
         }
     }
 
+    /// Render the raw robot DNA as Darwinbots 2 writes it inside a snapshot record.
+    pub(crate) fn to_snapshot_source(&self) -> String {
+        let mut source = String::new();
+        let mut gene = 0;
+        let mut coding = false;
+        let mut following_cond = false;
+
+        // The final block is the master end sentinel. It is only needed for lookahead.
+        for (index, pair) in self.blocks.windows(2).enumerate() {
+            let block = pair[0];
+            let position = index + 1;
+            let previous_gene = gene;
+            let mut stops_gene = false;
+            if block.class == TokenClass::Flow {
+                match flow_instruction(block.value) {
+                    Some(FlowInstruction::Cond) => {
+                        if coding {
+                            source.push_str("\r\n");
+                            append_snapshot_gene_marker(&mut source, gene, "Ends", position - 1);
+                            source.push_str("\r\n");
+                        }
+                        following_cond = true;
+                        gene += 1;
+                        coding = true;
+                    }
+                    Some(FlowInstruction::Start | FlowInstruction::Else) => {
+                        if !following_cond {
+                            if coding {
+                                source.push_str("\r\n");
+                                append_snapshot_gene_marker(
+                                    &mut source,
+                                    gene,
+                                    "Ends",
+                                    position - 1,
+                                );
+                            }
+                            gene += 1;
+                        }
+                        following_cond = false;
+                        coding = true;
+                    }
+                    Some(FlowInstruction::Stop) => {
+                        stops_gene = coding;
+                        following_cond = false;
+                        coding = false;
+                    }
+                    _ => {}
+                }
+            }
+
+            if gene != previous_gene {
+                source.push_str("\r\n");
+                if gene > 1 {
+                    append_snapshot_gene_marker(&mut source, gene, "Begins", position);
+                    source.push_str("\r\n");
+                }
+            }
+
+            source.push(' ');
+            match block.class {
+                TokenClass::Number if pair[1].class != TokenClass::Store => {
+                    source.push_str(&block.value.to_string());
+                }
+                TokenClass::Number | TokenClass::Dereference => {
+                    if block.class == TokenClass::Dereference {
+                        source.push('*');
+                    }
+                    if let Some(name) = crate::sysvars::legacy_display_sysvar_name(block.value) {
+                        source.push('.');
+                        source.push_str(name);
+                    } else {
+                        source.push_str(&block.value.to_string());
+                    }
+                }
+                _ => source.push_str(block_token(block).unwrap_or("VOID")),
+            }
+            if matches!(
+                block.class,
+                TokenClass::Condition | TokenClass::Logic | TokenClass::Store | TokenClass::Flow
+            ) {
+                source.push_str("\r\n");
+            }
+            if stops_gene {
+                append_snapshot_gene_marker(&mut source, gene, "Ends", position);
+                source.push_str("\r\n");
+            }
+        }
+        if coding {
+            append_snapshot_gene_marker(&mut source, gene, "Ends", self.blocks.len() - 1);
+            source.push_str("\r\n");
+        }
+        source
+    }
+
     pub fn to_source(&self) -> String {
         let mut lines = vec![
             format!("'#generation: {}", self.metadata.generation),
@@ -629,6 +823,12 @@ impl LegacyDna {
         }
         dna.to_source()
     }
+}
+
+fn append_snapshot_gene_marker(source: &mut String, gene: usize, action: &str, position: usize) {
+    source.push_str(&format!(
+        "''''''''''''''''''''''''  Gene:  {gene} {action} at position  {position}  '''''''''''''''''''''''"
+    ));
 }
 
 fn parse_source_token(

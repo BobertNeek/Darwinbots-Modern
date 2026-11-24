@@ -65,6 +65,8 @@ public sealed record OrganismSnapshot(
     public ulong Descendants { get; init; }
     public ulong SimulationId { get; init; }
     public ulong UniqueId { get; init; }
+    public ulong? ParentAbsoluteId { get; init; }
+    public uint? LineageGeneration { get; init; }
     public int VirusTimer { get; init; }
     public ulong NewMutations { get; init; }
     public ulong TotalMutations { get; init; }
@@ -85,6 +87,27 @@ public sealed record ActivationFrameSnapshot(ulong Tick, bool[] Activations)
 {
     public int ActiveGeneCount => Activations.Count(active => active);
 }
+
+public sealed record DeathRecordSnapshot(
+    ulong Tick,
+    ulong Id,
+    ulong ParentId,
+    string Founder,
+    uint Generation,
+    ulong BirthCycle,
+    ulong Age,
+    ulong Mutations,
+    ulong NewMutations,
+    uint DnaLength,
+    ulong Offspring,
+    ulong Kills,
+    float Energy,
+    float Chloroplasts,
+    string Dna,
+    IReadOnlyList<string> MutationLog,
+    double? Fitness = null);
+
+public sealed record GenomeRecordCapture(ulong Tick, IReadOnlyList<DeathRecordSnapshot> Records);
 
 public sealed record MemoryCellSnapshot(ushort Address, int Value);
 
@@ -188,14 +211,39 @@ internal static class VisualSnapshotDefaults
 
 public sealed record ObstacleSnapshot(uint Id, float[] Minimum, float[] Maximum)
 {
+    [System.Text.Json.Serialization.JsonIgnore]
+    internal LegacySettingsObstacleBounds? LegacySettingsBounds { get; init; }
+
     public uint Color { get; init; } = 0xffb9bdb6u;
     public float Opacity { get; init; } = 1f;
     public float[] Drift { get; init; } = [0f, 0f];
     public string VisionPolicy { get; init; } = "opaque";
     public string ShotPolicy { get; init; } = "absorb";
+
+    public ObstacleSnapshot ResolveSetupBounds(float fieldWidth, float fieldHeight)
+    {
+        if (LegacySettingsBounds is not { } bounds) return this;
+        var (minimum, maximum) = bounds.InField(fieldWidth, fieldHeight);
+        return this with { Minimum = minimum, Maximum = maximum };
+    }
 }
+
+internal readonly record struct LegacySettingsObstacleBounds(float X, float Y, float Width, float Height)
+{
+    internal (float[] Minimum, float[] Maximum) InField(float fieldWidth, float fieldHeight)
+    {
+        float x = X * fieldWidth;
+        float y = Y * fieldHeight;
+        return ([x, y], [x + Width * fieldWidth, y + Height * fieldHeight]);
+    }
+}
+
 public sealed record TeleporterSnapshot(uint Id, float[] Center, float Radius, float[] Destination)
 {
+    public float? Width { get; init; }
+    public float? Height { get; init; }
+    public bool RandomDestination { get; init; }
+    public float[]? NativeTopLeft { get; init; }
     public string Mode { get; init; } = "intrasim";
     public uint Color { get; init; } = 0xffb9bdb6u;
     public float[] Velocity { get; init; } = [0f, 0f];
@@ -225,6 +273,20 @@ public sealed record TeleporterFilterSnapshot(
     bool TeleportVegetables,
     bool TeleportCorpses,
     bool TeleportHeterotrophs);
+public enum NativeTeleporterKind
+{
+    Intrasim,
+    Inbound,
+    Outbound,
+}
+public sealed record NativeTeleporterOptions(
+    NativeTeleporterKind Kind,
+    uint Size,
+    string Path,
+    bool FixedPosition,
+    TeleporterFilterSnapshot Filters,
+    uint PollInterval,
+    uint Capacity);
 public sealed record FileTeleporterSnapshot(
     uint Id,
     float[] Center,
@@ -308,6 +370,7 @@ public sealed record EngineSnapshot(
 {
     // Original VB6 cycle; Tick remains the unsigned scheduling clock.
     public int? NativeCycle { get; init; }
+    public bool? NativeSunOn { get; init; }
     public IReadOnlyList<RenderInstanceSnapshot> RenderInstances { get; init; } = [];
     public IReadOnlyList<SpeciesSnapshot> Species { get; init; } = [];
     public MutationSettingsSnapshot MutationSettings { get; init; } = MutationSettingsSnapshot.Default;
@@ -328,6 +391,10 @@ public sealed record EngineSnapshot(
     public IReadOnlyList<HistorySampleSnapshot> History { get; init; } = [];
     public PhaseTimingsSnapshot PhaseTimings { get; init; } = PhaseTimingsSnapshot.Empty;
     public LocalModeSnapshot LocalMode { get; init; } = LocalModeSnapshot.Idle;
+    public bool OrdinaryRestartOnExtinction { get; init; }
+    public bool OrdinaryRestartPending { get; init; }
+    public ulong OrdinaryRestartCount { get; init; }
+    public bool OrdinaryRestartAvailable { get; init; }
     public double TicksPerSecond { get; init; }
     public double SnapshotsPerSecond { get; init; }
     public static EngineSnapshot Empty { get; } = new(0, 0, "UNKNOWN", []);

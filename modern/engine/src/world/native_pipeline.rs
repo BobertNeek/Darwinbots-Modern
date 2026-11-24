@@ -45,12 +45,7 @@ impl Engine {
             self.manage_native_fixed_state();
             self.trace_robot_phase(trace, CyclePhase::Mass);
             let robot = self.slots.get_mut(id)?;
-            robot.materials.mass = derived_mass(
-                robot.materials.body,
-                robot.materials.shell,
-                robot.materials.chloroplasts,
-            )
-            .clamp(1.0, 32_000.0);
+            robot.materials.mass = super::native_physics::native_mass(&robot.materials);
             self.trace_robot_phase(trace, CyclePhase::ObstaclesBorders);
             self.apply_environment_features(true, false);
             let relocated = self.border_collision_phase();

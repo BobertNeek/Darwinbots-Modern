@@ -114,23 +114,56 @@ public static class Db2SettingsCodec
 public static class Db2GenomeRecordFile
 {
     public const string Header = "Rob id,Parent id,Founder name,Generation,Birth cycle,Age,Mutations,New mutations,Dna length,Offspring number,kills,Fitness,Energy,Chloroplasts";
+    public const string MutationHistoryHeader = "Rob id,Mutation History";
+
+    public static string MutationHistoryPath(string snapshotPath) =>
+        Path.ChangeExtension(snapshotPath, null) + "_Mutations.txt";
+
+    public static Task WriteWithMutationHistoryAsync(string snapshotPath, byte[] records, byte[] mutationHistory)
+    {
+        var path = Path.GetFullPath(snapshotPath);
+        return Db2RobotFileStorage.WriteFilesAsync([(path, records), (MutationHistoryPath(path), mutationHistory)]);
+    }
+
+    public static string EncodeMutationHistory(
+        IEnumerable<(ulong Id, IReadOnlyList<string> Log)> histories, bool includeHeader)
+    {
+        var builder = new StringBuilder();
+        if (includeHeader) builder.Append(MutationHistoryHeader).Append("\r\n");
+        foreach (var (id, log) in histories)
+        {
+            builder.Append("\r\n").Append(id.ToString(CultureInfo.InvariantCulture)).Append(",\r\n");
+            foreach (var entry in log)
+                builder.Append(entry.ReplaceLineEndings("\r\n")).Append("\r\n");
+            builder.Append("\r\n");
+        }
+        return builder.ToString();
+    }
 
     public static string EncodeLiving(
         EngineSnapshot snapshot,
-        IReadOnlyDictionary<OrganismKey, string> dnaByOrganism)
+        IReadOnlyDictionary<OrganismKey, string> dnaByOrganism) => EncodeLiving(snapshot, dnaByOrganism, true);
+
+    internal static string EncodeLiving(
+        EngineSnapshot snapshot,
+        IReadOnlyDictionary<OrganismKey, string> dnaByOrganism,
+        bool includeHeader) => EncodeGenomeRecords(ProjectLiving(snapshot, dnaByOrganism), includeHeader);
+
+    internal static IEnumerable<DeathRecordSnapshot> ProjectLiving(
+        EngineSnapshot snapshot, IReadOnlyDictionary<OrganismKey, string> dnaByOrganism)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         ArgumentNullException.ThrowIfNull(dnaByOrganism);
-        var builder = new StringBuilder().Append(Header).Append("\r\n");
         foreach (var organism in snapshot.Organisms)
         {
             var key = new OrganismKey(organism.Slot, organism.Generation);
             if (!dnaByOrganism.TryGetValue(key, out var dna)) continue;
-            Append(builder, Record(
+            yield return new DeathRecordSnapshot(
+                snapshot.Tick,
                 organism.UniqueId == 0 ? organism.Slot : organism.UniqueId,
-                organism.Parents?.FirstOrDefault()?.Slot ?? 0,
-                SpeciesName(snapshot, organism.Species),
-                organism.Generation,
+                organism.ParentAbsoluteId ?? organism.Parents?.FirstOrDefault()?.Slot ?? 0,
+                organism.IsCorpse ? "Corpse" : SpeciesName(snapshot, organism.Species),
+                organism.LineageGeneration ?? organism.Generation,
                 organism.BirthCycle,
                 organism.Age,
                 organism.TotalMutations,
@@ -140,8 +173,26 @@ public static class Db2GenomeRecordFile
                 organism.Kills,
                 organism.Energy + organism.Body * 10,
                 organism.Chloroplasts,
-                dna));
+                dna,
+                organism.MutationLog);
         }
+    }
+
+    public static string EncodeDead(
+        IReadOnlyList<DeathRecordSnapshot> deaths,
+        bool includeHeader) => EncodeGenomeRecords(deaths, includeHeader);
+
+    public static string EncodeGenomeRecords(
+        IEnumerable<DeathRecordSnapshot> records,
+        bool includeHeader)
+    {
+        var builder = new StringBuilder();
+        if (includeHeader) builder.Append(Header).Append("\r\n");
+        foreach (var record in records)
+            Append(builder, Record(
+                record.Id, record.ParentId, record.Founder, record.Generation, record.BirthCycle,
+                record.Age, record.Mutations, record.NewMutations, record.DnaLength, record.Offspring,
+                record.Kills, record.Energy, record.Chloroplasts, record.Dna, record.Fitness));
         return builder.ToString();
     }
 
@@ -185,6 +236,7 @@ public static class Db2GenomeRecordFile
         var lines = normalized.Split('\n');
         if (lines.Length == 0 || !string.Equals(lines[0], Header, StringComparison.Ordinal))
             throw new InvalidDataException("DB2 genome record header is invalid.");
+        var hasLegacySeparators = normalized.StartsWith(Header + "\n\n\n", StringComparison.Ordinal);
 
         var records = new List<Db2GenomeRecord>();
         for (var lineIndex = 1; lineIndex < lines.Length;)
@@ -207,6 +259,9 @@ public static class Db2GenomeRecordFile
                 payload.Add(lines[lineIndex]);
                 lineIndex++;
             }
+            if (hasLegacySeparators && lineIndex < lines.Length && payload.Count >= 2
+                && payload[^1].Length == 0 && payload[^2].Length == 0)
+                payload.RemoveRange(payload.Count - 2, 2);
             records.Add(record with { Dna = string.Join("\n", payload) });
         }
 
@@ -215,7 +270,7 @@ public static class Db2GenomeRecordFile
 
     private static Db2GenomeRecord ParseRecord(IReadOnlyList<string> fields) => new(
         ParseUInt64(fields[0], "robot id"),
-        ParseUInt32(fields[1], "parent id"),
+        ParseUInt64(fields[1], "parent id"),
         fields[2],
         ParseUInt32(fields[3], "generation"),
         ParseUInt64(fields[4], "birth cycle"),
@@ -225,14 +280,14 @@ public static class Db2GenomeRecordFile
         ParseUInt32(fields[8], "DNA length"),
         ParseUInt64(fields[9], "offspring number"),
         ParseUInt64(fields[10], "kills"),
-        ParseInt(fields[11], "fitness"),
-        ParseInt(fields[12], "energy"),
-        ParseInt(fields[13], "chloroplasts"),
+        ParseFitness(fields[11]),
+        ParseResource(fields[12], "energy"),
+        ParseResource(fields[13], "chloroplasts"),
         string.Empty);
 
     private static Db2GenomeRecord Record(
         ulong id,
-        uint parentId,
+        ulong parentId,
         string founder,
         uint generation,
         ulong birthCycle,
@@ -242,13 +297,16 @@ public static class Db2GenomeRecordFile
         uint dnaLength,
         ulong offspring,
         ulong kills,
-        int energy,
-        int chloroplasts,
-        string dna) => new(id, parentId, founder, generation, birthCycle, age, mutations, newMutations,
-        dnaLength, offspring, kills, Math.Max(0, energy), energy, chloroplasts, dna);
+        float energy,
+        float chloroplasts,
+        string dna,
+        double? fitness = null) => new(id, parentId, founder, generation, birthCycle, age, mutations, newMutations,
+        dnaLength, offspring, kills, fitness ?? Math.Max(0, energy), energy, chloroplasts, dna);
 
     private static bool LooksLikeRecord(string line)
     {
+        // Detokenized DNA comments can contain quotes, including in the hash.
+        if (line.TrimStart().StartsWith('\'')) return false;
         var fields = CsvFields(line);
         if (fields.Count != 14) return false;
         try
@@ -307,8 +365,13 @@ public static class Db2GenomeRecordFile
             ? parsed
             : throw new InvalidDataException($"DB2 genome record {label} is invalid.");
 
-    private static int ParseInt(string value, string label) =>
-        int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed)
+    private static double ParseFitness(string value) =>
+        double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed) && double.IsFinite(parsed)
+            ? parsed
+            : throw new InvalidDataException("DB2 genome record fitness is invalid.");
+
+    private static float ParseResource(string value, string label) =>
+        float.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed) && float.IsFinite(parsed)
             ? parsed
             : throw new InvalidDataException($"DB2 genome record {label} is invalid.");
 
@@ -320,6 +383,8 @@ public static class Db2GenomeRecordFile
 
     private static void Append(StringBuilder builder, Db2GenomeRecord record)
     {
+        // Snapshot Search splits on three CRLFs. The header or preceding DNA already ends with one.
+        builder.Append("\r\n\r\n");
         builder.Append(string.Join(",", new[]
         {
             record.Id.ToString(CultureInfo.InvariantCulture),
@@ -333,12 +398,12 @@ public static class Db2GenomeRecordFile
             record.DnaLength.ToString(CultureInfo.InvariantCulture),
             record.Offspring.ToString(CultureInfo.InvariantCulture),
             record.Kills.ToString(CultureInfo.InvariantCulture),
-            record.Fitness.ToString(CultureInfo.InvariantCulture),
-            record.Energy.ToString(CultureInfo.InvariantCulture),
-            record.Chloroplasts.ToString(CultureInfo.InvariantCulture),
+            record.Fitness.ToString("G15", CultureInfo.InvariantCulture),
+            record.Energy.ToString("G7", CultureInfo.InvariantCulture),
+            record.Chloroplasts.ToString("G7", CultureInfo.InvariantCulture),
         })).Append("\r\n");
-        builder.Append(record.Dna);
-        if (!record.Dna.EndsWith('\n')) builder.Append("\r\n");
+        var dna = record.Dna.TrimEnd('\r', '\n').ReplaceLineEndings("\r\n");
+        if (dna.Length != 0) builder.Append(dna).Append("\r\n");
     }
 
     private static string Csv(string value) =>
@@ -350,7 +415,7 @@ public static class Db2GenomeRecordFile
 
 public sealed record Db2GenomeRecord(
     ulong Id,
-    uint ParentId,
+    ulong ParentId,
     string Founder,
     uint Generation,
     ulong BirthCycle,
@@ -360,9 +425,9 @@ public sealed record Db2GenomeRecord(
     uint DnaLength,
     ulong Offspring,
     ulong Kills,
-    int Fitness,
-    int Energy,
-    int Chloroplasts,
+    double Fitness,
+    float Energy,
+    float Chloroplasts,
     string Dna);
 
 public sealed record Db2OrganismFile(

@@ -54,13 +54,19 @@ impl Engine {
             .program
             .memory
             .write(MEM_DNA_LENGTH, robot.program.dna.blocks().len() as i32);
-        robot
-            .program
-            .memory
-            .write(MEM_GENES, robot.program.dna.gene_count());
+        robot.program.memory.write(
+            MEM_GENES,
+            robot
+                .program
+                .dna
+                .gene_count_for_world(self.native_cycle.is_some()),
+        );
         // Senses.makeoccurrlist explicitly republishes ownvars 721..731.
         robot.refresh_occurrence_census();
         robot.program.rng_state = state;
+        // posto clears the native slot, and aggiungirob leaves its mass at zero
+        // until CalcMass reaches it. Earlier robots can already collide with it.
+        robot.materials.mass = 0.0;
         Ok(id)
     }
 }
@@ -170,6 +176,51 @@ mod tests {
         assert_eq!(world.memory_at(inserted, MEM_NRG).unwrap(), 1_000);
         assert_eq!(world.memory_at(inserted, 468).unwrap(), 32_000);
         assert!(world.native_random.is_none());
+    }
+
+    #[test]
+    fn native_script_birth_has_zero_mass_during_an_earlier_slots_contact() {
+        let mut world = Engine::new_native(EngineConfig {
+            world_width: 16_000.0,
+            world_height: 12_000.0,
+            vegetation: VegetationSettings {
+                start_chloroplasts: 0,
+                ..VegetationSettings::default()
+            },
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let dna = LegacyDna::parse("start stop").unwrap();
+        // Match the overlapping animal and newly repopulated alga from cycle 312.
+        let animal_position = [11_628.918, 7_046.551_3];
+        let alga_position = [11_700.0, 6_992.0];
+        let animal = world.spawn_at(dna.clone(), animal_position).unwrap();
+        {
+            let animal = world.slots.get_mut(animal).unwrap();
+            animal.materials.radius = 72.590_45;
+            animal.kinematics.velocity = [-56.529_808, 20.109_228];
+        }
+        let species = world.register_species(SpeciesDefinition {
+            vegetable: true,
+            ..SpeciesDefinition::default()
+        });
+        let alga = world
+            .spawn_native_script_robot(dna, species, alga_position)
+            .unwrap();
+        assert_eq!(world.slots.get(alga).unwrap().materials.mass, 0.0);
+
+        world
+            .native_buckets
+            .synchronize([16_000.0, 12_000.0], &world.slots);
+        let mut contacts = native_collisions::NativeContacts::new(&world.slots);
+        world.native_collisions_for(animal, &mut contacts);
+        assert_eq!(
+            world.slots.get(animal).unwrap().kinematics.position,
+            animal_position
+        );
+        let displaced = world.slots.get(alga).unwrap().kinematics.position;
+        assert!(displaced[0] > alga_position[0]);
+        assert!(displaced[1] < alga_position[1]);
     }
 
     #[test]

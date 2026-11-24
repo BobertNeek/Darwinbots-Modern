@@ -2,6 +2,112 @@
 use super::*;
 
 impl Engine {
+    pub fn fork_robot_and_descendants(&mut self, id: OrganismId) -> Result<String, EngineError> {
+        let robot = self.slots.get(id)?;
+        if !robot.flags.exists || robot.flags.corpse {
+            return Err(EngineError::Invariant(
+                "a new species requires a living robot".to_owned(),
+            ));
+        }
+        let species = robot.identity.species;
+        let mut definition = self
+            .species
+            .get(species.0 as usize)
+            .cloned()
+            .ok_or_else(|| {
+                EngineError::Invariant(format!("species {} does not exist", species.0))
+            })?;
+        let founder = if robot.identity.species_file.is_empty() {
+            &definition.name
+        } else {
+            &robot.identity.species_file
+        };
+        let base: String = founder
+            .strip_suffix(".txt")
+            .unwrap_or(founder)
+            .chars()
+            .take(28)
+            .collect();
+        definition.vegetable = robot.flags.vegetable;
+        definition.color = robot.phenotype.color;
+        definition.skin = robot.phenotype.skin;
+        definition.custom_skin = true;
+        definition.minimum_population = 0;
+        definition.reseed = false;
+        definition.placement_bounds = [0.0, 1.0, 0.0, 1.0];
+        definition.lineage_id = 0;
+        definition.mutation_rate = 0.0;
+        definition.mutation_profile =
+            Some(self.native_default_mutation_profile(robot.program.dna.blocks().len()));
+
+        let descendants = self.living_fork_slots(id.slot() as usize);
+        let robot = self.slots.get_mut(id)?;
+        let suffix = world_random_integer(
+            &mut self.native_random,
+            &mut robot.program.rng_state,
+            1,
+            10_000,
+        );
+        let name = format!("{base} {suffix}");
+        definition.name = name.clone();
+        let new_species = self.register_species_unpublished(definition);
+        for slot in descendants {
+            if let Some(robot) = &mut self.slots[slot].organism {
+                robot.identity.species = new_species;
+                robot.identity.species_file.clone_from(&name);
+            }
+        }
+        self.publish_snapshot();
+        Ok(name)
+    }
+
+    fn living_fork_slots(&self, root: usize) -> HashSet<usize> {
+        let mut children = HashMap::<u64, Vec<usize>>::new();
+        let mut older_children = HashMap::<OrganismId, Vec<usize>>::new();
+        for (slot, entry) in self.slots.iter().enumerate() {
+            let Some(robot) = entry
+                .organism
+                .as_ref()
+                .filter(|robot| robot.flags.exists && !robot.flags.corpse)
+            else {
+                continue;
+            };
+            if robot.identity.parent_absolute_id != 0 {
+                children
+                    .entry(robot.identity.parent_absolute_id)
+                    .or_default()
+                    .push(slot);
+            } else if let Some(parent) = robot.identity.parents[0] {
+                // Older Modern saves may only retain the stable slot/generation key.
+                older_children.entry(parent).or_default().push(slot);
+            }
+        }
+
+        let mut pending = vec![root];
+        let mut visited = HashSet::new();
+        while let Some(slot) = pending.pop() {
+            if !visited.insert(slot) {
+                continue;
+            }
+            let entry = &self.slots[slot];
+            let Some(robot) = entry
+                .organism
+                .as_ref()
+                .filter(|robot| robot.counters.offspring > 0)
+            else {
+                continue;
+            };
+            if let Some(next) = children.get(&robot.identity.absolute_id) {
+                pending.extend(next);
+            }
+            if let Some(next) = older_children.get(&OrganismId::new(slot as u32, entry.generation))
+            {
+                pending.extend(next);
+            }
+        }
+        visited
+    }
+
     pub(super) fn native_default_mutation_profile(&self, length: usize) -> StandardMutationProfile {
         let mut profile = StandardMutationProfile::default();
         profile.point2.mean = 1.0;
@@ -86,6 +192,45 @@ impl Engine {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn manual_fork_preserves_live_state_and_follows_only_extant_parent_chains() {
+        let mut world = Engine::new(EngineConfig::testing()).unwrap();
+        let dna = LegacyDna::parse("start stop").unwrap();
+        let root = world.spawn_at(dna.clone(), [200.0, 200.0]).unwrap();
+        world.slots.get_mut(root).unwrap().identity.species_file =
+            "Long founder filename for the selected robot.txt".to_owned();
+        let child = world.clone_organism(root, [400.0, 200.0]).unwrap();
+        let grandchild = world.clone_organism(child, [600.0, 200.0]).unwrap();
+        let corpse = world.clone_organism(root, [200.0, 400.0]).unwrap();
+        let past_corpse = world.clone_organism(corpse, [400.0, 400.0]).unwrap();
+        world.slots.get_mut(corpse).unwrap().flags.corpse = true;
+        let stranger = world.spawn_at(dna, [600.0, 400.0]).unwrap();
+        let pre_fork = world.slots.get(child).unwrap().clone();
+        let old_species = pre_fork.identity.species;
+        let tick = world.snapshot().tick;
+
+        assert!(world.fork_robot_and_descendants(corpse).is_err());
+        let name = world.fork_robot_and_descendants(root).unwrap();
+        let (base, suffix) = name.rsplit_once(' ').unwrap();
+        assert_eq!(base, "Long founder filename for th");
+        assert!((1..=10_000).contains(&suffix.parse::<i32>().unwrap()));
+        let new_species = world.slots.get(root).unwrap().identity.species;
+        assert_ne!(old_species, new_species);
+        assert_eq!(world.species[new_species.0 as usize].name, name);
+        for id in [root, child, grandchild] {
+            let robot = world.slots.get(id).unwrap();
+            assert_eq!(robot.identity.species, new_species);
+            assert_eq!(robot.identity.species_file, name);
+        }
+        for id in [corpse, past_corpse, stranger] {
+            assert_eq!(world.slots.get(id).unwrap().identity.species, old_species);
+        }
+        let mut after = world.slots.get(child).unwrap().clone();
+        after.identity = pre_fork.identity.clone();
+        assert_eq!(after, pre_fork);
+        assert_eq!(world.snapshot().tick, tick);
+    }
 
     #[test]
     fn normalized_defaults_are_dna_length_times_the_native_per_base_setting() {

@@ -1,7 +1,9 @@
+using System.Diagnostics;
 using System.Reflection;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Interactivity;
+using Avalonia.Threading;
 using Darwinbots.Desktop.Controls;
 using Darwinbots.Desktop.Core;
 using Darwinbots.Desktop.Core.LegacyMenus;
@@ -13,6 +15,117 @@ namespace Darwinbots.Desktop.Tests;
 
 public sealed class SafeModeAutosaveRenderedTests
 {
+    [Fact]
+    public async Task FifteenCycleLimitWaitsAfterCheckpointAndCapsFastAndTurbo()
+    {
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var timeout = TimeSpan.FromSeconds(8);
+            var checkpointStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var releaseCheckpoint = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var storage = new AuditStorageService
+            {
+                BeforeAutosaveWrite = async () =>
+                {
+                    checkpointStarted.TrySetResult();
+                    await releaseCheckpoint.Task.WaitAsync(timeout);
+                },
+            };
+            var factory = new AuditEngineClientFactory(encodeTickInSave: true);
+            var window = new MainWindow([], Setup(true), factory, storage);
+            var secondCycle = new TaskCompletionSource<(uint Count, long Started)>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var turboCycle = new TaskCompletionSource<uint>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var uncheckedCycle = new TaskCompletionSource<uint>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var releaseSecond = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var releaseTurbo = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            try
+            {
+                Show(window);
+                await Ready(window);
+                var engine = Assert.Single(factory.Clients);
+                var session = Field<SimulationSession>(window, "_session");
+                var timer = Field<DispatcherTimer>(window, "_runTimer");
+                var speed = Named<ComboBox>(window, "RuntimeSpeed");
+                void Click(string name) => Named<Button>(window, name).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+                engine.NativeCycle = 1999;
+                await session.RefreshSnapshotAsync();
+                engine.AdvanceNativeCycle = (count, cycle) =>
+                {
+                    switch (cycle)
+                    {
+                        case 2000:
+                            secondCycle.TrySetResult((count, Stopwatch.GetTimestamp()));
+                            releaseSecond.Task.WaitAsync(timeout).GetAwaiter().GetResult();
+                            break;
+                        case 2001:
+                            turboCycle.TrySetResult(count);
+                            releaseTurbo.Task.WaitAsync(timeout).GetAwaiter().GetResult();
+                            break;
+                        case 2002:
+                            uncheckedCycle.TrySetResult(count);
+                            break;
+                    }
+                    return cycle + checked((int)count);
+                };
+
+                speed.SelectedIndex = 1;
+                Click("ToolbarSlot10");
+                Assert.Equal(3, speed.SelectedIndex);
+                var maximumBatch = Field<uint>(window, "_maximumBatch");
+                Click("ToolbarSlot09");
+                Assert.False(timer.IsEnabled);
+                Assert.Equal("15 CPS ON", Named<Button>(window, "ToolbarSlot09").Content);
+                Assert.Equal(TimeSpan.FromMilliseconds(67), timer.Interval);
+                Click("RunButton");
+                await checkpointStarted.Task.WaitAsync(timeout);
+                Assert.Equal(2000, session.LatestSnapshot.NativeCycle);
+                Assert.Empty(storage.AutosaveWrites);
+                await Task.Delay(25);
+                var checkpointReleased = Stopwatch.GetTimestamp();
+                releaseCheckpoint.SetResult();
+
+                var second = await secondCycle.Task.WaitAsync(timeout);
+                Assert.Equal(1u, second.Count);
+                Assert.True(Stopwatch.GetElapsedTime(checkpointReleased, second.Started) >= TimeSpan.FromMilliseconds(60));
+                Assert.Equal(1ul, BitConverter.ToUInt64(Assert.Single(storage.AutosaveWrites)));
+                Click("PauseButton");
+                releaseSecond.SetResult();
+                await WaitFor(() => !Field<bool>(window, "_tickInFlight"));
+                Assert.False(timer.IsEnabled);
+                Assert.Equal(2001, session.LatestSnapshot.NativeCycle);
+
+                Click("ToolbarSlot09");
+                Assert.Equal("15 CPS OFF", Named<Button>(window, "ToolbarSlot09").Content);
+                Assert.Equal(TimeSpan.FromMilliseconds(1), timer.Interval);
+                Click("ToolbarSlot09");
+                Assert.False(timer.IsEnabled);
+                Click("TurboButton");
+                Assert.Equal(1u, await turboCycle.Task.WaitAsync(timeout));
+                Click("PauseButton");
+                releaseTurbo.SetResult();
+                await WaitFor(() => !Field<bool>(window, "_tickInFlight"));
+                Assert.False(timer.IsEnabled);
+                Assert.Equal(3, speed.SelectedIndex);
+                Assert.Equal(maximumBatch, Field<uint>(window, "_maximumBatch"));
+                Assert.Equal("FAST ON", Named<Button>(window, "ToolbarSlot10").Content);
+
+                Click("ToolbarSlot09");
+                Click("RunButton");
+                Assert.Equal(maximumBatch, await uncheckedCycle.Task.WaitAsync(timeout));
+                Click("PauseButton");
+                await WaitFor(() => !Field<bool>(window, "_tickInFlight"));
+            }
+            finally
+            {
+                releaseCheckpoint.TrySetResult();
+                releaseSecond.TrySetResult();
+                releaseTurbo.TrySetResult();
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
     [Fact]
     public async Task NativeBoundaryWritesActualRecoveryStateWithoutUsingTheMonotonicTickAsOriginalCycle()
     {
@@ -119,6 +232,57 @@ public sealed class SafeModeAutosaveRenderedTests
     }
 
     [Fact]
+    public async Task OrdinaryExtinctionSavesTheCompletedWorldBeforeRestartAndResumesAPendingCheckpoint()
+    {
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var options = Setup(true) with { PopulationCapacity = 16, BrownianMotion = 0 };
+            var storage = new AuditStorageService();
+            var window = new MainWindow([], options, NativeEngineClientFactory.Instance, storage);
+            try
+            {
+                Show(window);
+                await Ready(window);
+                var session = Field<SimulationSession>(window, "_session");
+                Activate(Named<LegacyMenuBar>(window, "HistoricMenuBar"), LegacyCommandId.EditRestartAndLeagues);
+                var ordinary = Named<CheckBox>(window, "OrdinaryRestartToggle");
+                var competitive = Named<CheckBox>(window, "ModeRestartOnExtinction");
+                var competitiveSetting = competitive.IsChecked;
+                Assert.True(ordinary.IsEnabled);
+                Assert.False(ordinary.IsChecked);
+                ordinary.IsChecked = true;
+                ordinary.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => session.LatestSnapshot.OrdinaryRestartOnExtinction);
+                Assert.Equal(competitiveSetting, competitive.IsChecked);
+
+                var oldRobot = Assert.Single(session.LatestSnapshot.Organisms);
+                await session.RemoveAsync(oldRobot.Slot, oldRobot.Generation);
+                await InvokeTask(window, "LoadSimulationAsync", WithNativeCycle(await session.SaveAsync(), 1999));
+                await InvokeTask(window, "AdvanceSimulationAsync", 1u);
+
+                var checkpoint = Assert.Single(storage.AutosaveWrites);
+                Assert.Equal(1ul, session.LatestSnapshot.OrdinaryRestartCount);
+                Assert.False(session.LatestSnapshot.OrdinaryRestartPending);
+                Assert.Single(session.LatestSnapshot.Organisms);
+
+                await InvokeTask(window, "LoadSimulationAsync", checkpoint);
+                Assert.Equal(2000, session.LatestSnapshot.NativeCycle);
+                Assert.True(session.LatestSnapshot.OrdinaryRestartPending);
+                Assert.Equal(0ul, session.LatestSnapshot.OrdinaryRestartCount);
+                Assert.Empty(session.LatestSnapshot.Organisms);
+
+                await InvokeTask(window, "AdvanceSimulationAsync", 1u);
+                Assert.Equal(2001, session.LatestSnapshot.NativeCycle);
+                Assert.Equal(1ul, session.LatestSnapshot.OrdinaryRestartCount);
+                Assert.False(session.LatestSnapshot.OrdinaryRestartPending);
+                Assert.Single(session.LatestSnapshot.Organisms);
+                Assert.Single(storage.AutosaveWrites);
+            }
+            finally { window.Close(); }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
     public async Task SetupGlobalAndRecordingDialogsKeepExplicitDisabledPreferenceThroughWorldCreation()
     {
         await DesktopTestApplication.Session.Dispatch(async () =>
@@ -187,7 +351,7 @@ public sealed class SafeModeAutosaveRenderedTests
                     Show(window);
                     await Ready(window);
                     var menu = Named<LegacyMenuBar>(window, "HistoricMenuBar");
-                    Assert.Equal(safeMode, menu.FindCommandItem(LegacyCommandId.RecordingSafemodeBackup)!.IsChecked);
+                    Assert.Equal(safeMode, Field<EnvironmentUpdate>(window, "_liveEnvironment").Recording!.SafeModeBackup);
                     Assert.Equal(!safeMode, Field<OfflineDiagnosticRecovery>(window, "_diagnostics").IgnoreErrors);
                     Assert.Empty(storage.AutosaveWrites);
                     const string commandStatus = "TURBO · RENDERING SUSPENDED";
@@ -205,8 +369,12 @@ public sealed class SafeModeAutosaveRenderedTests
 
                     if (safeMode)
                     {
-                        Activate(menu, LegacyCommandId.RecordingSafemodeBackup);
-                        await WaitFor(() => menu.FindCommandItem(LegacyCommandId.RecordingSafemodeBackup)!.IsChecked == false);
+                        Activate(menu, LegacyCommandId.EditGeneralSettings);
+                        await WaitFor(() => window.OwnedWindows.OfType<AdvancedSettingsWindow>().Any());
+                        var recording = Assert.Single(window.OwnedWindows.OfType<AdvancedSettingsWindow>());
+                        Named<CheckBox>(recording, "SafeModeBackup").IsChecked = false;
+                        Named<Button>(recording, "ApplyButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                        await WaitFor(() => ViewModel(window).Status == "LIVE SETTINGS APPLIED");
                         await InvokeTask(window, "AdvanceSimulationAsync", 2000u);
                         Assert.Equal(2, storage.AutosaveWrites.Count);
                         Assert.False(Field<GlobalSettings>(window, "_globalSettings").Main.SafeMode);
@@ -220,12 +388,14 @@ public sealed class SafeModeAutosaveRenderedTests
     }
 
     [Fact]
-    public async Task GlobalRecordingAndLoadedPreferencesSynchronizeTheSameMenuAndEnginePolicy()
+    public async Task ArchiveMenuIsIndependentOfGlobalRecordingAndLoadedCyclePolicy()
     {
         await DesktopTestApplication.Session.Dispatch(async () =>
         {
             var factory = new AuditEngineClientFactory();
-            var window = new MainWindow([], Setup(false), factory, new AuditStorageService());
+            var backupLaunches = 0;
+            var window = new MainWindow([], Setup(false), factory, new AuditStorageService(),
+                launchSafeModeBackup: () => backupLaunches++);
             try
             {
                 Show(window);
@@ -233,37 +403,39 @@ public sealed class SafeModeAutosaveRenderedTests
                 var engine = factory.Clients.Single();
                 var menu = Named<LegacyMenuBar>(window, "HistoricMenuBar");
                 Activate(menu, LegacyCommandId.RecordingSafemodeBackup);
-                await WaitFor(() => menu.FindCommandItem(LegacyCommandId.RecordingSafemodeBackup)!.IsChecked == true);
-                Assert.True(Field<GlobalSettings>(window, "_globalSettings").Main.SafeMode);
-                Assert.True(engine.EnvironmentUpdates.Last().Recording!.SafeModeBackup);
+                await WaitFor(() => backupLaunches == 1);
+                Activate(menu, LegacyCommandId.RecordingSafemodeBackup);
+                await WaitFor(() => backupLaunches == 2);
+                Assert.Empty(window.OwnedWindows.OfType<SafeModeBackupWindow>());
+                Assert.False(Field<GlobalSettings>(window, "_globalSettings").Main.SafeMode);
 
                 Activate(menu, LegacyCommandId.EditGlobalSettings);
                 await WaitFor(() => window.OwnedWindows.OfType<GlobalSettingsWindow>().Any());
                 var globals = Assert.Single(window.OwnedWindows.OfType<GlobalSettingsWindow>());
-                Assert.True(Named<CheckBox>(globals, "SafeMode").IsChecked);
-                Named<CheckBox>(globals, "SafeMode").IsChecked = false;
+                Assert.False(Named<CheckBox>(globals, "SafeMode").IsChecked);
+                Named<CheckBox>(globals, "SafeMode").IsChecked = true;
                 Named<Button>(globals, "ApplyButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 await WaitFor(() => ViewModel(window).Status == "GLOBAL SETTINGS SAVED");
-                Assert.False(menu.FindCommandItem(LegacyCommandId.RecordingSafemodeBackup)!.IsChecked);
-                Assert.False(engine.EnvironmentUpdates.Last().Recording!.SafeModeBackup);
+                Assert.True(Field<GlobalSettings>(window, "_globalSettings").Main.SafeMode);
+                Assert.True(engine.EnvironmentUpdates.Last().Recording!.SafeModeBackup);
 
                 Activate(menu, LegacyCommandId.EditGeneralSettings);
                 await WaitFor(() => window.OwnedWindows.OfType<AdvancedSettingsWindow>().Any());
                 var recording = Assert.Single(window.OwnedWindows.OfType<AdvancedSettingsWindow>());
-                Named<CheckBox>(recording, "SafeModeBackup").IsChecked = true;
+                Assert.True(Named<CheckBox>(recording, "SafeModeBackup").IsChecked);
+                Named<CheckBox>(recording, "SafeModeBackup").IsChecked = false;
                 Named<Button>(recording, "ApplyButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 await WaitFor(() => ViewModel(window).Status == "LIVE SETTINGS APPLIED");
-                Assert.True(menu.FindCommandItem(LegacyCommandId.RecordingSafemodeBackup)!.IsChecked);
-                Assert.True(Field<GlobalSettings>(window, "_globalSettings").Main.SafeMode);
+                Assert.False(Field<GlobalSettings>(window, "_globalSettings").Main.SafeMode);
+                Assert.False(engine.EnvironmentUpdates.Last().Recording!.SafeModeBackup);
 
                 engine.ConfigurationForRead = new WorldConfiguration(EnvironmentUpdate.Default with
                 {
-                    Recording = new Db2RecordingOptions(SafeModeBackup: false),
+                    Recording = new Db2RecordingOptions(SafeModeBackup: true),
                 }, 1, 25000, 500, []);
                 await InvokeTask(window, "SynchronizeLoadedWorldAsync");
-                Assert.False(menu.FindCommandItem(LegacyCommandId.RecordingSafemodeBackup)!.IsChecked);
-                Assert.False(Field<GlobalSettings>(window, "_globalSettings").Main.SafeMode);
-                Assert.False(Field<EnvironmentUpdate>(window, "_liveEnvironment").Recording!.SafeModeBackup);
+                Assert.True(Field<GlobalSettings>(window, "_globalSettings").Main.SafeMode);
+                Assert.True(Field<EnvironmentUpdate>(window, "_liveEnvironment").Recording!.SafeModeBackup);
             }
             finally
             {

@@ -21,23 +21,26 @@ fn native_waste_meal(
     energy_first: bool,
 ) -> (f32, f32) {
     let chloroplasts = f64::from(materials.chloroplasts);
-    // Classic VB promotes Single/Long64000 to Double. In contrast, Integer1
-    // minus Single, and Single/Integer32000, retain Single intermediates.
     let energy_fraction = 1.0_f32 - feeding_to_body;
     let energy = (chloroplasts / 64_000.0 * f64::from(energy_fraction)) as f32;
     let body = (chloroplasts / 64_000.0 * f64::from(feeding_to_body) / 10.0) as f32;
-    let waste_rate = materials.chloroplasts / 32_000.0_f32;
+    // feedveg2 keeps each quotient, scaling, and subtraction in x87 until
+    // committing that channel's debit to the Single waste store.
+    let waste_rate = chloroplasts / 32_000.0;
+    let body_fraction = f64::from(feeding_to_body);
+    let energy_waste = waste_rate * (1.0 - body_fraction);
+    let body_waste = waste_rate * body_fraction;
     let prior = (materials.energy, materials.body);
     for to_energy in [energy_first, !energy_first] {
         if materials.waste > 0.0 {
             if to_energy {
                 if materials.energy + energy < 32_000.0 {
                     materials.energy += energy;
-                    materials.waste -= waste_rate * energy_fraction;
+                    materials.waste = (f64::from(materials.waste) - energy_waste) as f32;
                 }
             } else if materials.body + body < 32_000.0 {
                 materials.body += body;
-                materials.waste -= waste_rate * feeding_to_body;
+                materials.waste = (f64::from(materials.waste) - body_waste) as f32;
             }
             materials.waste = materials.waste.max(0.0);
         }
@@ -315,12 +318,10 @@ mod tests {
             }
         }
 
-        // Literal bit patterns derived from the classic VB operand widths,
-        // not an original-runtime observation. Fraction .4 distinguishes the
-        // Single complement; .1 body-first distinguishes Single waste costs.
+        // The waste costs and subtraction are wider than their Single store.
         for (fraction, energy_first, expected) in [
             (0.1, true, [0x3e31_c71b, 0x3afc_d6e8, 0x3f1d_3c0d]),
-            (0.1, false, [0x3e31_c71b, 0x3afc_d6e8, 0x3f1d_3c0e]),
+            (0.1, false, [0x3e31_c71b, 0x3afc_d6e8, 0x3f1d_3c0d]),
             (0.4, true, [0x3ded_097a, 0x3bfc_d6e8, 0x3f1d_3c0e]),
             (0.4, false, [0x3ded_097a, 0x3bfc_d6e8, 0x3f1d_3c0e]),
         ] {
@@ -368,6 +369,23 @@ mod tests {
             assert_eq!((after.energy, after.body, after.waste), expected);
             assert_eq!(world.native_random.as_ref(), Some(&expected_random));
         }
+    }
+
+    #[test]
+    fn native_waste_meal_matches_the_original_cycle_350_plant_waste() {
+        // Robot 190's last three meals ended at cycle 350. Its RNG draws chose
+        // body first each time, and the first two cycles received energy shots.
+        let mut materials = crate::biology::RobotMaterials::default();
+        for (chloroplasts, packet) in [
+            (0x4697_8a28, f32::from_bits(0x431d_8a19)),
+            (0x4698_ca27, f32::from_bits(0x4317_8c99)),
+            (0x469a_0a26, 0.0),
+        ] {
+            materials.chloroplasts = f32::from_bits(chloroplasts);
+            super::super::native_shots::receive_energy(&mut materials, packet);
+            native_waste_meal(&mut materials, 0.75, false);
+        }
+        assert_eq!(materials.waste.to_bits(), 0x3fa0_f2d4);
     }
 
     #[test]

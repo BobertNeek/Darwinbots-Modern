@@ -55,6 +55,11 @@ public sealed class StartupMazeColorRenderedTests
 
                     var organism = session.LatestSnapshot.Organisms[0];
                     var key = new OrganismKey(organism.Slot, organism.Generation);
+                    var peer = await session.CloneAsync(key.Slot, key.Generation, [200f, 200f]);
+                    var beforeColor = session.LatestSnapshot;
+                    var speciesColor = beforeColor.Species[(int)organism.Species].Color;
+                    var peerColor = beforeColor.Organisms.Single(value =>
+                        value.Slot == peer.Slot && value.Generation == peer.Generation).Phenotype.Color;
                     var viewport = player.FindControl<WorldViewport>("Viewport")!;
                     viewport.SelectKey(key);
                     ViewModel(player).Select(key);
@@ -93,8 +98,24 @@ public sealed class StartupMazeColorRenderedTests
                     await WaitFor(() => editor.Accepted);
                     var colorResult = await colorCommand;
                     Assert.False(string.IsNullOrWhiteSpace(colorResult.Status));
-                    await WaitFor(() => Session(player)!.LatestSnapshot.Species.Any(species => species.Color == 0xff123456u));
-                    Assert.Contains(Session(player)!.LatestSnapshot.Species, species => species.Color == 0xff123456u);
+                    var afterColor = session.LatestSnapshot;
+                    Assert.Equal(0xff123456u, afterColor.Organisms.Single(value =>
+                        value.Slot == key.Slot && value.Generation == key.Generation).Phenotype.Color);
+                    Assert.Equal(peerColor, afterColor.Organisms.Single(value =>
+                        value.Slot == peer.Slot && value.Generation == peer.Generation).Phenotype.Color);
+                    Assert.Equal(speciesColor, afterColor.Species[(int)organism.Species].Color);
+                    Assert.Equal(0xff123456u, afterColor.RenderInstances.Single(value =>
+                        value.Slot == key.Slot && value.Generation == key.Generation).Color);
+                    Assert.Equal(beforeColor.Tick, afterColor.Tick);
+
+                    var expectedColors = new[] { 0xff123456u, peerColor }.Order().ToArray();
+                    using var readback = factory.Create(setup);
+                    foreach (var save in new[] { await session.SaveAsync(), await session.SaveLegacyAsync() })
+                    {
+                        readback.Load(save);
+                        Assert.Equal(expectedColors, readback.Snapshot().Organisms
+                            .Select(value => value.Phenotype.Color).Order().ToArray());
+                    }
 
                     AvaloniaHeadlessPlatform.ForceRenderTimerTick();
                     using var frame = player.CaptureRenderedFrame();

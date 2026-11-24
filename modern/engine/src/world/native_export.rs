@@ -1,7 +1,9 @@
 //! Native writers use live state and retain unrepresented per-robot metadata.
 
 use super::*;
-use crate::native_binary::{NativeRecordFile, NativeRobotRecord, NativeValue};
+use crate::native_binary::{
+    NativeMutationSpareEntries, NativeRecordFile, NativeRobotRecord, NativeValue,
+};
 
 fn invalid(message: impl Into<String>) -> EngineError {
     EngineError::InvalidSave(format!("native DB2 export {}", message.into()))
@@ -107,6 +109,11 @@ pub(super) fn mutation_arrays(
     Ok(())
 }
 
+pub(super) enum NativeSlotNumbering {
+    Packed,
+    Runtime,
+}
+
 impl Engine {
     /// Export a specified robot group as a genuine native `.dbo` record stream.
     pub fn export_native_organisms(&self, members: &[OrganismId]) -> Result<Vec<u8>, EngineError> {
@@ -117,7 +124,7 @@ impl Engine {
             ));
         }
         NativeRecordFile {
-            robots: self.native_robot_records(members)?,
+            robots: self.native_robot_records(members, true)?,
             tail: vec![],
         }
         .encode()
@@ -126,55 +133,104 @@ impl Engine {
     pub(super) fn native_robot_records(
         &self,
         members: &[OrganismId],
+        include_mutation_details: bool,
     ) -> Result<Vec<NativeRobotRecord>, EngineError> {
+        let slots = self.native_record_slots(members, NativeSlotNumbering::Packed)?;
+        self.native_robot_records_in_slots(members, &slots, include_mutation_details)
+    }
+
+    pub(super) fn native_record_slots(
+        &self,
+        members: &[OrganismId],
+        numbering: NativeSlotNumbering,
+    ) -> Result<HashMap<OrganismId, i16>, EngineError> {
         if members.len() > MAX_ROBOTS {
             return Err(invalid("simulation exceeds 32000 robot records"));
         }
-        let mut remap = HashMap::new();
+        // Keep packed export available if a sparse modern arena contains a
+        // live slot beyond the native signed Integer range.
+        let use_runtime_slots = matches!(numbering, NativeSlotNumbering::Runtime)
+            && members.iter().all(|id| id.slot() < i16::MAX as u32);
+        let mut slots = HashMap::with_capacity(members.len());
         for (i, &id) in members.iter().enumerate() {
             self.valid_slot(id)?;
-            if remap.insert(id, i as i16 + 1).is_some() {
+            let slot = if use_runtime_slots {
+                id.slot() as i16 + 1
+            } else {
+                i as i16 + 1
+            };
+            if slots.insert(id, slot).is_some() {
                 return Err(invalid("duplicate organism member"));
             }
         }
-        let mut records = members
-            .iter()
-            .map(|&id| self.native_robot_record(id))
-            .collect::<Result<Vec<_>, _>>()?;
-        for (i, (&id, record)) in members.iter().zip(&mut records).enumerate() {
-            word(record, "old_slot", i as i64 + 1)?;
-            self.write_native_ties(id, record, &remap)?;
-        }
-        Ok(records)
+        Ok(slots)
     }
 
-    fn native_robot_record(&self, id: OrganismId) -> Result<NativeRobotRecord, EngineError> {
-        let robot = self.slots.get(id)?;
-        if let Some(index) = robot.native_record_index
-            && self
-                .native_origin
-                .as_ref()
-                .and_then(|file| file.robots.get(index))
-                .is_none()
-        {
-            return Err(invalid("robot source record reference is invalid"));
-        }
-        let mut record = robot
+    pub(super) fn native_robot_records_in_slots(
+        &self,
+        members: &[OrganismId],
+        slots: &HashMap<OrganismId, i16>,
+        include_mutation_details: bool,
+    ) -> Result<Vec<NativeRobotRecord>, EngineError> {
+        members
+            .iter()
+            .map(|&id| {
+                let mut record = self.native_robot_record(id, include_mutation_details)?;
+                word(&mut record, "old_slot", i64::from(slots[&id]))?;
+                self.write_native_ties(id, &mut record, slots)?;
+                Ok(record)
+            })
+            .collect()
+    }
+
+    fn native_robot_source_record<'a>(
+        &'a self,
+        robot: &'a RobotState,
+    ) -> Result<Option<&'a NativeRobotRecord>, EngineError> {
+        let origin = self.native_origin.as_ref();
+        let indexed = robot
+            .native_record_index
+            .map(|index| {
+                origin
+                    .and_then(|file| file.robots.get(index))
+                    .ok_or_else(|| invalid("robot source record reference is invalid"))
+            })
+            .transpose()?;
+        Ok(robot
             .native_record_override
             .as_deref()
+            .or(indexed)
             .or_else(|| {
-                self.native_origin.as_ref().and_then(|file| {
-                    robot
-                        .native_record_index
-                        .and_then(|index| file.robots.get(index))
-                        .or_else(|| {
-                            file.robots.iter().find(|record| {
-                                record.long("absolute_id").ok().map(|id| id as u32 as u64)
-                                    == Some(robot.identity.absolute_id)
-                            })
-                        })
+                origin?.robots.iter().find(|record| {
+                    record.long("absolute_id").ok().map(|id| id as u32 as u64)
+                        == Some(robot.identity.absolute_id)
                 })
-            })
+            }))
+    }
+
+    pub(super) fn inherit_native_mutation_spare_entries(
+        &self,
+        parent: &RobotState,
+    ) -> Result<Option<Box<NativeMutationSpareEntries>>, EngineError> {
+        if self.native_random.is_none() {
+            return Ok(None);
+        }
+        if let Some(entries) = &parent.native_mutation_spare_entries {
+            return Ok(Some(entries.clone()));
+        }
+        self.native_robot_source_record(parent)?
+            .map(|record| record.mutation_spare_entries().map(Box::new))
+            .transpose()
+    }
+
+    fn native_robot_record(
+        &self,
+        id: OrganismId,
+        include_mutation_details: bool,
+    ) -> Result<NativeRobotRecord, EngineError> {
+        let robot = self.slots.get(id)?;
+        let mut record = self
+            .native_robot_source_record(robot)?
             .cloned()
             .map(Ok)
             .unwrap_or_else(NativeRobotRecord::empty)?;
@@ -238,7 +294,15 @@ impl Engine {
         for (name, value) in [
             ("offspring", robot.counters.offspring as i64),
             ("generation", i64::from(robot.counters.generation)),
-            ("gene_count", i64::from(robot.program.dna.gene_count())),
+            (
+                "gene_count",
+                i64::from(
+                    robot
+                        .program
+                        .dna
+                        .gene_count_for_world(self.native_cycle.is_some()),
+                ),
+            ),
             ("dna_length", robot.program.dna.blocks().len() as i64),
             ("dna_length_marker", robot.program.dna.blocks().len() as i64),
             ("stored_dna_length", robot.program.dna.blocks().len() as i64),
@@ -291,9 +355,12 @@ impl Engine {
         };
         text(&mut record, "species_name_length", "species_name", name)?;
         text(&mut record, "owner_length", "owner", &robot.identity.owner)?;
-        record.set_mutation_details(ansi(
-            &robot.program.mutation_metadata.detailed_log.join("\r\n"),
-        )?)?;
+        let mutation_details = if include_mutation_details {
+            ansi(&robot.program.mutation_metadata.detailed_log.join("\r\n"))?
+        } else {
+            b"Mutation Details removed in last save.".to_vec()
+        };
+        record.set_mutation_details(mutation_details)?;
         let mut tag = ansi(&robot.identity.tag)?;
         tag.truncate(50);
         tag.resize(50, b' ');
@@ -311,6 +378,9 @@ impl Engine {
         let mut rates = record.bytes("mutation_rates")?.to_vec();
         let mut shapes = record.bytes("mutation_shapes")?.to_vec();
         mutation_arrays(&robot.program.mutation_profile, &mut rates, &mut shapes)?;
+        if let Some(entries) = &robot.native_mutation_spare_entries {
+            entries.write(&mut rates, &mut shapes);
+        }
         record.set_value("mutation_rates", NativeValue::Bytes(rates))?;
         record.set_value("mutation_shapes", NativeValue::Bytes(shapes))?;
         let variables = robot.program.dna.native_user_variables();
@@ -552,6 +622,82 @@ mod tests {
     use super::*;
 
     #[test]
+    fn native_births_export_all_mutation_entries_after_db3s_resume() {
+        let mut engine = Engine::new_native(EngineConfig::testing()).unwrap();
+        let parent = engine
+            .spawn_at(
+                LegacyDna::parse("start 50 .repro store stop").unwrap(),
+                [450.0, 500.0],
+            )
+            .unwrap();
+        engine.slots.get_mut(parent).unwrap().flags.can_mutate = false;
+        let mut input = NativeRecordFile::decode(&engine.export_native_sim().unwrap()).unwrap();
+        let record = &mut input.robots[0];
+        record.set_value("sunbelt", NativeValue::Word(-1)).unwrap();
+        let mut rates = record.bytes("mutation_rates").unwrap().to_vec();
+        let mut shapes = record.bytes("mutation_shapes").unwrap().to_vec();
+        for index in 11..21 {
+            rates[index * 4..index * 4 + 4]
+                .copy_from_slice(&(180_000.0 + (index as f32 * 500.0)).to_le_bytes());
+            shapes[index * 8..index * 8 + 4].copy_from_slice(&(index as f32).to_le_bytes());
+            shapes[index * 8 + 4..index * 8 + 8].copy_from_slice(&(-0.0_f32).to_le_bytes());
+        }
+        record
+            .set_value("mutation_rates", NativeValue::Bytes(rates.clone()))
+            .unwrap();
+        record
+            .set_value("mutation_shapes", NativeValue::Bytes(shapes.clone()))
+            .unwrap();
+
+        let assert_arrays = |record: &NativeRobotRecord| {
+            assert_eq!(record.bytes("mutation_rates").unwrap(), rates);
+            assert_eq!(record.bytes("mutation_shapes").unwrap(), shapes);
+        };
+        let loaded = Engine::from_native_sim(&input.encode().unwrap()).unwrap();
+        // This save has the original raw record and no inherited spare field,
+        // matching the layout of DB3S saves made before this field was added.
+        let mut world =
+            crate::SaveFile::decode(&crate::SaveFile::encode(&loaded).unwrap()).unwrap();
+        world.tick_many(2).unwrap();
+        let exported = NativeRecordFile::decode(&world.export_native_sim().unwrap()).unwrap();
+        let [_, newborn] = exported.robots.as_slice() else {
+            panic!("expected one newborn")
+        };
+        assert_eq!(newborn.long("parent").unwrap(), 1);
+        assert_arrays(newborn);
+
+        let live = world.slots.ids_in_slot_order();
+        let child = live[1];
+        world.remove(live[0]).unwrap();
+        let mut resumed =
+            crate::SaveFile::decode(&crate::SaveFile::encode(&world).unwrap()).unwrap();
+        let grandchild = resumed
+            .manual_reproduce(child, None, [800.0, 500.0])
+            .unwrap();
+        let record =
+            NativeRecordFile::decode(&resumed.export_native_organisms(&[grandchild]).unwrap())
+                .unwrap();
+        assert_arrays(&record.robots[0]);
+
+        input.tail.clear();
+        input.robots[0]
+            .set_value("absolute_id", NativeValue::Long(42))
+            .unwrap();
+        let mut standalone = Engine::new_native(EngineConfig::testing()).unwrap();
+        standalone
+            .import_native_organisms(&input.encode().unwrap(), None)
+            .unwrap();
+        let imported = standalone.slots.ids_in_slot_order()[0];
+        let child = standalone
+            .manual_reproduce(imported, None, [800.0, 500.0])
+            .unwrap();
+        let record =
+            NativeRecordFile::decode(&standalone.export_native_organisms(&[child]).unwrap())
+                .unwrap();
+        assert_arrays(&record.robots[0]);
+    }
+
+    #[test]
     fn native_organism_export_contains_live_memory_resource_bits_dna_and_restrictions() {
         let mut engine = Engine::new(EngineConfig::testing()).unwrap();
         let id = engine
@@ -741,7 +887,7 @@ mod tests {
         tie.sync_native_primary();
         engine.ties.push(tie);
         let file = NativeRecordFile {
-            robots: engine.native_robot_records(&[first, second]).unwrap(),
+            robots: engine.native_robot_records(&[first, second], true).unwrap(),
             tail: vec![],
         };
         for (index, end) in ends.into_iter().enumerate() {
@@ -785,7 +931,7 @@ mod tests {
         let origin = engine.native_origin.as_ref().unwrap();
         assert!(engine.export_native_organisms(&ids).is_err());
         let file = NativeRecordFile {
-            robots: engine.native_robot_records(&ids).unwrap(),
+            robots: engine.native_robot_records(&ids, true).unwrap(),
             tail: vec![],
         };
         assert_eq!(file.robots.len(), 196);
@@ -863,7 +1009,7 @@ mod tests {
             .position(|&i| i == 0)
             .unwrap()
             + 1;
-        let records = engine.native_robot_records(&members).unwrap();
+        let records = engine.native_robot_records(&members, true).unwrap();
         let core = records[record_index].bytes("ties_core").unwrap();
         let offset = tie_index * 38 + 16;
         assert_eq!(
@@ -905,7 +1051,7 @@ mod tests {
         }
         let restored = crate::SaveFile::decode(&crate::SaveFile::encode(&engine).unwrap()).unwrap();
         for record in restored
-            .native_robot_records(&restored.slots.ids_in_slot_order())
+            .native_robot_records(&restored.slots.ids_in_slot_order(), true)
             .unwrap()
         {
             for tie in record.bytes("ties_core").unwrap().chunks_exact(38).skip(1) {
@@ -950,7 +1096,7 @@ mod tests {
         let engine = Engine::from_native_sim(&origin.encode().unwrap()).unwrap();
         let file = NativeRecordFile {
             robots: engine
-                .native_robot_records(&engine.slots.ids_in_slot_order())
+                .native_robot_records(&engine.slots.ids_in_slot_order(), true)
                 .unwrap(),
             tail: vec![],
         };

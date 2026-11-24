@@ -40,6 +40,21 @@ public sealed class RobotToolsTests
     }
 
     [Fact]
+    public void PlayerBotPresetsDistinguishOriginalPrintFieldsFromEarlierModernFiles()
+    {
+        // The first binding was exported from the original Darwinbots 2.48.32 key map dialog.
+        const string original = " 87 \r\n 50 \r\n 123 \r\nFalse\r\n 32 \r\n 51 \r\n-9 \r\nTrue\r\n";
+        var expected = new[] { new PlayerBotBinding(87, 50, 123), new PlayerBotBinding(32, 51, -9, true) };
+        Assert.Equal(expected, PlayerBotKeyMapFile.Decode(original, out var windowsVirtualKeys));
+        Assert.True(windowsVirtualKeys);
+        Assert.Equal(original, PlayerBotKeyMapFile.Encode(expected, useWindowsVirtualKeys: true));
+
+        Assert.Equal(expected, PlayerBotKeyMapFile.Decode(PlayerBotKeyMapFile.Encode(expected), out windowsVirtualKeys));
+        Assert.False(windowsVirtualKeys);
+        Assert.Throws<InvalidDataException>(() => PlayerBotKeyMapFile.Decode(" 256 \r\n 50 \r\n 12 \r\nFalse\r\n", out _));
+    }
+
+    [Fact]
     public void RestrictionPresetWritesOriginalNineteenNumericFieldsWithCrLf()
     {
         var path = Path.Combine(Path.GetTempPath(), $"darwinbots-{Guid.NewGuid():N}.resp");

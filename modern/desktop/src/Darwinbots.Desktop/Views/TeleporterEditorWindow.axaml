@@ -19,6 +19,7 @@
         <Grid ColumnDefinitions="*,200"><TextBlock Text="Center Y" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" x:Name="CenterY" Minimum="0" Maximum="1000000" Increment="1" /></Grid>
         <Grid ColumnDefinitions="*,200"><TextBlock Text="Destination X" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" x:Name="DestinationX" Minimum="0" Maximum="1000000" Increment="1" /></Grid>
         <Grid ColumnDefinitions="*,200"><TextBlock Text="Destination Y" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" x:Name="DestinationY" Minimum="0" Maximum="1000000" Increment="1" /></Grid>
+        <TextBlock x:Name="RandomDestinationNotice" Text="Local transfers through this gateway choose a random field destination." IsVisible="False" TextWrapping="Wrap" />
         <Grid ColumnDefinitions="*,200"><TextBlock Text="Radius" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" x:Name="Radius" Minimum="1" Maximum="1000000" Increment="1" /></Grid>
         <TextBlock Text="TRANSFER POLICY" FontWeight="Bold" Margin="0,8,0,0" />
         <Grid ColumnDefinitions="*,200"><TextBlock Text="Poll interval" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" x:Name="PollInterval" Minimum="1" Maximum="1000000" Increment="1" /></Grid>

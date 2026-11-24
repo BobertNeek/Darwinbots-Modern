@@ -1,16 +1,19 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Darwinbots.Desktop.Core;
+using Darwinbots.Desktop.Services;
 
 namespace Darwinbots.Desktop.Views;
 
 public sealed class RgbMemoryMonitorWindow : Window, IPersistentSnapshotToolWindow
 {
-    private readonly OrganismKey _focus;
+    private readonly OrganismKey? _focus;
     private readonly Action<RgbMemoryMonitorSettings> _applySettings;
+    private readonly IDesktopStorageService _storage;
     private readonly NumericUpDown[] _addresses = new NumericUpDown[3];
     private readonly NumericUpDown[] _floors = new NumericUpDown[3];
     private readonly NumericUpDown[] _ceilings = new NumericUpDown[3];
@@ -19,13 +22,18 @@ public sealed class RgbMemoryMonitorWindow : Window, IPersistentSnapshotToolWind
     private readonly ComboBox _presets = new();
     private RgbMemoryMonitorSettings _settings;
 
-    public RgbMemoryMonitorWindow(OrganismKey focus, RgbMemoryMonitorSettings settings, Action<RgbMemoryMonitorSettings> applySettings, bool closeOnApply = false)
+    public RgbMemoryMonitorWindow(
+        OrganismKey? focus, RgbMemoryMonitorSettings settings, Action<RgbMemoryMonitorSettings> applySettings,
+        bool closeOnApply = false, IDesktopStorageService? storage = null)
     {
         _focus = focus;
         _settings = settings;
         _applySettings = applySettings ?? throw new ArgumentNullException(nameof(applySettings));
+        _storage = storage ?? AvaloniaDesktopStorageService.Instance;
         CloseOnApply = closeOnApply;
-        Title = $"Darwinbots — RGB Memory Monitor {focus.Slot}:{focus.Generation}";
+        Title = closeOnApply || focus is not { } robot
+            ? "Darwinbots — RGB Memory Monitor Settings"
+            : $"Darwinbots — RGB Memory Monitor {robot.Slot}:{robot.Generation}";
         Width = 700;
         Height = 460;
         MinWidth = 620;
@@ -39,16 +47,16 @@ public sealed class RgbMemoryMonitorWindow : Window, IPersistentSnapshotToolWind
         _values.FontFamily = DesktopFonts.Inspector;
         _values.FontSize = 16;
         _values.Text = "NO PUBLISHED ROBOT SNAPSHOT";
+        _values.IsVisible = focus is not null;
+        if (focus is null) _status.Text = "CHANNEL MAPPING FOR ALL ROBOTS";
 
         _presets.ItemsSource = RgbMemoryMonitorSettings.Presets.Select(value => value.Name).ToArray();
-        _presets.SelectedIndex = 0;
+        _presets.PlaceholderText = "Choose preset";
+        _presets.SelectedItem = RgbMemoryMonitorSettings.Presets.FirstOrDefault(value => value.Settings == settings)?.Name;
         _presets.SelectionChanged += (_, _) =>
         {
             if (_presets.SelectedItem is string name)
-            {
-                _settings = RgbMemoryMonitorSettings.Preset(name);
-                SetControls(_settings);
-            }
+                SetControls(RgbMemoryMonitorSettings.Preset(name));
         };
 
         var grid = new Grid
@@ -69,22 +77,37 @@ public sealed class RgbMemoryMonitorWindow : Window, IPersistentSnapshotToolWind
         {
             var row = index + 1;
             grid.Children.Add(new TextBlock { Text = labels[index], FontWeight = FontWeight.Bold, VerticalAlignment = VerticalAlignment.Center, Foreground = Brush.Parse(index == 0 ? "#A13D35" : index == 1 ? "#3E7C3B" : "#356D9C") }.With(Grid.RowProperty, row));
-            _addresses[index] = Number(1, 999, channels[index].Address);
-            _floors[index] = Number(-32_000, 32_000, channels[index].Floor);
-            _ceilings[index] = Number(-32_000, 32_000, channels[index].Ceiling);
+            _addresses[index] = Number(1, 999, channels[index].Address, $"{labels[index]} address");
+            _floors[index] = Number(-32_000, 32_000, channels[index].Floor, $"{labels[index]} floor");
+            _ceilings[index] = Number(-32_000, 32_000, channels[index].Ceiling, $"{labels[index]} ceiling");
             grid.Children.Add(_addresses[index].With(Grid.RowProperty, row).With(Grid.ColumnProperty, 1));
             grid.Children.Add(_floors[index].With(Grid.RowProperty, row).With(Grid.ColumnProperty, 2));
             grid.Children.Add(_ceilings[index].With(Grid.RowProperty, row).With(Grid.ColumnProperty, 3));
         }
 
         var body = new StackPanel { Spacing = 9, Margin = new Thickness(18) };
-        body.Children.Add(new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = { new TextBlock { Text = "PRESET", VerticalAlignment = VerticalAlignment.Center, FontWeight = FontWeight.Bold }, _presets } });
+        var presetActions = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 8,
+            Children =
+            {
+                new TextBlock { Text = "PRESET", VerticalAlignment = VerticalAlignment.Center, FontWeight = FontWeight.Bold },
+                _presets,
+            },
+        };
+        if (closeOnApply)
+        {
+            presetActions.Children.Add(Button("LOAD PRESET", LoadPreset_Click));
+            presetActions.Children.Add(Button("SAVE PRESET", SavePreset_Click));
+        }
+        body.Children.Add(presetActions);
         body.Children.Add(grid);
         body.Children.Add(_values);
         body.Children.Add(new TextBlock { Text = "Each channel is normalized from its floor and ceiling to 0–255. The viewport uses this color for live Rust snapshot organisms.", TextWrapping = TextWrapping.Wrap, Foreground = Brush.Parse("#69716D"), FontSize = 11 });
 
         var apply = Button("APPLY", Apply_Click);
-        var cancel = Button("CLOSE", (_, _) => Close());
+        var cancel = Button(closeOnApply ? "CANCEL" : "CLOSE", (_, _) => Close());
         var actions = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Spacing = 8, Children = { apply, cancel } };
         var root = new Grid { RowDefinitions = new RowDefinitions("62,*,54") };
         root.Children.Add(new Border { Background = Brush.Parse("#FBF9F2"), BorderBrush = Brush.Parse("#C8C3B6"), BorderThickness = new Thickness(0, 0, 0, 1), Padding = new Thickness(20, 12), Child = new StackPanel { Spacing = 2, Children = { new TextBlock { Text = "RGB MEMORY MONITOR", FontFamily = DesktopFonts.Heading, FontSize = 21, FontWeight = FontWeight.Bold, LetterSpacing = 1.3 }, _status } } });
@@ -100,34 +123,71 @@ public sealed class RgbMemoryMonitorWindow : Window, IPersistentSnapshotToolWind
     public bool Accepted { get; private set; }
     public RgbMemoryMonitorSettings Settings => _settings;
 
+    public void SetSettings(RgbMemoryMonitorSettings settings)
+    {
+        _settings = settings;
+        StageSettings(settings);
+    }
+
+    private void StageSettings(RgbMemoryMonitorSettings settings)
+    {
+        _presets.SelectedItem = RgbMemoryMonitorSettings.Presets.FirstOrDefault(value => value.Settings == settings)?.Name;
+        SetControls(settings);
+    }
+
     public void SetSnapshot(EngineSnapshot snapshot)
     {
-        var organism = snapshot.Organisms.FirstOrDefault(value => value.Slot == _focus.Slot && value.Generation == _focus.Generation);
+        if (_focus is not { } focus) return;
+        var organism = snapshot.Organisms.FirstOrDefault(value => value.Slot == focus.Slot && value.Generation == focus.Generation);
         if (organism is null)
         {
-            _status.Text = $"FOCUS LOST · {_focus.Slot}:{_focus.Generation} IS NOT BOUND TO A REPLACEMENT";
+            _status.Text = $"FOCUS LOST · {focus.Slot}:{focus.Generation} IS NOT BOUND TO A REPLACEMENT";
             _values.Text = "NO LIVE VALUES";
             return;
         }
         var color = RgbMemoryMonitor.ColorFor(organism, _settings);
-        _status.Text = $"LIVE ROBOT {_focus.Slot}:{_focus.Generation} · TICK {snapshot.Tick:N0}";
+        _status.Text = $"LIVE ROBOT {focus.Slot}:{focus.Generation} · TICK {snapshot.Tick:N0}";
         _values.Text = $"RGB  {color.Red,3}  {color.Green,3}  {color.Blue,3}    #{color.Red:X2}{color.Green:X2}{color.Blue:X2}";
     }
 
-    private void Apply_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    private async void LoadPreset_Click(object? sender, RoutedEventArgs e)
     {
         try
         {
-            _settings = new RgbMemoryMonitorSettings(
-                Channel(0), Channel(1), Channel(2));
-            _settings.Validate();
-            _applySettings(_settings);
+            if (await _storage.OpenRgbMonitorPresetAsync(this) is not { } bytes) return;
+            StageSettings(Db2RgbMonitorPresetCodec.Decode(bytes));
+            _status.Text = "RGB PRESET LOADED";
+        }
+        catch (Exception error) { _status.Text = $"RGB PRESET LOAD FAILED · {error.Message}"; }
+    }
+
+    private async void SavePreset_Click(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var bytes = Db2RgbMonitorPresetCodec.Encode(ReadControls());
+            if (await _storage.SaveRgbMonitorPresetAsync(this, bytes))
+                _status.Text = "RGB PRESET SAVED";
+        }
+        catch (Exception error) { _status.Text = $"RGB PRESET SAVE FAILED · {error.Message}"; }
+    }
+
+    private void Apply_Click(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var settings = ReadControls();
+            settings.Validate();
+            _applySettings(settings);
+            _settings = settings;
             Accepted = true;
-            _status.Text = "RGB SETTINGS APPLIED TO VIEWPORT";
+            if (_focus is null) _status.Text = "RGB SETTINGS APPLIED";
             if (CloseOnApply) Close();
         }
         catch (Exception error) { _status.Text = $"RGB SETTINGS INVALID · {error.Message}"; }
     }
+
+    private RgbMemoryMonitorSettings ReadControls() => new(Channel(0), Channel(1), Channel(2));
 
     private RgbMemoryChannel Channel(int index) => new(
         (ushort)(_addresses[index].Value ?? 1),
@@ -145,7 +205,9 @@ public sealed class RgbMemoryMonitorWindow : Window, IPersistentSnapshotToolWind
         }
     }
 
-    private static NumericUpDown Number(decimal minimum, decimal maximum, decimal value) => new() { Minimum = minimum, Maximum = maximum, Value = value, Width = 140 };
+    private static NumericUpDown Number(decimal minimum, decimal maximum, decimal value, string name) =>
+        new NumericUpDown { Minimum = minimum, Maximum = maximum, Value = value, Width = 140 }
+            .With(AutomationProperties.NameProperty, name);
     private static void AddHeader(Grid grid, string text, int column, int row) { var item = new TextBlock { Text = text, FontSize = 11, FontWeight = FontWeight.Bold, Foreground = Brush.Parse("#69716D") }.With(Grid.ColumnProperty, column).With(Grid.RowProperty, row); grid.Children.Add(item); }
     private static Button Button(string text, EventHandler<RoutedEventArgs> handler) { var button = new Button { Content = text, Background = Brush.Parse("#416E35"), Foreground = Brushes.White, FontWeight = FontWeight.Bold, Padding = new Thickness(12, 7) }; button.Click += handler; return button; }
 }

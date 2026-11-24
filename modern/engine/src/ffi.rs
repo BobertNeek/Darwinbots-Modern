@@ -55,7 +55,18 @@ enum ManualReproductionMutationMode {
 enum EngineCommand {
     Tick {
         count: u32,
+        #[serde(default)]
+        capture_deaths: bool,
+        #[serde(default)]
+        recording_weight: Option<u16>,
     },
+    CaptureLivingGenomeRecords {
+        weight_percent: u16,
+    },
+    SetOrdinaryRestart {
+        enabled: bool,
+    },
+    FinishOrdinaryRestart,
     SetNativeRestartSeed {
         seed: u64,
         #[serde(default)]
@@ -69,7 +80,9 @@ enum EngineCommand {
     SetNativeSunChange {
         sun_change: u8,
     },
+    ToggleNativeSun,
     ReadNativeProcessCaches,
+    ReadRobotTagReport,
     SetNativeProcessCaches {
         caches: NativeProcessCaches,
     },
@@ -121,6 +134,10 @@ enum EngineCommand {
         organisms: Vec<OrganismIdCommand>,
         #[serde(default)]
         suppress_death_poffs: bool,
+        #[serde(default)]
+        recording_weight: Option<u16>,
+        #[serde(default)]
+        exclude_repopulating: bool,
     },
     SetDeathPoffsEnabled {
         enabled: bool,
@@ -173,6 +190,10 @@ enum EngineCommand {
         generation: u32,
         dna: String,
     },
+    TagOrganismsByName {
+        founder_name: String,
+        tag: String,
+    },
     ExportDna {
         slot: u32,
         generation: u32,
@@ -206,15 +227,54 @@ enum EngineCommand {
         minimum: [f32; 2],
         maximum: [f32; 2],
     },
+    AddTrashCompactor {
+        left: crate::Obstacle,
+        right: crate::Obstacle,
+    },
+    AddNativeRandomObstacles {
+        count: usize,
+        #[serde(default)]
+        dimensions_permille: Option<[u16; 2]>,
+    },
+    AddNativeCenteredObstacle {
+        dimensions_permille: [u16; 2],
+    },
+    AddNativePolarIce,
+    AddNativeSimpleMaze {
+        horizontal: bool,
+        corridor: u16,
+        thickness: u16,
+    },
+    AddNativePatternMaze {
+        pattern: crate::world::NativePatternMaze,
+        corridor: u16,
+        thickness: u16,
+    },
+    SetShapeDrift {
+        #[serde(default)]
+        horizontal: Option<bool>,
+        #[serde(default)]
+        vertical: Option<bool>,
+        #[serde(default)]
+        rate: Option<i16>,
+    },
     UpdateObstacle {
         obstacle: crate::Obstacle,
     },
     RemoveObstacle {
         id: u32,
     },
+    RemoveNativeRandomObstacles,
     AddTeleporter {
         #[serde(flatten)]
         teleporter: crate::Teleporter,
+    },
+    AddNativeTeleporter {
+        options: crate::NativeTeleporterOptions,
+    },
+    DragNativeTeleporter {
+        id: u32,
+        center: [f32; 2],
     },
     UpdateTeleporter {
         #[serde(flatten)]
@@ -247,6 +307,10 @@ enum EngineCommand {
         generation: u32,
         profile: crate::StandardMutationProfile,
     },
+    SetShotDecay {
+        energy: bool,
+        do_not_decay: bool,
+    },
     SetTiesEnabled {
         enabled: bool,
     },
@@ -254,11 +318,20 @@ enum EngineCommand {
         species: u32,
         color: u32,
     },
+    SetOrganismColor {
+        slot: u32,
+        generation: u32,
+        color: u32,
+    },
     MakeNewSpecies {
         slot: u32,
         generation: u32,
         name: String,
         color: u32,
+    },
+    ForkRobotAndDescendants {
+        slot: u32,
+        generation: u32,
     },
     UpdateLegacyRestrictions {
         robot_fixing_allowed: bool,
@@ -274,6 +347,17 @@ enum EngineCommand {
         generation: u32,
         key: u32,
         pressed: bool,
+    },
+    SetPlayerBotKeyState {
+        key: u32,
+        pressed: bool,
+    },
+    SetPlayerBotTargets {
+        focus: Option<OrganismIdCommand>,
+        highlights: Vec<OrganismIdCommand>,
+    },
+    SetPlayerBotPointer {
+        position: Option<[f32; 2]>,
     },
     SetOrganismMemory {
         slot: u32,
@@ -575,8 +659,10 @@ fn db_engine_command_batch_impl(
                 EngineCommand::ReadNativeGaussianSpare
                     | EngineCommand::ReadNativeSunChange
                     | EngineCommand::ReadNativeProcessCaches
+                    | EngineCommand::ReadRobotTagReport
                     | EngineCommand::ExportSpeciesTemplateDna { .. }
                     | EngineCommand::FindBestRobot { .. }
+                    | EngineCommand::CaptureLivingGenomeRecords { .. }
             )
         })
     {
@@ -603,9 +689,15 @@ fn db_engine_command_batch_impl(
                 EngineCommand::ReadNativeProcessCaches => engine
                     .read_native_process_caches()
                     .map(|caches| serde_json::json!(caches)),
+                EngineCommand::ReadRobotTagReport => {
+                    Ok(serde_json::json!(engine.robot_tag_report()))
+                }
                 EngineCommand::ExportSpeciesTemplateDna { species } => engine
                     .export_species_template_dna(crate::SpeciesId(*species))
                     .map(|dna| serde_json::json!({ "dna": dna })),
+                EngineCommand::CaptureLivingGenomeRecords { weight_percent } => engine
+                    .living_genome_records(*weight_percent)
+                    .map(|records| serde_json::json!(records)),
                 EngineCommand::FindBestRobot {
                     energy_weighting,
                     weight_percent,
@@ -641,7 +733,10 @@ fn db_engine_command_batch_impl(
         Ok(Some(candidate)) => candidate,
         Ok(None) => match SaveFile::encode(committed_engine) {
             Ok(bytes) => match SaveFile::decode(&bytes) {
-                Ok(candidate) => candidate,
+                Ok(mut candidate) => {
+                    candidate.player_bot_input = committed_engine.player_bot_input.clone();
+                    candidate
+                }
                 Err(error) => return fail(DbStatus::EngineError, error.to_string()),
             },
             Err(error) => return fail(DbStatus::EngineError, error.to_string()),
@@ -652,6 +747,12 @@ fn db_engine_command_batch_impl(
 
     for command in batch.commands {
         let result = match command {
+            EngineCommand::SetOrdinaryRestart { enabled } => engine
+                .set_ordinary_restart(enabled)
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::FinishOrdinaryRestart => engine
+                .finish_ordinary_restart()
+                .map(serde_json::Value::Bool),
             EngineCommand::SetNativeRestartSeed {
                 seed,
                 skin_timer_seconds,
@@ -671,17 +772,32 @@ fn db_engine_command_batch_impl(
                 engine.set_native_sun_change(sun_change);
                 Ok(serde_json::Value::Null)
             }
+            EngineCommand::ToggleNativeSun => Ok(serde_json::json!(engine.toggle_native_sun())),
             EngineCommand::ReadNativeProcessCaches => engine
                 .read_native_process_caches()
                 .map(|caches| serde_json::json!(caches)),
+            EngineCommand::ReadRobotTagReport => Ok(serde_json::json!(engine.robot_tag_report())),
             EngineCommand::SetNativeProcessCaches { caches } => engine
                 .set_native_process_caches(caches)
                 .map(|_| serde_json::Value::Null),
-            EngineCommand::Tick { count } => {
+            EngineCommand::CaptureLivingGenomeRecords { weight_percent } => engine
+                .living_genome_records(weight_percent)
+                .map(|records| serde_json::json!(records)),
+            EngineCommand::Tick {
+                count,
+                capture_deaths,
+                recording_weight,
+            } => {
                 if count > 1_000_000 {
                     return fail(DbStatus::InvalidCommand, "tick count exceeds batch limit");
                 }
-                engine.tick_many(count).map(|_| serde_json::Value::Null)
+                if capture_deaths {
+                    engine
+                        .tick_many_with_death_records(count, recording_weight.unwrap_or(100))
+                        .map(|records| serde_json::json!({ "death_records": records }))
+                } else {
+                    engine.tick_many(count).map(|_| serde_json::Value::Null)
+                }
             }
             EngineCommand::ConfigureLocalMode { config } => engine
                 .configure_local_mode(config)
@@ -760,14 +876,27 @@ fn db_engine_command_batch_impl(
             EngineCommand::RemoveMany {
                 organisms,
                 suppress_death_poffs,
+                recording_weight,
+                exclude_repopulating,
             } => {
                 let ids: Vec<_> = organisms
                     .into_iter()
                     .map(|organism| OrganismId::new(organism.slot, organism.generation))
                     .collect();
-                engine
-                    .remove_many_with_death_poffs(&ids, suppress_death_poffs)
-                    .map(|_| serde_json::Value::Null)
+                if let Some(weight) = recording_weight {
+                    engine
+                        .remove_many_recording_deaths(
+                            &ids,
+                            suppress_death_poffs,
+                            weight,
+                            exclude_repopulating,
+                        )
+                        .map(|records| serde_json::json!(records))
+                } else {
+                    engine
+                        .remove_many_with_death_poffs(&ids, suppress_death_poffs)
+                        .map(|_| serde_json::Value::Null)
+                }
             }
             EngineCommand::ImportSpecies {
                 comment,
@@ -910,6 +1039,9 @@ fn db_engine_command_batch_impl(
                 .load_dna_source(&dna)
                 .and_then(|dna| engine.replace_dna(OrganismId::new(slot, generation), dna))
                 .map(|_| serde_json::Value::Null),
+            EngineCommand::TagOrganismsByName { founder_name, tag } => engine
+                .tag_organisms_by_name(&founder_name, &tag)
+                .map(|count| serde_json::json!({ "count": count })),
             EngineCommand::ExportDna { slot, generation } => engine
                 .export_dna(OrganismId::new(slot, generation))
                 .map(|dna| serde_json::json!({ "dna": dna })),
@@ -977,14 +1109,67 @@ fn db_engine_command_batch_impl(
             } => engine
                 .add_obstacle(crate::Obstacle::new(id, minimum, maximum))
                 .map(|_| serde_json::Value::Null),
+            EngineCommand::AddTrashCompactor { left, right } => engine
+                .add_trash_compactor(left, right)
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::AddNativeRandomObstacles {
+                count,
+                dimensions_permille,
+            } => engine
+                .add_native_random_obstacles(
+                    count,
+                    dimensions_permille.unwrap_or(crate::world::DEFAULT_NATIVE_SHAPE_DIMENSIONS),
+                )
+                .map(|added| serde_json::json!(added)),
+            EngineCommand::AddNativeCenteredObstacle {
+                dimensions_permille,
+            } => engine
+                .add_native_centered_obstacle(dimensions_permille)
+                .map(|added| serde_json::json!(added)),
+            EngineCommand::AddNativePolarIce => engine.add_native_polar_ice().map(|result| {
+                result.map_or(
+                    serde_json::Value::Null,
+                    |(added, drift)| serde_json::json!({ "added": added, "drift": drift }),
+                )
+            }),
+            EngineCommand::AddNativeSimpleMaze {
+                horizontal,
+                corridor,
+                thickness,
+            } => engine
+                .add_native_simple_maze(horizontal, corridor, thickness)
+                .map(|added| serde_json::json!(added)),
+            EngineCommand::AddNativePatternMaze {
+                pattern,
+                corridor,
+                thickness,
+            } => engine
+                .add_native_pattern_maze(pattern, corridor, thickness)
+                .map(|added| serde_json::json!(added)),
+            EngineCommand::SetShapeDrift {
+                horizontal,
+                vertical,
+                rate,
+            } => engine
+                .set_shape_drift(horizontal, vertical, rate)
+                .map(|settings| serde_json::json!(settings)),
             EngineCommand::UpdateObstacle { obstacle } => engine
                 .update_obstacle(obstacle)
                 .map(|_| serde_json::Value::Null),
             EngineCommand::RemoveObstacle { id } => {
                 engine.remove_obstacle(id).map(|_| serde_json::Value::Null)
             }
+            EngineCommand::RemoveNativeRandomObstacles => engine
+                .remove_native_random_obstacles()
+                .map(|removed| serde_json::json!(removed)),
             EngineCommand::AddTeleporter { teleporter } => engine
                 .add_teleporter(teleporter)
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::AddNativeTeleporter { options } => engine
+                .add_native_teleporter(options)
+                .map(|id| serde_json::json!({ "id": id })),
+            EngineCommand::DragNativeTeleporter { id, center } => engine
+                .drag_native_teleporter(id, center)
                 .map(|_| serde_json::Value::Null),
             EngineCommand::UpdateTeleporter { teleporter } => engine
                 .update_teleporter(teleporter)
@@ -1030,12 +1215,26 @@ fn db_engine_command_batch_impl(
             } => engine
                 .set_mutation_profile(OrganismId::new(slot, generation), profile)
                 .map(|_| serde_json::Value::Null),
+            EngineCommand::SetShotDecay {
+                energy,
+                do_not_decay,
+            } => {
+                engine.set_shot_decay(energy, do_not_decay);
+                Ok(serde_json::Value::Null)
+            }
             EngineCommand::SetTiesEnabled { enabled } => {
                 engine.set_ties_enabled(enabled);
                 Ok(serde_json::Value::Null)
             }
             EngineCommand::SetSpeciesColor { species, color } => engine
                 .set_species_color(crate::SpeciesId(species), color)
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::SetOrganismColor {
+                slot,
+                generation,
+                color,
+            } => engine
+                .set_organism_color(OrganismId::new(slot, generation), color)
                 .map(|_| serde_json::Value::Null),
             EngineCommand::MakeNewSpecies {
                 slot,
@@ -1045,6 +1244,9 @@ fn db_engine_command_batch_impl(
             } => engine
                 .make_new_species(OrganismId::new(slot, generation), name, color)
                 .map(|species| serde_json::json!({ "species": species.0 })),
+            EngineCommand::ForkRobotAndDescendants { slot, generation } => engine
+                .fork_robot_and_descendants(OrganismId::new(slot, generation))
+                .map(|name| serde_json::json!({ "name": name })),
             EngineCommand::UpdateLegacyRestrictions {
                 robot_fixing_allowed,
                 asexual_reproduction_allowed,
@@ -1071,6 +1273,22 @@ fn db_engine_command_batch_impl(
                 pressed,
             } => engine
                 .set_player_bot_key(OrganismId::new(slot, generation), key, pressed)
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::SetPlayerBotKeyState { key, pressed } => engine
+                .set_player_bot_key_state(key, pressed)
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::SetPlayerBotTargets { focus, highlights } => {
+                engine.set_player_bot_targets(
+                    focus.map(|value| OrganismId::new(value.slot, value.generation)),
+                    highlights
+                        .into_iter()
+                        .map(|value| OrganismId::new(value.slot, value.generation))
+                        .collect(),
+                );
+                Ok(serde_json::Value::Null)
+            }
+            EngineCommand::SetPlayerBotPointer { position } => engine
+                .set_player_bot_pointer(position)
                 .map(|_| serde_json::Value::Null),
             EngineCommand::SetOrganismMemory {
                 slot,
@@ -1278,6 +1496,27 @@ pub extern "C" fn db_engine_save_legacy(
     engine: *const Engine,
     out_buffer: *mut DbBuffer,
 ) -> DbStatus {
+    save_legacy(engine, out_buffer, Engine::export_native_sim)
+}
+
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
+#[unsafe(no_mangle)]
+pub extern "C" fn db_engine_save_legacy_without_mutation_details(
+    engine: *const Engine,
+    out_buffer: *mut DbBuffer,
+) -> DbStatus {
+    save_legacy(
+        engine,
+        out_buffer,
+        Engine::export_native_sim_without_mutation_details,
+    )
+}
+
+fn save_legacy(
+    engine: *const Engine,
+    out_buffer: *mut DbBuffer,
+    export: fn(&Engine) -> Result<Vec<u8>, crate::EngineError>,
+) -> DbStatus {
     let (Some(engine), Some(out_buffer)) =
         (unsafe { engine.as_ref() }, unsafe { out_buffer.as_mut() })
     else {
@@ -1286,7 +1525,7 @@ pub extern "C" fn db_engine_save_legacy(
     if !out_buffer.data.is_null() {
         return fail(DbStatus::EngineError, "output buffer must be empty");
     }
-    match engine.export_native_sim() {
+    match export(engine) {
         Ok(bytes) => write_buffer(out_buffer, bytes),
         Err(error) => fail(DbStatus::EngineError, error),
     }
@@ -1341,6 +1580,7 @@ fn db_engine_load_impl(engine: *mut Engine, save_data: *const u8, save_len: usiz
             if !bytes.starts_with(b"DB3S") {
                 loaded.retain_native_global_preferences(engine.configuration());
                 loaded.inherit_native_gaussian_spare(engine);
+                loaded.inherit_native_sun_indicator_after_sim_load(engine);
                 if let Err(error) = loaded.inherit_native_process_caches_after_sim_load(engine) {
                     return fail(DbStatus::EngineError, error);
                 }
@@ -1924,6 +2164,110 @@ mod tests {
             assert_eq!(db_buffer_free(&mut buffer), DbStatus::Ok);
         }
         (status, result)
+    }
+
+    #[test]
+    fn native_sun_toolbar_toggles_the_effective_feed_indicator_without_advancing() {
+        let mut config = EngineConfig::testing();
+        config.vegetation.daytime = false;
+        config.vegetation.day_night_enabled = true;
+        config.vegetation.sun_up_enabled = true;
+        config.vegetation.sun_up_threshold = 500_000;
+        config.vegetation.sun_threshold_mode = 0;
+        let mut world = Engine::new_native(config).unwrap();
+        assert_eq!(world.snapshot().native_sun_on, Some(true));
+        world
+            .spawn(LegacyDna::parse("start stop").unwrap())
+            .unwrap();
+        world.tick().unwrap();
+        assert!(!world.configuration().vegetation.daytime);
+        assert_eq!(world.snapshot().native_sun_on, Some(true));
+
+        let save = SaveFile::encode(&world).unwrap();
+        let mut world = SaveFile::decode(&save).unwrap();
+        assert_eq!(world.snapshot().native_sun_on, Some(true));
+        let mut expected = serde_json::to_value(&world).unwrap();
+        expected["vegetation_runtime"]
+            .as_object_mut()
+            .unwrap()
+            .remove("native_sun_override");
+        for enabled in [false, true] {
+            let (status, response) = classic_test_batch(
+                &mut world,
+                serde_json::json!([{ "type": "toggle_native_sun" }]),
+            );
+            assert_eq!(status, DbStatus::Ok);
+            let value: serde_json::Value = serde_json::from_slice(&response).unwrap();
+            assert_eq!(value["results"][0], enabled);
+            assert_eq!(world.snapshot().native_sun_on, Some(enabled));
+            expected["config"]["vegetation"]["daytime"] = enabled.into();
+            assert_eq!(serde_json::to_value(&world).unwrap(), expected);
+        }
+    }
+
+    #[test]
+    fn native_sun_toolbar_keeps_the_existing_button_state_during_a_sim_load() {
+        let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+        assert_eq!(world.toggle_native_sun(), Some(false));
+        let mut source = Engine::new_native(EngineConfig::testing()).unwrap();
+        source
+            .spawn_at(LegacyDna::parse("start stop").unwrap(), [500.0; 2])
+            .unwrap();
+        let save = source.export_native_sim().unwrap();
+        assert_eq!(
+            db_engine_load(&mut world, save.as_ptr(), save.len()),
+            DbStatus::Ok
+        );
+        assert!(world.configuration().vegetation.daytime);
+        assert_eq!(world.snapshot().native_sun_on, Some(false));
+        world.tick().unwrap();
+        assert!(world.configuration().vegetation.daytime);
+        assert_eq!(world.snapshot().native_sun_on, Some(true));
+    }
+
+    #[test]
+    fn opt_in_death_records_follow_atomic_tick_commands_and_preserve_legacy_results() {
+        let mut engine = Engine::new(EngineConfig {
+            metabolism_cost: 1,
+            recording: crate::RecordingSettings {
+                dead_snapshot_enabled: true,
+                ..Default::default()
+            },
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let id = engine
+            .spawn(LegacyDna::parse("start\nstop").unwrap())
+            .unwrap();
+        engine.set_organism_energy(id, 1).unwrap();
+        let absolute_id = engine.snapshot().organisms[0].unique_id;
+        let before = SaveFile::encode(&engine).unwrap();
+        let (status, result) = classic_test_batch(
+            &mut engine,
+            serde_json::json!([
+                {"type":"tick","count":3,"capture_deaths":true},
+                {"type":"set_organism_energy","slot":id.slot(),"generation":id.generation(),"energy":500}
+            ]),
+        );
+        assert_eq!(status, DbStatus::EngineError);
+        assert!(result.is_empty());
+        assert_eq!(before, SaveFile::encode(&engine).unwrap());
+
+        let (status, result) = classic_test_batch(
+            &mut engine,
+            serde_json::json!([
+                {"type":"tick","count":3,"capture_deaths":true},
+                {"type":"tick","count":1}
+            ]),
+        );
+        assert_eq!(status, DbStatus::Ok);
+        let result: serde_json::Value = serde_json::from_slice(&result).unwrap();
+        let records = result["results"][0]["death_records"].as_array().unwrap();
+        assert_eq!(records.len(), 1);
+        assert_eq!(records[0]["id"], absolute_id);
+        assert_eq!(records[0]["tick"], 1);
+        assert!(result["results"][1].is_null());
+        assert_eq!(result["tick"], 4);
     }
 
     fn populated_native_cpu_candidate_fixture() -> Engine {

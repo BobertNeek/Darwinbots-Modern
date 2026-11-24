@@ -8,12 +8,13 @@ mod environment;
 mod movement;
 
 pub(crate) use collision::{
-    moving_circle_fraction, resolve_collisions, resolve_native_collisions, segment_aabb_fraction,
-    segment_circle_fraction,
+    moving_circle_fraction, native_magnitude, native_scalar, resolve_collisions,
+    resolve_native_collisions, segment_aabb_fraction, segment_circle_fraction,
 };
 pub(crate) use environment::{
-    apply_angular_damping, apply_resistance, apply_static_friction, brownian_rotation,
-    environment_impulse, fluid_added_mass, integrate_body, mutual_gravity_impulses,
+    apply_angular_damping, apply_resistance, apply_static_friction, apply_uncapped_resistance,
+    brownian_rotation, environment_impulse, fluid_added_mass, integrate_body,
+    mutual_gravity_impulses,
 };
 pub(crate) use movement::{
     MovementInput, MovementState, apply_voluntary_impulse, derived_mass, voluntary_cost_magnitude,
@@ -233,14 +234,40 @@ pub(crate) fn organism_radius(body: f32, chloroplasts: f32, fixed_bot_radii: boo
         return 60.0;
     }
 
-    // FindRadius: Log and exponentiation evaluate as Double, then assign Single.
-    // PI is a Single constant in the original. The chloroplast blend uses that
-    // stored radius, and the minimum applies only after the blend.
-    let body_points = f64::from(body.max(1.0));
-    let body_radius = (body_points.ln() * body_points * 905.0 * 3.0 * 0.25
-        / f64::from(std::f32::consts::PI))
-    .powf(1.0 / 3.0) as f32;
+    let body_radius = organism_body_radius(body);
     (body_radius + (415.0 - body_radius) * chloroplasts / 32_000.0).max(1.0)
+}
+
+pub(crate) fn native_organism_radius(body: f32, chloroplasts: f32, fixed_bot_radii: bool) -> f32 {
+    if fixed_bot_radii {
+        return 60.0;
+    }
+
+    // FindRadius stores the body radius in Single, then stores the whole
+    // chloroplast adjustment in a second Single assignment.
+    let body_radius = f64::from(organism_body_radius(body));
+    ((body_radius + (415.0 - body_radius) * f64::from(chloroplasts) / 32_000.0) as f32).max(1.0)
+}
+
+pub(crate) fn organism_radius_for_profile(
+    body: f32,
+    chloroplasts: f32,
+    fixed_bot_radii: bool,
+    native: bool,
+) -> f32 {
+    if native {
+        native_organism_radius(body, chloroplasts, fixed_bot_radii)
+    } else {
+        organism_radius(body, chloroplasts, fixed_bot_radii)
+    }
+}
+
+fn organism_body_radius(body: f32) -> f32 {
+    // FindRadius: Log and exponentiation evaluate as Double, then assign Single.
+    // PI is a Single constant in the original.
+    let body_points = f64::from(body.max(1.0));
+    (body_points.ln() * body_points * 905.0 * 3.0 * 0.25 / f64::from(std::f32::consts::PI))
+        .powf(1.0 / 3.0) as f32
 }
 
 #[derive(Default)]
@@ -1012,7 +1039,7 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
 
 #[cfg(test)]
 mod radius_tests {
-    use super::organism_radius;
+    use super::{native_organism_radius, organism_radius};
 
     #[test]
     fn native_radius_rounds_double_result_before_chloroplast_blend() {
@@ -1028,5 +1055,19 @@ mod radius_tests {
             assert_eq!(organism_radius(body, chloroplasts, false).to_bits(), bits);
         }
         assert_eq!(organism_radius(1.0, 16_000.0, true), 60.0);
+    }
+
+    #[test]
+    fn native_radius_rounds_chloroplast_blend_once_at_the_second_assignment() {
+        let body = f32::from_bits(0x4517_efef);
+        let chloroplasts = f32::from_bits(0x46e4_b4a6);
+        assert_eq!(
+            native_organism_radius(body, chloroplasts, false).to_bits(),
+            0x43c4_a39f
+        );
+        assert_eq!(
+            organism_radius(body, chloroplasts, false).to_bits(),
+            0x43c4_a3a0
+        );
     }
 }

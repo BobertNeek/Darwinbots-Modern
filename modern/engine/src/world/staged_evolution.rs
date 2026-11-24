@@ -317,6 +317,13 @@ impl Engine {
                 }
             }
             state.reset_attempt();
+            if self.native_cycle.is_some()
+                && state.phase == EvolutionPhase::Evolving
+                && state.config.mode != EvolutionMode::Zerobot
+            {
+                // HDRoutines initializes the process's Integer hidePredOffset.
+                state.hide_offset = (state.hide_cycles as f32 / 6.0).round_ties_even();
+            }
             state.test_start_energy = self.staged_role_energy(&state.mutator_species);
             self.refresh_native_chloroplast_population();
             self.local_mode.restart_count = self.local_mode.restart_count.saturating_add(1);
@@ -518,8 +525,14 @@ impl Engine {
                     state.previous_energy_delta = delta;
                     state.energy_delta = 0.0;
                     state.hidden = !state.hidden;
-                    state.hide_offset = state.hide_cycles as f32 / 3.0
+                    let offset = state.hide_cycles as f32 / 3.0
                         * self.native_random.as_mut().unwrap().unit();
+                    state.hide_offset = if self.native_cycle.is_some() {
+                        // Master assigns the sampled Single to a VB6 Integer.
+                        offset.round_ties_even()
+                    } else {
+                        offset
+                    };
                     state.mode_cycles = 0;
                 }
             }
@@ -1476,6 +1489,129 @@ mod tests {
                 .unwrap()
                 .zerobot_previous_id,
             0
+        );
+    }
+
+    fn start_hide_interval_world(native: bool, kind: LocalModeKind, mode: EvolutionMode) -> Engine {
+        let config = EngineConfig {
+            organism_capacity: 64,
+            world_width: 1600.0,
+            world_height: 1200.0,
+            brownian_motion: 0.0,
+            vegetation: VegetationSettings {
+                minimum_chloroplast_equivalents: 0,
+                ..Default::default()
+            },
+            ..EngineConfig::testing()
+        };
+        let mut world = if native {
+            Engine::new_native(config)
+        } else {
+            Engine::new(config)
+        }
+        .unwrap();
+        world
+            .configure_local_mode(LocalModeConfig {
+                kind,
+                staged_evolution: Some(crate::EvolutionConfig {
+                    mode,
+                    source_dna: "start 111 901 store stop".into(),
+                    cycle_length: 150,
+                    zerobot_initial_dna_length: 4,
+                    ..Default::default()
+                }),
+                ..Default::default()
+            })
+            .unwrap();
+        world.start_local_mode().unwrap();
+        world.update_mutation_settings(false, 1.0, &[]).unwrap();
+        world
+    }
+
+    #[test]
+    fn native_survival_hides_the_baseline_at_cycle_150_after_the_process_offset() {
+        for (kind, mode) in [
+            (LocalModeKind::SimpleSurvival, EvolutionMode::SimpleSurvival),
+            (LocalModeKind::EcoSurvival, EvolutionMode::Eco),
+        ] {
+            let mut world = start_hide_interval_world(true, kind, mode);
+            let state = world.local_mode.evolution.as_ref().unwrap();
+            assert_eq!(state.hide_offset, 25.0);
+            assert_eq!(world.native_cycle, Some(-1));
+            for cycle in 0..=149 {
+                world.tick().unwrap();
+                let state = world.local_mode.evolution.as_ref().unwrap();
+                assert_eq!(world.native_cycle, Some(cycle));
+                assert!(!state.hidden, "the baseline hid at cycle {cycle}");
+            }
+            let state = world.local_mode.evolution.as_ref().unwrap();
+            assert_eq!(state.mode_cycles, 150);
+            let baseline = state.baseline_species.clone();
+            let rng = world.native_random.as_ref().unwrap().clone().unit();
+            let sampled_offset = 50.0 * rng;
+            assert_ne!(sampled_offset, sampled_offset.round_ties_even());
+            let saved = crate::SaveFile::encode(&world).unwrap();
+            let mut restored = crate::SaveFile::decode(&saved).unwrap();
+
+            for state in [&mut world, &mut restored] {
+                state.tick().unwrap();
+                assert_eq!(state.native_cycle, Some(150));
+                let evolution = state.local_mode.evolution.as_ref().unwrap();
+                assert!(evolution.hidden);
+                assert_eq!(evolution.mode_cycles, 0);
+                assert_eq!(evolution.hide_offset, sampled_offset.round_ties_even());
+                assert!(
+                    state
+                        .slots
+                        .iter()
+                        .filter_map(|slot| slot.organism.as_ref())
+                        .all(|robot| robot.flags.hidden
+                            == baseline.contains(&robot.identity.species))
+                );
+            }
+            assert_eq!(
+                crate::SaveFile::encode(&world).unwrap(),
+                crate::SaveFile::encode(&restored).unwrap()
+            );
+        }
+    }
+
+    #[test]
+    fn survival_offsets_leave_portable_zerobot_and_restored_values_alone() {
+        let mut portable = start_hide_interval_world(
+            false,
+            LocalModeKind::SimpleSurvival,
+            EvolutionMode::SimpleSurvival,
+        );
+        let state = portable.local_mode.evolution.as_mut().unwrap();
+        assert_eq!(state.hide_offset, 0.0);
+        state.mode_cycles = 125;
+        let sampled_offset = 50.0 * portable.native_random.as_ref().unwrap().clone().unit();
+        assert_ne!(sampled_offset, sampled_offset.round_ties_even());
+        portable.staged_evolution_before_cycle().unwrap();
+        let state = portable.local_mode.evolution.as_ref().unwrap();
+        assert!(state.hidden);
+        assert_eq!(state.hide_offset, sampled_offset);
+
+        let mut zerobot =
+            start_hide_interval_world(true, LocalModeKind::Zerobot, EvolutionMode::Zerobot);
+        zerobot.staged_evolution_before_cycle().unwrap();
+        let state = zerobot.local_mode.evolution.as_ref().unwrap();
+        assert!(!state.hidden);
+        assert_eq!(state.hide_offset, 0.0);
+        assert_eq!(state.mode_cycles, 0);
+
+        let mut native = start_hide_interval_world(
+            true,
+            LocalModeKind::SimpleSurvival,
+            EvolutionMode::SimpleSurvival,
+        );
+        native.local_mode.evolution.as_mut().unwrap().hide_offset = 25.75;
+        let saved = crate::SaveFile::encode(&native).unwrap();
+        let restored = crate::SaveFile::decode(&saved).unwrap();
+        assert_eq!(
+            restored.local_mode.evolution.as_ref().unwrap().hide_offset,
+            25.75
         );
     }
 

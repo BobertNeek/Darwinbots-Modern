@@ -1,5 +1,26 @@
 //! Keep native force accumulation separate from collision velocities and integration.
 use super::*;
+use crate::physics::apply_uncapped_resistance;
+
+fn limit_native_speed(velocity: [f32; 2], limit: f32) -> [f32; 2] {
+    // UpdatePosition calls VectorMagnitudeSquare, which clamps its input in place.
+    let velocity = velocity.map(|component| component.clamp(-32_000.0, 32_000.0));
+    let [x, y] = velocity.map(f64::from);
+    let squared = (x * x + y * y) as f32;
+    if f64::from(squared) > f64::from(limit).powi(2) {
+        // Common.bas uses separate Single writes for magnitude, inverse, and unit vector.
+        let (maximum, minimum) = (x.abs().max(y.abs()), x.abs().min(y.abs()));
+        let inverse = if maximum < 0.00001 {
+            -1.0
+        } else {
+            let magnitude = (maximum * (1.0 + (minimum / maximum).powi(2)).sqrt()) as f32;
+            (1.0 / f64::from(magnitude)) as f32
+        };
+        let scale = limit.clamp(-32_000.0, 32_000.0);
+        return velocity.map(|component| (component * inverse) * scale);
+    }
+    velocity
+}
 
 impl Engine {
     pub(super) fn capture_native_added_mass(&mut self) {
@@ -42,40 +63,42 @@ impl Engine {
         for id in self.phase_robot_ids() {
             self.native_planet_forces(id);
             let robot = self.slots.get_mut(id).unwrap();
-            let mass = derived_mass(
-                robot.materials.body,
-                robot.materials.shell,
-                robot.materials.chloroplasts,
-            )
-            .clamp(1.0, 32_000.0);
+            let mass = native_mass(&robot.materials);
             robot.materials.mass = mass;
             if robot_is_fixed(robot, self.robot_fixing_allowed) {
                 robot.kinematics.pending_velocity = [0.0; 2];
                 continue;
             }
-            apply_resistance(
+            // NetForces keeps the collision velocity until UpdatePosition
+            // adds the full impulse and then applies the speed limit.
+            apply_uncapped_resistance(
                 &mut robot.kinematics.velocity,
                 mass,
                 robot.materials.radius,
                 self.config.drag,
                 &settings,
             );
-            apply_angular_damping(
-                &mut robot.kinematics.angular_momentum,
-                mass * settings.surface_gravity * settings.kinetic_friction,
-                &settings,
-            );
+            // FrictionForces and SphereDragForces both exit before checking
+            // angular underflow when surface gravity and density are zero.
+            if settings.surface_gravity != 0.0 || settings.density != 0.0 {
+                apply_angular_damping(
+                    &mut robot.kinematics.angular_momentum,
+                    mass * settings.surface_gravity * settings.kinetic_friction,
+                    &settings,
+                );
+            }
             if brownian != 0.0 {
                 let random = self.native_random.as_mut().unwrap();
                 let impulse = (f64::from(brownian) * 0.5 * f64::from(random.unit())) as f32;
                 let angle = random.unit() * 2.0 * std::f32::consts::PI;
-                let rotation =
-                    (f64::from(impulse / 100.0) * (f64::from(random.unit()) - 0.5)) as f32;
+                let rotation = (f64::from(impulse) / 100.0) * (f64::from(random.unit()) - 0.5);
                 robot.kinematics.independent_impulse[0] +=
                     (f64::from(angle).cos() * f64::from(impulse)) as f32;
                 robot.kinematics.independent_impulse[1] +=
                     (f64::from(angle).sin() * f64::from(impulse)) as f32;
-                robot.kinematics.angular_momentum += rotation;
+                // Physics.bas stores the entire Brownian turn expression in Single ma.
+                robot.kinematics.angular_momentum =
+                    (f64::from(robot.kinematics.angular_momentum) + rotation) as f32;
                 robot.program.rng_state = u64::from(random.state());
             }
             let mut effective_gravity = gravity;
@@ -186,13 +209,8 @@ impl Engine {
             for (axis, component) in velocity.iter_mut().enumerate() {
                 *component += robot.kinematics.independent_impulse[axis] * inverse;
             }
-            let speed = velocity[0].hypot(velocity[1]);
-            if speed > self.config.physics.max_velocity && speed > 0.0 {
-                for component in &mut velocity {
-                    *component = *component / speed * self.config.physics.max_velocity;
-                }
-            }
-            batch.batch.velocities[index] = velocity;
+            batch.batch.velocities[index] =
+                limit_native_speed(velocity, self.config.physics.max_velocity);
         }
     }
 
@@ -229,9 +247,64 @@ impl Engine {
     }
 }
 
+pub(super) fn native_mass(materials: &BiologyState) -> f32 {
+    let body = f64::from(materials.body.max(0.0));
+    let shell = f64::from(materials.shell.max(0.0));
+    let chloroplasts = f64::from(materials.chloroplasts.clamp(0.0, 32_000.0));
+    // Physics.bas CalcMass stores the full expression in Single mass before clamping.
+    ((body / 1_000.0 + shell / 200.0 + chloroplasts / 32_000.0 * 31_680.0) as f32)
+        .clamp(1.0, 32_000.0)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn native_brownian_turn_retains_small_momentum_without_environmental_resistance() {
+        // Original 2.48.32 robot 145's transition from cycle 394 to 395.
+        for (surface_gravity, expected) in [(0.0, 0xb96c_78e5), (1.0, 0xb96c_9142)] {
+            let mut config = EngineConfig::testing();
+            config.brownian_motion = 0.5;
+            config.physics.density = 0.0;
+            config.physics.surface_gravity = surface_gravity;
+            let mut world = Engine::new_native(config).unwrap();
+            let id = world
+                .spawn_at(LegacyDna::parse("start stop").unwrap(), [500.0; 2])
+                .unwrap();
+            world.slots.get_mut(id).unwrap().kinematics.angular_momentum =
+                f32::from_bits(0x33c2_e7ef);
+            world.native_random =
+                Some(serde_json::from_value(serde_json::json!({ "state": 0x0e9953_u32 })).unwrap());
+
+            world.native_intent_phase();
+
+            let robot = world.slots.get(id).unwrap();
+            assert_eq!(robot.kinematics.angular_momentum.to_bits(), expected);
+        }
+    }
+
+    #[test]
+    fn native_brownian_turn_rounds_at_the_angular_momentum_assignment() {
+        let mut world = Engine::new_native(EngineConfig {
+            brownian_motion: 0.5,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let id = world
+            .spawn_at(LegacyDna::parse("start stop").unwrap(), [500.0; 2])
+            .unwrap();
+        // Original 2.48.32 multi-robot checkpoint, absolute robot 15, cycle 281 to 282.
+        world.slots.get_mut(id).unwrap().kinematics.angular_momentum = f32::from_bits(0xb9a0_c26c);
+        world.native_random =
+            Some(serde_json::from_value(serde_json::json!({ "state": 0x7c3bf2_u32 })).unwrap());
+
+        world.native_intent_phase();
+
+        let robot = world.slots.get(id).unwrap();
+        assert_eq!(robot.kinematics.angular_momentum.to_bits(), 0xba16_9553);
+        assert_eq!(world.native_random.as_ref().unwrap().state(), 0x3aa0cf);
+    }
 
     #[test]
     fn negative_fixpos_is_unfixed_and_later_writes_wait_for_manage_fixed() {
@@ -305,6 +378,87 @@ mod tests {
     }
 
     #[test]
+    fn native_integration_caps_the_combined_velocity_and_impulse() {
+        let mut config = EngineConfig::testing();
+        config.physics.max_velocity = 60.0;
+        let mut world = Engine::new_native(config).unwrap();
+        let id = world
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [500.0; 2])
+            .unwrap();
+        let collision_velocity = [0.0, -80.0];
+        let robot = world.slots.get_mut(id).unwrap();
+        robot.kinematics.velocity = collision_velocity;
+        robot.kinematics.pending_velocity = [20.0, 0.0];
+        world.native_intent_phase();
+        assert_eq!(
+            world.slots.get(id).unwrap().kinematics.velocity,
+            collision_velocity
+        );
+        world.native_finalize_forces();
+        world.physics_phase().unwrap();
+        let expected = [20.0, -80.0].map(|component| component / 20.0_f32.hypot(80.0) * 60.0);
+        assert_eq!(world.slots.get(id).unwrap().kinematics.velocity, expected);
+
+        let mut portable_velocity = collision_velocity;
+        apply_resistance(
+            &mut portable_velocity,
+            1.0,
+            60.0,
+            0.0,
+            &world.config.physics,
+        );
+        assert_eq!(portable_velocity, [0.0, -60.0]);
+    }
+
+    #[test]
+    fn native_velocity_limit_matches_genuine_cycle_282_vectors() {
+        let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+        let id = world
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [500.0; 2])
+            .unwrap();
+        for (before, expected) in [
+            // Reconstructed pre-cap vectors and the original checkpoint for robots 117 and 218.
+            ([0xc1a7_5380, 0xc261_1c27], [0xc1a7_3801, 0xc260_f729]),
+            ([0x4243_4835, 0xc20c_81e3], [0x4242_d043, 0xc20c_2b96]),
+            // The cap does not change a velocity below the limit.
+            ([0xb8d0_56ca, 0x3933_a6f1], [0xb8d0_56ca, 0x3933_a6f1]),
+        ] {
+            world.slots.get_mut(id).unwrap().kinematics.velocity = before.map(f32::from_bits);
+            let mut batch = world.physics_batch();
+            world.native_integration_velocities(&mut batch);
+            assert_eq!(batch.batch.velocities[0].map(f32::to_bits), expected);
+        }
+    }
+
+    #[test]
+    fn genuine_cycle_282_collision_velocity_matches_the_original_capture() {
+        // Original 2.48.32 cycle-282 capture SHA-256
+        // c49c002f66898a52db81645b78b11ecbb2ed1941dbeea03fe7d53dd3b24b9e91.
+        let input = include_bytes!("../../tests/fixtures/db24832-original-user.sim");
+        let mut world = Engine::from_native_sim(input).unwrap();
+        world.tick().unwrap();
+        assert_eq!(world.native_cycle, Some(282));
+        let robot = world
+            .slots
+            .iter()
+            .filter_map(|slot| slot.organism.as_ref())
+            .find(|robot| robot.identity.absolute_id == 139)
+            .unwrap();
+        assert_eq!(robot.kinematics.actual_velocity, [-22.375, -56.375]);
+        for (actual, expected) in robot
+            .kinematics
+            .velocity
+            .into_iter()
+            .zip([-20.592_808, -56.355_446])
+        {
+            assert!(
+                (actual - expected).abs() <= 0.000_01,
+                "{actual} != {expected}"
+            );
+        }
+    }
+
+    #[test]
     fn zero_momentum_moves_then_clears_velocity_and_sensors() {
         let mut config = EngineConfig::testing();
         config.physics.zero_momentum = true;
@@ -320,5 +474,37 @@ mod tests {
         );
         assert_eq!(world.slots.get(id).unwrap().kinematics.velocity, [0.0; 2]);
         assert_eq!(world.memory_at(id, MEM_VEL_SCALAR).unwrap(), 0);
+    }
+
+    #[test]
+    fn native_mass_and_uncapped_velocity_match_genuine_robot_85() {
+        let mut world = Engine::new_native(EngineConfig {
+            brownian_motion: 0.5,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let id = world
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [500.0; 2])
+            .unwrap();
+        // Original 2.48.32 absolute robot 85, cycle 281 to 282.
+        let robot = world.slots.get_mut(id).unwrap();
+        robot.materials.body = f32::from_bits(0x44b9_dff1);
+        robot.materials.shell = 0.0;
+        robot.materials.chloroplasts = f32::from_bits(0x46a8_14cb);
+        robot.kinematics.velocity = [0xb8c6_c734, 0x3933_c656].map(f32::from_bits);
+        world.native_random =
+            Some(serde_json::from_value(serde_json::json!({ "state": 0xc8608f_u32 })).unwrap());
+
+        world.native_intent_phase();
+        assert_eq!(
+            world.slots.get(id).unwrap().materials.mass.to_bits(),
+            0x46a6_697b
+        );
+        let mut batch = world.physics_batch();
+        world.native_integration_velocities(&mut batch);
+        assert_eq!(
+            batch.batch.velocities[0].map(f32::to_bits),
+            [0xb8d0_56c9, 0x3933_a6f1]
+        );
     }
 }

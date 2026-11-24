@@ -244,7 +244,13 @@ impl ProjectilePool {
         if slot == usize::MAX {
             return u32::MAX;
         }
-        let direction = [request.angle.cos(), -request.angle.sin()];
+        let direction = if self.native_slot_pointer.is_some() {
+            // Shots.bas stores ShAngle as Single, evaluates Double trig, and passes Singles to VectorSet.
+            let angle = f64::from(request.angle);
+            [angle.cos() as f32, -angle.sin() as f32]
+        } else {
+            [request.angle.cos(), -request.angle.sin()]
+        };
         let mut position = [
             request.owner_position[0] + direction[0] * request.owner_radius,
             request.owner_position[1] + direction[1] * request.owner_radius,
@@ -740,6 +746,48 @@ mod tests {
     }
 
     #[test]
+    fn native_firing_rounds_double_trig_at_the_vector_set_boundary() {
+        let settings = ShotSettings::default();
+        let mut pool = ProjectilePool::default();
+        pool.reset_native_slots(100);
+        // The source heading and Random(-20, 20) result of genuine cycle 282 shot 147.
+        // Keep the measured heading on the runtime trig path in release tests.
+        let heading = std::hint::black_box(f32::from_bits(0x40a178ff));
+        let angle = (f64::from(heading) - 13.0 / 200.0) as f32;
+        assert_eq!(angle.to_bits(), 0x409f6484);
+        let actual_velocity = [0xc0843000, 0x3f7ba800].map(f32::from_bits);
+        let shot = pool.spawn(
+            ProjectileSpawn {
+                angle,
+                owner_actual_velocity: actual_velocity,
+                ..gene_request(-1, 0)
+            },
+            &settings,
+        );
+        assert_eq!(
+            pool.velocities[shot as usize].map(f32::to_bits),
+            [0x40cf8a20, 0x421e319a]
+        );
+
+        let mut portable = ProjectilePool::default();
+        let shot = portable.spawn(
+            ProjectileSpawn {
+                angle,
+                owner_actual_velocity: actual_velocity,
+                ..gene_request(-1, 0)
+            },
+            &settings,
+        );
+        assert_eq!(
+            portable.velocities[shot as usize],
+            [
+                actual_velocity[0] + angle.cos() * settings.speed,
+                actual_velocity[1] - angle.sin() * settings.speed,
+            ]
+        );
+    }
+
+    #[test]
     fn fresh_ordinary_shots_do_not_copy_the_current_dna_execution_gene() {
         for kind in [1, -1, -2, -3, -4, -6, -8, -100] {
             let mut pool = ProjectilePool::default();
@@ -1227,10 +1275,10 @@ impl ProjectilePool {
         } else {
             self.ages[shot] as f32 / self.ranges[shot]
         };
-        // Atn takes Double; assignment to the shot's Single rounds only at the end.
-        self.energies[shot] = (f64::from(self.energies[shot])
-            * f64::from(progress * 40.0 - 40.0).atan()
-            / (-40.0_f64).atan()) as f32;
+        // Updateshots retains the angle expression through the Double Atn argument.
+        let angle = f64::from(progress) * 40.0 - 40.0;
+        self.energies[shot] =
+            (f64::from(self.energies[shot]) * angle.atan() / (-40.0_f64).atan()) as f32;
     }
 }
 
@@ -1458,6 +1506,28 @@ mod native_boundary_tests {
             );
             assert_eq!(serde_json::to_value(&pool).unwrap(), before);
         }
+    }
+
+    #[test]
+    fn native_collision_decay_keeps_the_wide_argument_to_atn() {
+        // Original 2.48.32 cycle 366, incoming shot 72 that spawned shot 281.
+        let mut pool = ProjectilePool::default();
+        pool.reset_native_slots(100);
+        let shot = packet(&mut pool, [0.0; 2], [0.0; 2], 400.0).unwrap() as usize;
+        pool.kinds[shot] = -1;
+        pool.ranges[shot] = 10.0;
+        pool.ages[shot] = 9;
+        pool.values[shot] = 294;
+        pool.energies[shot] = 400.0;
+
+        pool.native_collision_decay(shot, &ShotSettings::default());
+
+        assert_eq!(pool.energies[shot].to_bits(), 0x43ab_89b4);
+        assert_eq!(
+            pool.impact_power(shot as u32, &ShotSettings::default())
+                .to_bits(),
+            0x437c_2925
+        );
     }
 
     #[test]

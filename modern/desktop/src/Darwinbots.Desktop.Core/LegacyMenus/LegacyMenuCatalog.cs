@@ -115,7 +115,7 @@ public static class LegacyMenuCatalog
                 L("Small", LegacyCommandId.EGridSmall, "size-small", check: LegacyMenuCheckKind.Radio))),
 
         LegacyMenuItem.Top("Recording",
-            L("Safemode Backup", LegacyCommandId.RecordingSafemodeBackup, "backup", check: LegacyMenuCheckKind.Check),
+            L("Safemode Backup", LegacyCommandId.RecordingSafemodeBackup, "backup"),
             L("Recover latest autosave", LegacyCommandId.RecordingRecoverLatestAutosave, "recover"),
             L("Snapshot of the living", LegacyCommandId.RecordingSnapshotLiving, "snapshot-living"),
             G("Snapshot of the dead", "snapshot-dead",

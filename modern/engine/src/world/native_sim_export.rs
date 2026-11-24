@@ -1,6 +1,6 @@
 //! Live 2.48.32 simulation export, with retained metadata for imported worlds.
 
-use super::native_export::{ansi, mutation_arrays, native_dna};
+use super::native_export::{NativeSlotNumbering, ansi, mutation_arrays, native_dna};
 use super::*;
 use crate::CorpseDecayMode;
 use crate::native_binary::{NativeRecordFile, NativeSimulationTail, NativeValue};
@@ -145,6 +145,18 @@ impl Engine {
 
     /// Export the running world in the original 2.48.32 `.sim` format.
     pub fn export_native_sim(&self) -> Result<Vec<u8>, EngineError> {
+        self.export_native_sim_with_mutation_details(true)
+    }
+
+    /// Export a native simulation with Darwinbots 2's mutation-detail placeholder.
+    pub fn export_native_sim_without_mutation_details(&self) -> Result<Vec<u8>, EngineError> {
+        self.export_native_sim_with_mutation_details(false)
+    }
+
+    fn export_native_sim_with_mutation_details(
+        &self,
+        include_mutation_details: bool,
+    ) -> Result<Vec<u8>, EngineError> {
         if self.config.waste.defecation_threshold != 32_000 {
             return Err(invalid(
                 "defecation threshold cannot be represented; native HandleWaste always uses 32000",
@@ -197,11 +209,11 @@ impl Engine {
                     world.teleporters.push(tele);
                 }
             }
-            return world.export_native_sim();
+            return world.export_native_sim_with_mutation_details(include_mutation_details);
         }
         if !self.corpses.is_empty() {
             let (world, _) = self.native_world_with_corpses()?;
-            return world.export_native_sim();
+            return world.export_native_sim_with_mutation_details(include_mutation_details);
         }
         let members: Vec<_> = self
             .slots
@@ -213,11 +225,9 @@ impl Engine {
                     .map(|_| OrganismId::new(i as u32, slot.generation))
             })
             .collect();
-        let remap: HashMap<_, _> = members
-            .iter()
-            .enumerate()
-            .map(|(i, &id)| (id, i + 1))
-            .collect();
+        // SaveSimulation writes each actor's runtime slot. Keep holes so a
+        // projectile's numeric parent cannot name an unrelated saved actor.
+        let slots = self.native_record_slots(&members, NativeSlotNumbering::Runtime)?;
         let classic_world = self.classic_native_species_aliases().is_some();
         let species_projection = self.native_species_projection(&members)?;
         let mut tail = NativeSimulationTail::empty(
@@ -262,29 +272,38 @@ impl Engine {
             number(&mut tail, "mutation_min", 10000.0)?;
             number(&mut tail, "speciation_min_population", 10.0)?;
         }
+        let archived_species_count = origin
+            .as_ref()
+            .map(|origin| origin.integer("species_count"))
+            .transpose()?
+            .unwrap_or_default() as u64;
         self.write_native_configuration(&mut tail)?;
         for (i, projected) in species_projection.iter().enumerate() {
             let source_index = projected.source_index;
             let species = &self.species[source_index];
             let species_id = SpeciesId(source_index as u32);
             let p = format!("species[{i}].");
-            if let Some(origin) = &origin {
-                let name = ansi(&species.name)?;
-                for old in 0..origin.integer("species_count")? {
-                    let old_p = format!("species[{old}].");
-                    if origin.bytes(&(old_p.clone() + "name"))? == name {
-                        for field in origin
-                            .fields()
-                            .iter()
-                            .filter(|f| f.name.starts_with(&old_p))
-                        {
-                            tail.set_value(
-                                &(p.clone() + &field.name[old_p.len()..]),
-                                field.value.clone(),
-                            )?;
-                        }
-                        break;
+            let mut archived_start_energy = None;
+            if let Some(origin) = &origin
+                && let Some(old) = species.lineage_id.checked_sub(1)
+                && old < archived_species_count
+                && projected.name == species.name.as_str()
+            {
+                let old_p = format!("species[{old}].");
+                if origin.bytes(&(old_p.clone() + "name"))? == ansi(projected.name)? {
+                    for field in origin
+                        .fields()
+                        .iter()
+                        .filter(|f| f.name.starts_with(&old_p))
+                    {
+                        tail.set_value(
+                            &(p.clone() + &field.name[old_p.len()..]),
+                            field.value.clone(),
+                        )?;
                     }
+                    // An imported roster row can survive without a living
+                    // species template. Original saves still write its Stnrg.
+                    archived_start_energy = Some(origin.integer(&(old_p + "start_energy"))?);
                 }
             }
             text(&mut tail, &(p.clone() + "name"), projected.name)?;
@@ -357,7 +376,12 @@ impl Engine {
                 if projected.classic_alias {
                     3000.0
                 } else {
-                    template.map_or(3000, |t| t.initial_energy) as f64
+                    f64::from(
+                        template
+                            .map(|t| t.initial_energy)
+                            .or(archived_start_energy)
+                            .unwrap_or(3000),
+                    )
                 },
             )?;
             number(
@@ -419,10 +443,14 @@ impl Engine {
             }
             tail.set_value(&(p.clone() + "skin"), NativeValue::Bytes(skin))?;
         }
-        self.write_native_shots(&mut tail, &remap)?;
+        self.write_native_shots(&mut tail, &slots)?;
         self.write_native_objects(&mut tail)?;
         NativeRecordFile {
-            robots: self.native_robot_records(&members)?,
+            robots: self.native_robot_records_in_slots(
+                &members,
+                &slots,
+                include_mutation_details,
+            )?,
             tail: tail.encode()?,
         }
         .encode()
@@ -521,6 +549,32 @@ impl Engine {
         number(t, "seed", f64::from(c.seed as u32 as i32))?;
         if let Some(guid) = self.native_sim_guid {
             number(t, "sim_guid", f64::from(guid))?;
+        }
+        if self.native_cycle.is_some()
+            && self.local_mode.status == LocalModeStatus::Running
+            && let Some(evolution) = &self.local_mode.evolution
+            && evolution.phase == crate::EvolutionPhase::Evolving
+            && matches!(
+                evolution.config.mode,
+                crate::EvolutionMode::SimpleSurvival | crate::EvolutionMode::Eco
+            )
+        {
+            // Master updates these phase globals in modes 4 and 5.
+            // The restart mode, settings and stage files remain external to SIM.
+            for (name, value) in [
+                ("energy_difference", evolution.energy_delta),
+                ("energy_average", evolution.previous_energy_delta),
+                ("handicap", evolution.handicap),
+                ("mode_cycles", f64::from(evolution.mode_cycles)),
+                ("hide_pred_offset", f64::from(evolution.hide_offset)),
+                ("energy_difference2", evolution.inverse_delta),
+                ("energy_average2", evolution.previous_inverse_delta),
+                ("handicap2", evolution.inverse_handicap),
+            ] {
+                number(t, name, value)?;
+            }
+            flag(t, "hide_pred", evolution.hidden)?;
+            flag(t, "stagnant", evolution.stagnant)?;
         }
         let topology = c.axis_topology();
         // SimOpts.F1 marks an actual contest, including league matches and
@@ -629,17 +683,17 @@ impl Engine {
     fn write_native_shots(
         &self,
         t: &mut NativeSimulationTail,
-        remap: &HashMap<OrganismId, usize>,
+        slots: &HashMap<OrganismId, i16>,
     ) -> Result<(), EngineError> {
         let s = &self.projectiles;
         for i in 0..s.owners.len() {
             let p = format!("shot[{i}].");
             let parent = self
                 .current_native_shot_owner(s.owners[i])
-                .and_then(|owner| remap.get(&owner).copied())
+                .and_then(|owner| slots.get(&owner).copied())
                 .map_or_else(
                     || f64::from(native_shots::literal_owner_slot(s.owners[i])),
-                    |packed_slot| packed_slot as f64,
+                    f64::from,
                 );
             for (name, value) in [
                 ("x", f64::from(s.positions[i][0])),
@@ -692,7 +746,27 @@ impl Engine {
 
     fn write_native_objects(&self, t: &mut NativeSimulationTail) -> Result<(), EngineError> {
         flag(t, "shapes_visible", self.config.shapes_visible)?;
-        if let Some(first) = self.obstacles.first() {
+        if let Some(drift) = self.config.shape_drift {
+            flag(t, "shapes_horizontal", drift.horizontal)?;
+            flag(t, "shapes_vertical", drift.vertical)?;
+            number(t, "shape_drift", f64::from(drift.rate))?;
+        }
+        if let Some(settings) = self.config.shape_creation {
+            let opacity = if settings.transparent { 0.0 } else { 1.0 };
+            if self.obstacles.iter().any(|o| {
+                o.opacity != opacity
+                    || o.vision_policy != settings.vision_policy()
+                    || o.shot_policy != settings.shot_policy()
+            }) {
+                return Err(invalid(
+                    "shape opacity or policies differ from native global options",
+                ));
+            }
+            flag(t, "shapes_black", settings.black)?;
+            flag(t, "shapes_transparent", settings.transparent)?;
+            flag(t, "shapes_see_through", settings.see_through)?;
+            flag(t, "shapes_absorb", settings.absorb_shots)?;
+        } else if let Some(first) = self.obstacles.first() {
             if self.obstacles.iter().any(|o| {
                 o.vision_policy != first.vision_policy || o.shot_policy != first.shot_policy
             }) {
@@ -713,12 +787,13 @@ impl Engine {
         }
         for (i, o) in self.obstacles.iter().enumerate() {
             let p = format!("obstacle[{i}].");
+            let [width, height] = self.obstacle_extents(o);
             flag(t, &(p.clone() + "exists"), true)?;
             for (name, value) in [
                 ("x", o.minimum[0] as f64),
                 ("y", o.minimum[1] as f64),
-                ("width", (o.maximum[0] - o.minimum[0]) as f64),
-                ("height", (o.maximum[1] - o.minimum[1]) as f64),
+                ("width", f64::from(width)),
+                ("height", f64::from(height)),
                 ("color", bgr(o.color)),
                 ("vx", o.drift[0] as f64),
                 ("vy", o.drift[1] as f64),
@@ -726,11 +801,18 @@ impl Engine {
                 number(t, &(p.clone() + name), value)?;
             }
         }
+        // Teleporter destination coordinates and policy have no native .sim
+        // representation. DB2 always chooses a random destination for local
+        // transfers. Store the complete configuration in DB3S when needed.
         for (i, tele) in self.teleporters.iter().enumerate() {
             let p = format!("teleporter[{i}].");
+            let [x, y] = tele.native_top_left.unwrap_or([
+                tele.center[0] - tele.width / 2.0,
+                tele.center[1] - tele.height / 2.0,
+            ]);
             for (name, value) in [
-                ("x", (tele.center[0] - tele.width / 2.0) as f64),
-                ("y", (tele.center[1] - tele.height / 2.0) as f64),
+                ("x", f64::from(x)),
+                ("y", f64::from(y)),
                 ("width", tele.width as f64),
                 ("height", tele.height as f64),
                 ("color", bgr(tele.color)),
@@ -771,6 +853,214 @@ impl Engine {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::SaveFile;
+
+    #[test]
+    fn native_sim_without_mutation_details_preserves_every_other_field() {
+        let original = include_bytes!("../../tests/fixtures/db24832-original-user.sim");
+        let mut world = Engine::from_native_sim(original).unwrap();
+        let id = world.slots.ids_in_slot_order()[0];
+        world
+            .slots
+            .get_mut(id)
+            .unwrap()
+            .program
+            .mutation_metadata
+            .detailed_log = vec!["A recorded mutation".into()];
+
+        let before = crate::SaveFile::encode(&world).unwrap();
+        let mut expected = NativeRecordFile::decode(&world.export_native_sim().unwrap()).unwrap();
+        assert_eq!(
+            expected.robots[0].bytes("mutation_details").unwrap(),
+            b"A recorded mutation"
+        );
+        for robot in &mut expected.robots {
+            robot
+                .set_mutation_details(b"Mutation Details removed in last save.".to_vec())
+                .unwrap();
+        }
+        assert_eq!(
+            world.export_native_sim_without_mutation_details().unwrap(),
+            expected.encode().unwrap()
+        );
+        assert_eq!(crate::SaveFile::encode(&world).unwrap(), before);
+    }
+
+    #[test]
+    fn native_feeding_shot_exports_the_shooters_raw_venom_cells() {
+        let dna =
+            LegacyDna::parse("start 1201 .vloc store -311 .venval store -1 .shoot store stop")
+                .unwrap();
+        for (native, expected) in [(true, (1201, -311)), (false, (0, 0))] {
+            let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+            if !native {
+                engine.native_random = None;
+            }
+            engine.spawn_at(dna.clone(), [500.0; 2]).unwrap();
+            engine.tick().unwrap();
+
+            let file = NativeRecordFile::decode(&engine.export_native_sim().unwrap()).unwrap();
+            let tail = NativeSimulationTail::decode(&file.tail).unwrap();
+            let shot = (0..tail.integer("shot_count").unwrap())
+                .find(|slot| tail.integer(&format!("shot[{slot}].exists")).unwrap() != 0)
+                .unwrap();
+            let field = |name| tail.integer(&format!("shot[{shot}].{name}")).unwrap();
+            assert_eq!((field("kind"), field("age")), (-1, 0));
+            assert_eq!((field("memory_location"), field("memory_value")), expected);
+        }
+    }
+
+    #[test]
+    fn genuine_cycle_282_feeding_shots_match_captured_venom_cells() {
+        // Original 2.48.32 cycle-282 capture SHA-256
+        // c49c002f66898a52db81645b78b11ecbb2ed1941dbeea03fe7d53dd3b24b9e91.
+        let input = include_bytes!("../../tests/fixtures/db24832-original-user.sim");
+        let mut engine = Engine::from_native_sim(input).unwrap();
+        engine.tick().unwrap();
+
+        let file = NativeRecordFile::decode(&engine.export_native_sim().unwrap()).unwrap();
+        let tail = NativeSimulationTail::decode(&file.tail).unwrap();
+        assert_eq!(tail.integer("total_cycles").unwrap(), 282);
+        let captured_shooters = [
+            222, 202, 132, 223, 143, 236, 102, 104, 267, 139, 156, 275, 288, 216, 232, 268, 263,
+            290, 286,
+        ];
+        for (slot, shooter) in (141..=159).zip(captured_shooters) {
+            let field = |name| tail.integer(&format!("shot[{slot}].{name}")).unwrap();
+            let parent_slot = field("parent") as i16;
+            let parent = file
+                .robots
+                .iter()
+                .find(|robot| robot.word("old_slot").unwrap() == parent_slot)
+                .unwrap();
+            assert_eq!(parent.long("absolute_id").unwrap(), shooter);
+            assert_eq!((field("exists"), field("kind"), field("age")), (-1, -1, 0));
+            assert_eq!(
+                (field("memory_location"), field("memory_value")),
+                (822, -100)
+            );
+        }
+    }
+
+    #[test]
+    fn native_save_preserves_starting_energy_and_spares_by_imported_species_row() {
+        let mut original = NativeRecordFile::decode(include_bytes!(
+            "../../tests/fixtures/db24832-original-user.sim"
+        ))
+        .unwrap();
+        original.robots.clear();
+        let mut tail = NativeSimulationTail::decode(&original.tail).unwrap();
+        // Same filename is legal in an archived roster. The two rows still
+        // carry independent species options even when neither has a resident.
+        let shared_name = native_io::text(tail.bytes("species[0].name").unwrap());
+        text(&mut tail, "species[1].name", &shared_name).unwrap();
+        text(&mut tail, "species[1].path", "C:\\Other Robots").unwrap();
+        number(&mut tail, "species[0].quantity", 0.0).unwrap();
+        number(&mut tail, "species[0].start_energy", 2_750.0).unwrap();
+        number(&mut tail, "species[1].start_energy", 2_575.0).unwrap();
+        let mut second_shapes = tail.bytes("species[1].mutation_shapes").unwrap().to_vec();
+        second_shapes[88..92].copy_from_slice(&2.0_f32.to_le_bytes());
+        tail.set_value(
+            "species[1].mutation_shapes",
+            NativeValue::Bytes(second_shapes),
+        )
+        .unwrap();
+        original.tail = tail.encode().unwrap();
+        let world = Engine::from_native_sim(&original.encode().unwrap()).unwrap();
+        let restored = crate::SaveFile::decode(&crate::SaveFile::encode(&world).unwrap()).unwrap();
+        for state in [&world, &restored] {
+            assert!(state.species_templates.iter().all(Option::is_none));
+            let saved = NativeRecordFile::decode(&state.export_native_sim().unwrap()).unwrap();
+            let saved_tail = NativeSimulationTail::decode(&saved.tail).unwrap();
+            for field in [
+                "species[0].quantity",
+                "species[0].start_energy",
+                "species[1].quantity",
+                "species[1].start_energy",
+                "species[1].path",
+            ] {
+                assert_eq!(saved_tail.value(field).unwrap(), tail.value(field).unwrap());
+            }
+            for row in 0..2 {
+                for (name, first_spare) in [("mutation_rates", 44), ("mutation_shapes", 88)] {
+                    let field = format!("species[{row}].{name}");
+                    assert_eq!(
+                        saved_tail.bytes(&field).unwrap()[first_spare..],
+                        tail.bytes(&field).unwrap()[first_spare..]
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn native_sim_exports_the_running_survival_phase_only() {
+        use crate::{EvolutionConfig, EvolutionMode};
+
+        for (kind, mode, writes_phase) in [
+            (
+                LocalModeKind::SimpleSurvival,
+                EvolutionMode::SimpleSurvival,
+                true,
+            ),
+            (LocalModeKind::EcoSurvival, EvolutionMode::Eco, true),
+            (LocalModeKind::Zerobot, EvolutionMode::Zerobot, false),
+        ] {
+            let mut world = Engine::new_native(EngineConfig {
+                organism_capacity: 64,
+                ..EngineConfig::testing()
+            })
+            .unwrap();
+            world
+                .configure_local_mode(LocalModeConfig {
+                    kind,
+                    staged_evolution: Some(EvolutionConfig {
+                        mode,
+                        source_dna: "start 111 901 store stop".into(),
+                        cycle_length: 150,
+                        zerobot_initial_dna_length: 4,
+                        ..EvolutionConfig::default()
+                    }),
+                    ..LocalModeConfig::default()
+                })
+                .unwrap();
+            world.start_local_mode().unwrap();
+
+            let phase = world.local_mode.evolution.as_mut().unwrap();
+            phase.energy_delta = 0.125;
+            phase.previous_energy_delta = 0.25;
+            phase.handicap = -1.5;
+            phase.mode_cycles = 17;
+            phase.hide_offset = 46.5;
+            phase.hidden = true;
+            phase.inverse_delta = 0.375;
+            phase.previous_inverse_delta = 0.625;
+            phase.inverse_handicap = -2.0;
+            phase.stagnant = true;
+            let live = crate::SaveFile::encode(&world).unwrap();
+            let save = NativeRecordFile::decode(&world.export_native_sim().unwrap()).unwrap();
+            let tail = NativeSimulationTail::decode(&save.tail).unwrap();
+            for (name, expected) in [
+                ("energy_difference", 0.125),
+                ("energy_average", 0.25),
+                ("handicap", -1.5),
+                ("mode_cycles", 17.0),
+                ("hide_pred_offset", 46.0),
+                ("hide_pred", -1.0),
+                ("energy_difference2", 0.375),
+                ("energy_average2", 0.625),
+                ("handicap2", -2.0),
+                ("stagnant", -1.0),
+            ] {
+                assert_eq!(
+                    tail.number(name).unwrap(),
+                    if writes_phase { expected } else { 0.0 },
+                    "{name}"
+                );
+            }
+            assert_eq!(crate::SaveFile::encode(&world).unwrap(), live);
+        }
+    }
 
     #[test]
     fn live_native_sim_export_updates_resources_memory_world_and_shots() {
@@ -884,7 +1174,97 @@ mod tests {
     }
 
     #[test]
-    fn native_shot_export_resolves_recycled_owner_before_packed_old_slot_mapping() {
+    fn native_sim_export_preserves_runtime_slots_for_shot_parents_and_ties() {
+        let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+        let dna = LegacyDna::parse("start 1 .up store stop").unwrap();
+        let virus_gene_length = (dna.blocks().len() - 1) as u32;
+        let first = engine.spawn_at(dna.clone(), [100.0; 2]).unwrap();
+        let dead = engine.spawn_at(dna.clone(), [500.0; 2]).unwrap();
+        let live = engine.spawn_at(dna.clone(), [900.0; 2]).unwrap();
+        let live_absolute_id = engine.slots.get(live).unwrap().identity.absolute_id;
+        engine.ties.push(TieState::legacy(first, live, 800.0, 1, 1));
+        engine.projectiles.reset_native_slots(100);
+        let orphan = engine
+            .projectiles
+            .spawn_energy_packet(dead, [700.0; 2], [0.0; 2], 10.0, 50.0)
+            as usize;
+        let stored = engine.projectiles.spawn(
+            ProjectileSpawn {
+                owner: live,
+                owner_position: [900.0; 2],
+                owner_velocity: [0.0; 2],
+                owner_actual_velocity: [0.0; 2],
+                correct_position: true,
+                owner_radius: 30.0,
+                owner_virtual_body: 100.0,
+                range_multiplier: 1.0,
+                angle: 0.0,
+                kind: -7,
+                value: 1.0,
+                payload: Some(dna.clone()),
+                source_species_name: None,
+                toxin_memory_location: 0,
+                toxin_memory_value: 0,
+                color: 0,
+                source_vegetable: false,
+                stored: true,
+                gene_number: 1,
+                dna_length: virus_gene_length,
+            },
+            &engine.config.shots,
+        ) as usize;
+        engine.remove(dead).unwrap();
+        assert!(engine.projectiles.alive[orphan]);
+        assert!(
+            engine
+                .current_native_shot_owner(engine.projectiles.owners[orphan])
+                .is_none()
+        );
+
+        let bytes = engine.export_native_sim().unwrap();
+        let file = NativeRecordFile::decode(&bytes).unwrap();
+        let tail = NativeSimulationTail::decode(&file.tail).unwrap();
+        assert_eq!(file.robots.len(), 2);
+        assert_eq!(file.robots[0].word("old_slot").unwrap(), 1);
+        assert_eq!(file.robots[1].word("old_slot").unwrap(), 3);
+        assert_eq!(tail.integer(&format!("shot[{orphan}].parent")).unwrap(), 2);
+        assert_eq!(tail.integer(&format!("shot[{stored}].parent")).unwrap(), 3);
+        assert_eq!(tail.integer(&format!("shot[{stored}].stored")).unwrap(), -1);
+        for (robot, other_slot) in file.robots.iter().zip([3_i16, 1_i16]) {
+            let tie = robot.bytes("ties_core").unwrap();
+            assert_eq!(
+                i16::from_le_bytes(tie[40..42].try_into().unwrap()),
+                other_slot
+            );
+        }
+
+        let loaded = Engine::from_native_sim(&bytes).unwrap();
+        assert_eq!(loaded.ties.len(), 1);
+        assert_eq!(loaded.projectiles.owners[orphan].slot(), 1);
+        // RemapAllShots leaves the unmatched literal 2, which can name the
+        // live robot after LoadSimulation compacts the robot array.
+        assert_eq!(
+            loaded.projectiles.owners[orphan],
+            loaded.projectiles.owners[stored]
+        );
+        let owner = loaded.slots.get(loaded.projectiles.owners[stored]).unwrap();
+        assert_eq!(owner.identity.absolute_id, live_absolute_id);
+        assert_eq!(
+            owner.effects.stored_virus.as_ref().unwrap().dna.blocks(),
+            dna.blocks()
+        );
+        assert!(!loaded.projectiles.stored[orphan]);
+        assert!(loaded.projectiles.stored[stored]);
+
+        let organism_group = engine.export_native_organisms(&[first, live]).unwrap();
+        let packed = NativeRecordFile::decode(&organism_group).unwrap();
+        assert_eq!(packed.robots[1].word("old_slot").unwrap(), 2);
+        let tie = packed.robots[0].bytes("ties_core").unwrap();
+        assert_eq!(i16::from_le_bytes(tie[40..42].try_into().unwrap()), 2);
+    }
+
+    #[test]
+    fn native_shot_export_keeps_recycled_owner_at_its_runtime_slot() {
         let mut engine = Engine::new(EngineConfig::testing()).unwrap();
         let first = engine
             .spawn_at(LegacyDna::parse("stop").unwrap(), [100.0; 2])
@@ -911,8 +1291,10 @@ mod tests {
         engine.remove(first).unwrap();
         let exported = NativeRecordFile::decode(&engine.export_native_sim().unwrap()).unwrap();
         let tail = NativeSimulationTail::decode(&exported.tail).unwrap();
-        // Runtime owner slot2 is packed to exported old_slot1; old generation must not orphan it.
-        assert_eq!(tail.integer(&format!("shot[{shot}].parent")).unwrap(), 1);
+        // Original shots address the recycled numeric slot, even after it receives
+        // a robot with a new absolute ID.
+        assert_eq!(tail.integer(&format!("shot[{shot}].parent")).unwrap(), 2);
+        assert_eq!(exported.robots[0].word("old_slot").unwrap(), 2);
         assert_eq!(
             exported.robots[0].long("absolute_id").unwrap() as u64,
             engine.slots.get(replacement).unwrap().identity.absolute_id
@@ -961,6 +1343,47 @@ mod tests {
         assert_eq!(imported.teleporters[0].width, 120.0);
         assert_eq!(imported.config.vegetation, engine.config.vegetation);
         assert_eq!(imported.config.dna_costs, engine.config.dna_costs);
+    }
+
+    #[test]
+    fn native_local_gateway_relocates_after_import_and_modern_reload() {
+        let mut engine = Engine::new(EngineConfig {
+            brownian_motion: 0.0,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let center = [500.0; 2];
+        let fixed_destination = [800.0; 2];
+        engine
+            .spawn_at(LegacyDna::parse("stop").unwrap(), center)
+            .unwrap();
+        engine
+            .add_teleporter(Teleporter::new(0, center, 80.0, fixed_destination))
+            .unwrap();
+        let native = engine.export_native_sim().unwrap();
+        let modern = SaveFile::encode(&engine).unwrap();
+        let mut fixed = SaveFile::decode(&modern).unwrap();
+        fixed.tick().unwrap();
+        assert_eq!(fixed.snapshot().organisms[0].position, fixed_destination);
+        assert!(!fixed.snapshot().teleporters[0].random_destination);
+
+        let mut imported = Engine::from_native_sim(&native).unwrap();
+        assert_eq!(imported.snapshot().organisms[0].position, center);
+        assert!(imported.snapshot().teleporters[0].random_destination);
+        let modern = SaveFile::encode(&imported).unwrap();
+        let mut resumed = SaveFile::decode(&modern).unwrap();
+        imported.tick().unwrap();
+        resumed.tick().unwrap();
+        assert_eq!(resumed.snapshot().organisms[0].position, center);
+        assert_eq!(resumed.snapshot().teleporters[0].sent, 0);
+        imported.tick().unwrap();
+        resumed.tick().unwrap();
+        let moved = &resumed.snapshot().organisms[0];
+        assert_ne!(moved.position, center);
+        assert_ne!(moved.position, fixed_destination);
+        assert!(resumed.snapshot().teleporters[0].random_destination);
+        assert_eq!(resumed.snapshot().teleporters[0].sent, 1);
+        assert_eq!(moved.position, imported.snapshot().organisms[0].position);
     }
 
     #[test]

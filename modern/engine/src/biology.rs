@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 
 const MEM_MASS: i32 = 10;
 const MEM_AIM: i32 = 18;
+pub(crate) const MEM_SET_AIM: i32 = 19;
 const MEM_PAIN: i32 = 203;
 const MEM_PLEASURE: i32 = 204;
 const MEM_CHLOROPLASTS: i32 = 920;
@@ -199,7 +200,9 @@ impl RobotMaterials {
         // FeedVeg caps only the upper bound; ManageDeath handles depletion.
         let prior = (self.energy, self.body);
         self.energy = (self.energy + delta * (1.0 - feeding_to_body)).min(32_000.0);
-        self.body = (self.body + delta * feeding_to_body / 10.0).min(32_000.0);
+        // FeedVeg retains the product and quotient through the body addition.
+        let body = f64::from(self.body) + f64::from(delta) * f64::from(feeding_to_body) / 10.0;
+        self.body = (body as f32).min(32_000.0);
         (self.energy - prior.0, self.body - prior.1)
     }
 
@@ -345,35 +348,36 @@ impl RobotMaterials {
 
     pub(crate) fn publish_for_profile(&self, memory: &mut VmMemory, native: bool) {
         let runtime = SysvarRuntime::new();
+        let mut values = Vec::with_capacity(11);
+        values.extend([
+            (310, resource_readback(self.energy)),
+            (MEM_BODY as u16, resource_readback(self.body)),
+            (MEM_WASTE as u16, resource_readback(self.waste)),
+            (
+                MEM_PERMANENT_WASTE as u16,
+                resource_readback(self.permanent_waste),
+            ),
+            (MEM_SHELL as u16, resource_readback(self.shell)),
+            (MEM_SLIME as u16, resource_readback(self.slime)),
+            (MEM_POISON as u16, resource_readback(self.poison)),
+            (
+                MEM_CHLOROPLASTS as u16,
+                resource_readback(self.chloroplasts),
+            ),
+            (MEM_PARALYZED as u16, self.paralyzed),
+            (MEM_POISONED as u16, self.poisoned),
+        ]);
+        if !native {
+            values.push((MEM_VENOM as u16, resource_readback(self.venom)));
+        }
         runtime.publish(
-            PhaseReadbacks::Materials(MaterialReadbacks {
-                values: vec![
-                    (310, resource_readback(self.energy)),
-                    (MEM_BODY as u16, resource_readback(self.body)),
-                    (MEM_WASTE as u16, resource_readback(self.waste)),
-                    (
-                        MEM_PERMANENT_WASTE as u16,
-                        resource_readback(self.permanent_waste),
-                    ),
-                    (MEM_SHELL as u16, resource_readback(self.shell)),
-                    (MEM_SLIME as u16, resource_readback(self.slime)),
-                    (MEM_VENOM as u16, resource_readback(self.venom)),
-                    (MEM_POISON as u16, resource_readback(self.poison)),
-                    (
-                        MEM_CHLOROPLASTS as u16,
-                        resource_readback(self.chloroplasts),
-                    ),
-                    (MEM_PARALYZED as u16, self.paralyzed),
-                    (MEM_POISONED as u16, self.poisoned),
-                ],
-            }),
+            PhaseReadbacks::Materials(MaterialReadbacks { values }),
             memory,
         );
         runtime.publish(
             PhaseReadbacks::Core(CoreReadbacks {
                 values: vec![
                     (MEM_AIM as u16, self.aim),
-                    (19, self.aim),
                     (
                         MEM_MASS as u16,
                         resource_readback(if native { self.mass } else { self.mass * 100.0 }),
@@ -384,6 +388,10 @@ impl RobotMaterials {
             }),
             memory,
         );
+        // Native SetAimFunc consumes the pending command before mirroring aim.
+        if !native {
+            memory.write(MEM_SET_AIM, self.aim);
+        }
     }
 }
 
@@ -505,6 +513,22 @@ mod native_publication55_tests {
     use super::*;
 
     #[test]
+    fn native_resource_readbacks_keep_pending_aim_commands() {
+        let materials = RobotMaterials {
+            aim: 315,
+            ..Default::default()
+        };
+        let mut memory = VmMemory::default();
+        memory.restore_native_cell(MEM_SET_AIM, i16::MAX);
+        materials.publish_for_profile(&mut memory, true);
+        assert_eq!(memory.read(MEM_AIM), 315);
+        assert_eq!(memory.read(MEM_SET_AIM), i32::from(i16::MAX));
+
+        materials.publish(&mut memory);
+        assert_eq!(memory.read(MEM_SET_AIM), 315);
+    }
+
+    #[test]
     fn native_mass_readback_rounds_the_single_mass_without_modern_scaling() {
         // Robots.UpdatePosition assigns Single mass directly to Integer mem(10).
         for (mass, expected) in [(1.0, 1), (2.5, 2), (3.5, 4), (31_999.5, 32_000)] {
@@ -524,6 +548,22 @@ mod native_publication55_tests {
 #[cfg(test)]
 mod native_feed_caps55_tests {
     use super::*;
+
+    #[test]
+    fn native_feed_rounds_the_complete_body_gain_to_single() {
+        // Original C300 robot 112 immediately before FeedVeg.
+        let mut native = RobotMaterials {
+            body: f32::from_bits(0x452b_5327),
+            ..Default::default()
+        };
+        let mut portable = native.clone();
+        let delta = f32::from_bits(0x434c_3d6a);
+
+        native.apply_native_plant_delta(delta, 0.75);
+        portable.apply_plant_delta(delta, 0.75);
+        assert_eq!(native.body.to_bits(), 0x452c_483d);
+        assert_eq!(portable.body.to_bits(), 0x452c_483e);
+    }
 
     #[test]
     fn native_feed_leaves_negative_resources_for_death_processing_and_caps_only_above() {

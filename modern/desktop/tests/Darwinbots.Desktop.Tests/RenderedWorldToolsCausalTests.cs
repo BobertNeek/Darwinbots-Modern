@@ -1,6 +1,8 @@
 using System.Reflection;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using Darwinbots.Desktop.Controls;
@@ -14,6 +16,450 @@ namespace Darwinbots.Desktop.Tests;
 
 public sealed class RenderedWorldToolsCausalTests
 {
+    [Fact]
+    public async Task HistoricShapeDeletionUsesThePausedNativeWorldWithoutConfirmation()
+    {
+        var setup = new WorldSetupOptions
+        {
+            Backend = "Cpu", Seed = 95, PopulationCapacity = 64,
+            WorldWidth = 4_000, WorldHeight = 2_000,
+        };
+        uint[] ids = [78, 3, 240, 19, 700, 54, 7, 168, 42, 81, 130, 13, 502, 22];
+        using var fixture = new NativeEngineClient(setup);
+        for (var index = 0; index < ids.Length; index++)
+        {
+            var left = 100 + index * 260;
+            fixture.AddObstacle(new ObstacleSnapshot(ids[index], [left, 500], [left + 180, 700]));
+        }
+        var save = fixture.Save();
+        using var reference = new NativeEngineClient(setup);
+        reference.Load(save);
+        Assert.Equal(10, reference.RemoveNativeRandomObstacles());
+        var survivors = reference.Snapshot().Obstacles.Select(shape => shape.Id).ToArray();
+        Assert.Equal(ids.Where(survivors.Contains), survivors);
+        var removedId = ids.First(id => !survivors.Contains(id));
+        var storage = new AuditStorageService { OpenedSimulation = save };
+
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], setup, NativeEngineClientFactory.Instance, storage)
+            {
+                WindowState = WindowState.Normal,
+                Width = 1_200,
+                Height = 800,
+            };
+            window.Show();
+            try
+            {
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                var load = menu.FindCommandItem(LegacyCommandId.FileLoadSimulation)!;
+                await WaitFor(() => load.IsEnabled, () => "The simulation did not finish starting.");
+                var session = TryField<SimulationSession>(window, "_session")!;
+                var viewModel = Assert.IsType<MainWindowViewModel>(window.DataContext);
+                load.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => viewModel.Status == "LOADED" && session.LatestSnapshot.Obstacles.Count == ids.Length,
+                    () => "The saved shapes were not loaded.");
+                var before = session.LatestSnapshot;
+                Assert.Equal(ids, before.Obstacles.Select(shape => shape.Id));
+
+                var viewport = window.FindControl<WorldViewport>("Viewport")!;
+                var editShape = window.FindControl<Button>("EditShapeButton")!;
+                var scaleX = viewport.Bounds.Width / before.WorldSize[0];
+                var scaleY = viewport.Bounds.Height / before.WorldSize[1];
+                if (viewport.FixedRatio) scaleX = scaleY = Math.Min(scaleX, scaleY);
+                async Task SelectShape(uint id)
+                {
+                    var shape = Assert.Single(session.LatestSnapshot.Obstacles, value => value.Id == id);
+                    var point = viewport.TranslatePoint(new Point(
+                        (shape.Minimum[0] + shape.Maximum[0]) * 0.5 * scaleX * viewport.Zoom + viewport.Pan.X,
+                        (shape.Minimum[1] + shape.Maximum[1]) * 0.5 * scaleY * viewport.Zoom + viewport.Pan.Y), window);
+                    Assert.True(point.HasValue);
+                    window.MouseDown(point.Value, MouseButton.Left, RawInputModifiers.None);
+                    window.MouseUp(point.Value, MouseButton.Left, RawInputModifiers.None);
+                    await WaitFor(() => editShape.IsEnabled, () => "The shape was not selected in the world viewport.");
+                }
+                await SelectShape(removedId);
+
+                var deleteSelected = menu.FindCommandItem(LegacyCommandId.ObjectsDeleteShape)!;
+                var delete = menu.FindCommandItem(LegacyCommandId.ObjectsDeleteTenRandomShapes)!;
+                Assert.True(delete.IsEnabled);
+                delete.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => session.LatestSnapshot.Obstacles.Count == ids.Length - 10
+                        && !editShape.IsEnabled && !deleteSelected.IsEnabled,
+                    () => "The menu did not remove ten shapes immediately and clear the removed selection.");
+                Assert.DoesNotContain(window.OwnedWindows, owned => owned is DeleteConfirmationWindow);
+                Assert.Equal(survivors, session.LatestSnapshot.Obstacles.Select(shape => shape.Id));
+
+                await SelectShape(survivors[0]);
+                await WaitFor(() => deleteSelected.IsEnabled, () => "Delete Shape did not recognize the selected shape.");
+                deleteSelected.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => session.LatestSnapshot.Obstacles.Count == survivors.Length - 1
+                        && !editShape.IsEnabled && !deleteSelected.IsEnabled,
+                    () => "Delete Shape did not remove exactly the selected shape and clear its selection.");
+                Assert.Equal(survivors[1..], session.LatestSnapshot.Obstacles.Select(shape => shape.Id));
+                Assert.DoesNotContain(window.OwnedWindows, owned => owned is DeleteConfirmationWindow);
+
+                await SelectShape(survivors[1]);
+                var deleteAll = menu.FindCommandItem(LegacyCommandId.ObjectsDeleteAllShapes)!;
+                Assert.True(deleteAll.IsEnabled);
+                deleteAll.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => session.LatestSnapshot.Obstacles.Count == 0 && !editShape.IsEnabled && !deleteSelected.IsEnabled,
+                    () => "Delete All Shapes did not immediately remove the remaining shapes and clear selection.");
+                Assert.DoesNotContain(window.OwnedWindows, owned => owned is DeleteConfirmationWindow);
+                Assert.Equal(before.Tick, session.LatestSnapshot.Tick);
+            }
+            finally
+            {
+                foreach (var ownedWindow in window.OwnedWindows.ToArray()) ownedWindow.Close();
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task ShapesMovementKeepsImportedZeroAndAppliesQueuedAxisEdits()
+    {
+        var setup = new WorldSetupOptions
+        {
+            Backend = "Cpu", Seed = 75, PopulationCapacity = 64,
+            WorldWidth = 1_100, WorldHeight = 800,
+        };
+        using var savedWorld = new NativeEngineClient(setup);
+        var shape = new ObstacleSnapshot(1, [120f, 130f], [200f, 250f]) { Drift = [3f, 4f] };
+        savedWorld.AddObstacle(shape);
+        savedWorld.UpdateObstacle(shape);
+        var storage = new AuditStorageService { OpenedSimulation = savedWorld.SaveLegacy() };
+
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], setup, NativeEngineClientFactory.Instance, storage);
+            window.Show();
+            try
+            {
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                var load = menu.FindCommandItem(LegacyCommandId.FileLoadSimulation)!;
+                var create = menu.FindCommandItem(LegacyCommandId.ObjectsNewShape)!;
+                await WaitFor(() => load.IsEnabled, () => "The simulation did not finish starting.");
+                var session = TryField<SimulationSession>(window, "_session")!;
+                load.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => session.LatestSnapshot.Obstacles.Count == 1,
+                    () => "The original SIM did not load.");
+
+                async Task<ShapesWindow> OpenTool()
+                {
+                    create.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    await WaitFor(() => window.OwnedWindows.OfType<ShapesWindow>().Any(tool => tool.IsVisible),
+                        () => "New Shape did not open.");
+                    return Assert.Single(window.OwnedWindows.OfType<ShapesWindow>(), tool => tool.IsVisible);
+                }
+
+                var tool = await OpenTool();
+                var horizontal = tool.FindControl<CheckBox>("HorizontalDriftCheck")!;
+                var vertical = tool.FindControl<CheckBox>("VerticalDriftCheck")!;
+                var rate = tool.FindControl<Slider>("DriftRateSlider")!;
+                Assert.False(horizontal.IsChecked);
+                Assert.False(vertical.IsChecked);
+                Assert.Equal(0, rate.Value);
+                Assert.Equal(new Db2ShapeDriftOptions(), (await session.ReadConfigurationAsync())!.ShapeDrift);
+                Assert.Equal([3f, 4f], Assert.Single(session.LatestSnapshot.Obstacles).Drift);
+
+                horizontal.IsChecked = true;
+                rate.Value = 1;
+                var gate = TryField<SemaphoreSlim>(window, "_advanceGate")!;
+                // Wait for the enable and rate edits, then exercise two edits queued behind a tick/save gate.
+                await gate.WaitAsync();
+                try
+                {
+                    Assert.Equal(new Db2ShapeDriftOptions(true, false, 1), (await session.ReadConfigurationAsync())!.ShapeDrift);
+                    Assert.Equal([3f, 4f], Assert.Single(session.LatestSnapshot.Obstacles).Drift);
+                    horizontal.IsChecked = false;
+                    horizontal.IsChecked = true;
+                }
+                finally { gate.Release(); }
+                await gate.WaitAsync();
+                try
+                {
+                    Assert.Equal(new Db2ShapeDriftOptions(true, false, 1), (await session.ReadConfigurationAsync())!.ShapeDrift);
+                    Assert.Equal([0f, 4f], Assert.Single(session.LatestSnapshot.Obstacles).Drift);
+                }
+                finally { gate.Release(); }
+
+                tool.Close();
+                tool = await OpenTool();
+                horizontal = tool.FindControl<CheckBox>("HorizontalDriftCheck")!;
+                vertical = tool.FindControl<CheckBox>("VerticalDriftCheck")!;
+                rate = tool.FindControl<Slider>("DriftRateSlider")!;
+                Assert.True(horizontal.IsChecked);
+                Assert.False(vertical.IsChecked);
+                Assert.Equal(1, rate.Value);
+                load.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => horizontal.IsChecked == false && rate.Value == 0,
+                    () => "The Shape window did not hydrate from the replacement SIM.");
+                Assert.Equal(new Db2ShapeDriftOptions(), (await session.ReadConfigurationAsync())!.ShapeDrift);
+                Assert.Equal([3f, 4f], Assert.Single(session.LatestSnapshot.Obstacles).Drift);
+
+                var tick = session.LatestSnapshot.Tick;
+                menu.FindCommandItem(LegacyCommandId.ObjectsPolarIce)!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => horizontal.IsChecked == true && vertical.IsChecked == true && rate.Value == 20,
+                    () => "Polar Ice did not update the open Shapes tool.");
+                Assert.Equal(new Db2ShapeDriftOptions(true, true, 20), (await session.ReadConfigurationAsync())!.ShapeDrift);
+                Assert.Equal(tick, session.LatestSnapshot.Tick);
+                var shapes = session.LatestSnapshot.Obstacles;
+                Assert.Equal(10, shapes.Count);
+                Assert.Equal([3f, 4f], shapes[0].Drift);
+                Assert.All(shapes.Skip(1), ice =>
+                {
+                    Assert.Equal([275f, 200f], ice.Minimum);
+                    Assert.Equal([825f, 600f], ice.Maximum);
+                    Assert.Equal([0f, 0f], ice.Drift);
+                });
+            }
+            finally
+            {
+                foreach (var owned in window.OwnedWindows.ToArray()) owned.Close();
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task ShapesToolCreatesWithLiveDimensionsAndResetsOnLoadedWorld()
+    {
+        var setup = new WorldSetupOptions
+        {
+            Backend = "Cpu", Seed = 95, PopulationCapacity = 64,
+            WorldWidth = 7_000, WorldHeight = 5_000,
+        };
+        using var savedWorld = new NativeEngineClient(setup with { WorldWidth = 1_100, WorldHeight = 800 });
+        var storage = new AuditStorageService { OpenedSimulation = savedWorld.Save() };
+
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], setup, NativeEngineClientFactory.Instance, storage);
+            window.Show();
+            try
+            {
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                var create = menu.FindCommandItem(LegacyCommandId.ObjectsNewShape)!;
+                var load = menu.FindCommandItem(LegacyCommandId.FileLoadSimulation)!;
+                await WaitFor(() => load.IsEnabled, () => "The simulation did not finish starting.");
+                var session = TryField<SimulationSession>(window, "_session")!;
+                Assert.Equal([7_000f, 5_000f], session.LatestSnapshot.WorldSize);
+                var tick = session.LatestSnapshot.Tick;
+
+                async Task<ShapesWindow> OpenTool()
+                {
+                    create.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    await WaitFor(() => window.OwnedWindows.OfType<ShapesWindow>().Any(tool => tool.IsVisible),
+                        () => "New Shape did not show its modeless tool.");
+                    return Assert.Single(window.OwnedWindows.OfType<ShapesWindow>(), tool => tool.IsVisible);
+                }
+
+                var tool = await OpenTool();
+                Assert.Equal("Shapes", tool.Title);
+                Assert.Same(tool, await OpenTool());
+                Assert.Empty(session.LatestSnapshot.Obstacles);
+                var width = tool.FindControl<Slider>("ShapeWidthSlider")!;
+                var height = tool.FindControl<Slider>("ShapeHeightSlider")!;
+                Assert.Equal(200d, width.Value);
+                Assert.Equal(200d, height.Value);
+                var corridor = tool.FindControl<Slider>("MazeCorridorSlider")!;
+                var thickness = tool.FindControl<Slider>("MazeWallThicknessSlider")!;
+                Assert.Equal((300d, 500d, 5000d), (corridor.Minimum, corridor.Value, corridor.Maximum));
+                Assert.Equal((1d, 50d, 500d), (thickness.Minimum, thickness.Value, thickness.Maximum));
+                corridor.Value = 300;
+                thickness.Value = 60;
+                width.Value = 80;
+                height.Value = 125;
+
+                var add = tool.FindControl<Button>("AddShapeButton")!;
+                var advanceGate = TryField<SemaphoreSlim>(window, "_advanceGate")!;
+                for (var count = 1; count <= 2; count++)
+                {
+                    await WaitFor(() => add.IsEnabled, () => "The Add Shape button did not become available.");
+                    if (count == 1)
+                    {
+                        await advanceGate.WaitAsync();
+                        try
+                        {
+                            add.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                            Assert.False(add.IsEnabled);
+                            width.Value = 120;
+                            height.Value = 180;
+                        }
+                        finally { advanceGate.Release(); }
+                    }
+                    else
+                    {
+                        add.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    }
+                    await WaitFor(() => session.LatestSnapshot.Obstacles.Count == count,
+                        () => "Add Shape did not create one rectangle.");
+                    width.Value = 80;
+                    height.Value = 125;
+                    Assert.True(tool.IsVisible);
+                }
+                Assert.All(session.LatestSnapshot.Obstacles, shape =>
+                {
+                    Assert.Equal(560f, shape.Maximum[0] - shape.Minimum[0], 2);
+                    Assert.Equal(625f, shape.Maximum[1] - shape.Minimum[1], 2);
+                });
+
+                var random = menu.FindCommandItem(LegacyCommandId.ObjectsAddTenRandomShapes)!;
+                Assert.True(random.IsEnabled);
+                random.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => session.LatestSnapshot.Obstacles.Count == 12,
+                    () => "Add Ten Random Shapes did not run with the tool open.");
+                Assert.All(session.LatestSnapshot.Obstacles.Skip(2), shape =>
+                {
+                    Assert.InRange(shape.Maximum[0] - shape.Minimum[0], 0f, 560.001f);
+                    Assert.InRange(shape.Maximum[1] - shape.Minimum[1], 0f, 625.001f);
+                });
+                Assert.Equal(tick, session.LatestSnapshot.Tick);
+
+                tool.FindControl<Button>("CloseButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => !tool.IsVisible, () => "The Shapes tool did not close.");
+                tool = await OpenTool();
+                width = tool.FindControl<Slider>("ShapeWidthSlider")!;
+                height = tool.FindControl<Slider>("ShapeHeightSlider")!;
+                Assert.Equal(80d, width.Value);
+                Assert.Equal(125d, height.Value);
+                corridor = tool.FindControl<Slider>("MazeCorridorSlider")!;
+                thickness = tool.FindControl<Slider>("MazeWallThicknessSlider")!;
+                Assert.Equal(300d, corridor.Value);
+                Assert.Equal(60d, thickness.Value);
+
+                load.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => session.LatestSnapshot.WorldSize.SequenceEqual([1_100f, 800f])
+                    && width.Value == 200 && height.Value == 200,
+                    () => "Loading the saved world did not reset the visible Shapes controls.");
+                Assert.Empty(session.LatestSnapshot.Obstacles);
+                Assert.Equal(300d, corridor.Value);
+                Assert.Equal(60d, thickness.Value);
+
+                add = tool.FindControl<Button>("AddShapeButton")!;
+                await WaitFor(() => add.IsEnabled, () => "The Shapes tool did not become available after load.");
+                add.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => session.LatestSnapshot.Obstacles.Count == 1,
+                    () => "Add Shape did not create a rectangle in the loaded world.");
+                var loadedShape = Assert.Single(session.LatestSnapshot.Obstacles);
+                Assert.Equal(220f, loadedShape.Maximum[0] - loadedShape.Minimum[0], 2);
+                Assert.Equal(160f, loadedShape.Maximum[1] - loadedShape.Minimum[1], 2);
+
+                menu.FindCommandItem(LegacyCommandId.ObjectsHorizontalMaze)!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => session.LatestSnapshot.Obstacles.Count == 5,
+                    () => "Horizontal Maze did not use the live field and persistent Maze Properties.");
+                var horizontal = session.LatestSnapshot.Obstacles.Skip(1).ToArray();
+                Assert.Equal([360f, 360f, 720f, 720f], horizontal.Select(shape => shape.Minimum[0]).ToArray());
+                Assert.All(horizontal, shape => Assert.Equal(60f, shape.Maximum[0] - shape.Minimum[0]));
+
+                menu.FindCommandItem(LegacyCommandId.ObjectsVerticalMaze)!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => session.LatestSnapshot.Obstacles.Count == 7,
+                    () => "Vertical Maze did not use the live field and persistent Maze Properties.");
+                Assert.All(session.LatestSnapshot.Obstacles.Skip(5), shape =>
+                {
+                    Assert.Equal(360f, shape.Minimum[1]);
+                    Assert.Equal(420f, shape.Maximum[1]);
+                });
+
+                thickness.Value = 1;
+                menu.FindCommandItem(LegacyCommandId.ObjectsSprial)!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => session.LatestSnapshot.Obstacles.Count == 11,
+                    () => "Spiral did not use the live corridor and wall settings.");
+                var spiral = session.LatestSnapshot.Obstacles.Skip(7).ToArray();
+                Assert.Equal([0f, 300f], spiral[0].Minimum);
+                Assert.Equal([800f, 301f], spiral[0].Maximum);
+                Assert.Equal([300f, 600f], spiral[3].Minimum);
+                Assert.Equal([301f, 500f], spiral[3].Maximum);
+
+                thickness.Value = 500;
+                menu.FindCommandItem(LegacyCommandId.ObjectsCheckerboard)!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => session.LatestSnapshot.Obstacles.Count == 13,
+                    () => "Checkerboard did not use the live corridor independently of wall thickness.");
+                var checkerboard = session.LatestSnapshot.Obstacles.Skip(11).ToArray();
+                Assert.Equal([290f, 345f], checkerboard[0].Minimum);
+                Assert.Equal([400f, 455f], checkerboard[0].Maximum);
+                Assert.Equal([700f, 345f], checkerboard[1].Minimum);
+                Assert.Equal([810f, 455f], checkerboard[1].Maximum);
+            }
+            finally
+            {
+                foreach (var ownedWindow in window.OwnedWindows.ToArray()) ownedWindow.Close();
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task RandomShapesAndMazeCommandsUseTheLoadedWorldWhilePaused()
+    {
+        var setup = new WorldSetupOptions
+        {
+            Backend = "Cpu", Seed = 95, PopulationCapacity = 64,
+            WorldWidth = 7_000, WorldHeight = 5_000,
+        };
+        var loadedSetup = setup with { WorldWidth = 1_100, WorldHeight = 800 };
+        using var savedWorld = new NativeEngineClient(loadedSetup);
+        var storage = new AuditStorageService { OpenedSimulation = savedWorld.Save() };
+
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], setup, NativeEngineClientFactory.Instance, storage);
+            window.Show();
+            try
+            {
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                var load = menu.FindCommandItem(LegacyCommandId.FileLoadSimulation)!;
+                await WaitFor(() => load.IsEnabled, () => "The simulation did not finish starting.");
+                var session = TryField<SimulationSession>(window, "_session")!;
+                Assert.Equal([7_000f, 5_000f], session.LatestSnapshot.WorldSize);
+
+                load.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(
+                    () => session.LatestSnapshot.WorldSize.SequenceEqual([1_100f, 800f]),
+                    () => "The load command did not publish the saved field dimensions.");
+                var tick = session.LatestSnapshot.Tick;
+
+                var random = menu.FindCommandItem(LegacyCommandId.ObjectsAddTenRandomShapes)!;
+                random.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => session.LatestSnapshot.Obstacles.Count == 10,
+                    () => "The first random-shape command did not add ten rectangles.");
+                random.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => session.LatestSnapshot.Obstacles.Count == 20,
+                    () => "The second random-shape command did not add ten rectangles.");
+                var rectangles = session.LatestSnapshot.Obstacles;
+                Assert.Equal(20, rectangles.Select(shape =>
+                    (shape.Minimum[0], shape.Minimum[1], shape.Maximum[0], shape.Maximum[1])).Distinct().Count());
+                Assert.All(rectangles, shape =>
+                {
+                    Assert.InRange(shape.Minimum[0], 0f, shape.Maximum[0]);
+                    Assert.InRange(shape.Minimum[1], 0f, shape.Maximum[1]);
+                    Assert.InRange(shape.Maximum[0], 0f, 1_100f);
+                    Assert.InRange(shape.Maximum[1], 0f, 800f);
+                    Assert.InRange(shape.Maximum[0] - shape.Minimum[0], 0f, 220f);
+                    Assert.InRange(shape.Maximum[1] - shape.Minimum[1], 0f, 160f);
+                    Assert.InRange(shape.Color & 0xff, 0u, 1u);
+                });
+
+                menu.FindCommandItem(LegacyCommandId.ObjectsTrashCompactor)!
+                    .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => session.LatestSnapshot.Obstacles.Count == 22,
+                    () => "The trash compactor command did not add two walls.");
+                var walls = session.LatestSnapshot.Obstacles.Skip(20).ToArray();
+                Assert.Equal([-999f, -80f], walls[0].Minimum);
+                Assert.Equal([1_099f, -80f], walls[1].Minimum);
+                Assert.Equal([2f, 0f], walls[0].Drift);
+                Assert.Equal([-2f, 0f], walls[1].Drift);
+                Assert.Equal(tick, session.LatestSnapshot.Tick);
+                await session.StepAsync(1);
+                var movedWalls = session.LatestSnapshot.Obstacles.Skip(20).ToArray();
+                Assert.Equal([-997f, -80f], movedWalls[0].Minimum);
+                Assert.Equal([1_097f, -80f], movedWalls[1].Minimum);
+            }
+            finally { window.Close(); }
+        }, CancellationToken.None);
+    }
+
     [Fact]
     public async Task MainWindowRoutesWorldObjectsMutationAndGraphToolsWithOfflineRenderedReceipt()
     {
@@ -59,9 +505,9 @@ public sealed class RenderedWorldToolsCausalTests
                     () => "MainWindow did not publish a Rust-backed selected robot.");
 
                 var session = TryField<SimulationSession>(window, "_session")!;
-                var viewModel = Assert.IsType<MainWindowViewModel>(window.DataContext);
                 var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
                 var viewport = window.FindControl<WorldViewport>("Viewport")!;
+                var viewModel = Assert.IsType<MainWindowViewModel>(window.DataContext);
 
                 await session.StepAsync(20);
                 await WaitFor(
@@ -77,8 +523,10 @@ public sealed class RenderedWorldToolsCausalTests
                 Assert.True(impacts.IsVisible && impacts.IsEnabled);
                 Assert.True(gauges.IsVisible && gauges.IsEnabled);
                 Assert.True(backgroundImport.IsVisible && backgroundImport.IsEnabled);
-                Assert.True(backgroundRemove.IsVisible);
-                Assert.False(backgroundRemove.IsEnabled);
+                Assert.True(backgroundRemove.IsVisible && backgroundRemove.IsEnabled);
+                backgroundRemove.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => viewModel.Status == "BACKGROUND REMOVED", () => "Removing an empty background was not routed.");
+                Assert.False(viewport.HasBackgroundImage);
 
                 if (vectors.IsChecked) vectors.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
                 if (impacts.IsChecked) impacts.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
@@ -105,8 +553,9 @@ public sealed class RenderedWorldToolsCausalTests
                 Assert.True(newShape.IsVisible && newShape.IsEnabled);
                 newShape.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
                 await WaitFor(
-                    () => viewModel.Status.Contains("OBSTACLE", StringComparison.Ordinal),
-                    () => "Objects > Shapes > New Shape did not enter the real placement route.");
+                    () => window.OwnedWindows.OfType<ShapesWindow>().Any(tool => tool.IsVisible),
+                    () => "Objects > Shapes > New Shape did not open the Shapes tool.");
+                Assert.Single(window.OwnedWindows.OfType<ShapesWindow>(), tool => tool.IsVisible).Close();
 
                 var selected = session.LatestSnapshot.Organisms.First(organism => !organism.Vegetable);
                 viewport.SelectKey(new OrganismKey(selected.Slot, selected.Generation));
@@ -175,6 +624,98 @@ public sealed class RenderedWorldToolsCausalTests
             finally
             {
                 foreach (var ownedWindow in window.OwnedWindows.ToArray()) ownedWindow.Close();
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task GlobalMutationMenuAppliesAndCancelsNativePolicyWithoutOverwritingRobotProfiles()
+    {
+        var setup = new WorldSetupOptions
+        {
+            Backend = "Cpu", PopulationCapacity = 64, WorldWidth = 1_000, WorldHeight = 800,
+            GlobalSettings = new GlobalSettings
+            {
+                Main = new GlobalMainSettings { EpigeneticAmplification = 2 },
+                AdvancedMutation = new GlobalAdvancedMutationSettings { EpigeneticAmplification = 1.25 },
+            },
+            Species = [new("Control", "start\nstop", false, 0xff3f8e34u, 1, 1_000, 0, false, 0f)],
+        };
+
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], setup, NativeEngineClientFactory.Instance, new AuditStorageService());
+            window.Show();
+            try
+            {
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                var command = menu.FindCommandItem(LegacyCommandId.EditGlobalMutationRates)!;
+                var viewModel = Assert.IsType<MainWindowViewModel>(window.DataContext);
+                await WaitFor(() => viewModel.Status == "WORLD READY · 1 SPECIES"
+                    && TryField<SimulationSession>(window, "_session")?.LatestSnapshot.Organisms.Count == 1
+                    && command.IsEnabled, () => viewModel.Status);
+                var session = TryField<SimulationSession>(window, "_session")!;
+                var robot = Assert.Single(session.LatestSnapshot.Organisms);
+                var custom = robot.MutationProfile with { Point = new MutationRateUpdate(42, 3, 1) };
+                await session.UpdateOrganismMutationProfileAsync(robot.Slot, robot.Generation, custom);
+                var startingAdvanced = (await session.ReadConfigurationAsync())!.AdvancedMutation;
+
+                async Task<MutationRatesWindow> Reopen()
+                {
+                    command.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    await WaitFor(() => window.OwnedWindows.OfType<MutationRatesWindow>().Any(),
+                        () => "Global Mutation Rates did not open the editor.");
+                    return Assert.Single(window.OwnedWindows.OfType<MutationRatesWindow>());
+                }
+
+                var dialog = await Reopen();
+                Assert.True(dialog.FindControl<Border>("GlobalMutationPanel")!.IsVisible);
+                Assert.True(dialog.FindControl<CheckBox>("GlobalMutationsEnabled")!.IsChecked);
+                Assert.Equal(1m, dialog.FindControl<NumericUpDown>("GlobalMultiplier")!.Value);
+                Assert.Equal((int)GlobalMutationOscillationMode.Disabled, dialog.FindControl<ComboBox>("GlobalOscillationMode")!.SelectedIndex);
+                Assert.NotNull(dialog.FindControl<NumericUpDown>("OneIn"));
+                dialog.FindControl<CheckBox>("GlobalMutationsEnabled")!.IsChecked = false;
+                dialog.FindControl<NumericUpDown>("GlobalMultiplier")!.Value = 2.25m;
+                dialog.FindControl<ComboBox>("GlobalOscillationMode")!.SelectedIndex = (int)GlobalMutationOscillationMode.Sawtooth;
+                dialog.FindControl<NumericUpDown>("GlobalHighCycles")!.Value = 25m;
+                dialog.FindControl<NumericUpDown>("GlobalLowCycles")!.Value = 75m;
+                dialog.FindControl<Button>("ApplyButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+                await WaitFor(() => viewModel.Status == "GLOBAL MUTATION RATES APPLIED", () => viewModel.Status);
+                var snapshot = session.LatestSnapshot;
+                Assert.False(snapshot.MutationSettings.Enabled);
+                Assert.Equal(2.25f, snapshot.MutationSettings.GlobalMultiplier);
+                Assert.Equal(custom, Assert.Single(snapshot.Organisms).MutationProfile);
+                Assert.Equal(startingAdvanced with
+                {
+                    OscillationMode = GlobalMutationOscillationMode.Sawtooth,
+                    OscillationHighCycles = 25,
+                    OscillationLowCycles = 75,
+                }, (await session.ReadConfigurationAsync())!.AdvancedMutation);
+
+                var applied = await session.SaveAsync();
+                dialog = await Reopen();
+                Assert.False(dialog.FindControl<CheckBox>("GlobalMutationsEnabled")!.IsChecked);
+                Assert.Equal(2.25m, dialog.FindControl<NumericUpDown>("GlobalMultiplier")!.Value);
+                Assert.Equal((int)GlobalMutationOscillationMode.Sawtooth, dialog.FindControl<ComboBox>("GlobalOscillationMode")!.SelectedIndex);
+                Assert.Equal(25m, dialog.FindControl<NumericUpDown>("GlobalHighCycles")!.Value);
+                Assert.Equal(75m, dialog.FindControl<NumericUpDown>("GlobalLowCycles")!.Value);
+                dialog.FindControl<CheckBox>("GlobalMutationsEnabled")!.IsChecked = true;
+                dialog.FindControl<NumericUpDown>("GlobalMultiplier")!.Value = 4m;
+                dialog.FindControl<ComboBox>("GlobalOscillationMode")!.SelectedIndex = (int)GlobalMutationOscillationMode.Sine;
+                dialog.FindControl<NumericUpDown>("GlobalHighCycles")!.Value = 50m;
+                dialog.FindControl<NumericUpDown>("OneIn")!.Value = 777m;
+                dialog.FindControl<Button>("CancelButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => window.OwnedWindows.OfType<MutationRatesWindow>().Count() == 0,
+                    () => "Cancel did not close Global Mutation Rates.");
+                Assert.Equal(applied, await session.SaveAsync());
+                await session.StepAsync(1);
+                Assert.Equal(16f, session.LatestSnapshot.MutationSettings.GlobalMultiplier);
+            }
+            finally
+            {
+                foreach (var owned in window.OwnedWindows.ToArray()) owned.Close();
                 window.Close();
             }
         }, CancellationToken.None);

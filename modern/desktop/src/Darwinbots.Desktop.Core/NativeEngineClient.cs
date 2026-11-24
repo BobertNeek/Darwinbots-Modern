@@ -14,6 +14,10 @@ public sealed partial class NativeEngineClient : IEngineClient
     private readonly TimeProvider _clock;
     private bool _sampleRestartClockPerCycle;
     private bool _sampleClassicSkinClock;
+    private static readonly JsonSerializerOptions DeathRecordJson = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+    };
 
     public NativeEngineClient(WorldSetupOptions options, TimeProvider? timeProvider = null)
     {
@@ -102,7 +106,15 @@ public sealed partial class NativeEngineClient : IEngineClient
         _ => "UNKNOWN",
     };
 
-    public void Tick(uint count = 1)
+    public void Tick(uint count = 1) => Advance(count, 100, null);
+
+    public void TickRecordingDeaths(uint count, Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted) =>
+        TickRecordingDeaths(count, 100, onCommitted);
+
+    public void TickRecordingDeaths(uint count, int weightPercent, Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted) =>
+        Advance(count, weightPercent, onCommitted);
+
+    private void Advance(uint count, int weightPercent, Action<IReadOnlyList<DeathRecordSnapshot>>? onDeathsCommitted)
     {
         EnsureAlive();
         if (count == 0) return;
@@ -110,11 +122,56 @@ public sealed partial class NativeEngineClient : IEngineClient
         {
             // External league/staged restarts take a new Timer sample for each
             // original cycle. Each successful cycle commits before the next begins.
-            for (uint cycle = 0; cycle < count; cycle++) Tick(1);
+            for (uint cycle = 0; cycle < count; cycle++) Advance(1, weightPercent, onDeathsCommitted);
             return;
         }
-        ExecuteBatch(new { version = 1, commands = new object[] { NativeRestartSeedCommand(), new { type = "tick", count } } }, "advance simulation");
+        var restart = NativeRestartSeedCommand();
+        if (onDeathsCommitted is null)
+        {
+            ExecuteBatch(new { version = 1, commands = new object[] { restart, new { type = "tick", count } } }, "advance simulation");
+            return;
+        }
+        var result = ExecuteBatchForResult(
+            new { version = 1, commands = new object[] { restart, new { type = "tick", count, capture_deaths = true, recording_weight = weightPercent } } },
+            "advance simulation with death records");
+        var records = result.GetProperty("results")[1].GetProperty("death_records").Deserialize<DeathRecordSnapshot[]>(DeathRecordJson);
+        if (records is { Length: > 0 }) onDeathsCommitted(records);
     }
+
+    public GenomeRecordCapture CaptureLivingSnp(int weightPercent)
+    {
+        var result = ExecuteBatchForResult(new
+        {
+            version = 1,
+            commands = new[] { new { type = "capture_living_genome_records", weight_percent = weightPercent } },
+        }, "capture living snapshot records");
+        return new(result.GetProperty("tick").GetUInt64(), ReadGenomeRecords(result));
+    }
+
+    public IReadOnlyList<DeathRecordSnapshot> RemoveRecordingDeaths(
+        IReadOnlyList<OrganismKey> organisms, bool suppressDeathPoffs, bool excludeVegetables, int weightPercent)
+    {
+        ArgumentNullException.ThrowIfNull(organisms);
+        if (organisms.Count == 0)
+            throw new ArgumentException("At least one organism is required.", nameof(organisms));
+        var result = ExecuteBatchForResult(new
+        {
+            version = 1,
+            commands = new[] { new
+            {
+                type = "remove_many",
+                organisms = organisms.Select(key => new { slot = key.Slot, generation = key.Generation }).ToArray(),
+                suppress_death_poffs = suppressDeathPoffs,
+                recording_weight = weightPercent,
+                exclude_repopulating = excludeVegetables,
+            } },
+        }, "remove organisms with death records");
+        return ReadGenomeRecords(result);
+    }
+
+    private static DeathRecordSnapshot[] ReadGenomeRecords(JsonElement result) =>
+        result.GetProperty("results")[0].Deserialize<DeathRecordSnapshot[]>(DeathRecordJson)
+        ?? throw new InvalidDataException("The native genome record result is missing.");
 
     public DnaImportReport ImportDna(string dna, float[]? position = null)
     {
@@ -296,6 +353,18 @@ public sealed partial class NativeEngineClient : IEngineClient
         ExecuteBatch(new { version = 1, commands = new[] { new { type = "replace_dna", slot, generation, dna } } }, "replace DNA");
     }
 
+    public int TagOrganismsByName(string founderName, string tag)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(founderName);
+        ArgumentNullException.ThrowIfNull(tag);
+        var result = ExecuteBatchForResult(new
+        {
+            version = 1,
+            commands = new[] { new { type = "tag_organisms_by_name", founder_name = founderName, tag } },
+        }, "tag robots by founder name");
+        return result.GetProperty("results")[0].GetProperty("count").GetInt32();
+    }
+
     public string ExportDna(uint slot, uint generation)
     {
         var result = ExecuteBatchForResult(new { version = 1, commands = new[] { new { type = "export_dna", slot, generation } } }, "export DNA");
@@ -362,6 +431,117 @@ public sealed partial class NativeEngineClient : IEngineClient
         ExecuteBatch(new { version = 1, commands = new[] { new { type = "add_obstacle", id = obstacle.Id, minimum = obstacle.Minimum, maximum = obstacle.Maximum } } }, "add obstacle");
     }
 
+    public void AddTrashCompactor(ObstacleSnapshot left, ObstacleSnapshot right)
+    {
+        static object Wall(ObstacleSnapshot shape) => new
+        {
+            id = shape.Id,
+            minimum = shape.Minimum,
+            maximum = shape.Maximum,
+            drift = shape.Drift,
+        };
+        ExecuteBatch(new
+        {
+            version = 1,
+            commands = new[] { new { type = "add_trash_compactor", left = Wall(left), right = Wall(right) } },
+        }, "add trash compactor");
+    }
+
+    public int? AddNativeRandomObstacles(int count, ShapeCreationDimensions? dimensions = null)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(count);
+        var size = dimensions ?? ShapeCreationDimensions.Default;
+        var result = ExecuteBatchForResult(new
+        {
+            version = 1,
+            commands = new[]
+            {
+                new
+                {
+                    type = "add_native_random_obstacles",
+                    count,
+                    dimensions_permille = new[] { size.WidthPermille, size.HeightPermille },
+                },
+            },
+        }, "add native random obstacles").GetProperty("results")[0];
+        return result.ValueKind == JsonValueKind.Null ? null : result.GetInt32();
+    }
+
+    public int? AddNativeCenteredObstacle(ShapeCreationDimensions dimensions)
+    {
+        var result = ExecuteBatchForResult(new
+        {
+            version = 1,
+            commands = new[]
+            {
+                new
+                {
+                    type = "add_native_centered_obstacle",
+                    dimensions_permille = new[] { dimensions.WidthPermille, dimensions.HeightPermille },
+                },
+            },
+        }, "add native centered obstacle").GetProperty("results")[0];
+        return result.ValueKind == JsonValueKind.Null ? null : result.GetInt32();
+    }
+
+    public (int Added, Db2ShapeDriftOptions Drift)? AddNativePolarIce()
+    {
+        var result = ExecuteBatchForResult(new
+        {
+            version = 1,
+            commands = new[] { new { type = "add_native_polar_ice" } },
+        }, "add native Polar Ice maze").GetProperty("results")[0];
+        return result.ValueKind == JsonValueKind.Null ? null :
+            (result.GetProperty("added").GetInt32(), ReadShapeDrift(result.GetProperty("drift")));
+    }
+
+    public int? AddNativeSimpleMaze(bool horizontal, MazeDimensions dimensions)
+    {
+        var result = ExecuteBatchForResult(new
+        {
+            version = 1,
+            commands = new[]
+            {
+                new { type = "add_native_simple_maze", horizontal, corridor = dimensions.CorridorWidth, thickness = dimensions.WallThickness },
+            },
+        }, "add native maze").GetProperty("results")[0];
+        return result.ValueKind == JsonValueKind.Null ? null : result.GetInt32();
+    }
+
+    public int? AddNativePatternMaze(MazePreset pattern, MazeDimensions dimensions)
+    {
+        var name = pattern switch
+        {
+            MazePreset.Spiral => "spiral",
+            MazePreset.Checkerboard => "checkerboard",
+            _ => throw new ArgumentOutOfRangeException(nameof(pattern)),
+        };
+        var result = ExecuteBatchForResult(new
+        {
+            version = 1,
+            commands = new[]
+            {
+                new { type = "add_native_pattern_maze", pattern = name, corridor = dimensions.CorridorWidth, thickness = dimensions.WallThickness },
+            },
+        }, "add native maze").GetProperty("results")[0];
+        return result.ValueKind == JsonValueKind.Null ? null : result.GetInt32();
+    }
+
+    public Db2ShapeDriftOptions? SetShapeDrift(bool? horizontal, bool? vertical, short? rate)
+    {
+        var result = ExecuteBatchForResult(new
+        {
+            version = 1,
+            commands = new[] { new { type = "set_shape_drift", horizontal, vertical, rate } },
+        }, "set shape drift").GetProperty("results")[0];
+        return result.ValueKind == JsonValueKind.Null ? null : ReadShapeDrift(result);
+    }
+
+    private static Db2ShapeDriftOptions ReadShapeDrift(JsonElement value) => new(
+        value.GetProperty("horizontal").GetBoolean(),
+        value.GetProperty("vertical").GetBoolean(),
+        value.GetProperty("rate").GetInt16());
+
     public void UpdateObstacle(ObstacleSnapshot obstacle)
     {
         ArgumentNullException.ThrowIfNull(obstacle);
@@ -398,6 +578,18 @@ public sealed partial class NativeEngineClient : IEngineClient
     public void RemoveObstacle(uint id) => ExecuteBatch(
         new { version = 1, commands = new[] { new { type = "remove_obstacle", id } } }, "remove obstacle");
 
+    public void RemoveObstacles(IReadOnlyList<uint> ids) => ExecuteBatch(
+        new { version = 1, commands = ids.Select(id => new { type = "remove_obstacle", id }).ToArray() },
+        "remove obstacles");
+
+    public int? RemoveNativeRandomObstacles()
+    {
+        var result = ExecuteBatchForResult(
+            new { version = 1, commands = new[] { new { type = "remove_native_random_obstacles" } } },
+            "remove native random obstacles").GetProperty("results")[0];
+        return result.ValueKind == JsonValueKind.Null ? null : result.GetInt32();
+    }
+
     public void AddTeleporter(TeleporterSnapshot teleporter)
     {
         ValidateTeleporter(teleporter);
@@ -407,6 +599,36 @@ public sealed partial class NativeEngineClient : IEngineClient
             commands = new[] { TeleporterPayload("add_teleporter", teleporter) },
         }, "add teleporter");
     }
+
+    public void AddNativeTeleporter(NativeTeleporterOptions options) => ExecuteBatch(new
+    {
+        version = 1,
+        commands = new[]
+        {
+            new
+            {
+                type = "add_native_teleporter",
+                options = new
+                {
+                    kind = options.Kind.ToString().ToLowerInvariant(),
+                    size = options.Size,
+                    path = options.Path,
+                    fixed_position = options.FixedPosition,
+                    filters = new
+                    {
+                        teleport_vegetables = options.Filters.TeleportVegetables,
+                        teleport_corpses = options.Filters.TeleportCorpses,
+                        teleport_heterotrophs = options.Filters.TeleportHeterotrophs,
+                    },
+                    poll_interval = options.PollInterval,
+                    capacity = options.Capacity,
+                },
+            },
+        },
+    }, "add original teleporter");
+
+    public void DragNativeTeleporter(uint id, float[] center) => ExecuteBatch(
+        new { version = 1, commands = new[] { new { type = "drag_native_teleporter", id, center } } }, "drag original teleporter");
 
     public void UpdateTeleporter(TeleporterSnapshot teleporter)
     {
@@ -431,14 +653,15 @@ public sealed partial class NativeEngineClient : IEngineClient
             center = teleporter.Center,
             radius = teleporter.Radius,
             destination = teleporter.Destination,
-            width = teleporter.Radius * 2f,
-            height = teleporter.Radius * 2f,
+            random_destination = teleporter.RandomDestination,
+            width = teleporter.Width ?? teleporter.Radius * 2f,
+            height = teleporter.Height ?? teleporter.Radius * 2f,
             color = teleporter.Color,
             velocity = teleporter.Velocity,
             path = teleporter.Path,
             inbound_path = teleporter.InboundPath,
             outbound_path = teleporter.OutboundPath,
-            inbound = mode is "intrasim" or "inbound",
+            inbound = mode == "inbound" || (mode == "intrasim" && teleporter.Local && teleporter.Inbound),
             outbound = mode == "outbound",
             local = mode == "intrasim",
             internet = mode == "internet",
@@ -469,6 +692,9 @@ public sealed partial class NativeEngineClient : IEngineClient
         ValidatePosition(teleporter.Destination);
         if (!float.IsFinite(teleporter.Radius) || teleporter.Radius <= 0)
             throw new ArgumentOutOfRangeException(nameof(teleporter));
+        if (teleporter.Width is { } width && (!float.IsFinite(width) || width <= 0)
+            || teleporter.Height is { } height && (!float.IsFinite(height) || height <= 0))
+            throw new ArgumentOutOfRangeException(nameof(teleporter), "Teleporter dimensions must be finite and positive.");
         if (teleporter.PollInterval == 0 || teleporter.Capacity <= 0)
             throw new ArgumentOutOfRangeException(nameof(teleporter));
         if (teleporter.Internet || teleporter.Mode.Trim().ToLowerInvariant() is not ("intrasim" or "inbound" or "outbound"))
@@ -601,18 +827,28 @@ public sealed partial class NativeEngineClient : IEngineClient
     } }, "update global main rules");
 
     public void UpdateCostSettings(GlobalSimulationCostSettings settings) =>
-        ExecuteBatch(new { version = 1, commands = new[] { new {
-            type = "update_cost_settings", costs = NativeCommandSerializer.DnaCosts(settings),
-        } } }, "update simulation costs");
+        ExecuteBatch(new { version = 1, commands = new[] { NativeCommandSerializer.CostSettingsCommand(settings) } },
+            "update simulation costs");
 
-    public void UpdateMutationSettings(MutationSettingsUpdate update)
+    public void UpdateMutationSettings(MutationSettingsUpdate update) =>
+        ApplyMutationSettings(update, null, null);
+
+    public void UpdateGlobalMutationSettings(MutationSettingsUpdate update, GlobalAdvancedMutationSettings? advanced, GlobalMainSettings main) =>
+        ApplyMutationSettings(update, advanced, main);
+
+    private void ApplyMutationSettings(MutationSettingsUpdate update, GlobalAdvancedMutationSettings? advanced, GlobalMainSettings? main)
+    {
+        ValidateMutationSettings(update);
+        ExecuteBatch(NativeCommandSerializer.CreateMutationSettingsBatch(update, advanced, main), "update mutation settings");
+    }
+
+    private static void ValidateMutationSettings(MutationSettingsUpdate update)
     {
         ArgumentNullException.ThrowIfNull(update);
         if (!float.IsFinite(update.GlobalMultiplier) || update.GlobalMultiplier is < 0 or > 100)
             throw new ArgumentOutOfRangeException(nameof(update));
         if (update.SpeciesRates.Any(value => !float.IsFinite(value.Rate) || value.Rate is < 0 or > 100))
             throw new ArgumentOutOfRangeException(nameof(update));
-        ExecuteBatch(NativeCommandSerializer.CreateMutationSettingsBatch(update), "update mutation settings");
     }
 
     public void UpdateOrganismMutationProfile(uint slot, uint generation, MutationProfileUpdate profile)
@@ -624,6 +860,10 @@ public sealed partial class NativeEngineClient : IEngineClient
             "update organism mutation profile");
     }
 
+    public void SetShotDecay(bool energy, bool doNotDecay) => ExecuteBatch(
+        new { version = 1, commands = new[] { new { type = "set_shot_decay", energy, do_not_decay = doNotDecay } } },
+        "update shot decay");
+
     public void SetTiesEnabled(bool enabled) => ExecuteBatch(
         new { version = 1, commands = new[] { new { type = "set_ties_enabled", enabled } } },
         "update tie policy");
@@ -632,11 +872,20 @@ public sealed partial class NativeEngineClient : IEngineClient
         NativeCommandSerializer.CreateSpeciesColorBatch(species, color),
         "change species color");
 
+    public void SetOrganismColor(uint slot, uint generation, uint color) => ExecuteBatch(
+        new { version = 1, commands = new[] { new { type = "set_organism_color", slot, generation, color } } },
+        "change robot color");
+
     public void MakeNewSpecies(uint slot, uint generation, string name, uint color)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ExecuteBatch(new { version = 1, commands = new[] { new { type = "make_new_species", slot, generation, name, color } } }, "make new species");
     }
+
+    public string ForkRobotAndDescendants(uint slot, uint generation) => ExecuteBatchForResult(
+        new { version = 1, commands = new[] { new { type = "fork_robot_and_descendants", slot, generation } } },
+        "fork robot and descendants").GetProperty("results")[0].GetProperty("name").GetString()
+        ?? throw new InvalidDataException("Native engine returned an empty founder name.");
 
     public void UpdateLegacyRestrictions(bool robotFixingAllowed, bool asexualReproductionAllowed) => ExecuteBatch(
         new { version = 1, commands = new[] { new { type = "update_legacy_restrictions", robot_fixing_allowed = robotFixingAllowed, asexual_reproduction_allowed = asexualReproductionAllowed } } },
@@ -677,6 +926,41 @@ public sealed partial class NativeEngineClient : IEngineClient
             version = 1,
             commands = new[] { new { type = "set_player_bot_key", slot, generation, key = keyCode, pressed } },
         }, "update PlayerBot key state");
+    }
+
+    public void SetPlayerBotKeyState(int keyCode, bool pressed)
+    {
+        if (keyCode is < 0 or > 65_535)
+            throw new ArgumentOutOfRangeException(nameof(keyCode));
+        ExecuteBatch(new
+        {
+            version = 1,
+            commands = new[] { new { type = "set_player_bot_key_state", key = keyCode, pressed } },
+        }, "update PlayerBot key state");
+    }
+
+    public void SetPlayerBotTargets(OrganismKey? focus, IReadOnlyList<OrganismKey> highlights)
+    {
+        ExecuteBatch(new
+        {
+            version = 1,
+            commands = new[] { new
+            {
+                type = "set_player_bot_targets",
+                focus = focus is { } key ? new { slot = key.Slot, generation = key.Generation } : null,
+                highlights = highlights.Select(value => new { slot = value.Slot, generation = value.Generation }).ToArray(),
+            } },
+        }, "update PlayerBot targets");
+    }
+
+    public void SetPlayerBotPointer(float[]? position)
+    {
+        if (position is not null) ValidatePosition(position);
+        ExecuteBatch(new
+        {
+            version = 1,
+            commands = new[] { new { type = "set_player_bot_pointer", position } },
+        }, "update PlayerBot pointer");
     }
 
     public void SetOrganismMemory(uint slot, uint generation, ushort address, int value) => ExecuteBatch(
@@ -774,6 +1058,14 @@ public sealed partial class NativeEngineClient : IEngineClient
         new { version = 1, commands = new object[] { NativeRestartSeedCommand(), new { type = "restart_local_mode" } } },
         "restart local mode");
 
+    public void SetOrdinaryRestart(bool enabled) => ExecuteBatch(
+        new { version = 1, commands = new[] { new { type = "set_ordinary_restart", enabled } } },
+        "update ordinary simulation restart");
+
+    public void FinishOrdinaryRestart() => ExecuteBatch(
+        new { version = 1, commands = new[] { new { type = "finish_ordinary_restart" } } },
+        "restart ordinary simulation");
+
     public void AdjudicateLocalRound(uint? winner, string reason)
     {
         EnsureAlive();
@@ -805,6 +1097,14 @@ public sealed partial class NativeEngineClient : IEngineClient
         ArgumentNullException.ThrowIfNull(update);
         ValidatePosition(update.Gravity);
         ExecuteBatch(NativeCommandSerializer.CreateEnvironmentBatch(update), "update environment");
+    }
+
+    public void UpdateLiveSettings(EnvironmentUpdate environment, MutationSettingsUpdate mutation, GlobalSimulationCostSettings? costs)
+    {
+        ArgumentNullException.ThrowIfNull(environment);
+        ValidatePosition(environment.Gravity);
+        ValidateMutationSettings(mutation);
+        ExecuteBatch(NativeCommandSerializer.CreateLiveSettingsBatch(environment, mutation, costs), "update live settings");
     }
 
     private static OrganismKey ReadKey(JsonElement value) => new(
@@ -888,6 +1188,17 @@ public sealed partial class NativeEngineClient : IEngineClient
         }
     }
 
+    public string ReadRobotTagReport()
+    {
+        var result = ExecuteBatchForResult(new
+        {
+            version = 1,
+            commands = new[] { new { type = "read_robot_tag_report" } },
+        }, "read robot tag information");
+        return result.GetProperty("results")[0].GetString()
+            ?? throw new InvalidDataException("Native engine returned no robot tag information.");
+    }
+
     public float? ReadNativeGaussianSpare()
     {
         EnsureAlive();
@@ -903,6 +1214,15 @@ public sealed partial class NativeEngineClient : IEngineClient
         return ExecuteBatchForResult(
             new { version = 1, commands = new[] { new { type = "read_native_sun_change" } } },
             "read native sun change").GetProperty("results")[0].GetByte();
+    }
+
+    public bool? ToggleNativeSun()
+    {
+        EnsureAlive();
+        var result = ExecuteBatchForResult(
+            new { version = 1, commands = new[] { new { type = "toggle_native_sun" } } },
+            "toggle native sun").GetProperty("results")[0];
+        return result.ValueKind == JsonValueKind.Null ? null : result.GetBoolean();
     }
 
     public NativeProcessCachesSnapshot ReadNativeProcessCaches()
@@ -938,6 +1258,15 @@ public sealed partial class NativeEngineClient : IEngineClient
         EnsureAlive();
         var buffer = new NativeBuffer();
         ThrowIfFailed(NativeMethods.EngineSaveWithoutMutations(_engine, ref buffer), "save simulation without mutations");
+        try { return CopyBuffer(buffer); }
+        finally { NativeMethods.BufferFree(ref buffer); }
+    }
+
+    public byte[] SaveLegacyWithoutMutationDetails()
+    {
+        EnsureAlive();
+        var buffer = new NativeBuffer();
+        ThrowIfFailed(NativeMethods.EngineSaveLegacyWithoutMutationDetails(_engine, ref buffer), "save legacy simulation without mutation details");
         try { return CopyBuffer(buffer); }
         finally { NativeMethods.BufferFree(ref buffer); }
     }
@@ -1122,6 +1451,9 @@ public sealed partial class NativeEngineClient : IEngineClient
 
         [LibraryImport(LibraryName, EntryPoint = "db_engine_save_without_mutations")]
         internal static partial DbStatus EngineSaveWithoutMutations(IntPtr engine, ref NativeBuffer buffer);
+
+        [LibraryImport(LibraryName, EntryPoint = "db_engine_save_legacy_without_mutation_details")]
+        internal static partial DbStatus EngineSaveLegacyWithoutMutationDetails(IntPtr engine, ref NativeBuffer buffer);
 
         [LibraryImport(LibraryName, EntryPoint = "db_engine_load")]
         internal static partial DbStatus EngineLoad(IntPtr engine, byte[] save, nuint saveLength);

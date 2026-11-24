@@ -6,6 +6,28 @@ namespace Darwinbots.Desktop.Core.Tests;
 public sealed class LegacyRecordingHelpTests
 {
     [Fact]
+    public void GenomeRecordsKeepQuotesInDetokenizedDnaComments()
+    {
+        const string dna = "start stop end\n\n  '#hash: abc\"def";
+        var text = $"{Db2GenomeRecordFile.Header}\n1,0,Fixture,0,0,0,0,0,1,0,0,0,0,0\n{dna}\n2,0,Fixture,0,0,0,0,0,1,0,0,0,0,0\nend\n";
+
+        var records = Db2GenomeRecordFile.Decode(text);
+
+        Assert.Equal(new ulong[] { 1, 2 }, records.Select(record => record.Id));
+        Assert.Equal(dna, records[0].Dna);
+    }
+
+    [Fact]
+    public void GenomeRecordsStillRejectUnterminatedMetadata()
+    {
+        var text = $"{Db2GenomeRecordFile.Header}\n1,0,Fixture,0,0,0,0,0,1,0,0,0,0,0\nend\n2,0,\"Unterminated\n";
+
+        var error = Assert.Throws<InvalidDataException>(() => Db2GenomeRecordFile.Decode(text));
+
+        Assert.Contains("CSV is unterminated", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void LegacyRecordingFormatAndLocalHelpRoutesResolveWithoutBrowserAccess()
     {
         var organism = new OrganismSnapshot(7, 3, [12.5f, 34.5f], [1f, -2f], 875, 19, Body: 1)
@@ -27,7 +49,7 @@ public sealed class LegacyRecordingHelpTests
         Assert.Equal("snp", livingSelection.Extension);
         var living = LegacyRecordingSerializer.SerializeLiving(snapshot, dna, livingSelection.Format);
         Assert.StartsWith(Db2GenomeRecordFile.Header + "\r\n", living);
-        Assert.Contains("7003,0,Fixture,3,0,19,0,0,2,0,0,885,885,0\r\nstart\nstop\r\n", living);
+        Assert.Contains("7003,0,Fixture,3,0,19,0,0,2,0,0,885,885,0\r\nstart\r\nstop\r\n", living);
 
         var deadSelection = LegacyRecordingSerializer.Select(LegacyCommandId.RecordingDeadEnable);
         var dead = LegacyRecordingSerializer.SerializeDead(
@@ -46,8 +68,6 @@ public sealed class LegacyRecordingHelpTests
         var expectedHelpCommands = new[]
         {
             LegacyCommandId.HelpDna,
-            LegacyCommandId.HelpRobotTagInformation,
-            LegacyCommandId.HelpSurvivalInfo,
             LegacyCommandId.HelpAbout,
         };
         Assert.Equal(expectedHelpCommands, LegacyHelpResolver.Topics.Select(topic => topic.Command));

@@ -29,6 +29,11 @@ pub(super) fn receive_energy(materials: &mut BiologyState, partial: f32) -> f32 
     (f64::from(partial) * 0.95) as f32
 }
 
+fn native_shot_dot(first: [f32; 2], second: [f32; 2]) -> f32 {
+    // Common.bas Dot and VectorMagnitudeSquare narrow once at return.
+    (f64::from(first[0]) * f64::from(second[0]) + f64::from(first[1]) * f64::from(second[1])) as f32
+}
+
 impl Engine {
     pub(super) fn current_native_shot_owner(&self, owner: OrganismId) -> Option<OrganismId> {
         // Source rob(parent) addresses the current occupant, irrespective of old generation.
@@ -92,8 +97,8 @@ impl Engine {
             });
             let p = [start[0] - center[0], start[1] - center[1]];
             let radius = robot.materials.radius;
-            let p2 = p[0] * p[0] + p[1] * p[1];
-            if (f64::from(p2).sqrt() as f32) < radius {
+            let distance_squared = p[0] * p[0] + p[1] * p[1];
+            if (f64::from(distance_squared).sqrt() as f32) < radius {
                 earliest = 0.0;
                 selected = Some(target);
                 break;
@@ -102,11 +107,14 @@ impl Engine {
                 velocity[0] - robot.kinematics.actual_velocity[0],
                 velocity[1] - robot.kinematics.actual_velocity[1],
             ];
-            let d2 = d[0] * d[0] + d[1] * d[1];
+            // Common.bas VectorMagnitudeSquare stores the sum of both
+            // products as Single before NewShotCollision uses it.
+            let p2 = native_shot_dot(p, p);
+            let d2 = native_shot_dot(d, d);
             if d2 == 0.0 {
                 continue;
             }
-            let dot = d[0] * p[0] + d[1] * p[1];
+            let dot = native_shot_dot(d, p);
             let discriminant = (f64::from(dot).powi(2)
                 - f64::from(d2) * (f64::from(p2) - f64::from(radius).powi(2)))
                 as f32;
@@ -476,6 +484,83 @@ mod native_loop_tests {
     }
 
     #[test]
+    fn native_energy_hit_radius_reproduces_original_robot_148_border_contact() {
+        let mut world = Engine::new_native(EngineConfig {
+            world_width: 16_000.0,
+            world_height: 12_000.0,
+            axis_topology: Some([false; 2]),
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let idle = LegacyDna::parse("stop").unwrap();
+        let owner = world.spawn_at(idle.clone(), [800.0; 2]).unwrap();
+        // Robot 148 immediately before its border check, after the first two
+        // C283 contacts in the genuine 2.48.32 comparison.
+        let target = world
+            .spawn_at(
+                idle,
+                [f32::from_bits(0x43c2_eeef), f32::from_bits(0x442f_3630)],
+            )
+            .unwrap();
+        let robot = world.slots.get_mut(target).unwrap();
+        robot.materials.energy = 5_000.0;
+        robot.materials.body = f32::from_bits(0x4518_5101);
+        robot.materials.chloroplasts = f32::from_bits(0x46e4_b4a6);
+        world.projectiles.reset_native_slots(100);
+        assert!(
+            world
+                .apply_projectile_effect_at_boundary(
+                    owner,
+                    ProjectileTarget::Organism(target.slot() as usize),
+                    ProjectileEffect::ReleaseEnergy,
+                    f32::from_bits(0x4417_ac20),
+                    0.0,
+                    None,
+                    None,
+                    0,
+                    0,
+                    [450.0, 700.0],
+                    [-40.0, 0.0],
+                    10.0,
+                    100.0,
+                    true,
+                )
+                .unwrap()
+        );
+        let robot = world.slots.get(target).unwrap();
+        assert_eq!(robot.materials.body.to_bits(), 0x4517_efef);
+        assert_eq!(robot.materials.radius.to_bits(), 0x43c4_a39f);
+        world.border_collision_phase();
+        let robot = world.slots.get(target).unwrap();
+        assert_eq!(robot.kinematics.position[0].to_bits(), 0x43c4_a39f);
+
+        let mut positions = [
+            robot.kinematics.position,
+            [f32::from_bits(0x41b6_7f78), f32::from_bits(0x4420_698e)],
+        ];
+        let mut velocities = [
+            [f32::from_bits(0xbf5f_f7ef), f32::from_bits(0x3d2b_74db)],
+            [f32::from_bits(0xc221_f0fe), f32::from_bits(0xc22b_61a4)],
+        ];
+        // The final contact is robot 148 against robot 157. Use the recorded
+        // post-force velocity for the subsequent UpdatePosition addition.
+        crate::physics::resolve_native_collisions(
+            &mut positions,
+            &mut velocities,
+            &[robot.materials.radius, f32::from_bits(0x427d_30ba)],
+            &[f32::from_bits(0x46e2_7006), f32::from_bits(0x3f9b_e76d)],
+            &[false; 2],
+            &[(0, 1)],
+            0.0,
+        );
+        assert_eq!(positions[0][0].to_bits(), 0x43c4_a3b9);
+        assert_eq!(
+            (positions[0][0] + f32::from_bits(0xbf5f_f53e)).to_bits(),
+            0x43c4_33be
+        );
+    }
+
+    #[test]
     fn native_flash_cleanup_also_clears_dead_slots_and_continues_exactly_after_db3s() {
         for was_alive in [false, true] {
             let (mut world, owner, _) = feeding_world(100);
@@ -645,6 +730,105 @@ mod native_loop_tests {
         assert_eq!(legacy.stats.native_shots_visited, None);
         let restored = crate::SaveFile::decode(&crate::SaveFile::encode(&legacy).unwrap()).unwrap();
         assert_eq!(restored.stats.native_shots_visited, None);
+    }
+
+    #[test]
+    fn native_collision_rounds_dot_at_the_single_return_boundary() {
+        let (mut world, owner, target) = feeding_world(100);
+        world.config.world_width = 16_000.0;
+        world.config.world_height = 12_000.0;
+        world.config.physics.max_velocity = 180.0;
+
+        // Genuine cycle 281: shot slot 92 and target absolute ID 77.
+        let robot = world.slots.get_mut(target).unwrap();
+        robot.kinematics.position = [0x44db55d1, 0x4517674e].map(f32::from_bits);
+        robot.kinematics.velocity = [0xbe02841c, 0xbe2c8591].map(f32::from_bits);
+        robot.kinematics.actual_velocity = [0xbe034000, 0xbe2dc000].map(f32::from_bits);
+        robot.materials.radius = f32::from_bits(0x4307416f);
+        world.spatial = SpatialIndex::build_with_slots(
+            [(target.slot() as usize, robot.kinematics.position)],
+            64.0,
+        );
+
+        let shot = feeding_shot(&mut world, owner);
+        world.projectiles.positions[shot] = [0x44f3c38a, 0x45138bc0].map(f32::from_bits);
+        world.projectiles.previous_positions[shot] = [0x44ff29a0, 0x45114bb3].map(f32::from_bits);
+        world.projectiles.velocities[shot] = [0xc2b66160, 0x4210033c].map(f32::from_bits);
+        assert_eq!(
+            world.native_shot_collision(shot, 150.0),
+            Some(target.slot() as usize)
+        );
+        assert_eq!(
+            world.projectiles.positions[shot].map(f32::to_bits),
+            [0x44eb9fe0, 0x45152714]
+        );
+    }
+
+    #[test]
+    fn native_collision_rounds_each_squared_magnitude_at_the_single_return_boundary() {
+        for (
+            kind,
+            position,
+            previous,
+            velocity,
+            target,
+            target_velocity,
+            target_actual,
+            radius,
+            impact,
+            end,
+        ) in [
+            // Original C285 shot 16 versus absolute robot ID 232.
+            (
+                -2,
+                [0x4666_5000, 0x4595_e800],
+                [0x4664_c400, 0x4595_d000],
+                [0x42c6_0000, 0x4040_0000],
+                [0x4667_e97f, 0x4595_e346],
+                [0xc1f3_292f, 0xbfae_90b6],
+                [0xc1db_1e00, 0xbfab_5000],
+                0x4290_5e12,
+                [0x4666_b812, 0x4595_ee4f],
+                [0x4668_4412, 0x4596_064f],
+            ),
+            // Original C287 shot 91 versus absolute robot ID 223.
+            (
+                -1,
+                [0x44e8_27ac, 0x43ef_c8f5],
+                [0x44e6_3e67, 0x4400_d984],
+                [0x4174_a286, 0xc20f_5095],
+                [0x44f9_deeb, 0x43e7_b9b4],
+                [0xc252_6fea, 0xc1c9_449f],
+                [0xc252_6fe0, 0xc1c9_44a0],
+                0x4298_31b2,
+                [0x44ea_022b, 0x43de_6960],
+                [0x44eb_eb70, 0x43cc_7f4d],
+            ),
+        ] {
+            let (mut world, owner, target_id) = feeding_world(100);
+            world.config.world_width = 16_000.0;
+            world.config.world_height = 12_000.0;
+            world.config.physics.max_velocity = 180.0;
+            let robot = world.slots.get_mut(target_id).unwrap();
+            robot.kinematics.position = target.map(f32::from_bits);
+            robot.kinematics.velocity = target_velocity.map(f32::from_bits);
+            robot.kinematics.actual_velocity = target_actual.map(f32::from_bits);
+            robot.materials.radius = f32::from_bits(radius);
+
+            let shot = feeding_shot(&mut world, owner);
+            world.projectiles.kinds[shot] = kind;
+            world.projectiles.positions[shot] = position.map(f32::from_bits);
+            world.projectiles.previous_positions[shot] = previous.map(f32::from_bits);
+            world.projectiles.velocities[shot] = velocity.map(f32::from_bits);
+            phase(&mut world);
+
+            assert!(world.projectiles.impact_flash[shot]);
+            assert_eq!(
+                world.projectiles.previous_positions[shot].map(f32::to_bits),
+                impact
+            );
+            assert_eq!(world.projectiles.positions[shot].map(f32::to_bits), end);
+        }
     }
 
     #[test]

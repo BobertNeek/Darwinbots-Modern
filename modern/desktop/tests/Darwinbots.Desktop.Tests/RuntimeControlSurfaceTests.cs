@@ -100,7 +100,8 @@ public sealed class RuntimeControlSurfaceTests
                 foreach (var item in shortcuts)
                 {
                     var gesture = KeyGesture.Parse(item.Shortcut!);
-                    if (item.Command == Core.LegacyMenus.LegacyCommandId.HelpAbout)
+                    if (item.Command is Core.LegacyMenus.LegacyCommandId.HelpAbout
+                        or Core.LegacyMenus.LegacyCommandId.FilePauseSimulation)
                     {
                         Assert.DoesNotContain(window.KeyBindings, binding => Equals(binding.Gesture, gesture));
                         Assert.Equal(gesture, menu.FindCommandItem(item.Command.Value)!.InputGesture);
@@ -237,6 +238,41 @@ public sealed class RuntimeControlSurfaceTests
     }
 
     [Fact]
+    public async Task BaselineHideIntervalUsesOriginalDefaultsAndPreservesUneditedOlderProfiles()
+    {
+        await DesktopTestApplication.Session.Dispatch(() =>
+        {
+            var defaults = GlobalSettings.FromJson("{}");
+            var previous = GlobalSettings.FromJson("""{"evolution":{"cycleLength":100}}""");
+            foreach (var (settings, expectedMinimum, edit, applied) in new (GlobalSettings, decimal, decimal?, int)[]
+            {
+                (defaults, 150m, null, 1_500),
+                (defaults, 150m, 10m, 150),
+                (defaults, 150m, 20_000m, 15_000),
+                (previous, 100m, null, 100),
+                (previous, 100m, 125m, 150),
+                (previous, 100m, 375m, 375),
+            })
+            {
+                var dialog = new GlobalSettingsWindow(settings);
+                dialog.Show();
+                try
+                {
+                    var input = dialog.FindControl<NumericUpDown>("CycleLength")!;
+                    Assert.Equal((decimal)settings.Evolution.CycleLength, input.Value);
+                    Assert.Equal(expectedMinimum, input.Minimum);
+                    Assert.Equal(15_000m, input.Maximum);
+                    if (edit is { } value) input.Value = value;
+                    dialog.FindControl<Button>("ApplyButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    Assert.True(dialog.Accepted);
+                    Assert.Equal(applied, GlobalSettings.FromJson(dialog.Settings.ToJson()).Evolution.CycleLength);
+                }
+                finally { if (dialog.IsVisible) dialog.Close(); }
+            }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
     public async Task EditedGlobalSettingsReachNextWorldCreatePayloadAfterReset()
     {
         var factory = new SetupCapturingEngineClientFactory();
@@ -276,6 +312,52 @@ public sealed class RuntimeControlSurfaceTests
             Assert.Equal(2.5, nextWorld.GlobalSettings.Costs.DnaUpkeep);
             Assert.True(nextWorld.GlobalSettings.AdvancedMutation.SaveAsTemporaryGene);
             window.Close();
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task F12PausesAndResumesWhileTheFileCommandOnlyPauses()
+    {
+        await using var simulation = new SimulationSession(new RecordingEngineClient());
+
+        await DesktopTestApplication.Session.Dispatch(() =>
+        {
+            var window = RuntimeWindow(simulation);
+            try
+            {
+                window.Show();
+                Assert.True(window.FindControl<WorldViewport>("Viewport")!.Focus());
+                var timer = Field<DispatcherTimer>(window, "_runTimer");
+                var viewModel = Field<MainWindowViewModel>(window, "_viewModel");
+                var pause = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!
+                    .FindCommandItem(Core.LegacyMenus.LegacyCommandId.FilePauseSimulation)!;
+
+                Invoke(window, "Run_Click");
+                // Simulate repeated key-down events from holding the shortcut.
+                window.KeyPress(Key.F12, RawInputModifiers.None, PhysicalKey.F12, null);
+                window.KeyPress(Key.F12, RawInputModifiers.None, PhysicalKey.F12, null);
+                window.KeyRelease(Key.F12, RawInputModifiers.None, PhysicalKey.F12, null);
+                Assert.False(timer.IsEnabled);
+                Assert.Equal("PAUSED", viewModel.Status);
+
+                pause.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                Assert.False(timer.IsEnabled);
+                Assert.Equal("PAUSED", viewModel.Status);
+
+                window.KeyPress(Key.F12, RawInputModifiers.None, PhysicalKey.F12, null);
+                window.KeyRelease(Key.F12, RawInputModifiers.None, PhysicalKey.F12, null);
+                Assert.True(timer.IsEnabled);
+                Assert.Equal("RUNNING", viewModel.Status);
+
+                pause.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                Assert.False(timer.IsEnabled);
+                Assert.Equal("PAUSED", viewModel.Status);
+            }
+            finally
+            {
+                SetField(window, "_session", null);
+                window.Close();
+            }
         }, CancellationToken.None);
     }
 
@@ -326,18 +408,11 @@ public sealed class RuntimeControlSurfaceTests
             Assert.True(viewport.EnergyGridEnabled);
             Assert.Equal(EnergyGridSize.Medium, viewport.EnergyGridSize);
 
-            menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.ObjectsNewTeleporter)!
-                .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
-            Assert.Equal("Teleporter", Field<object>(window, "_environmentPlacement").ToString());
-
             menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.ObjectsDontDecayNrgShots)!
                 .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
             menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.ObjectsDontDecayWasteShots)!
                 .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
             menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.ObjectsDisableTies)!
-                .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
-
-            menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.ObjectsHorizontalMaze)!
                 .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
 
             menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.RobotKill)!
@@ -346,12 +421,131 @@ public sealed class RuntimeControlSurfaceTests
             Assert.DoesNotContain(menu.TopLevelItems, item => Equals(item.Header, "Internet"));
             await WaitFor(() =>
                 engine.Calls.Contains("Remove:3:2")
-                && engine.Calls.Count(call => call.StartsWith("AddObstacle:", StringComparison.Ordinal)) >= 4
-                && engine.Calls.Count(call => call == "Environment") >= 2
+                && engine.Calls.Contains("ShotDecay:True:True")
+                && engine.Calls.Contains("ShotDecay:False:True")
                 && engine.Calls.Contains("Ties:False"),
                 () => string.Join(", ", engine.Calls));
             window.Close();
             return 0;
+        }, CancellationToken.None);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SunToolbarFollowsNativeFeedingAndChangesOnlyDaytime(bool temporaryThreshold)
+    {
+        var setup = new WorldSetupOptions
+        {
+            Backend = "Cpu",
+            PopulationCapacity = 16,
+            WorldWidth = 8_000,
+            WorldHeight = 6_000,
+            BrownianMotion = 0,
+            Vegetation = Db2VegetationOptions.Default with
+            {
+                Daytime = true,
+                DayNightEnabled = true,
+                CycleLength = temporaryThreshold ? 2_000ul : 1ul,
+                SunDownEnabled = temporaryThreshold,
+                SunDownThreshold = 0,
+                SunThresholdMode = 0,
+            },
+            Species = [new("Sun Watch", "start stop", false, 0xff123456, 1, 1_000, 0, false, 0)],
+        };
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], setup, NativeEngineClientFactory.Instance, new AuditStorageService());
+            SimulationSession? session = null;
+            try
+            {
+                window.Show();
+                var model = Field<MainWindowViewModel>(window, "_viewModel");
+                await WaitFor(() => model.Status.StartsWith("WORLD READY", StringComparison.Ordinal), () => model.Status);
+                var button = window.FindControl<Button>("SunButton")!;
+                await WaitFor(() => Equals(button.Content, "SUN ON"));
+
+                session = Field<SimulationSession>(window, "_session");
+                await session.StepAsync(2);
+                var before = Assert.IsType<WorldConfiguration>(await session.ReadConfigurationAsync());
+                Assert.False(before.Environment.Vegetation.Daytime);
+                Assert.False(session.LatestSnapshot.NativeSunOn);
+                await WaitFor(() => Equals(button.Content, "SUN OFF"));
+
+                button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => Equals(button.Content, "SUN ON") && model.Status == "SUN ON");
+                Assert.Equal("SUN ON", AutomationProperties.GetName(button));
+                Assert.True(session.LatestSnapshot.NativeSunOn);
+                Assert.Equal(2ul, session.LatestSnapshot.Tick);
+                var after = Assert.IsType<WorldConfiguration>(await session.ReadConfigurationAsync());
+                var expected = before.Environment with
+                {
+                    Vegetation = before.Environment.Vegetation with { Daytime = true },
+                };
+                Assert.Equal(JsonSerializer.Serialize(expected), JsonSerializer.Serialize(after.Environment));
+            }
+            finally
+            {
+                if (session is not null) SetField(window, "_session", null);
+                window.Close();
+                if (session is not null) await session.DisposeAsync();
+            }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task ShotDecayMenuTogglesOnlyItsOwnFlagDuringNight()
+    {
+        var setup = new WorldSetupOptions
+        {
+            Backend = "Cpu",
+            PopulationCapacity = 16,
+            WorldWidth = 8_000,
+            WorldHeight = 6_000,
+            BrownianMotion = 0,
+            Vegetation = Db2VegetationOptions.Default with { Daytime = true, DayNightEnabled = true, CycleLength = 1 },
+            Species = [new("Night Watch", "start stop", false, 0xff123456, 1, 1_000, 0, false, 0)],
+        };
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], setup, NativeEngineClientFactory.Instance, new AuditStorageService());
+            SimulationSession? session = null;
+            try
+            {
+                window.Show();
+                var model = Field<MainWindowViewModel>(window, "_viewModel");
+                await WaitFor(() => model.Status.StartsWith("WORLD READY", StringComparison.Ordinal), () => model.Status);
+                session = Field<SimulationSession>(window, "_session");
+                await session.StepAsync(2);
+                var before = Assert.IsType<WorldConfiguration>(await session.ReadConfigurationAsync());
+                Assert.False(before.Environment.Vegetation.Daytime);
+                var expected = before.Environment.Shots;
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                var energyItem = menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.ObjectsDontDecayNrgShots)!;
+                var wasteItem = menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.ObjectsDontDecayWasteShots)!;
+                foreach (var (energy, noDecay) in new[] { (true, true), (false, true), (true, false), (false, false) })
+                {
+                    var item = energy ? energyItem : wasteItem;
+                    Assert.Equal(!noDecay, item.IsChecked);
+                    item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    var status = $"{(energy ? "ENERGY" : "WASTE")} SHOT DECAY · {(noDecay ? "OFF" : "ON")}";
+                    await WaitFor(() => model.Status == status, () => model.Status);
+                    expected = energy ? expected with { EnergyShotsDoNotDecay = noDecay }
+                        : expected with { WasteShotsDoNotDecay = noDecay };
+                    var after = Assert.IsType<WorldConfiguration>(await session.ReadConfigurationAsync());
+                    Assert.Equal(expected, after.Environment.Shots);
+                    Assert.Equal(expected.EnergyShotsDoNotDecay, energyItem.IsChecked);
+                    Assert.Equal(expected.WasteShotsDoNotDecay, wasteItem.IsChecked);
+                    Assert.Equal(before.Environment.Vegetation, after.Environment.Vegetation);
+                    Assert.Equal(2ul, session.LatestSnapshot.Tick);
+                }
+            }
+            finally
+            {
+                SetField(window, "_session", null);
+                window.Close();
+                if (session is not null) await session.DisposeAsync();
+            }
         }, CancellationToken.None);
     }
 
@@ -377,7 +571,6 @@ public sealed class RuntimeControlSurfaceTests
                     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="));
                 var background = new Avalonia.Media.Imaging.Bitmap(backgroundStream);
                 viewport.SetBackgroundImage(background);
-                SetField(window, "_hasBackgroundImage", true);
                 Assert.True(viewport.HasBackgroundImage);
                 Assert.True(viewport.OverlayProjection.HasBackgroundImage);
                 window.GetType().GetMethod("RefreshLegacyMenuStates", BindingFlags.Instance | BindingFlags.NonPublic)!
@@ -499,6 +692,7 @@ public sealed class RuntimeControlSurfaceTests
                 var generalDialog = Assert.Single(window.OwnedWindows.OfType<AdvancedSettingsWindow>());
                 Assert.Equal(1, generalDialog.GetVisualDescendants().OfType<TabControl>().Single().SelectedIndex);
                 generalDialog.Close();
+                await WaitFor(() => Assert.IsType<MainWindowViewModel>(window.DataContext).Status == "CANCELED");
 
                 var physics = menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.EditPhysicsAndCosts)!;
                 physics.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
@@ -764,6 +958,84 @@ public sealed class RuntimeControlSurfaceTests
         finally { File.Delete(path); }
     }
 
+    [Theory]
+    [InlineData(LocalModeKind.League)]
+    [InlineData(LocalModeKind.Contest)]
+    public async Task MatchSettingsKeepAdaptiveAndUnlimitedLimitsThroughConfigureAndReopen(LocalModeKind kind)
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"darwinbots-match-limits-{Guid.NewGuid():N}.db3s");
+        var setup = new WorldSetupOptions { Backend = "Cpu", PopulationCapacity = 16, VegetablePopulationCap = 0 };
+        using (var source = new NativeEngineClient(setup))
+        {
+            source.ConfigureLocalMode(LocalModeConfig.Default with
+            {
+                Kind = kind, MaximumRounds = 0, MaximumCycles = 0, MaximumPopulation = 0,
+            });
+            File.WriteAllBytes(path, source.Save());
+        }
+        try
+        {
+            await DesktopTestApplication.Session.Dispatch(async () =>
+            {
+                var storage = new AuditStorageService();
+                var window = new MainWindow([], setup with { LoadSavePath = path }, NativeEngineClientFactory.Instance, storage);
+                try
+                {
+                    window.Show();
+                    var model = Field<MainWindowViewModel>(window, "_viewModel");
+                    await WaitFor(() => model.Status == "LOADED", () => model.Status);
+                    var session = Field<SimulationSession>(window, "_session");
+                    window.FindControl<ComboBox>("RuntimeSpeed")!.Focus();
+                    window.KeyPress(Key.F, RawInputModifiers.Control, PhysicalKey.F, null);
+                    window.KeyRelease(Key.F, RawInputModifiers.Control, PhysicalKey.F, null);
+                    await WaitFor(() => window.FindControl<Expander>("LeagueExpander")!.IsExpanded);
+
+                    var limits = new[] { "ModeMaximumRounds", "ModeMaximumCycles", "ModePopulationCap" }
+                        .Select(name => window.FindControl<NumericUpDown>(name)!).ToArray();
+                    Assert.All(limits, input =>
+                    {
+                        Assert.Equal(0m, input.Minimum);
+                        Assert.Equal(0m, input.Value);
+                    });
+                    Assert.Equal(1m, window.FindControl<NumericUpDown>("ModeMinimumRounds")!.Minimum);
+                    window.FindControl<NumericUpDown>("ModeEnergyHandicap")!.Value = 25;
+                    void Click(string name) => window.FindControl<Button>(name)!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    Click("ConfigureModeButton");
+                    await WaitFor(() => model.Status == $"LOCAL MODE CONFIGURED · {kind.ToString().ToUpperInvariant()}", () => model.Status);
+                    var match = Assert.IsType<LocalModeConfig>(session.LatestSnapshot.LocalMode.Configuration);
+                    Assert.Equal((0u, 0ul, 0, 25), (match.MaximumRounds, match.MaximumCycles, match.MaximumPopulation, match.EnergyHandicap));
+
+                    Click("SaveButton");
+                    await WaitFor(() => storage.SavedSimulation is not null);
+                    window.FindControl<ComboBox>("LocalModeKindSelector")!.SelectedIndex = (int)LocalModeKind.SimpleSurvival;
+                    Assert.All(limits, input =>
+                    {
+                        Assert.Equal(1m, input.Minimum);
+                        Assert.Equal(1m, input.Value);
+                    });
+                    Click("ConfigureModeButton");
+                    await WaitFor(() => model.Status == "LOCAL MODE CONFIGURED · SIMPLESURVIVAL", () => model.Status);
+
+                    storage.OpenedSimulation = storage.SavedSimulation;
+                    Click("LoadButton");
+                    await WaitFor(() => model.Status == "LOADED", () => model.Status);
+                    Assert.All(limits, input =>
+                    {
+                        Assert.Equal(0m, input.Minimum);
+                        Assert.Equal(0m, input.Value);
+                    });
+                    var reopened = Assert.IsType<LocalModeConfig>(session.LatestSnapshot.LocalMode.Configuration);
+                    Assert.Equal(kind, reopened.Kind);
+                    Assert.Equal((0u, 0ul, 0, 25),
+                        (reopened.MaximumRounds, reopened.MaximumCycles, reopened.MaximumPopulation, reopened.EnergyHandicap));
+                    Assert.Equal(0ul, session.LatestSnapshot.Tick);
+                }
+                finally { window.Close(); }
+            }, CancellationToken.None);
+        }
+        finally { File.Delete(path); }
+    }
+
     [Fact]
     public async Task LoadedNativeWorldHydratesControlsAndChangingTopologyPreservesItsRules()
     {
@@ -1005,6 +1277,19 @@ public sealed class RuntimeControlSurfaceTests
                     Marshal.FreeHGlobal(pixelBuffer);
                 }
                 Assert.True(ContainsApproximateColor(pixelBytes, 0xDC, 0xD8, 0xCD));
+
+                storage.MutationSaveFormat = SimulationSaveFormat.Legacy;
+                saveMenu.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => storage.SaveRequests == 3
+                    && viewModel.Status == "DARWINBOTS 2 SIMULATION SAVED WITHOUT MUTATION DETAILS");
+                var legacyBytes = Assert.IsType<byte[]>(storage.SavedSimulation);
+                Assert.Contains("Mutation Details removed in last save.", Encoding.ASCII.GetString(legacyBytes), StringComparison.Ordinal);
+                using var legacy = new NativeEngineClient(setup with { Species = [] });
+                legacy.Load(legacyBytes);
+                Assert.True(legacy.Snapshot().MutationSettings.Enabled);
+                Assert.Equal(2.5f, legacy.Snapshot().MutationSettings.GlobalMultiplier);
+                Assert.Equal(1_250, Assert.Single(legacy.Snapshot().Organisms).MutationProfile.Point.OneIn);
+                Assert.Equal(liveBeforeSave.MutationSettings, session.LatestSnapshot.MutationSettings);
             }, CancellationToken.None);
         }
         finally
@@ -1334,6 +1619,40 @@ public sealed class RuntimeControlSurfaceTests
     }
 
     [Fact]
+    public async Task CancelingInsertOrganismClosesThePickerWithoutOpeningDnaImport()
+    {
+        var setup = new WorldSetupOptions { Backend = "Cpu", PopulationCapacity = 64 };
+        var (storage, storageState) = OrganismRouteStorage.Create(null);
+        await using var simulation = new SimulationSession(NativeEngineClientFactory.Instance.Create(setup));
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], setup, NativeEngineClientFactory.Instance, storage);
+            DesktopTestApplication.UseSession(window, simulation);
+            try
+            {
+                window.Show();
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                var command = menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.EditInsertOrganism)!;
+                var model = Field<MainWindowViewModel>(window, "_viewModel");
+                Assert.True(command.IsEnabled);
+                var before = simulation.LatestSnapshot;
+
+                command.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => model.Status == "CANCELED");
+
+                Assert.Equal(0, storageState.DnaPickerRequests);
+                Assert.Equal(before.Tick, simulation.LatestSnapshot.Tick);
+                Assert.Equal(before.Population, simulation.LatestSnapshot.Population);
+            }
+            finally
+            {
+                SetField(window, "_session", null);
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
     public async Task RenderedWholeOrganismRoundTripPreservesSelectedLiveNativeMember()
     {
         var fixture = new Db2OrganismFile(
@@ -1630,23 +1949,6 @@ public sealed class RuntimeControlSurfaceTests
         {
             Tick = 42,
             Species = [new("Unassigned", false, 0xff112233, 0, false), new("Café", false, 0xff445566, 0, false)],
-            Corpses =
-            [
-                new CorpseSnapshot([4f, 5f], [0f, 0f], 0, 12, 3, 1)
-                {
-                    Dna = "start\nstop",
-                    UniqueId = 9001,
-                    Generation = 4,
-                    DnaLength = 2,
-                },
-                new CorpseSnapshot([6f, 7f], [0f, 0f], 0, 12, 3, 1, Repopulating: true)
-                {
-                    Dna = "repopulating",
-                    UniqueId = 9002,
-                    Generation = 4,
-                    DnaLength = 1,
-                },
-            ],
         };
         var engine = new RecordingEngineClient(snapshot);
         await using var simulation = new SimulationSession(engine);
@@ -1675,7 +1977,6 @@ public sealed class RuntimeControlSurfaceTests
                 Assert.NotNull(typeof(WorldViewport).GetProperty("Zoom"));
                 Assert.NotNull(typeof(WorldViewport).GetProperty("ZoomLocked"));
                 Assert.NotNull(typeof(WorldViewport).GetEvent("OrganismDoubleClicked"));
-                Assert.NotNull(typeof(MainWindow).GetMethod("RecordDeadSnapshotAsync", BindingFlags.Instance | BindingFlags.NonPublic));
 
                 menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.RecordingSnapshotLiving)!
                     .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
@@ -1683,7 +1984,7 @@ public sealed class RuntimeControlSurfaceTests
                 Assert.Contains((byte)0xe9, storage.SavedLivingSnapshot!);
                 var living = LegacyDnaText.Decode(storage.SavedLivingSnapshot!);
                 Assert.StartsWith(Db2GenomeRecordFile.Header + "\r\n", living);
-                Assert.Contains("start\nstop", living, StringComparison.Ordinal);
+                Assert.Contains("start\r\nstop", living, StringComparison.Ordinal);
 
                 menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.RobotShowInfo)!
                     .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
@@ -1700,15 +2001,6 @@ public sealed class RuntimeControlSurfaceTests
                 await WaitFor(() => window.OwnedWindows.OfType<PhylogenyWindow>().Any());
                 window.OwnedWindows.OfType<PhylogenyWindow>().Single().Close();
 
-                SetField(window, "_deadRecordingEnabled", true);
-                SetField(window, "_excludeRepopulatingDead", true);
-                var recorder = typeof(MainWindow).GetMethod("RecordDeadSnapshotAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
-                await (Task)recorder.Invoke(window, [snapshot])!;
-                Assert.Contains((byte)0xe9, storage.DeadSnapshotWrites.Single());
-                var dead = LegacyDnaText.Decode(storage.DeadSnapshotWrites.Single());
-                Assert.StartsWith(Db2GenomeRecordFile.Header + "\r\n", dead);
-                Assert.Contains("9001", dead, StringComparison.Ordinal);
-                Assert.DoesNotContain("9002", dead, StringComparison.Ordinal);
             }
             finally
             {
@@ -1892,11 +2184,12 @@ public sealed class RuntimeControlSurfaceTests
 
     private class OrganismRouteStorage : DispatchProxy
     {
-        private byte[] _fixture = [];
+        private byte[]? _fixture;
 
         public byte[]? SavedOrganism { get; private set; }
+        public int DnaPickerRequests { get; private set; }
 
-        public static (IDesktopStorageService Storage, OrganismRouteStorage State) Create(byte[] fixture)
+        public static (IDesktopStorageService Storage, OrganismRouteStorage State) Create(byte[]? fixture)
         {
             var storage = DispatchProxy.Create<IDesktopStorageService, OrganismRouteStorage>();
             var state = (OrganismRouteStorage)(object)storage;
@@ -1911,6 +2204,11 @@ public sealed class RuntimeControlSurfaceTests
             if (targetMethod is null) throw new MissingMethodException();
             if (targetMethod.Name == nameof(IDesktopStorageService.OpenOrganismAsync))
                 return Task.FromResult<byte[]?>(_fixture);
+            if (targetMethod.Name == nameof(IDesktopStorageService.OpenDnaFilesAsync))
+            {
+                DnaPickerRequests++;
+                return Task.FromResult<IReadOnlyList<DesktopTextFile>>([]);
+            }
             if (targetMethod.Name == nameof(IDesktopStorageService.SaveOrganismAsync))
                 return SaveAsync((Func<Stream, Task>)args![2]!);
             if (targetMethod.ReturnType == typeof(Task)) return Task.CompletedTask;
@@ -1941,6 +2239,7 @@ public sealed class RuntimeControlSurfaceTests
         public bool AcceptSave { get; set; }
         public int SaveRequests { get; private set; }
         public byte[]? SavedSimulation { get; private set; }
+        public SimulationSaveFormat MutationSaveFormat { get; set; }
         public byte[]? OpenedSimulation { get; set; }
         public int OpenRequests { get; private set; }
 
@@ -1967,6 +2266,15 @@ public sealed class RuntimeControlSurfaceTests
             SaveRequests++;
             if (AcceptSave) SavedSimulation = save.ToArray();
             return Task.FromResult(AcceptSave);
+        }
+
+        public async Task<SimulationSaveFormat?> SaveSimulationWithMutationOptionsAsync(
+            TopLevel owner, Func<SimulationSaveFormat, Task<byte[]>> createSave)
+        {
+            SaveRequests++;
+            if (!AcceptSave) return null;
+            SavedSimulation = await createSave(MutationSaveFormat);
+            return MutationSaveFormat;
         }
 
         public MutationProfileUpdate? SavedDnaMutationProfile { get; private set; }
@@ -2093,6 +2401,7 @@ internal sealed class RecordingEngineClient : IEngineClient
     public void SetBrownianMotion(float value) => Calls.Enqueue($"Brownian:{value}");
     public void UpdateEnvironment(EnvironmentUpdate update) { EnvironmentUpdates.Enqueue(update); Calls.Enqueue("Environment"); }
     public void UpdateMutationSettings(MutationSettingsUpdate update) { MutationUpdates.Enqueue(update); Calls.Enqueue("Mutations"); }
+    public void SetShotDecay(bool energy, bool doNotDecay) => Calls.Enqueue($"ShotDecay:{energy}:{doNotDecay}");
     public void SetTiesEnabled(bool enabled) => Calls.Enqueue($"Ties:{enabled}");
     public void SetSpeciesColor(uint species, uint color) => Calls.Enqueue($"Color:{species}:{color}");
     public void MakeNewSpecies(uint slot, uint generation, string name, uint color) => Calls.Enqueue($"NewSpecies:{slot}:{generation}:{name}");

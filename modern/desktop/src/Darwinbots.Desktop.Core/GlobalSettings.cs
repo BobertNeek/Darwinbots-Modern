@@ -97,6 +97,33 @@ public sealed record NativeDelta2Settings
 
 public sealed record GlobalSimulationCostSettings
 {
+    // DB2 OptionsForm.CostRadio_Click writes Single values into a zeroed table.
+    public static GlobalSimulationCostSettings NoCosts { get; } = new()
+    {
+        GlobalMultiplier = 0,
+        DynamicAllRobots = false,
+        DynamicUpperRangePercent = 0,
+        DynamicLowerRangePercent = 0,
+        DynamicSensitivity = 0,
+    };
+
+    // The original costs array stores each coefficient as a VB6 Single.
+    public static GlobalSimulationCostSettings F1Default { get; } = NoCosts with
+    {
+        DnaCondition = 0.004f,
+        DnaStore = 0.04f,
+        Movement = 0.05f,
+        TieFormation = 2,
+        ShotFormation = 2,
+        Venom = 0.01f,
+        Poison = 0.01f,
+        Slime = 0.1f,
+        Shell = 0.1f,
+        BodyUpkeep = 0.00001f,
+        AgeBase = 0.01f,
+        GlobalMultiplier = 1,
+    };
+
     public double GlobalMultiplier { get; init; } = 1.0;
     public double DnaNumber { get; init; }
     public double DnaDereference { get; init; }
@@ -151,7 +178,7 @@ public sealed record GlobalEvolutionSettings
     public EvolutionMode Mode { get; init; } = EvolutionMode.SimpleSurvival;
     public string SourceBot { get; init; } = string.Empty;
     public double StageLength { get; init; } = 10;
-    public int CycleLength { get; init; } = 100;
+    public int CycleLength { get; init; } = 1_500;
     public bool ReducePopulationOscillation { get; init; }
     public bool AutoGraphs { get; init; }
     public bool OptionalInternetStartup { get; init; }

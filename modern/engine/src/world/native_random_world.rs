@@ -16,6 +16,9 @@ impl Engine {
         engine.snapshot.native_cycle = Some(-1);
         engine.vegetation_runtime = VegetationRuntime::fresh_native_process();
         engine.initialize_native_start();
+        // The original graphical CheckBox starts unchecked (sun on).
+        engine.remember_native_sun_indicator(true);
+        engine.snapshot.native_sun_on = Some(true);
         Ok(engine)
     }
 
@@ -80,6 +83,34 @@ impl Engine {
         self.vegetation_runtime.sun_change()
     }
 
+    pub(super) fn native_sun_on(&self) -> Option<bool> {
+        self.native_cycle.map(|_| {
+            self.vegetation_runtime
+                .native_sun_on(self.config.vegetation.daytime)
+        })
+    }
+
+    pub(super) fn remember_native_sun_indicator(&mut self, enabled: bool) {
+        self.vegetation_runtime
+            .set_native_sun_indicator(self.config.vegetation.daytime, enabled);
+    }
+
+    pub(crate) fn inherit_native_sun_indicator_after_sim_load(&mut self, previous: &Self) {
+        let enabled = previous.native_sun_on().unwrap_or(true);
+        self.remember_native_sun_indicator(enabled);
+        self.snapshot.native_sun_on = Some(enabled);
+    }
+
+    pub(crate) fn toggle_native_sun(&mut self) -> Option<bool> {
+        // SunButton_Click uses the new button state. FeedVeg can have set
+        // the indicator from a temporary threshold without changing Daytime.
+        let enabled = !self.native_sun_on()?;
+        self.config.vegetation.daytime = enabled;
+        self.remember_native_sun_indicator(enabled);
+        self.snapshot.native_sun_on = Some(enabled);
+        Some(enabled)
+    }
+
     /// Transfer only SunChange; native save loads retain their own weather state.
     pub fn set_native_sun_change(&mut self, sun_change: u8) {
         self.vegetation_runtime.set_sun_change(sun_change);
@@ -136,6 +167,7 @@ impl Engine {
                 // Restarter.exe creates a new process with an empty gasdev cache.
                 *random = Default::default();
                 self.vegetation_runtime = VegetationRuntime::fresh_native_process();
+                self.remember_native_sun_indicator(true);
                 self.reset_native_energy_process();
                 self.set_death_poffs_enabled(true);
             }
@@ -311,6 +343,200 @@ mod tests {
             .unwrap()
             .integer("total_cycles")
             .unwrap()
+    }
+
+    #[test]
+    fn native_founder_filename_is_latched_for_startup_and_live_script_creation() {
+        let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+        let dna = LegacyDna::parse("stop").unwrap();
+        let species = world.register_species(SpeciesDefinition {
+            name: "Original.TXT".into(),
+            ..Default::default()
+        });
+        let [founder]: [OrganismId; 1] = world
+            .spawn_species_batch_with_native_placement(
+                dna.clone(),
+                species,
+                vec![[0.0; 2]],
+                3000,
+                true,
+            )
+            .unwrap()
+            .try_into()
+            .unwrap();
+        assert_eq!(
+            world.slots.get(founder).unwrap().identity.species_file,
+            "Original.TXT"
+        );
+
+        let mut definition = world.species[species.0 as usize].clone();
+        definition.name = r"Bots\Next.txt".into();
+        world
+            .update_species_settings(vec![crate::SpeciesSettings {
+                species_id: Some(species),
+                definition,
+                dna: "stop".into(),
+                initial_energy: 3000,
+                initial_count: 1,
+                comment: String::new(),
+            }])
+            .unwrap();
+        assert_eq!(
+            world.slots.get(founder).unwrap().identity.species_file,
+            "Original.TXT"
+        );
+
+        let later = world
+            .spawn_native_script_robot(dna, species, [600.0; 2])
+            .unwrap();
+        assert_eq!(
+            world.slots.get(later).unwrap().identity.species_file,
+            "Next.txt"
+        );
+        // Save Robot DNA can rename one actor without replacing its roster entry.
+        world.slots.get_mut(founder).unwrap().identity.species_file = "Saved.txt".into();
+        let child = world.clone_organism(founder, [720.0; 2]).unwrap();
+        let restored = crate::SaveFile::decode(&crate::SaveFile::encode(&world).unwrap()).unwrap();
+        for (id, filename) in [
+            (founder, "Saved.txt"),
+            (child, "Saved.txt"),
+            (later, "Next.txt"),
+        ] {
+            assert_eq!(
+                restored.slots.get(id).unwrap().identity.species_file,
+                filename
+            );
+        }
+    }
+
+    #[test]
+    fn native_founder_filename_does_not_replace_an_old_wire_name_or_name_anonymous_actors() {
+        let dna = LegacyDna::parse("stop").unwrap();
+        let original = include_bytes!("../../tests/fixtures/db24832-original-user.sim");
+        let mut imported = Engine::from_native_sim(original).unwrap();
+        let first = imported.slots.ids_in_slot_order()[0];
+        let wire_name = imported
+            .slots
+            .get(first)
+            .unwrap()
+            .identity
+            .species_file
+            .clone();
+        assert!(!wire_name.is_empty());
+        let first_species = SpeciesId::default();
+        let startup_name = imported.species[0].name.clone();
+        let placed = imported
+            .spawn_native_script_robot(dna.clone(), first_species, [600.0; 2])
+            .unwrap();
+        assert_eq!(
+            imported.slots.get(first).unwrap().identity.species_file,
+            wire_name
+        );
+        assert_eq!(
+            imported.slots.get(placed).unwrap().identity.species_file,
+            startup_name
+        );
+
+        let mut fresh = Engine::new_native(EngineConfig::testing()).unwrap();
+        let unnamed = fresh.spawn(dna.clone()).unwrap();
+        assert!(
+            fresh
+                .slots
+                .get(unnamed)
+                .unwrap()
+                .identity
+                .species_file
+                .is_empty()
+        );
+        for portable in [false, true] {
+            let mut legacy = Engine::new(EngineConfig::testing()).unwrap();
+            if portable {
+                legacy.native_random = None;
+            }
+            let species = legacy.register_species(SpeciesDefinition {
+                name: "Named.txt".into(),
+                ..Default::default()
+            });
+            let id = legacy
+                .spawn_species_at(dna.clone(), species, [100.0; 2])
+                .unwrap();
+            assert!(
+                legacy
+                    .slots
+                    .get(id)
+                    .unwrap()
+                    .identity
+                    .species_file
+                    .is_empty()
+            );
+        }
+    }
+
+    #[test]
+    fn native_tie_opponent_uses_founder_filenames_in_fresh_and_older_checkpoints() {
+        for old_checkpoint in [false, true] {
+            for opponent in [false, true] {
+                let mut world = Engine::new_native(EngineConfig {
+                    disqualification: 1,
+                    ..EngineConfig::testing()
+                })
+                .unwrap();
+                let register = |world: &mut Engine, filename: &str| {
+                    world.register_species(SpeciesDefinition {
+                        name: filename.into(),
+                        ..Default::default()
+                    })
+                };
+                let source_species = register(&mut world, "Source.txt");
+                let target_species = if opponent {
+                    register(&mut world, "Opponent.txt")
+                } else {
+                    source_species
+                };
+                let dna = LegacyDna::parse("stop").unwrap();
+                let source = world
+                    .spawn_species_at(dna.clone(), source_species, [400.0, 500.0])
+                    .unwrap();
+                let target = world
+                    .spawn_species_at(dna, target_species, [500.0; 2])
+                    .unwrap();
+                assert!(world.native_make_tie(source, target, 100, 0, 7));
+                if old_checkpoint {
+                    for id in [source, target] {
+                        world
+                            .slots
+                            .get_mut(id)
+                            .unwrap()
+                            .identity
+                            .species_file
+                            .clear();
+                    }
+                    world =
+                        crate::SaveFile::decode(&crate::SaveFile::encode(&world).unwrap()).unwrap();
+                    assert!(
+                        world
+                            .slots
+                            .get(source)
+                            .unwrap()
+                            .identity
+                            .species_file
+                            .is_empty()
+                    );
+                }
+                let actor = world.slots.get_mut(source).unwrap();
+                actor.counters.age = 2;
+                actor.counters.disqualification = 1;
+                actor.program.memory.write(455, 7);
+                actor.program.memory.write(452, -1);
+                actor.program.memory.write(453, 100);
+                let before = world.slots.get(target).unwrap().materials.energy;
+
+                world.tie_exchange_phase(&mut CycleRecorder::disabled(1));
+
+                assert!(world.slots.get(target).unwrap().materials.energy > before);
+                assert_eq!(world.slots.get(source).unwrap().flags.dead, opponent);
+            }
+        }
     }
 
     #[test]

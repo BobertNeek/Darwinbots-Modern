@@ -50,6 +50,70 @@ impl Obstacle {
             shot_policy: ShapeShotPolicy::default(),
         }
     }
+
+    pub(crate) fn extents(&self) -> [f32; 2] {
+        [
+            self.maximum[0] - self.minimum[0],
+            self.maximum[1] - self.minimum[1],
+        ]
+    }
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub(crate) struct TrashCompactor {
+    pub(crate) left: u32,
+    pub(crate) right: u32,
+    pub(crate) speed: f32,
+}
+
+impl TrashCompactor {
+    pub(crate) fn contains(self, id: u32) -> bool {
+        id == self.left || id == self.right
+    }
+
+    pub(crate) fn wall_indices(self, obstacles: &[Obstacle]) -> Option<[usize; 2]> {
+        let left = obstacles.iter().position(|shape| shape.id == self.left)?;
+        let right = obstacles.iter().position(|shape| shape.id == self.right)?;
+        (left != right).then_some([left, right])
+    }
+
+    pub(crate) fn move_walls(
+        self,
+        left: &mut Obstacle,
+        right: &mut Obstacle,
+        world_size: [f32; 2],
+        wall_extents: [[f32; 2]; 2],
+        native_rate: Option<i16>,
+    ) {
+        let (speed, rebound) = native_rate.map_or((self.speed, self.speed * 0.1), |rate| {
+            (
+                (f64::from(rate) * 0.1) as f32,
+                (f64::from(rate) * 0.01) as f32,
+            )
+        });
+        // Obstacles.bas applies the coupled rules before the ordinary movement.
+        if left.minimum[0] > right.minimum[0] + 400.0 {
+            left.drift[0] = -left.drift[0];
+            right.drift[0] = -right.drift[0];
+        }
+        if left.minimum[0] <= -wall_extents[0][0] {
+            left.drift[0] = speed;
+            right.drift[0] = if speed == 0.0 { 0.0 } else { -speed };
+        }
+        for (wall, extents) in [left, right].into_iter().zip(wall_extents) {
+            for (axis, extent) in world_size.into_iter().enumerate() {
+                let span = extents[axis];
+                let minimum = wall.minimum[axis] + wall.drift[axis];
+                if minimum < -span {
+                    wall.drift[axis] = rebound;
+                } else if minimum > extent {
+                    wall.drift[axis] = if rebound == 0.0 { 0.0 } else { -rebound };
+                }
+                wall.minimum[axis] = minimum.clamp(-span, extent);
+                wall.maximum[axis] = wall.minimum[axis] + span;
+            }
+        }
+    }
 }
 
 fn default_shape_color() -> u32 {
@@ -66,10 +130,20 @@ pub struct Teleporter {
     pub center: [f32; 2],
     pub radius: f32,
     pub destination: [f32; 2],
+    /// Native DB2 local gateways choose a new field destination for each transfer.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub random_destination: bool,
     #[serde(default)]
     pub width: f32,
     #[serde(default)]
     pub height: f32,
+    /// The original rectangle keeps its upper-left coordinates as Singles.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub native_top_left: Option<[f32; 2]>,
+    /// Contact uses the center cached before edge correction in the previous cycle.
+    /// The original SIM format omits it. Creation and SIM loading model a virgin VB6 slot.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub native_contact_center: Option<[f32; 2]>,
     #[serde(default = "default_shape_color")]
     pub color: u32,
     #[serde(default)]
@@ -123,8 +197,11 @@ impl Teleporter {
             center,
             radius,
             destination,
+            random_destination: false,
             width: radius * 2.0,
             height: radius * 2.0,
+            native_top_left: None,
+            native_contact_center: None,
             color: default_shape_color(),
             velocity: [0.0; 2],
             path: PathBuf::new(),
@@ -148,6 +225,25 @@ impl Teleporter {
             backflow_limit: 0,
             file_backflow_guard: None,
         }
+    }
+
+    pub(crate) fn native_contact_center_at(&self, position: [f32; 2]) -> [f32; 2] {
+        [
+            (f64::from(position[0]) + f64::from(self.width) * 0.5) as f32,
+            (f64::from(position[1]) + f64::from(self.height) * 0.3) as f32,
+        ]
+    }
+
+    pub(crate) fn native_contact(&self) -> Option<NativeTeleporterContact> {
+        let anchor = self.native_top_left.filter(|_| !self.internet)?;
+        Some(NativeTeleporterContact {
+            // Older Modern checkpoints have only the corrected anchor. The exact
+            // pre-wrap center is unrecoverable until the next movement phase.
+            center: self
+                .native_contact_center
+                .unwrap_or_else(|| self.native_contact_center_at(anchor)),
+            width: self.width,
+        })
     }
 }
 
@@ -180,6 +276,25 @@ pub struct TeleporterFilters {
     pub teleport_heterotrophs: bool,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum NativeTeleporterKind {
+    Intrasim,
+    Inbound,
+    Outbound,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct NativeTeleporterOptions {
+    pub kind: NativeTeleporterKind,
+    pub size: u32,
+    pub path: PathBuf,
+    pub fixed_position: bool,
+    pub filters: TeleporterFilters,
+    pub poll_interval: u32,
+    pub capacity: u32,
+}
+
 impl TeleporterFilters {
     pub(crate) fn accepts(&self, vegetable: bool, corpse: bool) -> bool {
         if corpse {
@@ -198,7 +313,31 @@ pub(crate) struct TeleporterBackflow {
     pub(crate) remaining: u32,
 }
 
-pub(crate) fn inside_teleporter(teleporter: &Teleporter, position: [f32; 2]) -> bool {
+#[derive(Clone, Copy)]
+pub(crate) struct NativeTeleporterContact {
+    pub(crate) center: [f32; 2],
+    width: f32,
+}
+
+impl NativeTeleporterContact {
+    pub(crate) fn touches(self, position: [f32; 2], robot_radius: f32) -> bool {
+        let relative = [position[0] - self.center[0], position[1] - self.center[1]];
+        f64::from(crate::physics::native_magnitude(relative))
+            < f64::from(self.width) / 2.0 + f64::from(robot_radius)
+    }
+}
+
+pub(crate) fn inside_teleporter(
+    teleporter: &Teleporter,
+    position: [f32; 2],
+    robot_radius: f32,
+) -> bool {
+    if teleporter.internet {
+        return false;
+    }
+    if let Some(contact) = teleporter.native_contact() {
+        return contact.touches(position, robot_radius);
+    }
     let dx = position[0] - teleporter.center[0];
     let dy = position[1] - teleporter.center[1];
     dx * dx + dy * dy <= teleporter.radius * teleporter.radius
@@ -224,6 +363,9 @@ pub(crate) fn blocks_backflow(
     teleporter: &Teleporter,
     backflow: Option<TeleporterBackflow>,
 ) -> bool {
+    if teleporter.random_destination {
+        return false;
+    }
     let Some(backflow) = backflow else {
         return false;
     };

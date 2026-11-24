@@ -23,6 +23,9 @@ public sealed partial class SetupWindow : Window
     private GlobalSettings _profileSettings = new();
     private GlobalSettings _globalSettings = new();
     private MutationSettingsUpdate _mutationSettings = MutationSettingsUpdate.Default;
+    private Db2ShapeCreationOptions? _shapeCreation;
+    private Db2ShapeDriftOptions? _shapeDrift;
+    private IReadOnlyList<ObstacleSnapshot> _obstacles = [];
     private IReadOnlyList<string>? _legacySettingsFields;
     private const string ZerobotDna = "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0";
     private const string FeederDna = "cond\r\nstart\r\n-2 .shoot store\r\n50 .shootval store\r\n314 rnd .aimdx store\r\nstop";
@@ -35,7 +38,8 @@ public sealed partial class SetupWindow : Window
     {
     }
 
-    public SetupWindow(IDesktopStorageService storage, float? nativeGaussianSpare = null, byte? nativeSunChange = null, NativeProcessCachesSnapshot? nativeProcessCaches = null, WorldSetupOptions? speciesEditor = null)
+    public SetupWindow(IDesktopStorageService storage, float? nativeGaussianSpare = null, byte? nativeSunChange = null,
+        NativeProcessCachesSnapshot? nativeProcessCaches = null, WorldSetupOptions? speciesEditor = null, bool allowLastExitResume = true)
     {
         _speciesEditor = speciesEditor is not null;
         _storage = storage ?? throw new ArgumentNullException(nameof(storage));
@@ -51,19 +55,13 @@ public sealed partial class SetupWindow : Window
         LoadMode(StartingMode.StarterBotsAndVegetables);
         if (!_speciesEditor)
         {
-            try
-            {
-                _profileSettings = _storage.LoadGlobalSettings() ?? new();
-            }
-            catch (Exception error) when (error is IOException or UnauthorizedAccessException
-                or JsonException or ArgumentException or InvalidDataException)
-            {
-                SetupStatus.Text = $"GLOBAL SETTINGS LOAD FAILED · {error.Message}";
-            }
+            _profileSettings = ReadProfileSettings(_storage, out var error);
+            if (error is not null) SetupStatus.Text = $"GLOBAL SETTINGS LOAD FAILED · {error}";
             ApplyGlobalSettings(_profileSettings);
         }
         _workflow.Reset(ReadSetupOptions());
         OnboardingPanel.IsVisible = !_speciesEditor && _storage.IsFirstRun;
+        ResumeMenuItem.IsVisible = !_speciesEditor && allowLastExitResume && _storage.FindLastExitSimulation() is not null;
         if (speciesEditor is not null)
         {
             ApplySetupOptions(speciesEditor);
@@ -80,6 +78,20 @@ public sealed partial class SetupWindow : Window
             SpeciesEditActions.IsVisible = true;
         }
     }
+
+    internal static GlobalSettings ReadProfileSettings(IDesktopStorageService storage, out string? error)
+    {
+        error = null;
+        try { return storage.LoadGlobalSettings() ?? new(); }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException
+            or JsonException or ArgumentException or InvalidDataException)
+        {
+            error = exception.Message;
+            return new();
+        }
+    }
+
+    internal void ShowStartupLoadError(string error) => SetupStatus.Text = $"STARTUP LOAD FAILED · {error}";
 
     private void Mode_Checked(object? sender, RoutedEventArgs e)
     {
@@ -201,6 +213,8 @@ public sealed partial class SetupWindow : Window
             }
         }
         var speed = Speed.SelectedIndex switch { 0 => 1u, 1 => 5u, 2 => 20u, _ => 100u };
+        float fieldWidth = (float)(WorldWidth.Value ?? 16_000);
+        float fieldHeight = (float)(WorldHeight.Value ?? 12_000);
         return new WorldSetupOptions
         {
             StartingMode = CurrentMode(),
@@ -210,8 +224,8 @@ public sealed partial class SetupWindow : Window
             Seed = (ulong)(Seed.Value ?? 1),
             PopulationCapacity = (int)(PopulationCap.Value ?? 25_000),
             VegetablePopulationCap = (int)(VegetablePopulationCap.Value ?? 500),
-            WorldWidth = (float)(WorldWidth.Value ?? 16_000),
-            WorldHeight = (float)(WorldHeight.Value ?? 12_000),
+            WorldWidth = fieldWidth,
+            WorldHeight = fieldHeight,
             MetabolismCost = _environment.MetabolismCost,
             VegetableEnergyPerTick = _environment.VegetableEnergyPerTick,
             SunlightEnergy = _environment.SunlightEnergy,
@@ -233,6 +247,10 @@ public sealed partial class SetupWindow : Window
             Species = species,
             GlobalSettings = _globalSettings,
             MutationSettings = _mutationSettings,
+            ShapesVisible = _environment.ShapesVisible ?? false,
+            ShapeCreation = _shapeCreation,
+            ShapeDrift = _shapeDrift,
+            Obstacles = _obstacles.Select(obstacle => obstacle.ResolveSetupBounds(fieldWidth, fieldHeight)).ToArray(),
             LegacySettingsFields = _legacySettingsFields,
         };
     }
@@ -403,6 +421,9 @@ public sealed partial class SetupWindow : Window
             Main = _globalSettings.Main with { SafeMode = _environment.Recording?.SafeModeBackup ?? false },
         };
         _mutationSettings = setup.MutationSettings;
+        _shapeCreation = setup.ShapeCreation;
+        _shapeDrift = setup.ShapeDrift;
+        _obstacles = setup.Obstacles;
         _legacySettingsFields = setup.LegacySettingsFields;
         StarterMode.IsChecked = setup.StartingMode == StartingMode.StarterBotsAndVegetables;
         ZerobotMode.IsChecked = setup.StartingMode == StartingMode.Zerobots;
@@ -423,6 +444,10 @@ public sealed partial class SetupWindow : Window
     private void NewWorld_Click(object? sender, RoutedEventArgs e)
     {
         _environment = EnvironmentUpdate.Default;
+        _shapeCreation = null;
+        _shapeDrift = null;
+        _obstacles = [];
+        _legacySettingsFields = null;
         ApplyGlobalSettings(_profileSettings);
         Backend.SelectedIndex = 0;
         WorldWidth.Value = 16_000;
@@ -449,6 +474,18 @@ public sealed partial class SetupWindow : Window
     {
         if (await _storage.PickSimulationPathAsync(this) is { } path)
             PublishWorld(new WorldSetupOptions { LoadSavePath = path, GlobalSettings = _profileSettings });
+    }
+
+    private void Resume_Click(object? sender, RoutedEventArgs e)
+    {
+        if (!ResumeMenuItem.IsVisible) return;
+        if (_storage.FindLastExitSimulation() is { } path)
+            PublishWorld(new WorldSetupOptions { LoadSavePath = path, GlobalSettings = _profileSettings });
+        else
+        {
+            ResumeMenuItem.IsVisible = false;
+            SetupStatus.Text = "No last simulation is available.";
+        }
     }
 
     private void Exit_Click(object? sender, RoutedEventArgs e) => Close();

@@ -1,9 +1,11 @@
 use super::*;
+use crate::physics::organism_radius_for_profile;
 
 impl Engine {
     // Robots.bas: Shooting, ManageChlr, ManageBody, then ManageBouyancy.
     pub(super) fn body_commands_phase(&mut self) {
         let runtime = SysvarRuntime::new();
+        let native = self.native_random.is_some();
         for slot_index in self.phase_slot_range() {
             let slot = &mut self.slots[slot_index];
             let Some(robot) = slot.organism.as_mut() else {
@@ -31,21 +33,23 @@ impl Engine {
             }
             robot.materials.body = robot.materials.body.clamp(0.0, 32_000.0);
             if stored > 0 || fed > 0 {
-                robot.materials.radius = crate::physics::organism_radius(
+                robot.materials.radius = organism_radius_for_profile(
                     robot.materials.body,
                     robot.materials.chloroplasts,
                     self.config.fixed_bot_radii,
+                    native,
                 );
             }
             robot
                 .materials
-                .publish_for_profile(&mut robot.program.memory, self.native_random.is_some());
+                .publish_for_profile(&mut robot.program.memory, native);
         }
     }
 
     pub(super) fn chloroplast_phase(&mut self) {
         let runtime = SysvarRuntime::new();
-        let native_light = self.native_random.is_some().then(|| {
+        let native = self.native_random.is_some();
+        let native_light = native.then(|| {
             (32_000.0 - self.native_light_availability() * 32_000.0).round_ties_even() as i32
         });
         let costs = self.active_dna_costs();
@@ -82,21 +86,25 @@ impl Engine {
                 runtime.finish_command(921, CommandOutcome::Consumed, &mut robot.program.memory);
                 runtime.finish_command(922, CommandOutcome::Consumed, &mut robot.program.memory);
             }
-            if robot.materials.chloroplasts > 0.0 && robot.counters.chloroplast_share_delay > 0 {
+            if self.native_random.is_none()
+                && robot.materials.chloroplasts > 0.0
+                && robot.counters.chloroplast_share_delay > 0
+            {
                 robot.counters.chloroplast_share_delay -= 1;
             }
             if let Some(light) = native_light {
                 native_sensing::publish_integer(&mut robot.program.memory, MEM_LIGHT as u16, light);
             }
             robot.materials.decay_chloroplasts();
-            robot.materials.radius = crate::physics::organism_radius(
+            robot.materials.radius = organism_radius_for_profile(
                 robot.materials.body,
                 robot.materials.chloroplasts,
                 self.config.fixed_bot_radii,
+                native,
             );
             robot
                 .materials
-                .publish_for_profile(&mut robot.program.memory, self.native_random.is_some());
+                .publish_for_profile(&mut robot.program.memory, native);
         }
     }
 
@@ -145,6 +153,55 @@ mod tests {
     }
 
     #[test]
+    fn native_venom_memory_tracks_the_original_writers() {
+        let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+        let dna = LegacyDna::parse("stop").unwrap();
+        let id = world.spawn_at(dna.clone(), [500.0; 2]).unwrap();
+        let robot = world.slots.get_mut(id).unwrap();
+        robot.materials.venom = 0.75;
+        robot.program.memory.write(824, 1);
+
+        world.tick().unwrap();
+        let robot = world.slots.get(id).unwrap();
+        assert_eq!(robot.materials.venom, 1.75);
+        assert_eq!(robot.program.memory.read(825), 1);
+        assert_eq!(robot.program.memory.read(824), 0);
+
+        world.tick().unwrap();
+        assert_eq!(world.memory_at(id, 825).unwrap(), 1);
+
+        let robot = world.slots.get_mut(id).unwrap();
+        robot.program.memory.write(824, 1);
+        robot.program.memory.write(7, -3);
+        // The default venom shot runs after storevenom and rounds its readback.
+        world.tick().unwrap();
+        let after_shot = 2.75_f32 - 2.75_f32 / 20.0;
+        assert_eq!(world.slots.get(id).unwrap().materials.venom, after_shot);
+        assert_eq!(world.memory_at(id, 825).unwrap(), 3);
+        assert_eq!(world.projectiles.kinds[0], -3);
+
+        world.projectiles.reset_native_slots(100);
+        let thief = world.spawn_at(dna, [600.0, 500.0]).unwrap();
+        assert!(world.native_make_tie(thief, id, 100, 0, 7));
+        let robot = world.slots.get_mut(thief).unwrap();
+        robot.program.memory.write(455, 7);
+        robot.program.memory.write(452, -3);
+        robot.program.memory.write(453, -2);
+
+        world.tick().unwrap();
+        let target = world.slots.get(id).unwrap();
+        assert_eq!(target.materials.venom, after_shot - 2.0);
+        assert_eq!(target.program.memory.read(825), 3);
+        let thief = world.slots.get(thief).unwrap();
+        assert_eq!(thief.materials.venom, 2.0);
+        assert_eq!(thief.program.memory.read(825), 2);
+
+        let mut portable_memory = VmMemory::default();
+        target.materials.publish(&mut portable_memory);
+        assert_eq!(portable_memory.read(825), 1);
+    }
+
+    #[test]
     fn shot_uses_body_and_energy_before_body_commands() {
         let (mut control, id) = world("start\n-1 .shoot store\nstop");
         let (mut store, store_id) = world("start\n100 .strbody store\n-1 .shoot store\nstop");
@@ -163,6 +220,46 @@ mod tests {
             store.slots.get(store_id).unwrap().materials.energy,
             control.slots.get(id).unwrap().materials.energy - 100.0
         );
+    }
+
+    #[test]
+    fn chloroplast_and_body_phases_round_radius_for_the_active_profile() {
+        let body = f32::from_bits(0x4517_efef);
+        let chloroplasts = f32::from_bits(0x46e4_b4a6);
+        for (native, expected_radius) in [(false, 0x43c4_a3a0), (true, 0x43c4_a39f)] {
+            let config = EngineConfig::testing();
+            let mut engine = if native {
+                Engine::new_native(config)
+            } else {
+                Engine::new(config)
+            }
+            .unwrap();
+            if !native {
+                engine.native_random = None;
+            }
+            let id = engine
+                .spawn_at(LegacyDna::parse("stop").unwrap(), [500.0; 2])
+                .unwrap();
+            let robot = engine.slots.get_mut(id).unwrap();
+            robot.materials.body = body;
+            robot.materials.chloroplasts = chloroplasts;
+
+            engine.chloroplast_phase();
+            let robot = engine.slots.get_mut(id).unwrap();
+            assert_eq!(
+                robot.materials.chloroplasts.to_bits(),
+                chloroplasts.to_bits()
+            );
+            assert_eq!(robot.materials.radius.to_bits(), expected_radius);
+
+            robot.materials.body = body - 1.0;
+            robot.materials.radius = 1.0;
+            robot.program.memory.write(313, 10);
+            engine.body_commands_phase();
+            let robot = engine.slots.get(id).unwrap();
+            assert_eq!(robot.materials.body.to_bits(), body.to_bits());
+            assert_eq!(robot.materials.radius.to_bits(), expected_radius);
+        }
     }
 
     #[test]

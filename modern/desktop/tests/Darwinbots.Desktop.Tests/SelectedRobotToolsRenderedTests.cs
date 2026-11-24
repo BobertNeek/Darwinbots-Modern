@@ -1,6 +1,12 @@
+using System.Reflection;
 using Avalonia.Controls;
 using Avalonia.Headless;
+using Avalonia.Interactivity;
+using Avalonia.VisualTree;
+using Darwinbots.Desktop.Controls;
 using Darwinbots.Desktop.Core;
+using Darwinbots.Desktop.Core.LegacyMenus;
+using Darwinbots.Desktop.ViewModels;
 using Darwinbots.Desktop.Views;
 using Xunit;
 
@@ -8,6 +14,135 @@ namespace Darwinbots.Desktop.Tests;
 
 public sealed class SelectedRobotToolsRenderedTests
 {
+    [Fact]
+    public async Task AutoTagMenuEditsMatchingNativeRobotsAndKeepsCanceledChangesOut()
+    {
+        await using var simulation = new SimulationSession(new NativeEngineClient(new WorldSetupOptions
+        {
+            Backend = "Cpu", PopulationCapacity = 64,
+        }));
+        const string dna = "start stop\n'#tag: Old tag";
+        await simulation.ImportSpeciesAsync(new SpeciesImport("Founder.txt", dna, false, 0xff239ac0, 2, 1000, 0, false, 0));
+        await simulation.ImportSpeciesAsync(new SpeciesImport("founder.txt", dna, false, 0xff239ac0, 1, 1000, 0, false, 0));
+
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], new WorldSetupOptions(), NativeEngineClientFactory.Instance, new AuditStorageService());
+            DesktopTestApplication.UseSession(window, simulation);
+            window.Show();
+            try
+            {
+                var router = (LegacyCommandRouter)typeof(MainWindow)
+                    .GetField("_legacyCommands", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(window)!;
+                const LegacyCommandId command = LegacyCommandId.EditAutomaticallyTagByName;
+                Assert.False(router.GetState(command).Checked);
+
+                var apply = router.ExecuteAsync(command);
+                CompleteTagDialog(await WaitForTagDialog(window), "Founder.txt", "APPLY");
+                CompleteTagDialog(await WaitForTagDialog(window), " leadéÿ", "APPLY");
+                Assert.Equal("TAGGED · 2 ROBOT(S)", (await apply).Status);
+
+                var cancel = router.ExecuteAsync(command);
+                CompleteTagDialog(await WaitForTagDialog(window), "Founder.txt", "APPLY");
+                CompleteTagDialog(await WaitForTagDialog(window), "Discard this", "CANCEL");
+                Assert.True((await cancel).Canceled);
+
+                var snapshot = simulation.LatestSnapshot;
+                Assert.Equal(3, snapshot.Population);
+                Assert.Equal(0ul, snapshot.Tick);
+                foreach (var robot in snapshot.Organisms)
+                {
+                    var label = snapshot.Species[(int)robot.Species].Name;
+                    var expected = label == "Founder.txt" ? " lead?ÿ" : "Old tag";
+                    Assert.EndsWith($"'#tag: {expected}", await simulation.ExportDnaAsync(robot.Slot, robot.Generation), StringComparison.Ordinal);
+                }
+            }
+            finally
+            {
+                foreach (var dialog in window.OwnedWindows.ToArray()) dialog.Close();
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task MakeNewSpeciesMenuConfirmsAndForksTheLiveDescendantBranch()
+    {
+        var options = new WorldSetupOptions
+        {
+            Backend = "Cpu", PopulationCapacity = 64,
+            GlobalSettings = new GlobalSettings { Main = new GlobalMainSettings { NewSeed = false } },
+        };
+        using var engine = new NativeEngineClient(options);
+        engine.ImportSpecies(new("Founder.txt", "start stop", false, 0xff239ac0, 2, 1000, 0, false, 0));
+        var before = engine.Snapshot();
+        var root = before.Organisms[0];
+        var sibling = before.Organisms[1];
+        var child = engine.CloneOrganism(root.Slot, root.Generation, [100f, 100f]);
+        await using var simulation = new SimulationSession(engine);
+        await simulation.RefreshSnapshotAsync();
+
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], options, new AuditEngineClientFactory(), new AuditStorageService());
+            try
+            {
+                DesktopTestApplication.UseSession(window, simulation);
+                window.Show();
+                var model = (MainWindowViewModel)window.DataContext!;
+                var viewport = window.FindControl<WorldViewport>("Viewport")!;
+                var select = (Action<OrganismKey>)typeof(WorldViewport)
+                    .GetField("OrganismKeySelected", BindingFlags.Instance | BindingFlags.NonPublic)!
+                    .GetValue(viewport)!;
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                var action = menu.FindCommandItem(LegacyCommandId.RobotMakeNewSpecies)!;
+
+                using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                model.ClearSelection();
+                Assert.True(action.IsEnabled);
+                action.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                while (model.Status != "CANCELED")
+                    await Task.Delay(10, timeout.Token);
+                Assert.Empty(window.OwnedWindows.OfType<LegacyConfirmationWindow>());
+                Assert.Equal(before.Species.Count, simulation.LatestSnapshot.Species.Count);
+
+                model.Status = "READY";
+                select(new OrganismKey(root.Slot, root.Generation));
+                action.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                Choose("NO");
+                while (model.Status != "CANCELED")
+                    await Task.Delay(10, timeout.Token);
+                Assert.Equal(before.Species.Count, simulation.LatestSnapshot.Species.Count);
+
+                action.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                Choose("YES");
+                while (simulation.LatestSnapshot.Species.Count != before.Species.Count + 1)
+                    await Task.Delay(10, timeout.Token);
+
+                var after = simulation.LatestSnapshot;
+                var newSpecies = (uint)after.Species.Count - 1;
+                Assert.Matches(@"^Founder \d{1,5}$", after.Species[(int)newSpecies].Name);
+                Assert.Equal(newSpecies, Assert.Single(after.Organisms, robot => robot.Slot == root.Slot).Species);
+                Assert.Equal(newSpecies, Assert.Single(after.Organisms, robot => robot.Slot == child.Slot).Species);
+                Assert.Equal(sibling.Species, Assert.Single(after.Organisms, robot => robot.Slot == sibling.Slot).Species);
+                Assert.Equal(before.Tick, after.Tick);
+
+                void Choose(string answer)
+                {
+                    var dialog = Assert.Single(window.OwnedWindows.OfType<LegacyConfirmationWindow>());
+                    var button = Assert.Single(dialog.GetVisualDescendants().OfType<Button>(),
+                        value => Equals(value.Content, answer));
+                    button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                }
+            }
+            finally
+            {
+                foreach (var dialog in window.OwnedWindows.ToArray()) dialog.Close();
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
     [Fact]
     public async Task SelectedRobotToolsRenderAndWriteDnaThroughExactFocus()
     {
@@ -75,5 +210,24 @@ public sealed class SelectedRobotToolsRenderedTests
         Assert.NotNull(frame);
         Assert.True(frame.PixelSize.Width >= 400, $"Rendered width was {frame.PixelSize.Width}.");
         Assert.True(frame.PixelSize.Height >= 300, $"Rendered height was {frame.PixelSize.Height}.");
+    }
+
+    private static async Task<LegacyValueWindow> WaitForTagDialog(MainWindow window)
+    {
+        for (var attempts = 0; attempts < 100; attempts++)
+        {
+            if (window.OwnedWindows.OfType<LegacyValueWindow>().SingleOrDefault(candidate => candidate.IsVisible) is { } dialog)
+                return dialog;
+            await Task.Delay(20);
+        }
+        throw new Xunit.Sdk.XunitException("The AutoTag value dialog did not open.");
+    }
+
+    private static void CompleteTagDialog(LegacyValueWindow dialog, string input, string action)
+    {
+        var controls = dialog.GetVisualDescendants().ToArray();
+        Assert.Single(controls.OfType<TextBox>()).Text = input;
+        Assert.Single(controls.OfType<Button>(), button => Equals(button.Content, action))
+            .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
     }
 }

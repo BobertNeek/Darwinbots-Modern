@@ -6,6 +6,25 @@ namespace Darwinbots.Desktop.Core.Tests;
 public sealed class NativeSnapshotParserTests
 {
     [Fact]
+    public void OrdinaryRestartStateUsesNativeFieldsAndDefaultsToUnavailableForOlderSnapshots()
+    {
+        var older = NativeSnapshotParser.Parse("""{"tick":0,"organisms":[]}""", "CPU");
+        Assert.False(older.OrdinaryRestartAvailable);
+        Assert.False(older.OrdinaryRestartOnExtinction);
+        Assert.False(older.OrdinaryRestartPending);
+        Assert.Equal(0ul, older.OrdinaryRestartCount);
+
+        var pending = NativeSnapshotParser.Parse("""
+            {"tick":2000,"organisms":[],"ordinary_restart_available":true,
+             "ordinary_restart_on_extinction":true,"ordinary_restart_pending":true,"ordinary_restart_count":7}
+            """, "CPU");
+        Assert.True(pending.OrdinaryRestartAvailable);
+        Assert.True(pending.OrdinaryRestartOnExtinction);
+        Assert.True(pending.OrdinaryRestartPending);
+        Assert.Equal(7ul, pending.OrdinaryRestartCount);
+    }
+
+    [Fact]
     public void NativeEnergyStatusDistinguishesMissingNullZeroAndSignedValues()
     {
         foreach (var json in new[]

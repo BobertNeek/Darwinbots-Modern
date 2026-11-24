@@ -7,7 +7,10 @@ using Avalonia.Headless;
 using Avalonia.Interactivity;
 using Avalonia.Media.Imaging;
 using Avalonia.VisualTree;
+using Darwinbots.Desktop.Controls;
 using Darwinbots.Desktop.Core;
+using Darwinbots.Desktop.Core.LegacyMenus;
+using Darwinbots.Desktop.ViewModels;
 using Darwinbots.Desktop.Views;
 using Xunit;
 
@@ -218,6 +221,159 @@ public sealed class CustomSimulationCostsTests
                 window.Close();
             }
         }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task PhysicsAndCostsStagesNativeCostsAndKeepsApplicationDefaults()
+    {
+        var configuredCosts = new GlobalSimulationCostSettings
+        {
+            DnaCondition = 1e30,
+            DnaCopy = 2.75,
+            DynamicUpperRangePercent = 27.5,
+            DynamicLowerRangePercent = 11.25,
+        };
+        var setup = new WorldSetupOptions
+        {
+            Backend = "Cpu",
+            PopulationCapacity = 64,
+            GlobalSettings = new GlobalSettings { Costs = configuredCosts },
+            Species = [new("Test", "start\nstop", false, 0xff3f8e34u, 1, 1_000, 0, false, 0f)],
+        };
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], setup, NativeEngineClientFactory.Instance, new AuditStorageService());
+            window.Show();
+            try
+            {
+                var viewModel = Assert.IsType<MainWindowViewModel>(window.DataContext);
+                await WaitForLive(() => viewModel.Population == 1, () => viewModel.Status);
+                var session = Field<SimulationSession>(window, "_session");
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                var original = await session.SaveAsync();
+                var tick = session.LatestSnapshot.Tick;
+
+                async Task<AdvancedSettingsWindow> Open(LegacyCommandId command = LegacyCommandId.EditPhysicsAndCosts)
+                {
+                    menu.FindCommandItem(command)!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    await WaitForLive(() => window.OwnedWindows.OfType<AdvancedSettingsWindow>().Any(), () => viewModel.Status);
+                    var result = Assert.Single(window.OwnedWindows.OfType<AdvancedSettingsWindow>());
+                    var tabs = result.FindControl<TabControl>("SettingsTabs")!;
+                    Assert.Equal(command == LegacyCommandId.EditGeneralSettings ? 1 : 2, tabs.SelectedIndex);
+                    tabs.SelectedIndex = 2;
+                    Assert.True(result.FindControl<Border>("SimulationCostsPanel")!.IsVisible);
+                    return result;
+                }
+
+                async Task<CustomSimulationCostsWindow> Edit(AdvancedSettingsWindow parent)
+                {
+                    Click(parent, "LiveCustomSimulationCostsButton");
+                    await WaitForLive(() => parent.OwnedWindows.OfType<CustomSimulationCostsWindow>().Any(), () => "The staged cost editor did not open.");
+                    var child = Assert.Single(parent.OwnedWindows.OfType<CustomSimulationCostsWindow>());
+                    Assert.Equal("STAGE COSTS", child.FindControl<Button>("ApplyButton")!.Content);
+                    return child;
+                }
+
+                async Task<WorldConfiguration> Apply(AdvancedSettingsWindow parent)
+                {
+                    viewModel.Status = "WAITING FOR LIVE SETTINGS";
+                    Click(parent, "ApplyButton");
+                    await WaitForLive(() => viewModel.Status == "LIVE SETTINGS APPLIED", () => viewModel.Status);
+                    return Assert.IsType<WorldConfiguration>(await session.ReadConfigurationAsync());
+                }
+
+                var settings = await Open();
+                Assert.Equal(2, settings.FindControl<ComboBox>("CostPreset")!.SelectedIndex);
+                menu.FindCommandItem(LegacyCommandId.EditGeneralSettings)!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitForLive(() => viewModel.Status == "LIVE SETTINGS ALREADY OPEN", () => viewModel.Status);
+                Assert.Same(settings, Assert.Single(window.OwnedWindows.OfType<AdvancedSettingsWindow>()));
+                var custom = await Edit(settings);
+                Assert.Equal(2.75m, custom.FindControl<NumericUpDown>("DnaCopy")!.Value);
+                Assert.Equal(100_000m, custom.FindControl<NumericUpDown>("DnaCondition")!.Value);
+                custom.FindControl<NumericUpDown>("DnaCopy")!.Value = 5m;
+                Click(custom, "CancelButton");
+                await WaitForLive(() => !custom.IsVisible, () => "The cost editor did not cancel.");
+                Assert.Null(settings.CostUpdate);
+                custom = await Edit(settings);
+                custom.FindControl<NumericUpDown>("DnaCopy")!.Value = 3.5m;
+                Click(custom, "ApplyButton");
+                await WaitForLive(() => settings.CostUpdate?.DnaCopy == 3.5, () => "Custom costs were not staged.");
+                Assert.Equal(configuredCosts with { DnaCopy = 3.5 }, settings.CostUpdate);
+                Assert.Equal(original, await session.SaveAsync());
+                Click(settings, "CancelButton");
+                await WaitForLive(() => viewModel.Status == "CANCELED", () => viewModel.Status);
+                Assert.False(settings.IsVisible);
+                Assert.Equal(original, await session.SaveAsync());
+
+                settings = await Open(LegacyCommandId.EditGeneralSettings);
+                custom = await Edit(settings);
+                Assert.Equal(2.75m, custom.FindControl<NumericUpDown>("DnaCopy")!.Value);
+                custom.FindControl<NumericUpDown>("DnaCopy")!.Value = 3.5m;
+                Click(custom, "ApplyButton");
+                await WaitForLive(() => settings.CostUpdate?.DnaCopy == 3.5, () => "Custom costs were not staged.");
+                Assert.Equal(configuredCosts with { DnaCopy = 3.5 }, (await Apply(settings)).Costs);
+
+                settings = await Open();
+                custom = await Edit(settings);
+                Assert.Equal(3.5m, custom.FindControl<NumericUpDown>("DnaCopy")!.Value);
+                Click(custom, "CancelButton");
+                await WaitForLive(() => !custom.IsVisible, () => "The cost editor did not close.");
+                settings.FindControl<ComboBox>("CostPreset")!.SelectedIndex = 1;
+                settings.FindControl<NumericUpDown>("MaxVelocity")!.Value = 225m;
+                var result = await Apply(settings);
+                Assert.Equal(GlobalSimulationCostSettings.F1Default, result.Costs);
+                Assert.Equal((double)0.004f, result.Costs.DnaCondition);
+                Assert.Equal(225f, result.Environment.Physics.MaxVelocity);
+                Assert.Equal(tick, session.LatestSnapshot.Tick);
+
+                settings = await Open();
+                Assert.Equal(1, settings.FindControl<ComboBox>("CostPreset")!.SelectedIndex);
+                settings.FindControl<ComboBox>("CostPreset")!.SelectedIndex = 0;
+                Assert.Equal(GlobalSimulationCostSettings.NoCosts, (await Apply(settings)).Costs);
+                Assert.Equal(configuredCosts, Field<GlobalSettings>(window, "_globalSettings").Costs);
+
+                Click(window, "LiveAdvancedButton");
+                await WaitForLive(() => window.OwnedWindows.OfType<AdvancedSettingsWindow>().Any(), () => viewModel.Status);
+                var fromPhysicsButton = Assert.Single(window.OwnedWindows.OfType<AdvancedSettingsWindow>());
+                Assert.Equal(2, fromPhysicsButton.FindControl<TabControl>("SettingsTabs")!.SelectedIndex);
+                Assert.Equal(0, fromPhysicsButton.FindControl<ComboBox>("CostPreset")!.SelectedIndex);
+                Click(fromPhysicsButton, "CancelButton");
+            }
+            finally
+            {
+                foreach (var owned in window.OwnedWindows.ToArray()) owned.Close();
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public void InvalidCostCommandDoesNotCommitEarlierNativeLiveSettings()
+    {
+        using var engine = new NativeEngineClient(backend: "Cpu");
+        var before = engine.Save();
+        Assert.Throws<InvalidOperationException>(() => engine.UpdateLiveSettings(
+            EnvironmentUpdate.Default with { MetabolismCost = 5 },
+            MutationSettingsUpdate.Default with { Enabled = false },
+            new GlobalSimulationCostSettings { GlobalMultiplier = -1 }));
+        Assert.Equal(before, engine.Save());
+    }
+
+    private static T Field<T>(object instance, string name) =>
+        Assert.IsType<T>(instance.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(instance));
+
+    private static void Click(Window window, string name) =>
+        window.FindControl<Button>(name)!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+    private static async Task WaitForLive(Func<bool> condition, Func<string> diagnostic)
+    {
+        for (var attempt = 0; attempt < 400; attempt++)
+        {
+            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            if (condition()) return;
+            await Task.Delay(20);
+        }
+        throw new Xunit.Sdk.XunitException(diagnostic());
     }
 
     private static async Task WaitFor(Func<bool> condition)

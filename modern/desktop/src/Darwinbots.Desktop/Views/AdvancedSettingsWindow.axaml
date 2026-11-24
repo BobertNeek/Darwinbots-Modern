@@ -95,6 +95,20 @@
       </StackPanel></ScrollViewer></TabItem>
 
       <TabItem Header="PHYSICS"><ScrollViewer><StackPanel Margin="18,0,4,20" Spacing="14">
+        <Border x:Name="SimulationCostsPanel" Classes="card" IsVisible="False">
+          <StackPanel Spacing="10">
+            <TextBlock Classes="section" Text="SIMULATION COSTS"/>
+            <Grid ColumnDefinitions="*,150">
+              <TextBlock Text="Cost preset" VerticalAlignment="Center"/>
+              <ComboBox x:Name="CostPreset" Grid.Column="1" AutomationProperties.Name="Cost preset">
+                <ComboBoxItem Content="No Costs"/>
+                <ComboBoxItem Content="F1 Default"/>
+                <ComboBoxItem Content="Custom"/>
+              </ComboBox>
+            </Grid>
+            <Button x:Name="LiveCustomSimulationCostsButton" Content="EDIT CUSTOM SIMULATION COSTS" HorizontalAlignment="Left" Click="LiveCustomSimulationCosts_Click"/>
+          </StackPanel>
+        </Border>
         <Border Classes="card"><StackPanel Spacing="10"><TextBlock Classes="section" Text="MOTION + MEDIUM"/>
           <Grid ColumnDefinitions="*,150"><TextBlock Text="Physics preset" VerticalAlignment="Center"/><ComboBox Grid.Column="1" x:Name="PhysicsPreset" SelectedIndex="0"><ComboBoxItem Content="Fluid"/><ComboBoxItem Content="Solid"/><ComboBoxItem Content="Custom"/></ComboBox></Grid>
           <Grid ColumnDefinitions="*,150"><TextBlock Text="Maximum velocity"/><NumericUpDown Grid.Column="1" x:Name="MaxVelocity" Minimum="1" Maximum="10000"/></Grid>

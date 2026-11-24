@@ -77,6 +77,38 @@ fn gene_numbers_conditions_and_activations_match_flow() {
 }
 
 #[test]
+fn native_flow_skips_else_after_start_but_executes_else_after_cond() {
+    let source = "cond false start 11 100 store else 22 101 store stop
+cond false else *.thisgene 102 store stop
+start *.thisgene 103 store stop";
+    for (native, expected_memory, expected_activations) in [
+        (true, [0, 0, 3, 4], vec![false, false, false, true, true]),
+        (false, [0, 22, 2, 3], vec![false, true, true, true]),
+    ] {
+        let mut engine = if native {
+            Engine::new_native(EngineConfig::testing())
+        } else {
+            Engine::new(EngineConfig::testing())
+        }
+        .unwrap();
+        let robot = engine
+            .spawn_at(LegacyDna::parse(source).unwrap(), [500.0, 500.0])
+            .unwrap();
+
+        engine.tick().unwrap();
+
+        let program = &engine.robot_state(robot).unwrap().program;
+        assert_eq!(
+            [100, 101, 102, 103].map(|address| program.memory.read(address)),
+            expected_memory
+        );
+        assert_eq!(program.current_gene, expected_memory[3] as u32);
+        assert_eq!(program.memory.read_sysvar("thisgene"), expected_memory[3]);
+        assert_eq!(program.activation_bitmap, expected_activations);
+    }
+}
+
+#[test]
 fn normal_tick_publishes_vm_activation_telemetry_for_live_diagnostics() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
     let robot = engine

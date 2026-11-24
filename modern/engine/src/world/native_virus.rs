@@ -5,6 +5,7 @@ impl Engine {
     pub(super) fn infect_from_virus(&mut self, target: usize, dna: LegacyDna, power: f32) -> bool {
         let source_cycle = self.native_cycle_or_tick();
         let log_mutation = self.native_cycle != Some(0);
+        let native_flow = self.native_cycle.is_some();
         let Some(robot) = self.slots[target].organism.as_mut() else {
             return false;
         };
@@ -21,16 +22,27 @@ impl Engine {
         if robot.materials.slime < 0.5 {
             robot.materials.slime = 0.0;
         }
-        let gene = dna.gene(1).unwrap_or(dna);
-        let target_dna = robot.program.dna.clone();
-        let boundaries = target_dna.gene_count().max(0) as usize;
+        let gene = if native_flow {
+            dna
+        } else {
+            dna.gene(1).unwrap_or(dna)
+        };
+        let boundaries = robot.program.dna.gene_count_for_world(native_flow);
         let boundary = world_random_integer(
             &mut self.native_random,
             &mut robot.program.rng_state,
             0,
-            boundaries as i32,
+            boundaries,
         ) as usize;
-        robot.program.dna = target_dna.insert_gene(&gene, boundary);
+        if native_flow {
+            // Original MakeSpace can fail without changing DNA. The hit
+            // still records the infection and its mutation bookkeeping.
+            if let Some(dna) = robot.program.dna.insert_native_virus(&gene, boundary) {
+                robot.program.dna = dna;
+            }
+        } else {
+            robot.program.dna = robot.program.dna.insert_gene(&gene, boundary);
+        }
         robot.refresh_occurrence_census();
         let metadata = &mut robot.program.mutation_metadata;
         metadata.total_mutations = metadata.total_mutations.saturating_add(1);
@@ -50,7 +62,7 @@ impl Engine {
             metadata.detailed_log.truncate(128);
         }
         let species = robot.identity.species;
-        publish_reproductive_readbacks(robot);
+        publish_reproductive_readbacks(robot, native_flow);
         let subspecies = self.next_subspecies(species);
         self.slots[target]
             .organism
@@ -65,6 +77,7 @@ impl Engine {
 
     pub(super) fn virus_commands_phase(&mut self) -> Result<(), EngineError> {
         let mut disqualified = Vec::new();
+        let native_flow = self.native_cycle.is_some();
         let costs = self.active_dna_costs();
         let multiplier = costs.dynamic_multiplier(self.cost_population());
         let prohibited = self
@@ -123,7 +136,7 @@ impl Engine {
                         0.0,
                         self.config.fixed_bot_radii,
                     );
-                } else if let Some(gene) = robot.program.dna.gene(make) {
+                } else if let Some(gene) = robot.program.dna.gene_for_virus(make, native_flow) {
                     let length = gene
                         .blocks()
                         .iter()
@@ -241,7 +254,7 @@ impl Engine {
             }
             let delete = robot.program.memory.read(340);
             if delete > 0 {
-                if let Some(dna) = robot.program.dna.delete_gene(delete) {
+                if let Some(dna) = robot.program.dna.delete_gene(delete, native_flow) {
                     robot.program.dna = dna;
                     robot.refresh_occurrence_census();
                     disqualified.push((owner, DisqualificationAction::GeneDeletion));
@@ -251,7 +264,7 @@ impl Engine {
             robot
                 .materials
                 .publish_for_profile(&mut robot.program.memory, self.native_random.is_some());
-            publish_reproductive_readbacks(robot);
+            publish_reproductive_readbacks(robot, native_flow);
         }
         for (id, action) in disqualified {
             self.native_disqualify_action(id, action);
@@ -295,6 +308,104 @@ impl ProjectilePool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn mkvirus_copies_the_requested_native_gene_instead_of_the_coarse_range() {
+        let source =
+            LegacyDna::parse("start 2 335 store else 22 100 store stop start 33 101 store stop")
+                .unwrap();
+        for (native, expected) in [
+            (true, "else 22 100 store stop"),
+            (false, "start 33 101 store stop"),
+        ] {
+            let mut world = if native {
+                Engine::new_native(EngineConfig::testing())
+            } else {
+                Engine::new(EngineConfig::testing())
+            }
+            .unwrap();
+            let id = world.spawn_at(source.clone(), [500.0; 2]).unwrap();
+            world.tick().unwrap();
+
+            let expected = LegacyDna::parse(expected).unwrap();
+            let robot = world.slots.get(id).unwrap();
+            assert_eq!(robot.effects.virus_build_timer, 10);
+            let stored = robot.effects.stored_virus.as_ref().unwrap();
+            assert_eq!(stored.dna.blocks(), expected.blocks());
+            let shot = world.projectiles.stored_slot(id).unwrap() as usize;
+            let payload = world.projectiles.payloads[shot].as_ref().unwrap();
+            assert_eq!(payload.blocks(), expected.blocks());
+            assert_eq!(world.projectiles.gene_numbers[shot], 2);
+            assert_eq!(world.projectiles.dna_lengths[shot], 5);
+        }
+    }
+
+    #[test]
+    fn native_infection_uses_one_draw_and_inserts_at_the_selected_gene_end() {
+        let payload = LegacyDna::parse("start 77 900 store stop").unwrap();
+        let source = LegacyDna::parse("start 11 100 store else 22 101 store stop").unwrap();
+        let after_first =
+            LegacyDna::parse("start 11 100 store start 77 900 store stop else 22 101 store stop")
+                .unwrap();
+        let after_last =
+            LegacyDna::parse("start 11 100 store else 22 101 store stop start 77 900 store stop")
+                .unwrap();
+        for (native, seed, next, expected) in [
+            // 0.5625 selects ordinal 1 in both ranges. 0.375 also selects 1
+            // in the original native range, but the coarse range selects 0.
+            (true, 0x9df641, 0x900000, &after_first),
+            (true, 0xadf641, 0x600000, &after_first),
+            (false, 0x9df641, 0x900000, &after_last),
+        ] {
+            let mut world = if native {
+                Engine::new_native(EngineConfig::testing())
+            } else {
+                Engine::new(EngineConfig::testing())
+            }
+            .unwrap();
+            let id = world.spawn_at(source.clone(), [500.0; 2]).unwrap();
+            world.native_random =
+                Some(serde_json::from_value(serde_json::json!({ "state": seed })).unwrap());
+
+            assert!(world.infect_from_virus(id.slot() as usize, payload.clone(), 1.0));
+            assert_eq!(world.native_random.as_ref().unwrap().state(), next);
+            assert_eq!(world.dna(id).unwrap().blocks(), expected.blocks());
+        }
+    }
+
+    #[test]
+    fn native_infection_prepends_the_entire_payload_at_ordinal_zero() {
+        let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+        let id = world
+            .spawn_at(LegacyDna::parse("99 start stop").unwrap(), [500.0; 2])
+            .unwrap();
+        // The next draw is 0.25, which selects ordinal zero.
+        world.native_random =
+            Some(serde_json::from_value(serde_json::json!({ "state": 0x0df641 })).unwrap());
+        let payload = LegacyDna::parse("start 77 900 store stop start 78 901 store stop").unwrap();
+
+        assert!(world.infect_from_virus(id.slot() as usize, payload, 1.0));
+        let expected =
+            LegacyDna::parse("start 77 900 store stop start 78 901 store stop 99 start stop")
+                .unwrap();
+        assert_eq!(world.native_random.as_ref().unwrap().state(), 0x400000);
+        assert_eq!(world.dna(id).unwrap().blocks(), expected.blocks());
+    }
+
+    #[test]
+    fn native_infection_without_genome_space_preserves_the_recipient_dna() {
+        let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+        let padding = "17 ".repeat(crate::dna::MAX_DNA_BLOCKS - 3);
+        let dna = LegacyDna::parse(&format!("start stop {padding}")).unwrap();
+        assert_eq!(dna.blocks().len(), crate::dna::MAX_DNA_BLOCKS);
+        let id = world.spawn_at(dna.clone(), [500.0; 2]).unwrap();
+        let payload = LegacyDna::parse("start stop").unwrap();
+
+        assert!(world.infect_from_virus(id.slot() as usize, payload, 1.0));
+        let robot = world.slots.get(id).unwrap();
+        assert_eq!(robot.program.dna.blocks(), dna.blocks());
+        assert_eq!(robot.program.mutation_metadata.total_mutations, 1);
+    }
 
     #[test]
     fn native_cycle_zero_infection_changes_dna_without_a_mutation_log_entry() {

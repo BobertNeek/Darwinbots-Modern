@@ -248,6 +248,19 @@ public static class NativeCommandSerializer
             toroidal_world = options.ToroidalWorld,
             fixed_bot_radii = options.FixedBotRadii,
             shapes_visible = options.ShapesVisible,
+            shape_creation = options.ShapeCreation is { } shapeCreation ? new
+            {
+                black = shapeCreation.Black,
+                transparent = shapeCreation.Transparent,
+                see_through = shapeCreation.SeeThrough,
+                absorb_shots = shapeCreation.AbsorbShots,
+            } : null,
+            shape_drift = options.ShapeDrift is { } shapeDrift ? new
+            {
+                horizontal = shapeDrift.Horizontal,
+                vertical = shapeDrift.Vertical,
+                rate = shapeDrift.Rate,
+            } : null,
             dna_costs = DnaCosts(options.GlobalSettings.Costs),
             advanced_mutation = AdvancedMutation(options.GlobalSettings.AdvancedMutation, options.GlobalSettings.Main),
             disqualification = options.GlobalSettings.League.DisqualificationRule,
@@ -304,20 +317,25 @@ public static class NativeCommandSerializer
         },
     };
 
-    internal static object CreateMutationSettingsBatch(MutationSettingsUpdate update) => new
+    internal static object CreateMutationSettingsBatch(MutationSettingsUpdate update,
+        GlobalAdvancedMutationSettings? advanced = null, GlobalMainSettings? main = null)
     {
-        version = 1,
-        commands = new[]
-        {
-            new
-            {
-                type = "update_mutation_settings",
-                enabled = update.Enabled,
-                global_multiplier = update.GlobalMultiplier,
-                species_rates = update.SpeciesRates.Select(value => new { species = value.Species, rate = value.Rate }).ToArray(),
-                profile = update.Profile is null ? null : MutationProfile(update.Profile),
-            },
-        },
+        var mutation = MutationSettingsCommand(update);
+        object[] commands = advanced is null ? [mutation] :
+        [
+            mutation,
+            new { type = "update_advanced_mutation_settings", settings = AdvancedMutation(advanced, main ?? new()) },
+        ];
+        return new { version = 1, commands };
+    }
+
+    private static object MutationSettingsCommand(MutationSettingsUpdate update) => new
+    {
+        type = "update_mutation_settings",
+        enabled = update.Enabled,
+        global_multiplier = update.GlobalMultiplier,
+        species_rates = update.SpeciesRates.Select(value => new { species = value.Species, rate = value.Rate }).ToArray(),
+        profile = update.Profile is null ? null : MutationProfile(update.Profile),
     };
 
     internal static object MutationProfile(MutationProfileUpdate value) => new
@@ -359,30 +377,40 @@ public static class NativeCommandSerializer
     internal static object CreateEnvironmentBatch(EnvironmentUpdate update) => new
     {
         version = 1,
-        commands = new[]
-        {
-            new
-            {
-                type = "update_environment",
-                metabolism_cost = update.MetabolismCost,
-                vegetable_energy_per_tick = update.VegetableEnergyPerTick,
-                sunlight_energy = update.SunlightEnergy,
-                gravity = update.Gravity,
-                drag = update.Drag,
-                brownian_motion = update.BrownianMotion,
-                physics = Physics(update.Physics),
-                shots = Shots(update.Shots),
-                corpse_decay = CorpseDecay(update.CorpseDecay),
-                waste = Waste(update.Waste),
-                vegetation = Vegetation(update.Vegetation),
-                recording = Recording(update.Recording),
-                auto_speciation = update.AutoSpeciation,
-                speciation_genetic_distance_percent = update.SpeciationGeneticDistancePercent,
-                toroidal_world = update.ToroidalWorld,
-                shapes_visible = update.ShapesVisible,
-                axis_topology = AxisTopology(update.ToroidalWorld, update.WrapX, update.WrapY),
-            },
-        },
+        commands = new[] { EnvironmentCommand(update) },
+    };
+
+    internal static object CreateLiveSettingsBatch(EnvironmentUpdate environment, MutationSettingsUpdate mutation,
+        GlobalSimulationCostSettings? costs)
+    {
+        List<object> commands = [EnvironmentCommand(environment), MutationSettingsCommand(mutation)];
+        if (costs is not null) commands.Add(CostSettingsCommand(costs));
+        return new { version = 1, commands };
+    }
+
+    internal static object CostSettingsCommand(GlobalSimulationCostSettings settings) =>
+        new { type = "update_cost_settings", costs = DnaCosts(settings) };
+
+    private static object EnvironmentCommand(EnvironmentUpdate update) => new
+    {
+        type = "update_environment",
+        metabolism_cost = update.MetabolismCost,
+        vegetable_energy_per_tick = update.VegetableEnergyPerTick,
+        sunlight_energy = update.SunlightEnergy,
+        gravity = update.Gravity,
+        drag = update.Drag,
+        brownian_motion = update.BrownianMotion,
+        physics = Physics(update.Physics),
+        shots = Shots(update.Shots),
+        corpse_decay = CorpseDecay(update.CorpseDecay),
+        waste = Waste(update.Waste),
+        vegetation = Vegetation(update.Vegetation),
+        recording = Recording(update.Recording),
+        auto_speciation = update.AutoSpeciation,
+        speciation_genetic_distance_percent = update.SpeciationGeneticDistancePercent,
+        toroidal_world = update.ToroidalWorld,
+        shapes_visible = update.ShapesVisible,
+        axis_topology = AxisTopology(update.ToroidalWorld, update.WrapX, update.WrapY),
     };
 
     internal static object Physics(Db2PhysicsOptions value) => new
