@@ -53,7 +53,7 @@
             <StackPanel HorizontalAlignment="Center" Spacing="12"><TextBlock Text="◉" FontSize="30" HorizontalAlignment="Center"/><TextBlock Text="ZEROBOTS" FontWeight="Bold"/></StackPanel>
           </RadioButton>
           <RadioButton x:Name="ZerobotVegetableMode" Grid.Column="2" GroupName="Mode" Click="Mode_Checked" HorizontalContentAlignment="Center" Padding="18" MinHeight="112">
-            <StackPanel HorizontalAlignment="Center" Spacing="12"><TextBlock Text="◉ + ♧" FontSize="30" HorizontalAlignment="Center" Foreground="#126173"/><TextBlock Text="ZEROBOTS + VEGETABLES" FontWeight="Bold"/></StackPanel>
+            <StackPanel HorizontalAlignment="Center" Spacing="12"><TextBlock Text="◉ + ♧" FontSize="30" HorizontalAlignment="Center" Foreground="#126173"/><TextBlock Text="ZEROBOTS + VEGETABLES" FontWeight="Bold" TextWrapping="Wrap" TextAlignment="Center"/></StackPanel>
           </RadioButton>
         </Grid>
 
