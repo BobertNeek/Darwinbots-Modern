@@ -311,10 +311,14 @@ public sealed class LastExitResumeRenderedTests
                     Assert.Equal(checkpoint, options.LoadSavePath);
                     Assert.False(options.IsAutosaveRecovery);
 
-                    resumed = new MainWindow([], options, NativeEngineClientFactory.Instance, nextStorage);
+                    resumed = new MainWindow([], options with { Backend = "Cpu" }, NativeEngineClientFactory.Instance, nextStorage);
                     resumed.Show();
                     setup.Close();
-                    await WaitFor(() => Status(resumed) == "LOADED", () => Status(resumed));
+                    var diagnostics = Assert.IsType<OfflineDiagnosticRecovery>(typeof(MainWindow)
+                        .GetField("_diagnostics", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(resumed));
+                    await WaitFor(() => Status(resumed) == "LOADED" || diagnostics.LastErrorMessage is not null,
+                        () => Status(resumed));
+                    Assert.True(diagnostics.LastErrorMessage is null, diagnostics.LastErrorMessage);
                     var restored = Session(resumed).LatestSnapshot;
                     Assert.Equal(expected.Tick, restored.Tick);
                     Assert.Equal(expected.Population, restored.Population);

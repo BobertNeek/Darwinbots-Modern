@@ -508,6 +508,7 @@ impl Engine {
         let original_core = record.bytes("ties_core")?.to_vec();
         let original_extension = record.bytes("ties_extension")?.to_vec();
         let robot = self.slots.get(id)?;
+        let active_count = ties.len();
         for (i, tie) in ties.into_iter().enumerate() {
             let forward = tie.first == id;
             let end = tie.native_end_states()[usize::from(!forward)];
@@ -557,13 +558,14 @@ impl Engine {
                     remap.contains_key(&if t.first == other { t.second } else { t.first })
                 })
                 .position(|ordinal| std::ptr::eq(&self.ties[ordinal], tie))
-                .unwrap()
-                + 1;
+                .map_or(0, |index| index + 1);
             let all_other_ties_exported = self.tie_indices_for(other).into_iter().all(|ordinal| {
                 let t = &self.ties[ordinal];
                 remap.contains_key(&if t.first == other { t.second } else { t.first })
             });
-            let reciprocal = if self.native_random.is_some() && all_other_ties_exported {
+            let reciprocal = if tie.directed_native_back.is_some() {
+                end.saved_reciprocal.unwrap_or(0)
+            } else if self.native_random.is_some() && all_other_ties_exported {
                 end.saved_reciprocal.unwrap_or_else(|| {
                     if end.length.is_none() {
                         i32::from(i16::from_le_bytes(c[4..6].try_into().unwrap()))
@@ -587,7 +589,7 @@ impl Engine {
                 (4, reciprocal),
                 (14, if end.angle_fixed { -1 } else { 0 }),
                 (26, end.last),
-                (30, if forward { 0 } else { -1 }),
+                (30, if tie.is_native_back(id) { -1 } else { 0 }),
                 (34, if tie.information { -1 } else { 0 }),
                 (
                     36,
@@ -634,6 +636,22 @@ impl Engine {
             e[1..5].copy_from_slice(&end.b.to_le_bytes());
             e[5..9].copy_from_slice(&end.k.to_le_bytes());
             e[9..13].copy_from_slice(&end.rest_length.to_le_bytes());
+        }
+        if self.native_random.is_some() {
+            // The first nonpositive pointer ends the runtime array. Later
+            // serialized rows still belong to the original robot record.
+            let first_gap = (1..=10)
+                .find(|&slot| {
+                    i16::from_le_bytes(
+                        original_core[slot * 38 + 2..slot * 38 + 4]
+                            .try_into()
+                            .unwrap(),
+                    ) <= 0
+                })
+                .unwrap_or(11);
+            let retained = first_gap.max(active_count + 1);
+            core[retained * 38..].copy_from_slice(&original_core[retained * 38..]);
+            extension[retained * 13..].copy_from_slice(&original_extension[retained * 13..]);
         }
         record.set_value("ties_core", NativeValue::Bytes(core))?;
         record.set_value("ties_extension", NativeValue::Bytes(extension))

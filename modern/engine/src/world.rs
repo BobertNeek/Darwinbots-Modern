@@ -9129,7 +9129,7 @@ impl Engine {
         let mut channels = Vec::new();
         for tie_index in self.phase_tie_indices() {
             let tie = &self.ties[tie_index];
-            for (source_slot, target_slot, source_port) in [
+            for (side, (source_slot, target_slot, source_port)) in [
                 (
                     tie.first.slot() as usize,
                     tie.second.slot() as usize,
@@ -9140,7 +9140,16 @@ impl Engine {
                     tie.first.slot() as usize,
                     tie.second_port,
                 ),
-            ] {
+            ]
+            .into_iter()
+            .enumerate()
+            {
+                if tie
+                    .directed_native_back
+                    .is_some_and(|back| back || side != 0)
+                {
+                    continue;
+                }
                 let Some(source) = self.slots[source_slot].organism.as_ref() else {
                     continue;
                 };
@@ -9240,7 +9249,7 @@ impl Engine {
         let mut chloroplast_delay_requests = Vec::new();
         for tie_index in self.phase_tie_indices() {
             let tie = &self.ties[tie_index];
-            if !native && !tie.hardened {
+            if (!native && !tie.hardened) || tie.directed_native_back == Some(true) {
                 continue;
             }
             for (source_slot, target_slot) in [
@@ -10063,11 +10072,18 @@ impl Engine {
             if tie_count >= MAX_TIES_PER_ROBOT {
                 break;
             }
-            let Some(reciprocal) = self
+            let end = tie.native_end_states()[usize::from(!forward)];
+            let reciprocal_index = if tie.directed_native_back.is_some() {
+                end.saved_reciprocal
+                    .and_then(|value| u8::try_from(value).ok())
+                    .unwrap_or(0)
+            } else if let Some(reciprocal) = self
                 .tie_indices_for(other)
                 .iter()
                 .position(|ordinal| *ordinal == index)
-            else {
+            {
+                (reciprocal + 1) as u8
+            } else {
                 continue;
             };
             let delta = std::array::from_fn::<_, 2, _>(|axis| {
@@ -10080,7 +10096,6 @@ impl Engine {
                 delta[1].atan2(delta[0])
             };
             let relative = normalize_tie_angle(angle - source.heading());
-            let end = tie.native_end_states()[usize::from(!forward)];
             let port = if forward {
                 tie.first_port
             } else {
@@ -10106,7 +10121,7 @@ impl Engine {
             };
             endpoints[tie_count] = Some(TieEndpointState {
                 other: Some(other),
-                reciprocal_index: (reciprocal + 1) as u8,
+                reciprocal_index,
                 port,
                 information: i32::from(tie.information),
                 current_angle: relative,
@@ -10495,7 +10510,7 @@ impl Engine {
             let tie_count = self
                 .ties
                 .iter()
-                .filter(|tie| tie.contains(attacker_id))
+                .filter(|tie| tie.has_endpoint(attacker_id))
                 .count();
             let Some(attacker) = self.slots[attacker_slot].organism.as_mut() else {
                 continue;
@@ -10740,7 +10755,7 @@ impl Engine {
                 .get(current)
                 .is_ok_and(|robot| robot.counters.multibot)
             {
-                for tie in self.ties.iter().filter(|tie| tie.contains(current)) {
+                for tie in self.ties.iter().filter(|tie| tie.has_endpoint(current)) {
                     let other = if tie.first == current {
                         tie.second
                     } else {
