@@ -544,6 +544,9 @@ pub struct Snapshot {
     /// Original signed SimOpts.TotRunCycle, separate from the monotonic API tick.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub native_cycle: Option<i32>,
+    /// Last effective state of the original Sun button.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub native_sun_on: Option<bool>,
     #[serde(default = "default_true")]
     pub death_poffs_enabled: bool,
     #[serde(default = "default_world_size")]
@@ -595,6 +598,7 @@ impl Default for Snapshot {
             schema_version: 0,
             tick: 0,
             native_cycle: None,
+            native_sun_on: None,
             death_poffs_enabled: true,
             world_size: [0.0; 2],
             organisms: Vec::new(),
@@ -626,6 +630,7 @@ impl PartialEq for Snapshot {
     fn eq(&self, other: &Self) -> bool {
         self.tick == other.tick
             && self.native_cycle == other.native_cycle
+            && self.native_sun_on == other.native_sun_on
             && self.death_poffs_enabled == other.death_poffs_enabled
             && self.schema_version == other.schema_version
             && self.world_size == other.world_size
@@ -1980,6 +1985,7 @@ impl From<Db3sV2Snapshot> for Snapshot {
             schema_version: default_snapshot_schema_version(),
             tick: value.tick,
             native_cycle: None,
+            native_sun_on: None,
             death_poffs_enabled: true,
             world_size: value.world_size,
             organisms: value.organisms.into_iter().map(Into::into).collect(),
@@ -2807,6 +2813,7 @@ impl Engine {
                 schema_version: default_snapshot_schema_version(),
                 tick: 0,
                 native_cycle: None,
+                native_sun_on: None,
                 death_poffs_enabled: true,
                 world_size,
                 organisms: Vec::new(),
@@ -6487,7 +6494,11 @@ impl Engine {
             self.config.shots = shots;
         }
         if let Some(vegetation) = vegetation {
+            let sun_on = self.native_sun_on();
             self.config.vegetation = vegetation;
+            if let Some(sun_on) = sun_on {
+                self.remember_native_sun_indicator(sun_on);
+            }
         }
         if let Some(corpse_decay) = corpse_decay {
             self.config.corpse_decay = corpse_decay;
@@ -11498,6 +11509,7 @@ impl Engine {
             self.total_simulation_energy()
         };
         let weather_seed = self.config.seed ^ self.tick.rotate_left(17);
+        let sun_on = self.native_sun_on();
         let daylight = self.vegetation_runtime.advance_daylight(
             &mut self.config.vegetation,
             total_energy,
@@ -11505,6 +11517,14 @@ impl Engine {
             self.native_random.as_mut(),
         );
         let daytime = daylight.feed_this_cycle;
+        if let Some(sun_on) = sun_on {
+            // Vegs.bas assigns the graphical VB6 CheckBox. A changed Value
+            // fires SunButton_Click and writes back the new state to Daytime.
+            if sun_on != daytime {
+                self.config.vegetation.daytime = daytime;
+            }
+            self.remember_native_sun_indicator(daytime);
+        }
         if native && daytime {
             // FeedVeg skips this assignment entirely on non-feeding cycles.
             self.refresh_native_light_availability();
@@ -13232,6 +13252,7 @@ impl Engine {
             schema_version: default_snapshot_schema_version(),
             tick: self.tick,
             native_cycle: self.native_cycle,
+            native_sun_on: self.native_sun_on(),
             death_poffs_enabled: self.death_poffs_enabled,
             world_size: [self.config.world_width, self.config.world_height],
             organisms,

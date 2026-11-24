@@ -496,9 +496,7 @@ public sealed partial class MainWindow : Window
             LiveMetabolism.Value = _liveEnvironment.MetabolismCost;
             LivePlantEnergy.Value = _liveEnvironment.Vegetation.MaxEnergyPerTick;
             LiveFeedingToBody.Value = (decimal)_liveEnvironment.Vegetation.FeedingToBody;
-            var sunLabel = _liveEnvironment.Vegetation.Daytime ? "SUN ON" : "SUN OFF";
-            SunButton.Content = sunLabel;
-            AutomationProperties.SetName(SunButton, sunLabel);
+            UpdateSunIndicator(_session?.LatestSnapshot.NativeSunOn ?? _liveEnvironment.Vegetation.Daytime);
             Viewport.ToroidalWorld = _liveEnvironment.ToroidalWorld;
             Viewport.WrapX = _liveEnvironment.WrapX;
             Viewport.WrapY = _liveEnvironment.WrapY;
@@ -506,22 +504,35 @@ public sealed partial class MainWindow : Window
         finally { _controlsReady = controlsReady; }
     }
 
+    private void UpdateSunIndicator(bool enabled)
+    {
+        var label = SunLabel(enabled);
+        SunButton.Content = label;
+        AutomationProperties.SetName(SunButton, label);
+    }
+
+    private static string SunLabel(bool enabled) => enabled ? "SUN ON" : "SUN OFF";
+
     private async void Sun_Click(object? sender, RoutedEventArgs e)
     {
-        var vegetation = _liveEnvironment.Vegetation with { Daytime = !_liveEnvironment.Vegetation.Daytime };
-        var update = _liveEnvironment with { Vegetation = vegetation };
-        _liveEnvironment = update;
-        SunButton.Content = vegetation.Daytime ? "SUN ON" : "SUN OFF";
-        AutomationProperties.SetName(SunButton, vegetation.Daytime ? "SUN ON" : "SUN OFF");
-        if (_session is null)
-        {
-            _viewModel.Status = vegetation.Daytime ? "SUN ON" : "SUN OFF";
-            return;
-        }
+        var session = _session;
         try
         {
-            await _session.UpdateEnvironmentAsync(update);
-            _viewModel.Status = vegetation.Daytime ? "SUN ON" : "SUN OFF";
+            if (session?.LatestSnapshot.NativeSunOn is not null)
+            {
+                if (await session.ToggleNativeSunAsync() is { } enabled && ReferenceEquals(_session, session))
+                {
+                    _liveEnvironment = _liveEnvironment with { Vegetation = _liveEnvironment.Vegetation with { Daytime = enabled } };
+                    _viewModel.Status = SunLabel(enabled);
+                }
+                return;
+            }
+
+            var vegetation = _liveEnvironment.Vegetation with { Daytime = !_liveEnvironment.Vegetation.Daytime };
+            _liveEnvironment = _liveEnvironment with { Vegetation = vegetation };
+            UpdateSunIndicator(vegetation.Daytime);
+            if (session is not null) await session.UpdateEnvironmentAsync(_liveEnvironment);
+            _viewModel.Status = SunLabel(vegetation.Daytime);
         }
         catch (Exception error)
         {
@@ -2213,6 +2224,7 @@ public sealed partial class MainWindow : Window
                     _playerBotBindings = snapshot.PlayerBot.Bindings;
                     _viewModel.Update(snapshot, _runtimeClock.Elapsed, _activeCostMultiplier);
                     SynchronizeDeathPoffPolicy(snapshot.DeathPoffsEnabled);
+                    if (snapshot.NativeSunOn is { } sunOn) UpdateSunIndicator(sunOn);
                     if (snapshot.LocalMode.Evolution is { Phase: "complete" }) {
                         _runTimer.Stop();
                         _viewModel.Status = "ZEROBOT EVOLUTION COMPLETE";

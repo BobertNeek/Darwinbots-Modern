@@ -447,6 +447,13 @@ public sealed class SimulationSession : IAsyncDisposable
         return context;
     }
 
+    public async Task<bool?> ToggleNativeSunAsync(CancellationToken cancellationToken = default)
+    {
+        bool? enabled = null;
+        await Enqueue(engine => enabled = engine.ToggleNativeSun(), cancellationToken).ConfigureAwait(false);
+        return enabled;
+    }
+
     public async Task<NativeProcessStateSnapshot> ReadNativeProcessStateAsync(CancellationToken cancellationToken = default)
     {
         NativeProcessStateSnapshot? context = null;

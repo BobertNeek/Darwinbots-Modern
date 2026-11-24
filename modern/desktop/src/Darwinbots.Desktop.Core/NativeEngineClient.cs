@@ -1004,6 +1004,15 @@ public sealed partial class NativeEngineClient : IEngineClient
             "read native sun change").GetProperty("results")[0].GetByte();
     }
 
+    public bool? ToggleNativeSun()
+    {
+        EnsureAlive();
+        var result = ExecuteBatchForResult(
+            new { version = 1, commands = new[] { new { type = "toggle_native_sun" } } },
+            "toggle native sun").GetProperty("results")[0];
+        return result.ValueKind == JsonValueKind.Null ? null : result.GetBoolean();
+    }
+
     public NativeProcessCachesSnapshot ReadNativeProcessCaches()
     {
         EnsureAlive();

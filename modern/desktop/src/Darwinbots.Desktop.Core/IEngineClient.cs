@@ -117,6 +117,7 @@ public interface IEngineClient : IDisposable
     WorldConfiguration? ReadConfiguration() => null;
     float? ReadNativeGaussianSpare() => null;
     byte ReadNativeSunChange() => 0;
+    bool? ToggleNativeSun() => null;
     NativeProcessCachesSnapshot ReadNativeProcessCaches() => NativeProcessCachesSnapshot.Empty;
     string ReadRobotTagReport() => throw new NotSupportedException("Robot tag information is unavailable in this engine client.");
 }
