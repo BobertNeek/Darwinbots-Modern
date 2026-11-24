@@ -11548,6 +11548,12 @@ impl Engine {
             if native && !daytime {
                 continue;
             }
+            if native && organism.materials.chloroplasts > 0.0 {
+                // Vegs.feedvegs ages the share delay on feeding cycles,
+                // even outside the sun band and with DNA disabled.
+                organism.counters.chloroplast_share_delay =
+                    organism.counters.chloroplast_share_delay.saturating_sub(1);
+            }
             if organism.materials.energy <= 0.0 {
                 if !native {
                     organism.program.memory.write(MEM_LIGHT, 0);
@@ -15594,6 +15600,44 @@ mod native_publication55_tests {
 #[cfg(test)]
 mod native_feed_eligibility55_tests {
     use super::*;
+
+    #[test]
+    fn native_chloroplast_share_delay_ages_in_daylight_even_in_shade() {
+        let mut config = EngineConfig::testing();
+        config.world_width = 8_000.0;
+        config.world_height = 6_000.0;
+        config.vegetation.daytime = false;
+        let mut world = Engine::new_native(config).unwrap();
+        world.vegetation_runtime =
+            serde_json::from_value(serde_json::json!({"sun_position": 0.5, "sun_range": 0.0}))
+                .unwrap();
+        let mut ids = Vec::new();
+        for x in [4_000.0, 1_500.0] {
+            let id = world
+                .spawn_at(LegacyDna::parse("stop").unwrap(), [x, 3_000.0])
+                .unwrap();
+            let robot = world.slots.get_mut(id).unwrap();
+            robot.materials.chloroplasts = 16_000.0;
+            robot.counters.chloroplast_share_delay = 2;
+            ids.push(id);
+        }
+        world.slots.get_mut(ids[1]).unwrap().flags.can_execute_dna = false;
+
+        world.tick().unwrap();
+        for id in &ids {
+            let robot = world.slots.get(*id).unwrap();
+            assert_eq!(robot.counters.chloroplast_share_delay, 2);
+            assert_eq!(robot.program.memory.read(MEM_DAYTIME), 0);
+        }
+
+        world.config.vegetation.daytime = true;
+        world.tick().unwrap();
+        for (id, sunlight) in ids.into_iter().zip([1, 0]) {
+            let robot = world.slots.get(id).unwrap();
+            assert_eq!(robot.counters.chloroplast_share_delay, 1);
+            assert_eq!(robot.program.memory.read(MEM_DAYTIME), sunlight);
+        }
+    }
 
     #[test]
     fn native_feed_excludes_hidden_and_missing_area_but_no_chloroplast_commands_still_feed() {
