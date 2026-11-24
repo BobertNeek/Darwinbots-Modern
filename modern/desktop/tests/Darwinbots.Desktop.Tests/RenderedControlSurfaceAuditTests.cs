@@ -2100,6 +2100,9 @@ internal sealed class AuditStorageService : IDesktopStorageService
     public string? PickedSimulationPath { get; init; }
     public byte[]? OpenedSimulation { get; set; }
     public DesktopSettings? SettingsToOpen { get; init; }
+    public byte[]? RgbMonitorPresetToOpen { get; set; }
+    public byte[]? SavedRgbMonitorPreset { get; private set; }
+    public bool AcceptRgbMonitorPresetSave { get; set; } = true;
     public string? LatestAutosave { get; init; }
     public byte[]? SavedSimulation { get; private set; }
     public string? SavedDna { get; private set; }
@@ -2133,6 +2136,15 @@ internal sealed class AuditStorageService : IDesktopStorageService
 
     public Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner) => Task.FromResult(DnaFiles);
     public Task<DesktopSettings?> OpenSettingsAsync(TopLevel owner) => Task.FromResult(SettingsToOpen);
+    public Task<byte[]?> OpenRgbMonitorPresetAsync(TopLevel owner) => Task.FromResult(RgbMonitorPresetToOpen);
+
+    public Task<bool> SaveRgbMonitorPresetAsync(TopLevel owner, ReadOnlyMemory<byte> preset)
+    {
+        if (!AcceptRgbMonitorPresetSave) return Task.FromResult(false);
+        SavedRgbMonitorPreset = preset.ToArray();
+        return Task.FromResult(true);
+    }
+
     public Task<string?> PickSimulationPathAsync(TopLevel owner) => Task.FromResult(PickedSimulationPath);
     public Task<byte[]?> OpenSimulationAsync(TopLevel owner) => Task.FromResult(OpenedSimulation);
 

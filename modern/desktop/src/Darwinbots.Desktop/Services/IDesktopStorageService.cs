@@ -24,6 +24,8 @@ public interface IDesktopStorageService
         Func<Stream, Task> writeAsync,
         Func<Stream, Task>? writeMutationHistoryAsync) => Task.FromResult(false);
     Task<byte[]?> OpenOrganismAsync(TopLevel owner) => Task.FromResult<byte[]?>(null);
+    Task<byte[]?> OpenRgbMonitorPresetAsync(TopLevel owner) => Task.FromResult<byte[]?>(null);
+    Task<bool> SaveRgbMonitorPresetAsync(TopLevel owner, ReadOnlyMemory<byte> preset) => Task.FromResult(false);
     Task<DesktopSettings?> OpenSettingsAsync(TopLevel owner);
     Task<string?> PickSimulationPathAsync(TopLevel owner);
     Task<byte[]?> OpenSimulationAsync(TopLevel owner);

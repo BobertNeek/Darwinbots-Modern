@@ -1302,7 +1302,8 @@ public sealed partial class MainWindow : Window
             SelectedRobotKey(),
             _rgbMemorySettings ?? RgbMemoryMonitorSettings.LegacyDefaults,
             ApplyRgbMonitorSettings,
-            closeOnApply: true);
+            closeOnApply: true,
+            storage: _storage);
         if (_session is { } session) dialog.SetSnapshot(session.LatestSnapshot);
         await dialog.ShowDialog(this);
         return dialog.Accepted

@@ -58,6 +58,37 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         return memory.ToArray();
     }
 
+    public async Task<byte[]?> OpenRgbMonitorPresetAsync(TopLevel owner)
+    {
+        var files = await owner.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Load RGB monitor preset",
+            AllowMultiple = false,
+            FileTypeFilter = [RgbMonitorPresetFileType()],
+        });
+        if (files.FirstOrDefault() is not { } file) return null;
+        await using var stream = await file.OpenReadAsync();
+        var bytes = new byte[Db2RgbMonitorPresetCodec.ByteCount];
+        await stream.ReadExactlyAsync(bytes);
+        return bytes;
+    }
+
+    public async Task<bool> SaveRgbMonitorPresetAsync(TopLevel owner, ReadOnlyMemory<byte> preset)
+    {
+        var file = await owner.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Save RGB monitor preset",
+            SuggestedFileName = "monitor.mtrp",
+            DefaultExtension = "mtrp",
+            FileTypeChoices = [RgbMonitorPresetFileType()],
+        });
+        if (file is null) return false;
+        await using var stream = await file.OpenWriteAsync();
+        stream.SetLength(0);
+        await stream.WriteAsync(preset);
+        return true;
+    }
+
     public async Task<DesktopSettings?> OpenSettingsAsync(TopLevel owner)
     {
         var files = await owner.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
@@ -407,6 +438,9 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
 
     private static FilePickerFileType SettingsFileType() =>
         new("Darwinbots settings") { Patterns = ["*.set", "*.json"] };
+
+    private static FilePickerFileType RgbMonitorPresetFileType() =>
+        new("Darwinbots RGB monitor preset") { Patterns = ["*.mtrp"] };
 
     private static string? LocalPath(IStorageItem item) => item.Path.IsFile ? item.Path.LocalPath : null;
 
