@@ -131,6 +131,10 @@ public sealed partial class MainWindow : Window
     private ulong? _lastAutomaticSaveTick;
     private bool _deadRecordingEnabled;
     private bool _excludeRepopulatingDead;
+    private bool _startupComplete;
+    private bool _savingLastExit;
+    private bool _skipLastExitCheckpoint;
+    private bool _windowClosed;
     private bool _playerBotEnabled;
     private IReadOnlyList<PlayerBotBinding> _playerBotBindings = [];
     private bool _rgbMemoryMonitorEnabled;
@@ -350,6 +354,7 @@ public sealed partial class MainWindow : Window
         if (setup.LoadSavePath is null && _globalSettings.Main.VideoOff)
             SetTurboMode(true);
         Opened += Window_Opened;
+        Closing += Window_Closing;
         Closed += Window_Closed;
         _controlsReady = true;
         SetIgnoreErrors(!_safemodeBackup);
@@ -1089,6 +1094,7 @@ public sealed partial class MainWindow : Window
 
     private async Task<LegacyCommandResult> ReplaceSimulationAsync(bool openSetup, WorldSetupOptions? editedSetup = null)
     {
+        if (_savingLastExit) return LegacyCommandResult.Failure("LAST SIMULATION IS BEING SAVED");
         if (_navigationInFlight) return LegacyCommandResult.Failure("NEW SIMULATION ALREADY OPENING");
         _navigationInFlight = true;
         _runTimer.Stop();
@@ -1109,7 +1115,8 @@ public sealed partial class MainWindow : Window
             }
             if (openSetup)
             {
-                var setupWindow = new SetupWindow(_storage, spare, sunChange, caches);
+                var setupWindow = new SetupWindow(_storage, spare, sunChange, caches,
+                    allowLastExitResume: _startupArguments.Count == 0);
                 setupWindow.WorldCreated += options =>
                 {
                     var replacement = new MainWindow(_startupArguments, options, _engineFactory, _storage, _launchSafeModeBackup);
@@ -1128,6 +1135,7 @@ public sealed partial class MainWindow : Window
                 SetApplicationMainWindow(replacement);
                 replacement.Show();
             }
+            _skipLastExitCheckpoint = true;
             Close();
             return LegacyCommandResult.Success(openSetup ? "NEW SIMULATION SETUP" : "WORLD RESET");
         }
@@ -1158,7 +1166,7 @@ public sealed partial class MainWindow : Window
     private LegacyCommandResult QuitApplication()
     {
         Close();
-        return LegacyCommandResult.Success("QUIT");
+        return LegacyCommandResult.Success(_savingLastExit ? "SAVING LAST SIMULATION" : "QUIT");
     }
 
     private async Task<LegacyCommandResult> SaveSimulationWithoutMutationsCommandAsync()
@@ -2135,6 +2143,7 @@ public sealed partial class MainWindow : Window
 
     private async Task HandleEngineErrorAsync(Exception error, bool attemptRecovery)
     {
+        if (_windowClosed || _savingLastExit) return;
         var tick = _session?.LatestSnapshot.Tick ?? 0;
         if (_diagnostics.IgnoreErrors)
         {
@@ -2206,6 +2215,7 @@ public sealed partial class MainWindow : Window
         {
             await _storage.SaveLastStartAsync(
                 System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(CreateNextWorldSetup()));
+            if (_windowClosed) return;
             _diagnostics.BeginSession(_storage.FindLastStart());
             _runtimeClock.Restart();
             var worldSetup = CreateNextWorldSetup() with
@@ -2225,6 +2235,7 @@ public sealed partial class MainWindow : Window
                 var loading = _loadingSimulation;
                 Dispatcher.UIThread.Post(() =>
                 {
+                    if (_windowClosed) return;
                     _playerBotEnabled = snapshot.PlayerBot.Enabled;
                     _playerBotBindings = snapshot.PlayerBot.Bindings;
                     _viewModel.Update(snapshot, _runtimeClock.Elapsed, _activeCostMultiplier);
@@ -2262,6 +2273,7 @@ public sealed partial class MainWindow : Window
             };
             _viewModel.Status = "ENGINE READY — IMPORT A LEGACY BOT";
             await _session.RefreshSnapshotAsync();
+            if (_windowClosed) return;
             var compatibilityWarnings = new List<string>();
             if (_setup.LoadSavePath is { } savePath)
             {
@@ -2269,10 +2281,14 @@ public sealed partial class MainWindow : Window
             }
             else
                 foreach (var species in _setup.Species)
+                {
+                    if (_windowClosed) return;
                     compatibilityWarnings.AddRange((await _session.ImportSpeciesAsync(species)).CompatibilityWarnings);
+                }
             foreach (var bot in _startupBots)
             {
                 var file = await Db2RobotFileStorage.ReadAsync(bot.Path);
+                if (_windowClosed) return;
                 if (file.MutationProfile is null)
                 {
                     compatibilityWarnings.AddRange((await _session.ImportDnaAsync(
@@ -2293,13 +2309,16 @@ public sealed partial class MainWindow : Window
             // Worker completion means the snapshot was queued for presentation.
             // Do not announce readiness ahead of those normal-priority UI posts.
             await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
+            if (_windowClosed) return;
             if (compatibilityWarnings.Count > 0) _viewModel.Status = $"DNA COMPATIBILITY · {string.Join(" · ", compatibilityWarnings.Distinct())}";
             else if (_startupBots.Count > 0) _viewModel.Status = $"IMPORTED {_startupBots.Count} STARTUP BOT(S)";
             else if (_setup.Species.Count > 0) _viewModel.Status = $"WORLD READY · {_setup.Species.Count} SPECIES";
             else if (_setup.LoadSavePath is not null) _viewModel.Status = _setup.IsAutosaveRecovery ? "AUTOSAVE RECOVERED" : "LOADED";
             if (_setup.StartingMode is StartingMode.Zerobots or StartingMode.ZerobotsAndVegetables)
                 await ConfigureZerobotModeAsync();
+            if (_windowClosed) return;
             SetIgnoreErrors(!_safemodeBackup);
+            _startupComplete = true;
         }
         catch (Exception error)
         {
@@ -3300,7 +3319,7 @@ public sealed partial class MainWindow : Window
         await _advanceGate.WaitAsync();
         try
         {
-            if (_session is null) return;
+            if (_session is null || _savingLastExit) return;
             _loadingSimulation = true;
             InvalidateTeleporterDrag();
             await _session.LoadAsync(save);
@@ -3324,7 +3343,7 @@ public sealed partial class MainWindow : Window
         await _advanceGate.WaitAsync();
         try
         {
-            if (_session is null) return;
+            if (_session is null || _savingLastExit) return;
             while (count > 0)
             {
                 var before = _session.LatestSnapshot;
@@ -3362,15 +3381,53 @@ public sealed partial class MainWindow : Window
         catch (Exception error) { _viewModel.Status = $"AUTOSAVE ERROR · {error.Message}"; }
     }
 
+    private async void Window_Closing(object? sender, WindowClosingEventArgs e)
+    {
+        if (e.Cancel || e.CloseReason is not (WindowCloseReason.WindowClosing or WindowCloseReason.Undefined)
+            || _skipLastExitCheckpoint || !_startupComplete || !_storage.SupportsLastExitSimulation
+            || _session is not { } session)
+            return;
+
+        e.Cancel = true;
+        if (_savingLastExit || _navigationInFlight) return;
+
+        _savingLastExit = true;
+        _runTimer.Stop();
+        IsEnabled = false;
+        _viewModel.Status = "SAVING LAST SIMULATION";
+        await _advanceGate.WaitAsync();
+        try
+        {
+            if (_windowClosed) return;
+            await _storage.SaveLastExitSimulationAsync(await session.SaveAsync());
+            _skipLastExitCheckpoint = true;
+            Dispatcher.UIThread.Post(() => { if (!_windowClosed) Close(); });
+        }
+        catch (Exception error)
+        {
+            _skipLastExitCheckpoint = true;
+            _savingLastExit = false;
+            if (!_windowClosed)
+            {
+                IsEnabled = true;
+                _viewModel.Status = $"LAST SIMULATION SAVE FAILED · {error.Message} · CLOSE AGAIN TO EXIT";
+            }
+        }
+        finally { _advanceGate.Release(); }
+    }
+
     private async void Window_Closed(object? sender, EventArgs e)
     {
+        _windowClosed = true;
         CloseNativeTeleporterEditor();
         InvalidateTeleporterDrag();
         _runTimer.Stop();
         _runtimeClock.Stop();
         _toolWindows.CloseAll();
         _trayIcon?.Dispose();
-        if (_session is not null) await _session.DisposeAsync();
+        var session = _session;
+        _session = null;
+        if (session is not null) await session.DisposeAsync();
     }
 
     private void Graphs_Click(object? sender, RoutedEventArgs e) => ShowGraphSuite();

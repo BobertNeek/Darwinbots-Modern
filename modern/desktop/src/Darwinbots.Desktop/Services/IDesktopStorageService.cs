@@ -47,6 +47,9 @@ public interface IDesktopStorageService
     string? FindLatestAutosave();
     Task SaveAutosaveAsync(ReadOnlyMemory<byte> save);
     Task<string?> ArchiveLatestAutosaveAsync(DateTime localBoundary, CancellationToken cancellationToken) => Task.FromResult<string?>(null);
+    bool SupportsLastExitSimulation => false;
+    string? FindLastExitSimulation() => null;
+    Task SaveLastExitSimulationAsync(ReadOnlyMemory<byte> save) => Task.CompletedTask;
     bool IsFirstRun => false;
     Task MarkFirstRunCompleteAsync() => Task.CompletedTask;
     string? FindLastStart() => null;

@@ -404,6 +404,30 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         finally { File.Delete(temporary); }
     }
 
+    public bool SupportsLastExitSimulation => true;
+
+    public string? FindLastExitSimulation()
+    {
+        var file = new FileInfo(LastExitSimulationPath());
+        return file.Exists && file.Length > 0 ? file.FullName : null;
+    }
+
+    public async Task SaveLastExitSimulationAsync(ReadOnlyMemory<byte> save)
+    {
+        var path = LastExitSimulationPath();
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        var temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        try
+        {
+            await File.WriteAllBytesAsync(temporary, save);
+            File.Move(temporary, path, overwrite: true);
+        }
+        finally
+        {
+            File.Delete(temporary);
+        }
+    }
+
     public string? FindLastStart()
     {
         var path = LastStartPath();
@@ -498,6 +522,8 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
     private string DeadSnapshotPath() => Path.Combine(ProfileDirectory(), "records", "DeadRobots.snp");
 
     private string LastStartPath() => Path.Combine(AutosaveDirectory(), "last-start.json");
+
+    private string LastExitSimulationPath() => Path.Combine(AutosaveDirectory(), "Resume", "last-exit.db3s");
 
     private string FirstRunMarkerPath() => Path.Combine(AutosaveDirectory(), "first-run.complete");
 

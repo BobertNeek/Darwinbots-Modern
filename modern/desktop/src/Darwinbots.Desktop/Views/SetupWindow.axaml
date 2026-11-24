@@ -15,6 +15,7 @@
           <MenuItem x:Name="FileMenu" Header="_FILE">
             <MenuItem x:Name="NewWorldMenuItem" Header="NEW WORLD" HotKey="Ctrl+N" Click="NewWorld_Click"/>
             <MenuItem x:Name="OpenSaveMenuItem" Header="OPEN SAVE..." HotKey="Ctrl+O" Click="OpenSave_Click"/>
+            <MenuItem x:Name="ResumeMenuItem" Header="RESUME LAST SIMULATION" IsVisible="False" Click="Resume_Click"/>
             <MenuItem x:Name="RecoverMenuItem" Header="RECOVER LATEST AUTOSAVE" Click="Recover_Click"/>
             <Separator/>
             <MenuItem x:Name="ExitMenuItem" Header="EXIT" HotKey="Alt+F4" Click="Exit_Click"/>

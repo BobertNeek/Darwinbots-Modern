@@ -25,16 +25,17 @@ public sealed partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            if (CreateSafeModeBackupWindow(desktop.Args, AvaloniaDesktopStorageService.Instance) is { } viewer)
+            var arguments = desktop.Args ?? [];
+            if (CreateSafeModeBackupWindow(arguments, AvaloniaDesktopStorageService.Instance) is { } viewer)
             {
                 desktop.MainWindow = viewer;
             }
             else
             {
-                var setup = new SetupWindow();
+                var setup = new SetupWindow(AvaloniaDesktopStorageService.Instance, allowLastExitResume: arguments.Length == 0);
                 setup.WorldCreated += options =>
                 {
-                    var simulation = new MainWindow(desktop.Args ?? [], options);
+                    var simulation = new MainWindow(arguments, options);
                     desktop.MainWindow = simulation;
                     simulation.Show();
                     setup.Close();
