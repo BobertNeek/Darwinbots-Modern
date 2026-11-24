@@ -575,7 +575,6 @@ public sealed class RuntimeControlSurfaceTests
                     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="));
                 var background = new Avalonia.Media.Imaging.Bitmap(backgroundStream);
                 viewport.SetBackgroundImage(background);
-                SetField(window, "_hasBackgroundImage", true);
                 Assert.True(viewport.HasBackgroundImage);
                 Assert.True(viewport.OverlayProjection.HasBackgroundImage);
                 window.GetType().GetMethod("RefreshLegacyMenuStates", BindingFlags.Instance | BindingFlags.NonPublic)!

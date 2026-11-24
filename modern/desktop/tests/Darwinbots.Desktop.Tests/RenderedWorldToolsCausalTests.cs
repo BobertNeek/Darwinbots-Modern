@@ -144,8 +144,10 @@ public sealed class RenderedWorldToolsCausalTests
                 Assert.True(impacts.IsVisible && impacts.IsEnabled);
                 Assert.True(gauges.IsVisible && gauges.IsEnabled);
                 Assert.True(backgroundImport.IsVisible && backgroundImport.IsEnabled);
-                Assert.True(backgroundRemove.IsVisible);
-                Assert.False(backgroundRemove.IsEnabled);
+                Assert.True(backgroundRemove.IsVisible && backgroundRemove.IsEnabled);
+                backgroundRemove.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => viewModel.Status == "BACKGROUND REMOVED", () => "Removing an empty background was not routed.");
+                Assert.False(viewport.HasBackgroundImage);
 
                 if (vectors.IsChecked) vectors.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
                 if (impacts.IsChecked) impacts.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
