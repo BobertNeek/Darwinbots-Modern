@@ -87,6 +87,8 @@ public interface IEngineClient : IDisposable
     void SetOrganismColor(uint slot, uint generation, uint color) =>
         throw new NotSupportedException("Robot color editing is unavailable in this engine client.");
     void MakeNewSpecies(uint slot, uint generation, string name, uint color);
+    string ForkRobotAndDescendants(uint slot, uint generation) =>
+        throw new NotSupportedException("Forking robot descendants is unavailable in this engine client.");
     void UpdateLegacyRestrictions(bool robotFixingAllowed, bool asexualReproductionAllowed);
     void ConfigurePlayerBot(PlayerBotConfig config);
     void SetPlayerBotKey(uint slot, uint generation, int keyCode, bool pressed);
