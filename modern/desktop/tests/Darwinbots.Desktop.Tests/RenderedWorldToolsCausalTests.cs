@@ -651,8 +651,10 @@ public sealed class RenderedWorldToolsCausalTests
             {
                 var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
                 var command = menu.FindCommandItem(LegacyCommandId.EditGlobalMutationRates)!;
-                await WaitFor(() => TryField<SimulationSession>(window, "_session")?.LatestSnapshot.Organisms.Count == 1
-                    && command.IsEnabled, () => "The mutation menu did not become available.");
+                var viewModel = Assert.IsType<MainWindowViewModel>(window.DataContext);
+                await WaitFor(() => viewModel.Status == "WORLD READY · 1 SPECIES"
+                    && TryField<SimulationSession>(window, "_session")?.LatestSnapshot.Organisms.Count == 1
+                    && command.IsEnabled, () => viewModel.Status);
                 var session = TryField<SimulationSession>(window, "_session")!;
                 var robot = Assert.Single(session.LatestSnapshot.Organisms);
                 var custom = robot.MutationProfile with { Point = new MutationRateUpdate(42, 3, 1) };
@@ -680,7 +682,6 @@ public sealed class RenderedWorldToolsCausalTests
                 dialog.FindControl<NumericUpDown>("GlobalLowCycles")!.Value = 75m;
                 dialog.FindControl<Button>("ApplyButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
-                var viewModel = Assert.IsType<MainWindowViewModel>(window.DataContext);
                 await WaitFor(() => viewModel.Status == "GLOBAL MUTATION RATES APPLIED", () => viewModel.Status);
                 var snapshot = session.LatestSnapshot;
                 Assert.False(snapshot.MutationSettings.Enabled);
