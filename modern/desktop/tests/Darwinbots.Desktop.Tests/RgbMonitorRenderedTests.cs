@@ -30,7 +30,7 @@ public sealed class RgbMonitorRenderedTests
             try
             {
                 var viewModel = Assert.IsType<MainWindowViewModel>(window.DataContext);
-                await WaitFor(() => viewModel.Population == 1,
+                await WaitFor(() => viewModel.Population == 1 && viewModel.Status == "WORLD READY · 1 SPECIES",
                     () => viewModel.Status);
                 var session = Field<SimulationSession>(window, "_session")!;
                 var robot = Assert.Single(session.LatestSnapshot.Organisms);
@@ -137,7 +137,7 @@ public sealed class RgbMonitorRenderedTests
             try
             {
                 var viewModel = Assert.IsType<MainWindowViewModel>(window.DataContext);
-                await WaitFor(() => viewModel.Population == 1, () => viewModel.Status);
+                await WaitFor(() => viewModel.Population == 1 && viewModel.Status == "WORLD READY · 1 SPECIES", () => viewModel.Status);
                 var viewport = window.FindControl<WorldViewport>("Viewport")!;
                 var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
                 var settings = menu.FindCommandItem(LegacyCommandId.ViewRgbMemoryMonitorSettings)!;
