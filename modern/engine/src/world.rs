@@ -4819,6 +4819,19 @@ impl Engine {
             initial_biology,
             phenotype,
         );
+        if self.native_cycle.is_some()
+            && self.native_random.is_some()
+            && (species != SpeciesId::default() || self.native_origin.is_some())
+        {
+            // Module1.preparerob keeps the filename from the loaded script.
+            // Fresh row zero is the unnamed placeholder; imported row zero is real.
+            state.identity.species_file = self.species[species.0 as usize]
+                .name
+                .rsplit('\\')
+                .next()
+                .unwrap_or_default()
+                .to_owned();
+        }
         if self.native_random.is_some() {
             state.program.initialize_native_dna_context();
         }
@@ -8611,7 +8624,15 @@ impl Engine {
                     .get(source_id)
                     .ok()
                     .zip(self.slots.get(target_id).ok())
-                    .is_some_and(|(a, b)| a.identity.species_file != b.identity.species_file);
+                    .is_some_and(|(a, b)| {
+                        if self.native_cycle.is_some() && self.native_random.is_some() {
+                            // Earlier DB3S versions left a fresh founder's filename empty.
+                            native_census_filename(a, &self.species)
+                                != native_census_filename(b, &self.species)
+                        } else {
+                            a.identity.species_file != b.identity.species_file
+                        }
+                    });
                 if opponent {
                     let action = match location {
                         -1 => Some(DisqualificationAction::OpponentEnergy(value > 0)),
