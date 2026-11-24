@@ -73,6 +73,7 @@ enum EngineCommand {
         capture_deaths: bool,
         #[serde(default)]
         recording_weight: Option<u16>,
+        #[serde(default)]
         require_native_repopulation_source: bool,
         #[serde(default)]
         cancelled_native_repopulation_lineages: Vec<u64>,
