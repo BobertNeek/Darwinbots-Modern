@@ -54,6 +54,12 @@ public interface IEngineClient : IDisposable
     void RemoveFileTeleporter(uint id);
     void SetBrownianMotion(float value);
     void UpdateMutationSettings(MutationSettingsUpdate update);
+    void UpdateLiveSettings(EnvironmentUpdate environment, MutationSettingsUpdate mutation, GlobalSimulationCostSettings? costs)
+    {
+        UpdateEnvironment(environment);
+        UpdateMutationSettings(mutation);
+        if (costs is not null) UpdateCostSettings(costs);
+    }
     void UpdateGlobalMutationSettings(MutationSettingsUpdate update, GlobalAdvancedMutationSettings? advanced, GlobalMainSettings main)
     {
         UpdateMutationSettings(update);

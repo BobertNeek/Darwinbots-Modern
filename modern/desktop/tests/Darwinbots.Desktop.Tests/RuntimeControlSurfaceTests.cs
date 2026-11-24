@@ -499,6 +499,7 @@ public sealed class RuntimeControlSurfaceTests
                 var generalDialog = Assert.Single(window.OwnedWindows.OfType<AdvancedSettingsWindow>());
                 Assert.Equal(1, generalDialog.GetVisualDescendants().OfType<TabControl>().Single().SelectedIndex);
                 generalDialog.Close();
+                await WaitFor(() => Assert.IsType<MainWindowViewModel>(window.DataContext).Status == "CANCELED");
 
                 var physics = menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.EditPhysicsAndCosts)!;
                 physics.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));

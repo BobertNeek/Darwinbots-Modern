@@ -396,6 +396,10 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task UpdateEnvironmentAsync(EnvironmentUpdate update, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.UpdateEnvironment(update), cancellationToken);
 
+    public Task UpdateLiveSettingsAsync(EnvironmentUpdate environment, MutationSettingsUpdate mutation,
+        GlobalSimulationCostSettings? costs, CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.UpdateLiveSettings(environment, mutation, costs), cancellationToken);
+
     public async Task<WorldConfiguration?> ReadConfigurationAsync(CancellationToken cancellationToken = default)
     {
         WorldConfiguration? configuration = null;

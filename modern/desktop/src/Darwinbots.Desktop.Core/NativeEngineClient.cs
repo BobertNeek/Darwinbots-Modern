@@ -630,9 +630,8 @@ public sealed partial class NativeEngineClient : IEngineClient
     } }, "update global main rules");
 
     public void UpdateCostSettings(GlobalSimulationCostSettings settings) =>
-        ExecuteBatch(new { version = 1, commands = new[] { new {
-            type = "update_cost_settings", costs = NativeCommandSerializer.DnaCosts(settings),
-        } } }, "update simulation costs");
+        ExecuteBatch(new { version = 1, commands = new[] { NativeCommandSerializer.CostSettingsCommand(settings) } },
+            "update simulation costs");
 
     public void UpdateMutationSettings(MutationSettingsUpdate update) =>
         ApplyMutationSettings(update, null, null);
@@ -642,12 +641,17 @@ public sealed partial class NativeEngineClient : IEngineClient
 
     private void ApplyMutationSettings(MutationSettingsUpdate update, GlobalAdvancedMutationSettings? advanced, GlobalMainSettings? main)
     {
+        ValidateMutationSettings(update);
+        ExecuteBatch(NativeCommandSerializer.CreateMutationSettingsBatch(update, advanced, main), "update mutation settings");
+    }
+
+    private static void ValidateMutationSettings(MutationSettingsUpdate update)
+    {
         ArgumentNullException.ThrowIfNull(update);
         if (!float.IsFinite(update.GlobalMultiplier) || update.GlobalMultiplier is < 0 or > 100)
             throw new ArgumentOutOfRangeException(nameof(update));
         if (update.SpeciesRates.Any(value => !float.IsFinite(value.Rate) || value.Rate is < 0 or > 100))
             throw new ArgumentOutOfRangeException(nameof(update));
-        ExecuteBatch(NativeCommandSerializer.CreateMutationSettingsBatch(update, advanced, main), "update mutation settings");
     }
 
     public void UpdateOrganismMutationProfile(uint slot, uint generation, MutationProfileUpdate profile)
@@ -840,6 +844,14 @@ public sealed partial class NativeEngineClient : IEngineClient
         ArgumentNullException.ThrowIfNull(update);
         ValidatePosition(update.Gravity);
         ExecuteBatch(NativeCommandSerializer.CreateEnvironmentBatch(update), "update environment");
+    }
+
+    public void UpdateLiveSettings(EnvironmentUpdate environment, MutationSettingsUpdate mutation, GlobalSimulationCostSettings? costs)
+    {
+        ArgumentNullException.ThrowIfNull(environment);
+        ValidatePosition(environment.Gravity);
+        ValidateMutationSettings(mutation);
+        ExecuteBatch(NativeCommandSerializer.CreateLiveSettingsBatch(environment, mutation, costs), "update live settings");
     }
 
     private static OrganismKey ReadKey(JsonElement value) => new(
