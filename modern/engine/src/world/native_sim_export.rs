@@ -446,7 +446,11 @@ impl Engine {
         self.write_native_shots(&mut tail, &slots)?;
         self.write_native_objects(&mut tail)?;
         NativeRecordFile {
-            robots: self.native_robot_records_in_slots(&members, &slots, include_mutation_details)?,
+            robots: self.native_robot_records_in_slots(
+                &members,
+                &slots,
+                include_mutation_details,
+            )?,
             tail: tail.encode()?,
         }
         .encode()
