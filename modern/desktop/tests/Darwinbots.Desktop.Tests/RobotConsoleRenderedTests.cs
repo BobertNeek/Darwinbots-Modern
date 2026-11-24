@@ -740,7 +740,7 @@ public sealed class RobotConsoleRenderedTests
                 Assert.Equal(-234, Memory(203));
                 Assert.Equal(234, Memory(204));
 
-                Task RunAsync(string input) => (Task)submit.Invoke(console, [input])!;
+                Task RunAsync(string input) => (Task)submit.Invoke(console, [input, false])!;
 
                 int Memory(ushort address) => Assert.Single(Assert.Single(session.LatestSnapshot.Organisms).Memory,
                     cell => cell.Address == address).Value;

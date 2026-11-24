@@ -521,7 +521,12 @@ public sealed class NativeRobotFileIntegrationTests
                         Assert.Equal(nameof(IStorageProvider.SaveFilePickerAsync), method.Name);
                         var path = destination;
                         return Task.FromResult(path is null ? null : SaveDnaPickerProxy.Create<IStorageFile>(fileMethod =>
-                            fileMethod.Name == "get_Path" ? new Uri(path) : throw new NotSupportedException(fileMethod.Name)));
+                            fileMethod.Name switch
+                            {
+                                "get_Path" => new Uri(path),
+                                nameof(IDisposable.Dispose) => null,
+                                _ => throw new NotSupportedException(fileMethod.Name),
+                            }));
                     });
                     typeof(TopLevel).GetField("_storageProvider", BindingFlags.Instance | BindingFlags.NonPublic)!
                         .SetValue(window, picker);
@@ -562,8 +567,8 @@ public sealed class NativeRobotFileIntegrationTests
                     await WaitFor(() => Prompt() is not null);
                     Assert.Contains(Prompt()!.GetVisualDescendants().OfType<TextBlock>(),
                         text => text.Text == "Do you want to change robot's name to Oracle,movement.txt ?");
-                    Assert.Equal(await session.ExportDnaAsync(original.Slot, original.Generation),
-                        LegacyDnaText.Decode(File.ReadAllBytes(output)));
+                    var originalFile = await session.ExportOriginalRobotFileAsync(original.Slot, original.Generation);
+                    Assert.Equal(originalFile.Dna, LegacyDnaText.Decode(File.ReadAllBytes(output)));
                     Assert.Equal(Db2MutationRateCodec.Encode(original.MutationProfile),
                         File.ReadAllBytes(Path.ChangeExtension(output, ".mrate")));
                     await ChooseRename("No");
