@@ -60,7 +60,9 @@ public sealed class LegacyRobotPickerRenderedTests
                     Assert.Equal(["Import Darwinbots organism", "Save entire organism", "Export Darwinbots robot DNA"],
                         options.Select(picker => picker.Title));
                     Assert.All(options, picker => Assert.Same(expected is null ? null : folder, picker.SuggestedStartLocation));
-                    Assert.Equal(Enumerable.Repeat(expected, expected is null ? 0 : 3), lookups.Select(uri => uri.LocalPath));
+                    Assert.Equal(expected is null ? 0 : 3, lookups.Count);
+                    foreach (var lookup in lookups)
+                        Assert.Equal(expected, lookup.LocalPath, ignoreCase: OperatingSystem.IsWindows());
                     Assert.Equal(before.Tick, session.LatestSnapshot.Tick);
                 }
                 finally
