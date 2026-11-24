@@ -7,6 +7,7 @@ use crate::modes::{
     LocalModeAdjudication, LocalModeConfig, LocalModeKind, LocalModeResult, LocalModeState,
     LocalModeStatus,
 };
+use crate::native_precision::store_scaled_sum;
 use crate::robot_state::{
     RobotArena, RobotCounters, RobotFlags, RobotPhysicsBatch, RobotSlot, RobotState,
     TieEndpointState,
@@ -4609,6 +4610,11 @@ impl Engine {
         self.valid_slot(id)?;
         let normalized = aim.rem_euclid(1257);
         let organism = self.slots.get_mut(id)?;
+        if organism.materials.aim != normalized {
+            // A manual override replaces the cached physical heading even
+            // when the new word is the other valid rounding of that heading.
+            organism.kinematics.aim_radians = None;
+        }
         organism.materials.aim = normalized;
         organism
             .materials
@@ -7603,6 +7609,7 @@ impl Engine {
     }
 
     fn upkeep_phase(&mut self) {
+        let native = self.native_random.is_some();
         let metabolism = self.config.metabolism_cost.max(0);
         let population = self.cost_population();
         let costs = self.active_dna_costs();
@@ -7627,7 +7634,7 @@ impl Engine {
                 * multiplier) as f32;
             robot.materials.energy -= dna_cost;
             settle_simulation_cost(robot, f64::from(metabolism) * multiplier);
-            robot.materials.decay_slime_and_poison();
+            robot.materials.decay_slime_and_poison(native);
             robot
                 .program
                 .memory
@@ -7640,6 +7647,12 @@ impl Engine {
     }
 
     fn poison_venom_phase(&mut self) {
+        let native = self.native_random.is_some();
+        let read_countdown = |countdown: f32| {
+            // Robots.Poisons publishes Int of the residual even after the effect wears off.
+            let ticks = countdown.floor() as i32;
+            if native { ticks } else { ticks.max(0) }
+        };
         for slot in self.phase_slot_range() {
             let Some(robot) = self.slots[slot].organism.as_mut() else {
                 continue;
@@ -7665,7 +7678,11 @@ impl Engine {
                     robot.effects.paralysis_value = 0;
                 }
             }
-            robot.materials.paralyzed = robot.effects.paralysis_countdown.max(0.0).floor() as i32;
+            robot.materials.paralyzed = read_countdown(robot.effects.paralysis_countdown);
+            if native {
+                // A following poison write may target this cell.
+                robot.program.memory.write(837, robot.materials.paralyzed);
+            }
             if robot.effects.poisoning_active {
                 if robot.effects.poisoning_location != 0 {
                     robot.program.memory.write(
@@ -7684,8 +7701,10 @@ impl Engine {
                     robot.effects.poisoning_value = 0;
                 }
             }
-            robot.materials.poisoned = robot.effects.poisoning_countdown.max(0.0).floor() as i32;
-            robot.program.memory.write(837, robot.materials.paralyzed);
+            robot.materials.poisoned = read_countdown(robot.effects.poisoning_countdown);
+            if !native {
+                robot.program.memory.write(837, robot.materials.paralyzed);
+            }
             robot.program.memory.write(838, robot.materials.poisoned);
         }
     }
@@ -7815,6 +7834,7 @@ impl Engine {
         let costs = self.active_dna_costs();
         let population = self.cost_population();
         let rotation_multiplier = costs.dynamic_multiplier(population);
+        let native = self.native_random.is_some();
         for slot_index in self.phase_slot_range() {
             let slot = &mut self.slots[slot_index];
             let Some(robot) = slot.organism.as_mut() else {
@@ -7828,10 +7848,10 @@ impl Engine {
             else {
                 unreachable!("aim phase must return aim commands")
             };
-            native_aim::apply(robot, commands, costs.rotation, rotation_multiplier);
+            native_aim::apply(robot, commands, costs.rotation, rotation_multiplier, native);
             robot
                 .materials
-                .publish_for_profile(&mut robot.program.memory, self.native_random.is_some());
+                .publish_for_profile(&mut robot.program.memory, native);
         }
     }
 
@@ -8530,8 +8550,6 @@ impl Engine {
                         target_position[0] - observer_position[0],
                         target_position[1] - observer_position[1],
                     ];
-                    let target_distance =
-                        target_delta[0] * target_delta[0] + target_delta[1] * target_delta[1];
                     let target_radius = target.materials.radius;
                     if self.obstacles.iter().any(|obstacle| {
                         obstacle.vision_policy != ShapeVisionPolicy::SeeThrough
@@ -8545,9 +8563,16 @@ impl Engine {
                     }) {
                         continue;
                     }
-                    let center_distance = target_distance.sqrt();
-                    let edge_distance =
-                        (center_distance - observer_radius - target_radius).max(0.0);
+                    let edge_distance = if native {
+                        // CompareRobots3 subtracts both radii before storing the Single edge distance.
+                        let center = crate::physics::native_full_magnitude(target_delta);
+                        (f64::from(center) - f64::from(observer_radius) - f64::from(target_radius))
+                            as f32
+                    } else {
+                        let [x, y] = target_delta;
+                        (x * x + y * y).sqrt() - observer_radius - target_radius
+                    }
+                    .max(0.0);
                     if edge_distance > target_range {
                         continue;
                     }
@@ -9353,30 +9378,33 @@ impl Engine {
         for (source, target, location, value) in resource_channels {
             let source_id = OrganismId::new(source as u32, self.slots[source].generation);
             let target_id = OrganismId::new(target as u32, self.slots[target].generation);
+            let (Ok(source_robot), Ok(target_robot)) =
+                (self.slots.get(source_id), self.slots.get(target_id))
+            else {
+                continue;
+            };
+            let (opponent, may_defend_with_poison) = if native && self.native_cycle.is_some() {
+                // Update_Ties compares FName for both opponent rules. Old Modern
+                // checkpoints with blank founder names use the roster fallback.
+                let different_founders = native_census_filename(source_robot, &self.species)
+                    != native_census_filename(target_robot, &self.species);
+                (different_founders, different_founders)
+            } else {
+                (
+                    source_robot.identity.species_file != target_robot.identity.species_file,
+                    source_robot.identity.species != target_robot.identity.species,
+                )
+            };
             if let Some(kind) = apply_tie_resource(
                 &mut self.slots,
-                source,
-                target,
+                (source, target),
                 location,
                 value,
+                may_defend_with_poison,
                 fixed_bot_radii,
                 &mut self.native_random,
             ) {
                 trace.effect(CyclePhase::Tie, Some(source_id), target_id, kind);
-                let opponent = self
-                    .slots
-                    .get(source_id)
-                    .ok()
-                    .zip(self.slots.get(target_id).ok())
-                    .is_some_and(|(a, b)| {
-                        if self.native_cycle.is_some() && self.native_random.is_some() {
-                            // Earlier DB3S versions left a fresh founder's filename empty.
-                            native_census_filename(a, &self.species)
-                                != native_census_filename(b, &self.species)
-                        } else {
-                            a.identity.species_file != b.identity.species_file
-                        }
-                    });
                 if opponent {
                     let action = match location {
                         -1 => Some(DisqualificationAction::OpponentEnergy(value > 0)),
@@ -10626,6 +10654,7 @@ impl Engine {
     }
 
     fn projectile_spawn_phase(&mut self) -> Result<(), EngineError> {
+        let native = self.native_random.is_some();
         for request in std::mem::take(&mut self.pending_projectile_requests) {
             let slot = request.owner_slot;
             let Some(owner) = self.slots[..]
@@ -10643,10 +10672,8 @@ impl Engine {
                 -8 => Some(owner.program.dna.clone()),
                 _ => None,
             };
-            let source_species_name = self
-                .species
-                .get(owner.identity.species.0 as usize)
-                .map(|species| species.name.clone());
+            let source_species_name =
+                shot_species_name(owner, &self.species, native).map(str::to_owned);
             let owner_id = OrganismId::new(slot as u32, self.slots[slot].generation);
             let owner_virtual_body = self.virtual_body_for(owner_id);
             // Shots.newshot stores the shooter's venom cells for every shot kind.
@@ -11120,7 +11147,12 @@ impl Engine {
                                 return Ok(false);
                             }
                             let mut packet_value = power.max(0.0);
-                            let energy_loss = scale_tie_amount(packet_value, 0.90);
+                            let energy_loss = if native_boundary {
+                                // releasenrg stores EnergyLost after the x87 multiply.
+                                store_scaled_sum(0.0, f64::from(packet_value), 0.90).min(32_000.0)
+                            } else {
+                                scale_tie_amount(packet_value, 0.90)
+                            };
                             if !native_boundary && (packet_value <= 0.0 || energy_loss <= 0.0) {
                                 return Ok(false);
                             }
@@ -11223,19 +11255,10 @@ impl Engine {
                         if toxin_power < 1.0 {
                             return Ok(false);
                         }
-                        let target_species = self.slots[target]
-                            .organism
-                            .as_ref()
-                            .unwrap()
-                            .identity
-                            .species;
-                        let conspecific = source_species_name.as_deref()
-                            == self
-                                .species
-                                .get(target_species.0 as usize)
-                                .map(|species| species.name.as_str());
                         let target_robot = self.slots[target].organism.as_mut().unwrap();
-                        if conspecific {
+                        if source_species_name.as_deref()
+                            == shot_species_name(target_robot, &self.species, native_boundary)
+                        {
                             target_robot.materials.venom =
                                 (target_robot.materials.venom + toxin_power).min(32_000.0);
                             target_robot
@@ -11275,19 +11298,10 @@ impl Engine {
                         if toxin_power < 1.0 {
                             return Ok(false);
                         }
-                        let target_species = self.slots[target]
-                            .organism
-                            .as_ref()
-                            .unwrap()
-                            .identity
-                            .species;
-                        let conspecific = source_species_name.as_deref()
-                            == self
-                                .species
-                                .get(target_species.0 as usize)
-                                .map(|species| species.name.as_str());
                         let target_robot = self.slots[target].organism.as_mut().unwrap();
-                        if conspecific {
+                        if source_species_name.as_deref()
+                            == shot_species_name(target_robot, &self.species, native_boundary)
+                        {
                             target_robot.materials.poison =
                                 (target_robot.materials.poison + toxin_power).min(32_000.0);
                             target_robot
@@ -11382,6 +11396,10 @@ impl Engine {
                     ProjectileEffect::Sperm => {
                         let Some(dna) = payload else { return Ok(false) };
                         let target_robot = self.slots[target].organism.as_mut().unwrap();
+                        // Shots.takesperm respects the cooldown from incompatible mating.
+                        if native_boundary && target_robot.effects.fertilization_timer < -10 {
+                            return Ok(false);
+                        }
                         target_robot.effects.stored_sperm = Some(StoredGeneticMaterial {
                             dna,
                             source: Some(owner),
@@ -12595,6 +12613,10 @@ impl Engine {
             .repopulation_amount
             .min(capacity)
             .min(vegetable_capacity);
+        if amount == 0 {
+            return Ok(());
+        }
+        let origin = self.native_script_origin_tail()?;
         for ordinal in 0..amount {
             let random = advance_random(
                 self.config.seed ^ self.tick.rotate_left(23) ^ (ordinal as u64).rotate_left(41),
@@ -12631,8 +12653,12 @@ impl Engine {
                 .native_placement_position(SpeciesId(species_index as u32), advance_random(random));
             let dna =
                 self.classic_native_start_dna(SpeciesId(species_index as u32), template.dna)?;
-            let id =
-                self.spawn_native_script_robot(dna, SpeciesId(species_index as u32), position)?;
+            let id = self.spawn_native_script_robot(
+                dna,
+                SpeciesId(species_index as u32),
+                position,
+                origin.as_ref(),
+            )?;
             self.apply_classic_start_actor(id, SpeciesId(species_index as u32))?;
             let robot = self.slots.get_mut(id)?;
             robot.materials.energy = template.initial_energy as f32;
@@ -12772,6 +12798,7 @@ impl Engine {
     }
 
     fn shock_phase(&mut self) {
+        let native = self.native_random.is_some();
         for slot_index in self.phase_slot_range() {
             let slot = &mut self.slots[slot_index];
             let Some(robot) = slot.organism.as_mut() else {
@@ -12785,9 +12812,18 @@ impl Engine {
             let loss = previous_energy - energy;
             if energy > 3_000.0 && loss > previous_energy / 2.0 {
                 robot.materials.energy = 0.0;
+                if native {
+                    // Shock caps body and calls FindRadius after zeroing energy.
+                    robot.materials.body = robot.materials.body.min(32_000.0);
+                    robot.materials.radius = crate::physics::native_organism_radius(
+                        robot.materials.body,
+                        robot.materials.chloroplasts,
+                        self.config.fixed_bot_radii,
+                    );
+                }
                 robot
                     .materials
-                    .publish_for_profile(&mut robot.program.memory, self.native_random.is_some());
+                    .publish_for_profile(&mut robot.program.memory, native);
             }
         }
     }
@@ -13123,11 +13159,7 @@ impl Engine {
                 child_organism.kinematics.aim_vector = [child_angle.cos(), child_angle.sin()];
                 child_organism.materials = child_materials;
                 if let Some(heading) = native_child_heading {
-                    child_organism.set_heading(heading);
-                    child_organism.kinematics.aim_vector = [
-                        f64::from(heading).cos() as f32,
-                        f64::from(heading).sin() as f32,
-                    ];
+                    child_organism.set_heading_for_profile(heading, true);
                 }
                 child_organism.counters.generation = parent_state
                     .counters
@@ -14307,6 +14339,21 @@ fn native_census_filename<'a>(robot: &'a RobotState, species: &'a [SpeciesDefini
     }
 }
 
+fn shot_species_name<'a>(
+    robot: &'a RobotState,
+    species: &'a [SpeciesDefinition],
+    native: bool,
+) -> Option<&'a str> {
+    if native {
+        // Shots.newshot and the native toxin handlers use the actor's FName.
+        Some(native_census_filename(robot, species))
+    } else {
+        species
+            .get(robot.identity.species.0 as usize)
+            .map(|entry| entry.name.as_str())
+    }
+}
+
 fn native_cached_voluntary_movement(
     input: MovementInput,
     aim: [f32; 2],
@@ -14319,31 +14366,22 @@ fn native_cached_voluntary_movement(
         *vector = (*vector).map(|value| value.clamp(-32_000.0, 32_000.0));
         [vector[0] * scale, vector[1] * scale]
     };
-    let magnitude = |vector: [f32; 2]| {
-        let minimum = vector[0].abs().min(vector[1].abs());
-        let maximum = vector[0].abs().max(vector[1].abs());
-        if maximum < 0.00001 {
-            0.0
-        } else {
-            (f64::from(maximum) * (1.0 + f64::from(minimum / maximum).powi(2)).sqrt()) as f32
-        }
-    };
     let mut direction = [
         (i64::from(input.up) - i64::from(input.down)) as f32,
         (i64::from(input.left) - i64::from(input.right)) as f32,
     ];
     let direction = scalar(&mut direction, if input.new_move { 1.0 } else { mass });
-    let mut acceleration = [
-        aim[0] * direction[0] + aim[1] * direction[1],
-        aim[0] * direction[1] - aim[1] * direction[0],
-    ];
-    let speed = magnitude(acceleration);
+    // Common.Dot and Common.Cross each store Single after combining both products.
+    let cross =
+        f64::from(aim[0]) * f64::from(direction[1]) - f64::from(aim[1]) * f64::from(direction[0]);
+    let mut acceleration = [crate::physics::native_dot(aim, direction), cross as f32];
+    let speed = crate::physics::native_full_magnitude(acceleration);
     if speed > settings.max_velocity {
         acceleration = scalar(&mut acceleration, settings.max_velocity / speed);
     }
     // This ByRef call also clamps acceleration before the energy calculation.
     let impulse = scalar(&mut acceleration, settings.movement_efficiency);
-    (impulse, magnitude(acceleration))
+    (impulse, crate::physics::native_full_magnitude(acceleration))
 }
 
 fn apply_restriction_column(robot: &mut RobotState, column: &RestrictionColumn) {
@@ -14372,13 +14410,14 @@ fn apply_restriction_column(robot: &mut RobotState, column: &RestrictionColumn) 
 
 fn apply_tie_resource(
     slots: &mut [RobotSlot],
-    source_slot: usize,
-    target_slot: usize,
+    participants: (usize, usize),
     location: i32,
     requested: i32,
+    may_defend_with_poison: bool,
     fixed_bot_radii: bool,
     native: &mut Option<crate::native_random::NativeRandom>,
 ) -> Option<&'static str> {
+    let (source_slot, target_slot) = participants;
     if source_slot == target_slot || source_slot >= slots.len() || target_slot >= slots.len() {
         return None;
     }
@@ -14400,27 +14439,26 @@ fn apply_tie_resource(
     }
 
     let result = match location {
-        -1 => apply_tie_energy(source, target, requested, native),
+        -1 => apply_tie_energy(source, target, requested, may_defend_with_poison, native),
         -3 => apply_tie_venom(source, target, requested, native),
         -4 => apply_tie_waste(source, target, requested),
-        -6 => apply_tie_body(source, target, requested, native),
+        -6 => apply_tie_body(source, target, requested, may_defend_with_poison, native),
         _ => None,
     };
     if result.is_some() {
-        let native_energy_transfer = native.is_some() && location == -1;
-        // In the native energy path, WriteSenses refreshes the prior-cycle energy.
-        if !native_energy_transfer {
-            source.materials.previous_energy = source.materials.energy;
-            target.materials.previous_energy = target.materials.energy;
+        let native = native.is_some();
+        for robot in [&mut *source, &mut *target] {
+            // Native WriteSenses refreshes the previous energy after Shock.
+            if !native {
+                robot.materials.previous_energy = robot.materials.energy;
+            }
+            robot
+                .materials
+                .publish_for_profile(&mut robot.program.memory, native);
         }
-        source
-            .materials
-            .publish_for_profile(&mut source.program.memory, native.is_some());
-        target
-            .materials
-            .publish_for_profile(&mut target.program.memory, native.is_some());
-        // The original CalcMass precedes tie updates. Keep that mass through movement.
-        if native.is_none() {
+        // Native Update_Ties runs after CalcMass. A resource transfer can
+        // change radius, but the mass remains available to UpdatePosition.
+        if !native {
             for robot in [&mut *source, &mut *target] {
                 robot.materials.mass = derived_mass(
                     robot.materials.body,
@@ -14428,21 +14466,19 @@ fn apply_tie_resource(
                     robot.materials.chloroplasts,
                 )
                 .clamp(1.0, 32_000.0);
+                robot.materials.radius = crate::physics::organism_radius(
+                    robot.materials.body,
+                    robot.materials.chloroplasts,
+                    fixed_bot_radii,
+                );
             }
-        }
-        // Native energy ties refresh the receiver's radius after storing body.
-        // The payer may still carry its body-only radius from LoadRobotBody.
-        if !native_energy_transfer || requested < 0 {
-            source.materials.radius = crate::physics::organism_radius(
-                source.materials.body,
-                source.materials.chloroplasts,
-                fixed_bot_radii,
-            );
-        }
-        if !native_energy_transfer || requested > 0 {
-            target.materials.radius = crate::physics::organism_radius(
-                target.materials.body,
-                target.materials.chloroplasts,
+        } else if matches!(location, -1 | -6) {
+            // Update_Ties refreshes the receiver on energy and body branches.
+            // Poison can cancel a take after entry without skipping FindRadius.
+            let receiver = if requested > 0 { target } else { source };
+            receiver.materials.radius = crate::physics::native_organism_radius(
+                receiver.materials.body,
+                receiver.materials.chloroplasts,
                 fixed_bot_radii,
             );
         }
@@ -14454,6 +14490,7 @@ fn apply_tie_energy(
     source: &mut RobotState,
     target: &mut RobotState,
     requested: i32,
+    may_defend_with_poison: bool,
     native: &mut Option<crate::native_random::NativeRandom>,
 ) -> Option<&'static str> {
     if source.materials.body < 0.0 || source.materials.energy < 0.0 {
@@ -14466,46 +14503,18 @@ fn apply_tie_energy(
             return None;
         }
         source.materials.energy -= amount;
-        add_tie_store(
-            &mut target.materials.energy,
-            scale_tie_amount(amount, 0.70),
-            true,
-        );
-        add_tie_store(
-            &mut target.materials.body,
-            scale_tie_amount(amount, 0.029),
-            true,
-        );
-        add_tie_store(
-            &mut target.materials.waste,
-            scale_tie_amount(amount, 0.01),
-            false,
-        );
+        credit_tied_energy(&mut target.materials, amount, native.is_some());
         return Some("tie_resource_energy");
     }
 
     let amount = (-requested).min(target.materials.energy.max(0.0));
     let result = if amount == 0.0 {
         None
-    } else if apply_tie_poison_defense(source, target, amount, native) {
+    } else if may_defend_with_poison && apply_tie_poison_defense(source, target, amount, native) {
         Some("tie_resource_poison_defense")
     } else {
         target.materials.energy -= amount;
-        add_tie_store(
-            &mut source.materials.energy,
-            scale_tie_amount(amount, 0.70),
-            true,
-        );
-        add_tie_store(
-            &mut source.materials.body,
-            scale_tie_amount(amount, 0.029),
-            true,
-        );
-        add_tie_store(
-            &mut source.materials.waste,
-            scale_tie_amount(amount, 0.01),
-            false,
-        );
+        credit_tied_energy(&mut source.materials, amount, native.is_some());
         Some("tie_resource_energy")
     };
     // Update_Ties can credit another thief while the victim still awaits ManageDeath.
@@ -14522,6 +14531,20 @@ fn apply_tie_energy(
             .write(220, source.counters.kills as i32);
     }
     result
+}
+
+fn credit_tied_energy(receiver: &mut BiologyState, amount: f32, native: bool) {
+    if native {
+        // Update_Ties uses Double factors and rounds each complete sum to Single.
+        let amount = f64::from(amount);
+        receiver.energy = store_scaled_sum(receiver.energy, amount, 0.7).min(32_000.0);
+        receiver.body = store_scaled_sum(receiver.body, amount, 0.029).min(32_000.0);
+        receiver.waste = store_scaled_sum(receiver.waste, amount, 0.01);
+        return;
+    }
+    add_tie_store(&mut receiver.energy, scale_tie_amount(amount, 0.70), true);
+    add_tie_store(&mut receiver.body, scale_tie_amount(amount, 0.029), true);
+    add_tie_store(&mut receiver.waste, scale_tie_amount(amount, 0.01), false);
 }
 
 fn apply_tie_venom(
@@ -14622,6 +14645,7 @@ fn apply_tie_body(
     source: &mut RobotState,
     target: &mut RobotState,
     requested: i32,
+    may_defend_with_poison: bool,
     native: &mut Option<crate::native_random::NativeRandom>,
 ) -> Option<&'static str> {
     if source.materials.body < 0.0 || source.materials.energy < 0.0 {
@@ -14656,7 +14680,7 @@ fn apply_tie_body(
     if amount == 0.0 {
         return None;
     }
-    if apply_tie_poison_defense(source, target, amount, native) {
+    if may_defend_with_poison && apply_tie_poison_defense(source, target, amount, native) {
         return Some("tie_resource_poison_defense");
     }
     target.materials.body -= amount;
@@ -14684,8 +14708,14 @@ fn apply_tie_poison_defense(
     amount: f32,
     native: &mut Option<crate::native_random::NativeRandom>,
 ) -> bool {
-    let poison_tag = scale_tie_amount(amount, 0.25).max(1.0);
-    if source.identity.species == target.identity.species || target.materials.poison <= poison_tag {
+    let poison_tag = scale_tie_amount(amount, 0.25);
+    // Native Update_Ties keeps the fractional result of Abs(l / 4).
+    let poison_tag = if native.is_some() {
+        poison_tag
+    } else {
+        poison_tag.max(1.0)
+    };
+    if target.materials.poison <= poison_tag {
         return false;
     }
     target.materials.poison -= poison_tag;
@@ -17138,6 +17168,55 @@ mod native_publication55_tests {
             native_cached_voluntary_movement(input, zero_cache, 1.0, &settings).1,
             0.0
         );
+    }
+
+    #[test]
+    fn native_cached_dot_and_cross_round_after_combining_signed_products() {
+        let settings = PhysicsSettings {
+            max_velocity: 60.0,
+            movement_efficiency: 0.66,
+            ..PhysicsSettings::default()
+        };
+        // The first row is robot 222's native movement input at cycle 287.
+        let aim = [f32::from_bits(0xbf3e_7a94), f32::from_bits(0x3f2b_0998)];
+        let mass = f32::from_bits(0x3f9f_e660);
+        let cases = [
+            ((39, 0, 1, 0), [0xc1ba_fe70, 0xc1b0_c5e2]),
+            ((39, 0, 0, 1), [0xc1c3_ceb8, 0xc1a6_f522]),
+            ((0, 39, 0, 1), [0x41ba_fe70, 0x41b0_c5e2]),
+            ((38, 0, 4, 0), [0xc1a8_dda3, 0xc1bb_16dc]),
+        ];
+        for ((up, down, left, right), expected) in cases {
+            let input = MovementInput {
+                up,
+                down,
+                left,
+                right,
+                ..MovementInput::default()
+            };
+            let (impulse, _) = native_cached_voluntary_movement(input, aim, mass, &settings);
+            assert_eq!(impulse.map(f32::to_bits), expected);
+        }
+    }
+
+    #[test]
+    fn native_cached_movement_rounds_original_clipping_magnitude() {
+        let settings = PhysicsSettings {
+            max_velocity: 60.0,
+            movement_efficiency: 0.66,
+            ..PhysicsSettings::default()
+        };
+        // Original 2.48.32, robot 151's cached aim and thrust at cycle 299.
+        let input = MovementInput {
+            up: 98,
+            ..MovementInput::default()
+        };
+        let aim = [f32::from_bits(0x3f24_1ab6), f32::from_bits(0x3f44_7bc6)];
+        let mass = f32::from_bits(0x3f93_5d30);
+        let (impulse, cost_magnitude) =
+            native_cached_voluntary_movement(input, aim, mass, &settings);
+        assert_eq!(impulse.map(f32::to_bits), [0x41cb_1442, 0xc1f3_25fb]);
+        assert_eq!(cost_magnitude.to_bits(), 0x4270_0001);
     }
 
     #[test]

@@ -261,12 +261,7 @@ impl Engine {
         let id =
             self.spawn_species_at_unpublished(dna, species, position_override.unwrap_or(position))?;
         let robot = self.slots.get_mut(id)?;
-        robot.set_heading(heading);
-        // VB6 Cos/Sin return Double before VectorSet narrows to Single.
-        robot.kinematics.aim_vector = [
-            f64::from(heading).cos() as f32,
-            f64::from(heading).sin() as f32,
-        ];
+        robot.set_heading_for_profile(heading, true);
         robot.program.memory.write(19, robot.materials.aim);
         robot.program.memory.write(12, timer);
         robot.program.rng_state = state;
@@ -387,7 +382,7 @@ mod tests {
         );
 
         let later = world
-            .spawn_native_script_robot(dna, species, [600.0; 2])
+            .spawn_native_script_robot(dna, species, [600.0; 2], None)
             .unwrap();
         assert_eq!(
             world.slots.get(later).unwrap().identity.species_file,
@@ -426,7 +421,7 @@ mod tests {
         let first_species = SpeciesId::default();
         let startup_name = imported.species[0].name.clone();
         let placed = imported
-            .spawn_native_script_robot(dna.clone(), first_species, [600.0; 2])
+            .spawn_native_script_robot(dna.clone(), first_species, [600.0; 2], None)
             .unwrap();
         assert_eq!(
             imported.slots.get(first).unwrap().identity.species_file,
@@ -535,6 +530,153 @@ mod tests {
 
                 assert!(world.slots.get(target).unwrap().materials.energy > before);
                 assert_eq!(world.slots.get(source).unwrap().flags.dead, opponent);
+            }
+        }
+    }
+
+    #[test]
+    fn native_tie_poison_defense_uses_founder_filename_for_energy_and_body() {
+        for (native, same_registry, expect_defense) in [
+            (true, true, true),
+            (true, false, false),
+            (false, true, false),
+            (false, false, true),
+        ] {
+            for location in [-1, -6] {
+                let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+                let source_species = world.register_species(SpeciesDefinition {
+                    name: "Source.txt".into(),
+                    ..Default::default()
+                });
+                let target_species = if same_registry {
+                    source_species
+                } else {
+                    world.register_species(SpeciesDefinition {
+                        name: "Opponent.txt".into(),
+                        ..Default::default()
+                    })
+                };
+                let dna = LegacyDna::parse("stop").unwrap();
+                let source = world
+                    .spawn_species_at(dna.clone(), source_species, [400.0, 500.0])
+                    .unwrap();
+                let target = world
+                    .spawn_species_at(dna, target_species, [500.0; 2])
+                    .unwrap();
+                // Save Robot DNA renames one robot without changing its registry ID.
+                let target_name = if same_registry {
+                    "Renamed.txt"
+                } else {
+                    "Source.txt"
+                };
+                world.slots.get_mut(target).unwrap().identity.species_file = target_name.into();
+                assert!(world.native_make_tie(source, target, 100, 0, 7));
+                if !native {
+                    world.native_random = None;
+                }
+                let attacker = world.slots.get_mut(source).unwrap();
+                attacker.counters.age = 2;
+                attacker.program.memory.write(455, 7);
+                attacker.program.memory.write(452, location);
+                attacker.program.memory.write(453, -100);
+                let defender = world.slots.get_mut(target).unwrap();
+                defender.materials.poison = 100.0;
+                defender.program.memory.write(827, 100);
+                defender.program.memory.write(834, 600);
+                defender.program.memory.write(839, 137);
+                let before = if location == -1 {
+                    defender.materials.energy
+                } else {
+                    defender.materials.body
+                };
+
+                world.tie_exchange_phase(&mut CycleRecorder::disabled(1));
+
+                let attacker = world.slots.get(source).unwrap();
+                let defender = world.slots.get(target).unwrap();
+                let after = if location == -1 {
+                    defender.materials.energy
+                } else {
+                    defender.materials.body
+                };
+                assert_eq!(attacker.effects.poisoning_active, expect_defense);
+                if expect_defense {
+                    assert_eq!(attacker.effects.poisoning_countdown, 25.0);
+                    assert_eq!(attacker.effects.poisoning_location, 600);
+                    assert_eq!(attacker.effects.poisoning_value, 137);
+                    assert_eq!(defender.materials.poison, 75.0);
+                    assert_eq!(after, before);
+                } else {
+                    assert_eq!(defender.materials.poison, 100.0);
+                    assert_eq!(after, before - 100.0);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn native_tie_poison_defense_can_spend_less_than_one_unit() {
+        for (native, available_poison, expected_dose) in [
+            (true, 0.75, 0.25),
+            (true, 0.25, 0.0),
+            (false, 0.75, 0.0),
+            (false, 1.25, 1.0),
+        ] {
+            for location in [-1, -6] {
+                let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+                let attacker_species = world.register_species(SpeciesDefinition {
+                    name: "Thief.txt".into(),
+                    ..Default::default()
+                });
+                let defender_species = world.register_species(SpeciesDefinition {
+                    name: "Defender.txt".into(),
+                    ..Default::default()
+                });
+                let dna = LegacyDna::parse("stop").unwrap();
+                let source = world
+                    .spawn_species_at(dna.clone(), attacker_species, [400.0, 500.0])
+                    .unwrap();
+                let target = world
+                    .spawn_species_at(dna, defender_species, [500.0; 2])
+                    .unwrap();
+                assert!(world.native_make_tie(source, target, 100, 0, 7));
+                if !native {
+                    world.native_random = None;
+                }
+                let actor = world.slots.get_mut(source).unwrap();
+                actor.counters.age = 2;
+                actor.program.memory.write(455, 7);
+                actor.program.memory.write(452, location);
+                actor.program.memory.write(453, -1);
+                let defender = world.slots.get_mut(target).unwrap();
+                defender.materials.poison = available_poison;
+                defender.program.memory.write(834, 600);
+                defender.program.memory.write(839, 137);
+                let resource = |robot: &RobotState| {
+                    if location == -1 {
+                        robot.materials.energy
+                    } else {
+                        robot.materials.body
+                    }
+                };
+                let before = resource(defender);
+
+                world.tie_exchange_phase(&mut CycleRecorder::disabled(1));
+
+                let attacker = world.slots.get(source).unwrap();
+                let defender = world.slots.get(target).unwrap();
+                let defended = expected_dose > 0.0;
+                assert_eq!(attacker.effects.poisoning_active, defended);
+                assert_eq!(attacker.effects.poisoning_countdown, expected_dose);
+                assert_eq!(defender.materials.poison, available_poison - expected_dose);
+                assert_eq!(
+                    resource(defender),
+                    before - if defended { 0.0 } else { 1.0 }
+                );
+                if defended {
+                    assert_eq!(attacker.effects.poisoning_location, 600);
+                    assert_eq!(attacker.effects.poisoning_value, 137);
+                }
             }
         }
     }

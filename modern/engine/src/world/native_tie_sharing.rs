@@ -99,6 +99,65 @@ mod tests {
     use super::*;
 
     #[test]
+    fn energy_tie_credit_retains_native_precision_for_both_transfer_directions() {
+        let mut world = Engine::new(EngineConfig::testing()).unwrap();
+        let id = world
+            .spawn_at(LegacyDna::parse("start stop").unwrap(), [100.0; 2])
+            .unwrap();
+        let mut receiver = world.slots.get(id).unwrap().clone();
+        receiver.materials.body = 249.218_03;
+        // Robot 143 at cycle 330 after receiving energy shot 173.
+        receiver.materials.energy = f32::from_bits(0x44b7_4ceb);
+        // Robot 223 at cycle 299 after receiving a 177-energy shot.
+        receiver.materials.waste = f32::from_bits(0x4264_26f5);
+        let mut donor = receiver.clone();
+        donor.materials.energy = 2_000.0;
+        donor.materials.poison = 0.0;
+
+        for (mut native, expected_energy_bits, expected_body, expected_waste_bits) in [
+            (
+                Some(crate::native_random::NativeRandom::default()),
+                0x4501_2675,
+                278.218_05,
+                0x4286_137b,
+            ),
+            (None, 0x4501_2676, 278.218_02, 0x4286_137a),
+        ] {
+            for give_energy in [false, true] {
+                let mut receiver = receiver.clone();
+                let mut donor = donor.clone();
+                let effect = if give_energy {
+                    apply_tie_energy(&mut donor, &mut receiver, 1_000, true, &mut native)
+                } else {
+                    apply_tie_energy(&mut receiver, &mut donor, -1_000, true, &mut native)
+                };
+                assert_eq!(effect, Some("tie_resource_energy"));
+                // Robot 143 then spent 100 energy in storebody.
+                assert_eq!(
+                    (receiver.materials.energy - 100.0).to_bits(),
+                    expected_energy_bits
+                );
+                assert_eq!(receiver.materials.body, expected_body);
+                assert_eq!(receiver.materials.waste.to_bits(), expected_waste_bits);
+            }
+        }
+    }
+
+    #[test]
+    fn energy_tie_body_credit_preserves_even_rounding_when_the_extended_sum_is_a_tie() {
+        let body = 1_000.0_f32;
+        let amount = 125.0 / 4096.0;
+        assert_eq!(
+            store_scaled_sum(body, amount, 0.029).to_bits(),
+            body.to_bits() + 14
+        );
+        assert_eq!(
+            store_scaled_sum(body.next_up(), amount, 0.029).to_bits(),
+            body.to_bits() + 16
+        );
+    }
+
+    #[test]
     fn shared_energy_is_a_fraction_of_combined_pool_with_body_limit_and_fee() {
         let mut world = Engine::new(EngineConfig::testing()).unwrap();
         let a = world

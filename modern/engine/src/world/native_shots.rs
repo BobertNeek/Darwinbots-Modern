@@ -15,23 +15,18 @@ pub(super) fn returned_velocity(actual: [f32; 2], incoming: [f32; 2]) -> [f32; 2
 }
 
 pub(super) fn receive_energy(materials: &mut BiologyState, partial: f32) -> f32 {
-    let total = f64::from(materials.energy) + f64::from(partial) * 0.95;
+    let partial = f64::from(partial);
+    let total = f64::from(materials.energy) + partial * 0.95;
     let overflow = if total > 32_000.0 {
         (total - 32_000.0) as f32
     } else {
         0.0
     };
-    materials.energy = total.min(32_000.0) as f32;
-    materials.body =
-        (f64::from(materials.body) + f64::from(partial) * 0.004 + f64::from(overflow) * 0.1)
-            .min(32_000.0) as f32;
-    materials.waste = (f64::from(materials.waste) + f64::from(partial) * 0.01) as f32;
-    (f64::from(partial) * 0.95) as f32
-}
-
-fn native_shot_dot(first: [f32; 2], second: [f32; 2]) -> f32 {
-    // Common.bas Dot and VectorMagnitudeSquare narrow once at return.
-    (f64::from(first[0]) * f64::from(second[0]) + f64::from(first[1]) * f64::from(second[1])) as f32
+    materials.energy = store_scaled_sum(materials.energy, partial, 0.95).min(32_000.0);
+    materials.body = (f64::from(materials.body) + partial * 0.004 + f64::from(overflow) * 0.1)
+        .min(32_000.0) as f32;
+    materials.waste = store_scaled_sum(materials.waste, partial, 0.01);
+    (partial * 0.95) as f32
 }
 
 impl Engine {
@@ -109,12 +104,12 @@ impl Engine {
             ];
             // Common.bas VectorMagnitudeSquare stores the sum of both
             // products as Single before NewShotCollision uses it.
-            let p2 = native_shot_dot(p, p);
-            let d2 = native_shot_dot(d, d);
+            let p2 = crate::physics::native_dot(p, p);
+            let d2 = crate::physics::native_dot(d, d);
             if d2 == 0.0 {
                 continue;
             }
-            let dot = native_shot_dot(d, p);
+            let dot = crate::physics::native_dot(d, p);
             let discriminant = (f64::from(dot).powi(2)
                 - f64::from(d2) * (f64::from(p2) - f64::from(radius).powi(2)))
                 as f32;
@@ -561,6 +556,320 @@ mod native_loop_tests {
     }
 
     #[test]
+    fn native_weak_toxins_publish_signed_residuals_after_the_last_overwrite() {
+        let (mut world, owner, target) = feeding_world(100);
+        let shot = world
+            .projectiles
+            .spawn_native_packet(
+                owner,
+                [175.0, 200.0],
+                [40.0, 0.0],
+                4.0,
+                1.0,
+                -5,
+                Some("owner.txt".into()),
+                false,
+                600,
+                123,
+                0,
+            )
+            .unwrap();
+        // CreateShot: 45 energy and one cycle of range give poison power 45 / 40.
+        assert_eq!(world.projectiles.toxin_impact_power(shot), 1.125);
+        {
+            let (first, second) = world.slots.split_at_mut(target.slot() as usize);
+            let donor = first[owner.slot() as usize].organism.as_mut().unwrap();
+            let recipient = second[0].organism.as_mut().unwrap();
+            donor.materials.venom = 0.75;
+            donor.program.memory.write(835, 601);
+            donor.program.memory.write(836, 456);
+            assert_eq!(
+                apply_tie_venom(donor, recipient, 1, &mut world.native_random),
+                Some("tie_resource_venom")
+            );
+        }
+
+        world.tick().unwrap();
+        assert!(world.projectiles.impact_flash[shot as usize]);
+        let robot = world.slots.get_mut(target).unwrap();
+        assert_eq!(robot.program.memory.read(600), 123);
+        assert_eq!(robot.program.memory.read(601), 456);
+        assert!(!robot.effects.poisoning_active);
+        assert!(!robot.effects.paralysis_active);
+        assert_eq!(robot.effects.poisoning_countdown, -0.25);
+        assert_eq!(robot.effects.paralysis_countdown, -0.25);
+        assert_eq!(robot.program.memory.read(838), -1);
+        assert_eq!(robot.program.memory.read(837), -1);
+
+        robot.program.memory.write(600, 13);
+        robot.program.memory.write(601, 46);
+        let checkpoint = crate::SaveFile::encode(&world).unwrap();
+        let mut resumed = crate::SaveFile::decode(&checkpoint).unwrap();
+        resumed.tick().unwrap();
+        let robot = resumed.slots.get(target).unwrap();
+        assert_eq!(robot.program.memory.read(600), 13);
+        assert_eq!(robot.program.memory.read(601), 46);
+        assert_eq!(robot.program.memory.read(838), -1);
+        assert_eq!(robot.program.memory.read(837), -1);
+
+        resumed.native_random = None;
+        resumed.poison_venom_phase();
+        let robot = resumed.slots.get(target).unwrap();
+        assert_eq!(robot.program.memory.read(838), 0);
+        assert_eq!(robot.program.memory.read(837), 0);
+    }
+
+    #[test]
+    fn native_sperm_impact_respects_the_incompatible_mating_cooldown() {
+        use crate::native_binary::{NativeRecordFile, NativeValue};
+
+        let original =
+            include_bytes!("../../tests/fixtures/db24832-genuine-reproduction-cycle1-20261017.sim");
+        for (initial_timer, accepts_sperm) in [(-11, false), (-10, true)] {
+            let mut file = NativeRecordFile::decode(original).unwrap();
+            file.robots[0]
+                .set_value("fertilized", NativeValue::Word(initial_timer))
+                .unwrap();
+            let mut world = Engine::from_native_sim(&file.encode().unwrap()).unwrap();
+            let target = world.slots.ids_in_slot_order()[0];
+            let robot = world.slots.get_mut(target).unwrap();
+            assert_eq!(robot.effects.fertilization_timer, i32::from(initial_timer));
+            assert!(robot.effects.stored_sperm.is_none());
+            robot.kinematics.position = [200.0, 200.0];
+            robot.kinematics.velocity = [0.0; 2];
+            robot.kinematics.actual_velocity = [0.0; 2];
+            robot.materials.radius = 10.0;
+            robot.counters.age = 10;
+
+            let dna = LegacyDna::parse("start\n-8 .shoot store\nstop\nend").unwrap();
+            let owner = world.spawn_at(dna.clone(), [165.0, 200.0]).unwrap();
+            world.slots.get_mut(owner).unwrap().materials.radius = 10.0;
+            world.projectiles.reset_native_slots(100);
+            world
+                .pending_projectile_requests
+                .push(PendingProjectileRequest {
+                    owner_slot: owner.slot() as usize,
+                    kind: -8,
+                    value: 0.0,
+                    range_multiplier: 1.0,
+                    angle: 0.0,
+                });
+            world.projectile_spawn_phase().unwrap();
+
+            phase(&mut world);
+
+            let robot = world.slots.get(target).unwrap();
+            assert_eq!(world.stats.projectile_impacts, 1);
+            assert_eq!(robot.program.memory.read(MEM_SHOT_FLAVOR), -8);
+            assert!(world.projectiles.impact_flash[0]);
+            let sperm = &robot.effects.stored_sperm;
+            if accepts_sperm {
+                assert_eq!(robot.effects.fertilization_timer, 10);
+                assert_eq!(robot.program.memory.read(303), 10);
+                assert_eq!(
+                    sperm.as_ref().map(|stored| stored.source),
+                    Some(Some(owner))
+                );
+                assert_eq!(sperm.as_ref().map(|stored| &stored.dna), Some(&dna));
+            } else {
+                assert_eq!(robot.effects.fertilization_timer, i32::from(initial_timer));
+                assert_eq!(robot.program.memory.read(303), 0);
+                assert!(sperm.is_none());
+            }
+            phase(&mut world);
+            assert!(!world.projectiles.alive[0]);
+        }
+    }
+
+    #[test]
+    fn native_poison_can_overwrite_the_published_venom_countdown() {
+        for poison_location in [837, 838] {
+            let (mut world, owner, target) = feeding_world(100);
+            let shot = world
+                .projectiles
+                .spawn_native_packet(
+                    owner,
+                    [175.0, 200.0],
+                    [40.0, 0.0],
+                    4.0,
+                    4.0,
+                    -5,
+                    Some("owner.txt".into()),
+                    false,
+                    poison_location,
+                    123,
+                    0,
+                )
+                .unwrap();
+            assert_eq!(world.projectiles.toxin_impact_power(shot), 4.5);
+            {
+                let (first, second) = world.slots.split_at_mut(target.slot() as usize);
+                let donor = first[owner.slot() as usize].organism.as_mut().unwrap();
+                let recipient = second[0].organism.as_mut().unwrap();
+                donor.materials.venom = 4.5;
+                donor.program.memory.write(835, 600);
+                donor.program.memory.write(836, 456);
+                assert_eq!(
+                    apply_tie_venom(donor, recipient, 5, &mut world.native_random),
+                    Some("tie_resource_venom")
+                );
+            }
+
+            world.tick().unwrap();
+
+            let robot = world.slots.get(target).unwrap();
+            assert!(world.projectiles.impact_flash[shot as usize]);
+            assert_eq!(robot.program.memory.read(600), 456);
+            assert_eq!(robot.materials.paralyzed, 3);
+            assert_eq!(robot.materials.poisoned, 2);
+            assert_eq!(
+                robot.program.memory.read(837),
+                if poison_location == 837 { 123 } else { 3 }
+            );
+            assert_eq!(robot.program.memory.read(838), 2);
+        }
+    }
+
+    #[test]
+    fn native_toxin_impacts_compare_the_shot_filename_to_the_targets_current_filename() {
+        use crate::native_binary::{NativeRecordFile, NativeSimulationTail};
+
+        for kind in [-3, -5] {
+            for same_filename in [false, true] {
+                let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+                let dna = LegacyDna::parse("stop").unwrap();
+                let owner = world.spawn_at(dna.clone(), [165.0, 200.0]).unwrap();
+                let target = world.spawn_at(dna, [200.0, 200.0]).unwrap();
+                let roster_name = world.species[0].name.clone();
+                let founder_name = "Renamed.txt";
+                let firing_name = if same_filename {
+                    founder_name
+                } else {
+                    &roster_name
+                };
+                // Save Robot DNA's rename changes FName alone, retaining the roster ID.
+                let source = world.slots.get_mut(owner).unwrap();
+                source.identity.species_file = firing_name.to_owned();
+                source.materials.radius = 10.0;
+                source.program.memory.write(834, 500);
+                source.program.memory.write(835, 500);
+                let recipient = world.slots.get_mut(target).unwrap();
+                recipient.materials.radius = 10.0;
+                recipient.counters.age = 10;
+
+                if kind == -3 {
+                    world
+                        .pending_projectile_requests
+                        .push(PendingProjectileRequest {
+                            owner_slot: owner.slot() as usize,
+                            kind,
+                            value: 100.0,
+                            range_multiplier: 1.0,
+                            angle: 0.0,
+                        });
+                    world.projectile_spawn_phase().unwrap();
+                } else {
+                    world
+                        .spawn_native_effect_packet(
+                            owner,
+                            [175.0, 200.0],
+                            [40.0, 0.0],
+                            400.0,
+                            100.0,
+                            kind,
+                            0,
+                        )
+                        .unwrap();
+                }
+
+                world.slots.get_mut(owner).unwrap().identity.species_file = "Later.txt".into();
+                world.slots.get_mut(target).unwrap().identity.species_file = founder_name.into();
+                let file = NativeRecordFile::decode(&world.export_native_sim().unwrap()).unwrap();
+                let tail = NativeSimulationTail::decode(&file.tail).unwrap();
+                assert_eq!(
+                    tail.bytes("shot[0].species").unwrap(),
+                    firing_name.as_bytes()
+                );
+
+                phase(&mut world);
+
+                assert_eq!(world.stats.projectile_impacts, 1);
+                assert_eq!(world.stats.projectile_effects, 1);
+                let recipient = world.slots.get(target).unwrap();
+                if kind == -3 {
+                    assert_eq!(recipient.materials.venom > 0.0, same_filename);
+                    assert_eq!(recipient.effects.paralysis_active, !same_filename);
+                } else {
+                    assert_eq!(recipient.materials.poison > 0.0, same_filename);
+                    assert_eq!(recipient.effects.poisoning_active, !same_filename);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn native_virus_waste_and_decay_packets_capture_the_filename_at_creation() {
+        let mut world = Engine::new_native(EngineConfig {
+            waste: WasteSettings {
+                alzheimer_threshold: 0,
+                defecation_threshold: 200,
+            },
+            corpse_decay: CorpseDecaySettings {
+                enabled: true,
+                mode: crate::CorpseDecayMode::WasteShot,
+                period: 1,
+                packet_size: 10,
+                ..Default::default()
+            },
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let dna = LegacyDna::parse("start 1 20 store stop end").unwrap();
+        let owner = world.spawn_at(dna, [500.0; 2]).unwrap();
+        let actor = world.slots.get_mut(owner).unwrap();
+        actor.identity.species_file = "Virus.txt".into();
+        actor.program.memory.write(335, 1);
+        world.virus_commands_phase().unwrap();
+        let virus = world
+            .projectiles
+            .stored
+            .iter()
+            .position(|&stored| stored)
+            .unwrap();
+        assert!(world.projectiles.alive[virus]);
+        assert_eq!(
+            world.projectiles.source_species_names[virus].as_deref(),
+            Some("Virus.txt")
+        );
+
+        let actor = world.slots.get_mut(owner).unwrap();
+        actor.identity.species_file = "Waste.txt".into();
+        actor.effects.virus_build_timer = 1;
+        actor.program.memory.write(335, 0);
+        actor.program.memory.write(338, 1);
+        actor.materials.waste = 250.0;
+        world.virus_commands_phase().unwrap();
+        assert!(!world.projectiles.stored[virus]);
+        assert_eq!(
+            world.projectiles.source_species_names[virus].as_deref(),
+            Some("Virus.txt")
+        );
+        world.waste_phase().unwrap();
+        assert_eq!(
+            world.projectiles.source_species_names[virus + 1].as_deref(),
+            Some("Waste.txt")
+        );
+
+        world.become_native_corpse(owner).unwrap();
+        world.slots.get_mut(owner).unwrap().identity.species_file = "SavedCorpse.txt".into();
+        world.decay_native_corpses().unwrap();
+        assert_eq!(
+            world.projectiles.source_species_names[virus + 2].as_deref(),
+            Some("SavedCorpse.txt")
+        );
+    }
+
+    #[test]
     fn native_flash_cleanup_also_clears_dead_slots_and_continues_exactly_after_db3s() {
         for was_alive in [false, true] {
             let (mut world, owner, _) = feeding_world(100);
@@ -891,6 +1200,38 @@ mod native_loop_tests {
             adult_energy
         );
         assert_eq!(world.stats.projectile_impacts, 0);
+    }
+
+    #[test]
+    fn native_takenrg_rounds_energy_after_the_extended_product_and_sum() {
+        // Original 2.48.32 cycle 306. Robot 239 absorbed two shots, and
+        // robot 296 absorbed one. Each subsequently spent 100 in storebody.
+        for (initial, shots, expected) in [
+            (0x44d3_305b, &[195.0, 200.0][..], 0x44f5_985a),
+            (0x4575_125b, &[235.0][..], 0x457c_c65a),
+        ] {
+            let mut materials = BiologyState {
+                energy: f32::from_bits(initial),
+                ..Default::default()
+            };
+            for &partial in shots {
+                receive_energy(&mut materials, partial);
+            }
+            assert_eq!((materials.energy - 100.0).to_bits(), expected);
+        }
+    }
+
+    #[test]
+    fn native_takenrg_preserves_waste_at_the_original_shot_midpoint() {
+        // Robot 202 received this packet at cycle 356 on the original saved
+        // trajectory. Its cycle-357 offspring retains the halved waste.
+        let mut materials = BiologyState {
+            waste: f32::from_bits(0x42ea_e4d1),
+            ..Default::default()
+        };
+        receive_energy(&mut materials, f32::from_bits(0x42d2_ddd6));
+        assert_eq!(materials.waste.to_bits(), 0x42ed_00a3);
+        assert_eq!((materials.waste * 0.5).to_bits(), 0x426d_00a3);
     }
 
     #[test]

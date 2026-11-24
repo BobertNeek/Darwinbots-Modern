@@ -15,6 +15,8 @@ The earlier CI package at `da3581e05903ea5315b8903835519d86a5c7f99d` also passed
 
 The later local Windows build at `e465a1ae539ccf6589a55a283010058140d1ff04` opened a positional SIM at cycle 281. F12 ran and paused it twice. The Population graph exported two species at cycle 400 to a CSV with SHA-256 `78ba1ce49f981598729c831e9b7fab995a36d9dc37617975403c71444a5d1203`. Paused Species Apply kept cycle 513, 453 robots, and selected robot `16:0`. Reopening showed the edited name, initial count zero, and energy 777. Starting with that roster kept two species and spawned five organisms from the other species only. Global Settings saved Hide system tray icon, showed the checked value after reopening and prevented the tray button from hiding the simulation. Restoring the option persisted the original unchecked value. Interactive tray restore remains open.
 
+The isolated Windows build with the source tree at `2d27cce7b68efbb30f7b33e5848232d95ed4295b` saved a living snapshot and a mutation-history sidecar at cycle 281. The SNP SHA-256 was `f184a26d47f33d8403d19904b1dcf215e0d68d528db985411b0cfc128897ac13`. The sidecar SHA-256 was `dc17701e6f5dc89234f02b722150deac533e342249c04eb4ca693b0074018b03`. Recording → Recover latest autosave restored a hash-verified copy of the earlier cycle-282 DB3S with 194 organisms. The desktop displayed the recovered cycle, population, and checkpoint filename.
+
 Original Windows directed-tie checkpoints confirm separate import and first-cycle behavior for reciprocal, one-way, and dormant input rows. The corresponding port behavior remains open. [Original executable receipts](windows-offline-acceptance.md#november-24-original-windows-results)
 
 ## November 4 offline assessment

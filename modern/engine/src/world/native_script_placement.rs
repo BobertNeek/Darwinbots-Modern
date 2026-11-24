@@ -1,13 +1,25 @@
 //! Globals.aggiungirob: script loading precedes the final placement heading.
 
 use super::*;
+use crate::native_binary::{NativeMutationSpareEntries, NativeSimulationTail};
 
 impl Engine {
+    pub(super) fn native_script_origin_tail(
+        &self,
+    ) -> Result<Option<NativeSimulationTail>, EngineError> {
+        self.native_origin
+            .as_ref()
+            .filter(|origin| self.native_random.is_some() && !origin.tail.is_empty())
+            .map(|origin| NativeSimulationTail::decode(&origin.tail))
+            .transpose()
+    }
+
     pub(super) fn spawn_native_script_robot(
         &mut self,
         dna: LegacyDna,
         species: SpeciesId,
         position: [f32; 2],
+        origin: Option<&NativeSimulationTail>,
     ) -> Result<OrganismId, EngineError> {
         if self.native_random.is_none() {
             let id = self.spawn_species_at_unpublished(dna, species, position)?;
@@ -17,9 +29,10 @@ impl Engine {
         if self.available_robot_capacity() == 0 {
             return Err(EngineError::CapacityReached);
         }
-        if self.species.get(species.0 as usize).is_none() {
+        let Some(definition) = self.species.get(species.0 as usize) else {
             return Err(EngineError::Invariant("species does not exist".into()));
-        }
+        };
+        let spare_entries = script_mutation_spare_entries(origin, definition)?;
 
         let random = self.native_random.as_mut().unwrap();
         // Module1.preparerob consumes two discarded positions, one discrete
@@ -37,6 +50,7 @@ impl Engine {
         let state = u64::from(random.state());
 
         let robot = self.slots.get_mut(id)?;
+        robot.native_mutation_spare_entries = spare_entries.map(Box::new);
         robot.program.memory = VmMemory::default();
         robot
             .program
@@ -71,9 +85,34 @@ impl Engine {
     }
 }
 
+fn script_mutation_spare_entries(
+    origin: Option<&NativeSimulationTail>,
+    definition: &SpeciesDefinition,
+) -> Result<Option<NativeMutationSpareEntries>, EngineError> {
+    let (Some(origin), Some(index)) = (origin, definition.lineage_id.checked_sub(1)) else {
+        return Ok(None);
+    };
+    if index >= origin.integer("species_count")? as u64 {
+        return Ok(None);
+    }
+    let row = format!("species[{index}].");
+    if native_io::text(origin.bytes(&format!("{row}name"))?) != definition.name {
+        return Ok(None);
+    }
+    // aggiungirob copies the entire species Mutables. The live profile already
+    // supplies modeled values; only the unmodeled fields come from the save.
+    NativeMutationSpareEntries::read(
+        origin.bytes(&format!("{row}mutation_rates"))?,
+        origin.bytes(&format!("{row}mutation_shapes"))?,
+    )
+    .map(Some)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::SaveFile;
+    use crate::native_binary::{NativeRecordFile, NativeValue};
 
     #[test]
     fn live_script_placement_consumes_seven_draws_before_public_dna() {
@@ -88,6 +127,7 @@ mod tests {
                 LegacyDna::parse("start 32000 rnd 900 store stop").unwrap(),
                 SpeciesId::default(),
                 [321.0, 654.0],
+                None,
             )
             .unwrap();
         let robot = world.slots.get(id).unwrap();
@@ -126,7 +166,7 @@ mod tests {
         let dna = LegacyDna::parse("start 1 .up store stop").unwrap();
         let dna_length = dna.blocks().len() as i32;
         let id = world
-            .spawn_native_script_robot(dna, species, [321.0, 654.0])
+            .spawn_native_script_robot(dna, species, [321.0, 654.0], None)
             .unwrap();
         let robot = world.slots.get(id).unwrap();
         assert_eq!(robot.materials.energy, 1_000.0);
@@ -164,7 +204,7 @@ mod tests {
         control.native_random = None;
         let dna = LegacyDna::parse("start 1 .up store stop").unwrap();
         let inserted = world
-            .spawn_native_script_robot(dna.clone(), SpeciesId::default(), [321.0, 654.0])
+            .spawn_native_script_robot(dna.clone(), SpeciesId::default(), [321.0, 654.0], None)
             .unwrap();
         let expected = control
             .spawn_species_at_unpublished(dna, SpeciesId::default(), [321.0, 654.0])
@@ -205,7 +245,7 @@ mod tests {
             ..SpeciesDefinition::default()
         });
         let alga = world
-            .spawn_native_script_robot(dna, species, alga_position)
+            .spawn_native_script_robot(dna, species, alga_position, None)
             .unwrap();
         assert_eq!(world.slots.get(alga).unwrap().materials.mass, 0.0);
 
@@ -221,6 +261,83 @@ mod tests {
         let displaced = world.slots.get(alga).unwrap().kinematics.position;
         assert!(displaced[0] > alga_position[0]);
         assert!(displaced[1] < alga_position[1]);
+    }
+
+    #[test]
+    fn native_repopulation_copies_the_archived_species_mutation_spares() {
+        let mut file = NativeRecordFile::decode(include_bytes!(
+            "../../tests/fixtures/db24832-original-user.sim"
+        ))
+        .unwrap();
+        let tail = NativeSimulationTail::decode(&file.tail).unwrap();
+        let rates = tail.bytes("species[0].mutation_rates").unwrap();
+        let shapes = tail.bytes("species[0].mutation_shapes").unwrap();
+        assert_eq!(&rates[44..48], &11_000_f32.to_le_bytes());
+        assert_eq!(&shapes[88..92], &1_f32.to_le_bytes());
+
+        // The resident's reserved fields can differ from the species' settings.
+        let resident = file
+            .robots
+            .iter_mut()
+            .find(|robot| {
+                robot.bytes("species_name").unwrap() == b"Alga_Minimalis_Chloroplastus.txt"
+            })
+            .unwrap();
+        let mut resident_rates = resident.bytes("mutation_rates").unwrap().to_vec();
+        resident_rates[44..48].copy_from_slice(&7_777_f32.to_le_bytes());
+        resident
+            .set_value("mutation_rates", NativeValue::Bytes(resident_rates))
+            .unwrap();
+
+        let mut world = Engine::from_native_sim(&file.encode().unwrap()).unwrap();
+        world.species[0]
+            .mutation_profile
+            .as_mut()
+            .unwrap()
+            .point
+            .one_in = 45_000.0;
+        let mut unrelated = world.species[0].clone();
+        unrelated.name = "Renamed.txt".into();
+        assert!(
+            script_mutation_spare_entries(Some(&tail), &unrelated)
+                .unwrap()
+                .is_none()
+        );
+        unrelated.name.clone_from(&world.species[0].name);
+        unrelated.lineage_id = world.species[1].lineage_id;
+        assert!(
+            script_mutation_spare_entries(Some(&tail), &unrelated)
+                .unwrap()
+                .is_none()
+        );
+
+        let existing = world.slots.ids_in_slot_order();
+        world.config.vegetation.start_chloroplasts = 0;
+        world.config.vegetation.minimum_chloroplast_equivalents = 100;
+        world.config.vegetation.repopulation_amount = 1;
+        world.config.vegetation.repopulation_cooldown = 1;
+        world.vegetation_runtime.set_native_repopulation_counter(0);
+        world.vegetation_repopulation_phase().unwrap();
+        let added = world
+            .slots
+            .ids_in_slot_order()
+            .into_iter()
+            .filter(|id| !existing.contains(id))
+            .collect::<Vec<_>>();
+        assert_eq!(added.len(), 1);
+        let restored = SaveFile::decode(&SaveFile::encode(&world).unwrap()).unwrap();
+        for world in [&world, &restored] {
+            let saved = world.export_native_organisms(&added).unwrap();
+            let saved = NativeRecordFile::decode(&saved).unwrap();
+            let robot = &saved.robots[0];
+            let exported = robot.bytes("mutation_rates").unwrap();
+            assert_eq!(&exported[..4], &45_000_f32.to_le_bytes());
+            assert_eq!(&exported[44..], &rates[44..]);
+            assert_eq!(
+                &robot.bytes("mutation_shapes").unwrap()[88..],
+                &shapes[88..]
+            );
+        }
     }
 
     #[test]

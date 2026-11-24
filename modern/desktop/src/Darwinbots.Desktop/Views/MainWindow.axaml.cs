@@ -1555,7 +1555,7 @@ public sealed partial class MainWindow : Window
                 ? LegacyDnaText.Encode(Db2GenomeRecordFile.EncodeMutationHistory(MutationHistories(capture.Records), includeHeader: true))
                 : null);
         return saved
-            ? LegacyCommandResult.Success($"LIVING SNAPSHOT · {suggestedFileName}")
+            ? LegacyCommandResult.Success("LIVING SNAPSHOT SAVED")
             : LegacyCommandResult.Cancel();
     }
 

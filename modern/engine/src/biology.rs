@@ -1,3 +1,4 @@
+use crate::native_precision::store_scaled_sum;
 use crate::{
     AimCommands, CoreReadbacks, MaterialCommands, MaterialReadbacks, PhaseReadbacks, SysvarRuntime,
     VmMemory,
@@ -174,10 +175,14 @@ impl RobotMaterials {
         (gain, loss)
     }
 
-    pub(crate) fn decay_slime_and_poison(&mut self) {
+    pub(crate) fn decay_slime_and_poison(&mut self, native: bool) {
         for store in [&mut self.slime, &mut self.poison] {
-            // The VB literal is Double; round only when assigning the Single store.
-            *store = (f64::from(*store) * 0.98) as f32;
+            let previous = f64::from(*store);
+            *store = if native {
+                store_scaled_sum(0.0, previous, 0.98)
+            } else {
+                (previous * 0.98) as f32
+            };
             if *store < 0.5 {
                 *store = 0.0;
             }
@@ -364,12 +369,15 @@ impl RobotMaterials {
                 MEM_CHLOROPLASTS as u16,
                 resource_readback(self.chloroplasts),
             ),
-            (MEM_PARALYZED as u16, self.paralyzed),
-            (MEM_POISONED as u16, self.poisoned),
         ]);
         if !native {
-            values.push((MEM_VENOM as u16, resource_readback(self.venom)));
+            values.extend([
+                (MEM_VENOM as u16, resource_readback(self.venom)),
+                (MEM_PARALYZED as u16, self.paralyzed),
+                (MEM_POISONED as u16, self.poisoned),
+            ]);
         }
+        // Native Robots.Poisons owns the countdown cells and their write order.
         runtime.publish(
             PhaseReadbacks::Materials(MaterialReadbacks { values }),
             memory,
@@ -446,6 +454,26 @@ fn normalize_aim(value: i32) -> i32 {
 #[cfg(test)]
 mod native_material_tests {
     use super::*;
+
+    #[test]
+    fn native_upkeep_decay_rounds_single_from_the_extended_product() {
+        // Original robots 122 and 128 started cycle 283 with this slime.
+        let initial = f32::from_bits(0x4408_d2db);
+        for (native, expected_bits) in [(true, 0x4406_1651), (false, 0x4406_1652)] {
+            let mut materials = RobotMaterials {
+                slime: initial,
+                poison: initial,
+                ..Default::default()
+            };
+            materials.decay_slime_and_poison(native);
+            assert_eq!(materials.slime.to_bits(), expected_bits);
+            assert_eq!(materials.poison.to_bits(), expected_bits);
+            if native {
+                // Each robot then made 15 slime, yielding this value in the SIM.
+                assert_eq!((materials.slime + 15.0).to_bits(), 0x4409_d651);
+            }
+        }
+    }
 
     #[test]
     fn native_transactions_charge_in_make_stuff_order_and_keep_failed_commands() {

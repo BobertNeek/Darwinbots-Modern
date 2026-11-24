@@ -29,8 +29,11 @@ pub(super) fn apply(
     commands: AimCommands,
     rotation_cost: f64,
     multiplier: f64,
+    native: bool,
 ) {
     let heading = robot.heading();
+    // Round(.aim * 200, 0) receives a Single. The later CInt readback
+    // intentionally keeps the wider product.
     let heading_units = heading * 200.0;
     let mut difference = commands.turn_left as f32 - commands.turn_right as f32;
     let mut extra_turn = 0.0;
@@ -66,7 +69,7 @@ pub(super) fn apply(
     while momentum < -std::f32::consts::TAU {
         momentum += std::f32::consts::TAU;
     }
-    robot.set_heading(base + momentum);
+    robot.set_heading_for_profile(base + momentum, native);
     if momentum > 0.0 && difference < 0.0 {
         momentum = (momentum + (difference + extra_turn) / 200.0).max(0.0);
     }
@@ -167,6 +170,104 @@ mod tests {
     }
 
     #[test]
+    fn native_aim_refresh_rounds_the_double_trig_results_to_single() {
+        // Original Darwinbots 2.48.32 cycle 293, absolute robot 263.
+        let heading = f32::from_bits(0x4056_bbfc);
+        let base = 671.0_f32 / 200.0;
+        let momentum = heading - base;
+        // Preserve the runtime libm result for the Portable comparison.
+        let portable_heading = std::hint::black_box(heading);
+        for (native, expected) in [
+            (
+                false,
+                [
+                    portable_heading.cos().to_bits(),
+                    portable_heading.sin().to_bits(),
+                ],
+            ),
+            (true, [0xbf7a_2e35, 0xbe59_1915]),
+        ] {
+            let mut current = robot(base, momentum);
+            apply(
+                &mut current,
+                AimCommands {
+                    set: 671,
+                    ..Default::default()
+                },
+                0.0,
+                1.0,
+                native,
+            );
+            assert_eq!(current.heading(), heading);
+            assert_eq!(current.kinematics.aim_vector.map(f32::to_bits), expected);
+        }
+    }
+
+    #[test]
+    fn native_aim_cint_keeps_the_widened_product_at_the_half_unit_boundary() {
+        // Robot 385 at C364 reaches the float just below the exact half unit.
+        // The genuine C380 heading and ma follow from C365 taking .setaim.
+        for (native, aim, next_heading, next_momentum) in [
+            (true, 1161, 0x40b9_d017, 0),
+            (false, 1162, 0x40b9_f90d, 0x3ad8_7b03),
+        ] {
+            let mut current = robot(1161.0 / 200.0, f32::from_bits(0x3b23_d73a));
+            apply(
+                &mut current,
+                AimCommands {
+                    set: 1161,
+                    ..Default::default()
+                },
+                0.0,
+                1.0,
+                native,
+            );
+            assert_eq!(current.heading().to_bits(), 0x40b9_d70a);
+            assert_eq!(current.program.memory.read(18), aim);
+            let set = current.program.memory.read(19);
+            assert_eq!(set, aim);
+
+            current.kinematics.angular_momentum = f32::from_bits(0x3ad8_7b03);
+            apply(
+                &mut current,
+                AimCommands {
+                    set,
+                    ..Default::default()
+                },
+                0.0,
+                1.0,
+                native,
+            );
+            assert_eq!(current.heading().to_bits(), next_heading);
+            assert_eq!(current.kinematics.angular_momentum.to_bits(), next_momentum);
+        }
+    }
+
+    #[test]
+    fn native_aim_readback_keeps_the_saved_heading_until_a_manual_override() {
+        let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+        let id = world
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [500.0; 2])
+            .unwrap();
+        let heading = f32::from_bits(0x40b9_d70a);
+        world
+            .slots
+            .get_mut(id)
+            .unwrap()
+            .set_heading_for_profile(heading, true);
+        let bytes = crate::SaveFile::encode(&world).unwrap();
+        let mut restored = crate::SaveFile::decode(&bytes).unwrap();
+        let current = restored.slots.get(id).unwrap();
+        assert_eq!(current.materials.aim, 1161);
+        assert_eq!(current.heading(), heading);
+
+        restored.set_organism_aim(id, 1162).unwrap();
+        let current = restored.slots.get(id).unwrap();
+        assert_eq!(current.materials.aim, 1162);
+        assert_eq!(current.heading(), 1162.0 / 200.0);
+    }
+
+    #[test]
     fn native_aim_rounds_the_combined_single_before_mod_and_uses_1256() {
         let mut current = robot(0.0025, 0.0);
         apply(
@@ -177,6 +278,7 @@ mod tests {
             },
             0.0,
             1.0,
+            true,
         );
         assert_eq!(current.heading(), 0.01);
         assert_eq!(current.program.memory.read(19), 2);
@@ -188,6 +290,7 @@ mod tests {
             },
             0.0,
             1.0,
+            true,
         );
         assert_eq!(current.heading(), 0.0);
         apply(
@@ -198,6 +301,7 @@ mod tests {
             },
             0.0,
             1.0,
+            true,
         );
         assert_eq!(current.heading(), 6.275);
     }
@@ -205,7 +309,7 @@ mod tests {
     #[test]
     fn native_aim_keeps_full_turn_momentum_and_only_opposing_turns_reduce_it() {
         let mut current = robot(0.0, 2.0);
-        apply(&mut current, AimCommands::default(), 0.0, 1.0);
+        apply(&mut current, AimCommands::default(), 0.0, 1.0, true);
         assert_eq!(current.heading(), 2.0);
         assert_eq!(current.kinematics.angular_momentum, 2.0);
         apply(
@@ -217,6 +321,7 @@ mod tests {
             },
             0.0,
             1.0,
+            true,
         );
         assert_eq!(
             current.heading(),
@@ -233,6 +338,7 @@ mod tests {
             },
             0.0,
             1.0,
+            true,
         );
         assert_eq!(
             current.kinematics.angular_momentum, 1.0,
@@ -253,6 +359,7 @@ mod tests {
             },
             20.0,
             1.0,
+            true,
         );
         assert_eq!(current.materials.energy, 100.0, "opposite requests cancel");
         apply(
@@ -263,6 +370,7 @@ mod tests {
             },
             -20.0,
             1.0,
+            true,
         );
         assert_eq!(
             current.materials.energy, 80.0,
@@ -270,7 +378,7 @@ mod tests {
         );
         let mut same_direction = robot(std::f32::consts::TAU, 0.0);
         same_direction.materials.energy = 100.0;
-        apply(&mut same_direction, AimCommands::default(), 20.0, 1.0);
+        apply(&mut same_direction, AimCommands::default(), 20.0, 1.0, true);
         assert_eq!(same_direction.materials.energy, 100.0, "VB Sgn(0) is zero");
     }
 
