@@ -1880,7 +1880,6 @@ public sealed partial class MainWindow : Window
         var dialog = new GlobalSettingsWindow(settings);
         await dialog.ShowDialog(this);
         if (!dialog.Accepted) return LegacyCommandResult.Cancel();
-        }
         _globalSettings = dialog.Settings;
         SynchronizeSafemodePreference(_globalSettings.Main.SafeMode);
         Viewport.FixedRatio = _globalSettings.Main.FixedRatio;

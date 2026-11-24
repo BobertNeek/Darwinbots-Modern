@@ -68,13 +68,14 @@ public sealed class GraphKeepUpdatingPreferenceTests
                 {
                     var world = new WorldSetupOptions
                     {
+                        Backend = "Cpu",
                         Species = [new("Graph Bot", "start stop", false, 0xff239ac0, 1, 1000, 0, false, 0)],
                         GlobalSettings = new GlobalSettings
                         {
                             Main = new GlobalMainSettings { KeepGraphsUpdatingOnClose = storage.LoadGraphClosePreference() },
                         },
                     };
-                    var window = new MainWindow([], world, new AuditEngineClientFactory(), storage);
+                    var window = new MainWindow([], world, NativeEngineClientFactory.Instance, storage);
                     window.Show();
                     return window;
                 }
@@ -160,15 +161,9 @@ public sealed class GraphKeepUpdatingPreferenceTests
         Assert.True(condition(), "Timed out waiting for the graph preference workflow.");
     }
 
-    private static void Close(Window owner)
-    {
-        foreach (var dialog in owner.OwnedWindows.ToArray()) dialog.Close();
-        owner.Close();
-    }
-
     private static async Task CloseRuntimeAsync(MainWindow owner)
     {
-        Close(owner);
-        await WaitFor(() => !owner.IsVisible);
+        foreach (var dialog in owner.OwnedWindows.ToArray()) dialog.Close();
+        await LastExitResumeRenderedTests.CloseRuntimeAsync(owner);
     }
 }
