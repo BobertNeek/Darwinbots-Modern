@@ -4,8 +4,10 @@ using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
+using Avalonia.Win32.Input;
 using Darwinbots.Desktop.Core;
 using System.Collections.ObjectModel;
+using System.Text;
 
 namespace Darwinbots.Desktop.Views;
 
@@ -107,11 +109,6 @@ public sealed class PlayerBotSettingsWindow : Window
         {
             var binding = new PlayerBotBinding(key, memory, value, _invert.IsChecked == true);
             binding.Validate();
-            if (_bindings.Any(existing => existing.KeyCode == binding.KeyCode))
-            {
-                _status.Text = "KEY ALREADY MAPPED";
-                return;
-            }
             _bindings.Add(binding);
             _status.Text = "BINDING ADDED";
         }
@@ -134,10 +131,10 @@ public sealed class PlayerBotSettingsWindow : Window
         try
         {
             var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions { Title = "Load PlayerBot key map", AllowMultiple = false, FileTypeFilter = [new FilePickerFileType("PlayerBot key map") { Patterns = ["*.pbkp"] }] });
-            var path = files.FirstOrDefault()?.Path.LocalPath;
-            if (path is null) return;
-            _bindings.Clear();
-            foreach (var binding in PlayerBotKeyMapFile.Load(path)) _bindings.Add(binding);
+            if (files.FirstOrDefault() is not { } file) return;
+            await using var stream = await file.OpenReadAsync();
+            using var reader = new StreamReader(stream);
+            LoadPreset(await reader.ReadToEndAsync());
             _status.Text = "KEY MAP LOADED";
         }
         catch (Exception error) { _status.Text = error.Message; }
@@ -148,11 +145,40 @@ public sealed class PlayerBotSettingsWindow : Window
         try
         {
             var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions { Title = "Save PlayerBot key map", SuggestedFileName = "playerbot.pbkp", DefaultExtension = "pbkp", FileTypeChoices = [new FilePickerFileType("PlayerBot key map") { Patterns = ["*.pbkp"] }] });
-            var path = file?.Path.LocalPath;
-            if (path is null) return;
-            PlayerBotKeyMapFile.Save(path, _bindings);
-            _status.Text = "KEY MAP SAVED";
+            if (file is null) return;
+            var (text, windowsVirtualKeys) = EncodePreset();
+            var bytes = Encoding.ASCII.GetBytes(text);
+            await using var stream = await file.OpenWriteAsync();
+            stream.SetLength(0);
+            await stream.WriteAsync(bytes);
+            _status.Text = windowsVirtualKeys ? "KEY MAP SAVED" : "MODERN KEY MAP SAVED";
         }
         catch (Exception error) { _status.Text = error.Message; }
+    }
+
+    private void LoadPreset(string text)
+    {
+        var bindings = PlayerBotKeyMapFile.Decode(text, out var windowsVirtualKeys);
+        if (windowsVirtualKeys)
+            bindings = bindings.Select(binding =>
+            {
+                var key = KeyInterop.KeyFromVirtualKey(binding.KeyCode, 0);
+                if (key == Key.None)
+                    throw new InvalidDataException($"Unsupported Darwinbots 2 PlayerBot key code {binding.KeyCode}.");
+                return binding with { KeyCode = (int)key };
+            }).ToArray();
+        _bindings.Clear();
+        foreach (var binding in bindings) _bindings.Add(binding);
+    }
+
+    private (string Text, bool WindowsVirtualKeys) EncodePreset()
+    {
+        var bindings = _bindings.Select(binding => binding with
+        {
+            KeyCode = KeyInterop.VirtualKeyFromKey((Key)binding.KeyCode),
+        }).ToArray();
+        return bindings.All(binding => binding.KeyCode is > 0 and <= byte.MaxValue)
+            ? (PlayerBotKeyMapFile.Encode(bindings, useWindowsVirtualKeys: true), true)
+            : (PlayerBotKeyMapFile.Encode(_bindings), false);
     }
 }
