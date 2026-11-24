@@ -314,7 +314,7 @@ public sealed class LastExitResumeRenderedTests
                     resumed = new MainWindow([], options, NativeEngineClientFactory.Instance, nextStorage);
                     resumed.Show();
                     setup.Close();
-                    await WaitFor(() => Status(resumed) == "LOADED");
+                    await WaitFor(() => Status(resumed) == "LOADED", () => Status(resumed));
                     var restored = Session(resumed).LatestSnapshot;
                     Assert.Equal(expected.Tick, restored.Tick);
                     Assert.Equal(expected.Population, restored.Population);
@@ -518,7 +518,7 @@ public sealed class LastExitResumeRenderedTests
         window.FindControl<LegacyMenuBar>("HistoricMenuBar")!.FindCommandItem(command)!
             .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
 
-    private static async Task CloseRuntimeAsync(MainWindow? window)
+    internal static async Task CloseRuntimeAsync(MainWindow? window)
     {
         if (window is not { IsVisible: true }) return;
         window.Close();
@@ -568,10 +568,10 @@ public sealed class LastExitResumeRenderedTests
         Assert.Single(dialog.GetVisualDescendants().OfType<Button>(), button => Equals(button.Content, choice))
             .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
-    private static async Task WaitFor(Func<bool> condition)
+    private static async Task WaitFor(Func<bool> condition, Func<string>? diagnostic = null)
     {
         var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(8);
         while (!condition() && DateTime.UtcNow < deadline) await Task.Delay(10);
-        Assert.True(condition(), "Timed out waiting for the last-exit workflow.");
+        Assert.True(condition(), diagnostic?.Invoke() ?? "Timed out waiting for the last-exit workflow.");
     }
 }
