@@ -187,7 +187,7 @@ public sealed class SafeModeAutosaveRenderedTests
                     Show(window);
                     await Ready(window);
                     var menu = Named<LegacyMenuBar>(window, "HistoricMenuBar");
-                    Assert.Equal(safeMode, menu.FindCommandItem(LegacyCommandId.RecordingSafemodeBackup)!.IsChecked);
+                    Assert.Equal(safeMode, Field<EnvironmentUpdate>(window, "_liveEnvironment").Recording!.SafeModeBackup);
                     Assert.Equal(!safeMode, Field<OfflineDiagnosticRecovery>(window, "_diagnostics").IgnoreErrors);
                     Assert.Empty(storage.AutosaveWrites);
                     const string commandStatus = "TURBO · RENDERING SUSPENDED";
@@ -205,8 +205,12 @@ public sealed class SafeModeAutosaveRenderedTests
 
                     if (safeMode)
                     {
-                        Activate(menu, LegacyCommandId.RecordingSafemodeBackup);
-                        await WaitFor(() => menu.FindCommandItem(LegacyCommandId.RecordingSafemodeBackup)!.IsChecked == false);
+                        Activate(menu, LegacyCommandId.EditGeneralSettings);
+                        await WaitFor(() => window.OwnedWindows.OfType<AdvancedSettingsWindow>().Any());
+                        var recording = Assert.Single(window.OwnedWindows.OfType<AdvancedSettingsWindow>());
+                        Named<CheckBox>(recording, "SafeModeBackup").IsChecked = false;
+                        Named<Button>(recording, "ApplyButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                        await WaitFor(() => ViewModel(window).Status == "LIVE SETTINGS APPLIED");
                         await InvokeTask(window, "AdvanceSimulationAsync", 2000u);
                         Assert.Equal(2, storage.AutosaveWrites.Count);
                         Assert.False(Field<GlobalSettings>(window, "_globalSettings").Main.SafeMode);
@@ -220,7 +224,7 @@ public sealed class SafeModeAutosaveRenderedTests
     }
 
     [Fact]
-    public async Task GlobalRecordingAndLoadedPreferencesSynchronizeTheSameMenuAndEnginePolicy()
+    public async Task ArchiveMenuIsIndependentOfGlobalRecordingAndLoadedCyclePolicy()
     {
         await DesktopTestApplication.Session.Dispatch(async () =>
         {
@@ -233,37 +237,40 @@ public sealed class SafeModeAutosaveRenderedTests
                 var engine = factory.Clients.Single();
                 var menu = Named<LegacyMenuBar>(window, "HistoricMenuBar");
                 Activate(menu, LegacyCommandId.RecordingSafemodeBackup);
-                await WaitFor(() => menu.FindCommandItem(LegacyCommandId.RecordingSafemodeBackup)!.IsChecked == true);
-                Assert.True(Field<GlobalSettings>(window, "_globalSettings").Main.SafeMode);
-                Assert.True(engine.EnvironmentUpdates.Last().Recording!.SafeModeBackup);
+                await WaitFor(() => window.OwnedWindows.OfType<SafeModeBackupWindow>().Any());
+                var archive = Assert.Single(window.OwnedWindows.OfType<SafeModeBackupWindow>());
+                Activate(menu, LegacyCommandId.RecordingSafemodeBackup);
+                Assert.Same(archive, Assert.Single(window.OwnedWindows.OfType<SafeModeBackupWindow>()));
+                archive.Close();
+                Assert.False(Field<GlobalSettings>(window, "_globalSettings").Main.SafeMode);
 
                 Activate(menu, LegacyCommandId.EditGlobalSettings);
                 await WaitFor(() => window.OwnedWindows.OfType<GlobalSettingsWindow>().Any());
                 var globals = Assert.Single(window.OwnedWindows.OfType<GlobalSettingsWindow>());
-                Assert.True(Named<CheckBox>(globals, "SafeMode").IsChecked);
-                Named<CheckBox>(globals, "SafeMode").IsChecked = false;
+                Assert.False(Named<CheckBox>(globals, "SafeMode").IsChecked);
+                Named<CheckBox>(globals, "SafeMode").IsChecked = true;
                 Named<Button>(globals, "ApplyButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 await WaitFor(() => ViewModel(window).Status == "GLOBAL SETTINGS SAVED");
-                Assert.False(menu.FindCommandItem(LegacyCommandId.RecordingSafemodeBackup)!.IsChecked);
-                Assert.False(engine.EnvironmentUpdates.Last().Recording!.SafeModeBackup);
+                Assert.True(Field<GlobalSettings>(window, "_globalSettings").Main.SafeMode);
+                Assert.True(engine.EnvironmentUpdates.Last().Recording!.SafeModeBackup);
 
                 Activate(menu, LegacyCommandId.EditGeneralSettings);
                 await WaitFor(() => window.OwnedWindows.OfType<AdvancedSettingsWindow>().Any());
                 var recording = Assert.Single(window.OwnedWindows.OfType<AdvancedSettingsWindow>());
-                Named<CheckBox>(recording, "SafeModeBackup").IsChecked = true;
+                Assert.True(Named<CheckBox>(recording, "SafeModeBackup").IsChecked);
+                Named<CheckBox>(recording, "SafeModeBackup").IsChecked = false;
                 Named<Button>(recording, "ApplyButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 await WaitFor(() => ViewModel(window).Status == "LIVE SETTINGS APPLIED");
-                Assert.True(menu.FindCommandItem(LegacyCommandId.RecordingSafemodeBackup)!.IsChecked);
-                Assert.True(Field<GlobalSettings>(window, "_globalSettings").Main.SafeMode);
+                Assert.False(Field<GlobalSettings>(window, "_globalSettings").Main.SafeMode);
+                Assert.False(engine.EnvironmentUpdates.Last().Recording!.SafeModeBackup);
 
                 engine.ConfigurationForRead = new WorldConfiguration(EnvironmentUpdate.Default with
                 {
-                    Recording = new Db2RecordingOptions(SafeModeBackup: false),
+                    Recording = new Db2RecordingOptions(SafeModeBackup: true),
                 }, 1, 25000, 500, []);
                 await InvokeTask(window, "SynchronizeLoadedWorldAsync");
-                Assert.False(menu.FindCommandItem(LegacyCommandId.RecordingSafemodeBackup)!.IsChecked);
-                Assert.False(Field<GlobalSettings>(window, "_globalSettings").Main.SafeMode);
-                Assert.False(Field<EnvironmentUpdate>(window, "_liveEnvironment").Recording!.SafeModeBackup);
+                Assert.True(Field<GlobalSettings>(window, "_globalSettings").Main.SafeMode);
+                Assert.True(Field<EnvironmentUpdate>(window, "_liveEnvironment").Recording!.SafeModeBackup);
             }
             finally
             {
