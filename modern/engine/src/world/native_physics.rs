@@ -72,13 +72,14 @@ impl Engine {
                 let random = self.native_random.as_mut().unwrap();
                 let impulse = (f64::from(brownian) * 0.5 * f64::from(random.unit())) as f32;
                 let angle = random.unit() * 2.0 * std::f32::consts::PI;
-                let rotation =
-                    (f64::from(impulse / 100.0) * (f64::from(random.unit()) - 0.5)) as f32;
+                let rotation = (f64::from(impulse) / 100.0) * (f64::from(random.unit()) - 0.5);
                 robot.kinematics.independent_impulse[0] +=
                     (f64::from(angle).cos() * f64::from(impulse)) as f32;
                 robot.kinematics.independent_impulse[1] +=
                     (f64::from(angle).sin() * f64::from(impulse)) as f32;
-                robot.kinematics.angular_momentum += rotation;
+                // Physics.bas stores the entire Brownian turn expression in Single ma.
+                robot.kinematics.angular_momentum =
+                    (f64::from(robot.kinematics.angular_momentum) + rotation) as f32;
                 robot.program.rng_state = u64::from(random.state());
             }
             let mut effective_gravity = gravity;
@@ -235,6 +236,28 @@ impl Engine {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn native_brownian_turn_rounds_at_the_angular_momentum_assignment() {
+        let mut world = Engine::new_native(EngineConfig {
+            brownian_motion: 0.5,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let id = world
+            .spawn_at(LegacyDna::parse("start stop").unwrap(), [500.0; 2])
+            .unwrap();
+        // Original 2.48.32 multi-robot checkpoint, absolute robot 15, cycle 281 to 282.
+        world.slots.get_mut(id).unwrap().kinematics.angular_momentum = f32::from_bits(0xb9a0_c26c);
+        world.native_random =
+            Some(serde_json::from_value(serde_json::json!({ "state": 0x7c3bf2_u32 })).unwrap());
+
+        world.native_intent_phase();
+
+        let robot = world.slots.get(id).unwrap();
+        assert_eq!(robot.kinematics.angular_momentum.to_bits(), 0xba16_9553);
+        assert_eq!(world.native_random.as_ref().unwrap().state(), 0x3aa0cf);
+    }
 
     #[test]
     fn negative_fixpos_is_unfixed_and_later_writes_wait_for_manage_fixed() {
