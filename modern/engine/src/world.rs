@@ -10678,11 +10678,16 @@ impl Engine {
     }
 
     fn record_actual_velocities(&mut self) {
+        let native = self.native_random.is_some();
         for robot in self
             .slots
             .iter_mut()
             .filter_map(|slot| slot.organism.as_mut())
         {
+            // Master.UpdateSim keeps actvel when no old position was recorded.
+            if native && robot.kinematics.previous_position == [0.0; 2] {
+                continue;
+            }
             robot.kinematics.actual_velocity = [
                 robot.kinematics.position[0] - robot.kinematics.previous_position[0],
                 robot.kinematics.position[1] - robot.kinematics.previous_position[1],
@@ -12182,6 +12187,9 @@ impl Engine {
                     // Reproduce erases the new robot VM before its explicit
                     // birth readbacks and epigenetic cells are assigned.
                     child_organism.program.memory = VmMemory::default();
+                    // posto clears the slot after this cycle's old positions
+                    // have been captured. The child inherits actvel below.
+                    child_organism.kinematics.previous_position = [0.0; 2];
                 }
                 child_organism.identity = parent_state.identity.clone();
                 child_organism.identity.parents = [
