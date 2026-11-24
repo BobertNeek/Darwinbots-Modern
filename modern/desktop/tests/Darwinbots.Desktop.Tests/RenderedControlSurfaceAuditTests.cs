@@ -2130,6 +2130,7 @@ internal sealed class AuditStorageService : IDesktopStorageService
     public byte[]? Autosave { get; private set; }
     public List<byte[]> AutosaveWrites { get; } = [];
     public bool PersistAutosaves { get; init; }
+    public Func<Task>? BeforeAutosaveWrite { get; init; }
     public DesktopSettings? SavedSettings { get; private set; }
     public ConcurrentQueue<byte[]> LastStartWrites { get; } = [];
 
@@ -2215,6 +2216,8 @@ internal sealed class AuditStorageService : IDesktopStorageService
 
     public async Task SaveAutosaveAsync(ReadOnlyMemory<byte> save)
     {
+        if (BeforeAutosaveWrite is { } beforeWrite)
+            await beforeWrite();
         Autosave = save.ToArray();
         AutosaveWrites.Add(Autosave);
         if (PersistAutosaves)

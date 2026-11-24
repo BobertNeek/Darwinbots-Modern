@@ -3110,10 +3110,10 @@ public sealed partial class MainWindow : Window
 
     private async void RunTimer_Tick(object? sender, EventArgs e)
     {
-        if (_session is null || _tickInFlight) return;
+        if (_session is null || _tickInFlight || !_runTimer.IsEnabled) return;
         _tickInFlight = true;
-        var adaptive = _turbo || _maximumSpeed;
-        var batch = adaptive ? _maximumBatch : _ticksPerUpdate;
+        var adaptive = !_limitMode && (_turbo || _maximumSpeed);
+        var batch = _limitMode ? 1u : adaptive ? _maximumBatch : _ticksPerUpdate;
         var started = Stopwatch.GetTimestamp();
         try
         {
@@ -3125,7 +3125,17 @@ public sealed partial class MainWindow : Window
         {
             await HandleEngineErrorAsync(error, attemptRecovery: true);
         }
-        finally { _tickInFlight = false; }
+        finally
+        {
+            // The original limiter waits after UpdateSim and Redraw. Re-arm
+            // only if the user still has the limiter and simulation running.
+            if (_limitMode && _runTimer.IsEnabled)
+            {
+                _runTimer.Stop();
+                _runTimer.Start();
+            }
+            _tickInFlight = false;
+        }
     }
 
     private async Task LoadSimulationAsync(byte[] save)
