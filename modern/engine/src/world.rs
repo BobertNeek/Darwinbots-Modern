@@ -4636,6 +4636,23 @@ impl Engine {
         self.publish_snapshot();
     }
 
+    fn transfer_player_bot_focus_after_death(&mut self, id: OrganismId) {
+        if self.player_bot.focus != Some(id) {
+            return;
+        }
+        self.player_bot.focus = if self.player_bot.enabled {
+            // KillRobot walks ascending slots and keeps the last existing highlight.
+            self.player_bot_input
+                .highlights
+                .iter()
+                .copied()
+                .filter(|&target| self.slots.get(target).is_ok_and(|robot| robot.flags.exists))
+                .max_by_key(|target| target.slot())
+        } else {
+            None
+        };
+    }
+
     pub fn set_player_bot_pointer(
         &mut self,
         position: Option<[f32; 2]>,
@@ -5025,6 +5042,7 @@ impl Engine {
                 }
             }
             self.slots.remove(id)?;
+            self.transfer_player_bot_focus_after_death(id);
         }
         if self.native_random.is_some() {
             self.commit_native_deaths(plan);
@@ -12263,6 +12281,7 @@ impl Engine {
                         }
                     }
                     self.slots.remove(id)?;
+                    self.transfer_player_bot_focus_after_death(id);
                 }
                 if was_living {
                     self.stats.deaths = self.stats.deaths.saturating_add(1);
@@ -15362,6 +15381,25 @@ mod tests {
         assert_eq!(engine.snapshot().tick, 3);
         assert_eq!(engine.snapshot_publication_count(), publications_before + 1);
         assert_eq!(engine.backend(), BackendKind::Gpu);
+    }
+
+    #[test]
+    fn player_bot_focus_skips_nonexisting_records_and_accepts_existing_corpses() {
+        let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+        let dna = LegacyDna::parse("stop").unwrap();
+        let [focused, corpse, absent] =
+            [200.0, 400.0, 600.0].map(|x| world.spawn_at(dna.clone(), [x, 500.0]).unwrap());
+        world.become_native_corpse(corpse).unwrap();
+        world.slots.get_mut(absent).unwrap().flags.exists = false;
+        world
+            .configure_player_bot(true, Some(focused), vec![])
+            .unwrap();
+        world.set_player_bot_targets(Some(focused), vec![corpse, absent]);
+
+        world.remove(focused).unwrap();
+        assert_eq!(world.snapshot().player_bot.focus, Some(corpse));
+        world.remove(corpse).unwrap();
+        assert_eq!(world.snapshot().player_bot.focus, None);
     }
 
     #[test]

@@ -1092,8 +1092,11 @@ public sealed partial class MainWindow : Window
             await session.RemoveManyAsync(keys, suppressDeathPoffs: true);
         else
             await session.RemoveAsync(keys[0].Slot, keys[0].Generation);
-        _viewModel.ClearSelection();
-        Viewport.SelectSlot(null);
+        if (!session.LatestSnapshot.PlayerBot.Enabled)
+        {
+            _viewModel.ClearSelection();
+            Viewport.SelectSlot(null);
+        }
         if (removed.Count > 0)
         {
             await DeadRecordingGate.WaitAsync();
@@ -1104,7 +1107,6 @@ public sealed partial class MainWindow : Window
             }
             finally { DeadRecordingGate.Release(); }
         }
-        await SynchronizePlayerBotTargetsAsync();
         return LegacyCommandResult.Success(status);
     }
 
@@ -2294,7 +2296,8 @@ public sealed partial class MainWindow : Window
                     if (_zerobotProgression is not null && !_progressionInFlight
                         && _zerobotProgression.Observe(snapshot) is { } transition)
                         _ = ApplyZerobotTransitionAsync(transition);
-                    if (!loading && previousSelection is not null && _viewModel.SelectedKey is null)
+                    if (!loading && previousSelection is not null && _viewModel.SelectedKey is null
+                        && snapshot.PlayerBot.Focus is not null)
                         await SynchronizePlayerBotTargetsAsync();
                 });
             };

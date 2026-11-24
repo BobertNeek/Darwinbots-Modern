@@ -130,16 +130,15 @@ public sealed class PlayerBotRenderedTests
                 Assert.Equal(0, Aim(highlighted.Slot));
                 Assert.Equal(0, Aim(focus.Slot));
 
-                ClickRobot(highlighted, RawInputModifiers.Shift);
+                ClickRobot(window, viewport, setup, highlighted, RawInputModifiers.Shift);
                 await session.StepAsync();
                 Assert.Null(viewModel.SelectedKey);
                 Assert.Null(session.LatestSnapshot.PlayerBot.Focus);
                 Assert.Equal(77, Aim(highlighted.Slot));
                 Assert.Equal(0, Aim(focus.Slot));
 
-                ClickRobot(focus, RawInputModifiers.None);
+                ClickRobot(window, viewport, setup, focus, RawInputModifiers.None);
                 await WaitFor(() => session.LatestSnapshot.PlayerBot.Focus == new OrganismKey(focus.Slot, focus.Generation));
-                ClickRobot(highlighted, RawInputModifiers.Shift);
                 await session.StepAsync();
                 Assert.Equal(77, Aim(focus.Slot));
                 await session.RemoveAsync(focus.Slot, focus.Generation);
@@ -148,6 +147,7 @@ public sealed class PlayerBotRenderedTests
                 window.KeyRelease(Key.W, RawInputModifiers.None, PhysicalKey.W, null);
                 await WaitFor(() => session.LatestSnapshot.PlayerBot.PressedKeys.Count == 0);
                 await session.SetOrganismMemoryAsync(highlighted.Slot, highlighted.Generation, 19, 0);
+                ClickRobot(window, viewport, setup, highlighted, RawInputModifiers.Shift);
                 await session.StepAsync();
                 Assert.Equal(0, Aim(highlighted.Slot));
 
@@ -160,16 +160,68 @@ public sealed class PlayerBotRenderedTests
                     window.KeyPress(Key.F11, RawInputModifiers.None, PhysicalKey.F11, null);
                     window.KeyRelease(Key.F11, RawInputModifiers.None, PhysicalKey.F11, null);
                 }
+            }
+            finally
+            {
+                foreach (var ownedWindow in window.OwnedWindows.ToArray()) ownedWindow.Close();
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
 
-                void ClickRobot(OrganismSnapshot robot, RawInputModifiers modifiers)
+    [Fact]
+    public async Task FocusFollowsTheHighestSurvivingHighlightAfterManualAndNaturalDeaths()
+    {
+        var setup = new WorldSetupOptions
+        {
+            Backend = "Cpu", WorldWidth = 1000, WorldHeight = 1000, PopulationCapacity = 8,
+        };
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], setup, NativeEngineClientFactory.Instance, new AuditStorageService());
+            window.Show();
+            try
+            {
+                await WaitFor(() => TryField<SimulationSession>(window, "_session") is not null);
+                var session = Field<SimulationSession>(window, "_session");
+                var viewModel = (MainWindowViewModel)window.DataContext!;
+                var viewport = window.FindControl<WorldViewport>("Viewport")!;
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                var toggle = menu.FindCommandItem(LegacyCommandId.EditEnablePlayerBot)!;
+                var kill = menu.FindCommandItem(LegacyCommandId.RobotKill)!;
+                viewport.ShowResourceGauges = true;
+
+                const string dna = "start\nstop";
+                await session.ImportDnaAsync(dna, [250, 300]);
+                await session.ImportDnaAsync(dna, [500, 300]);
+                await session.ImportDnaAsync("start\n100 .strbody store\nstop", [750, 300]);
+                var robots = session.LatestSnapshot.Organisms;
+                var first = robots[0];
+                var lower = robots[1];
+                var higher = robots[2];
+                await WaitFor(() => viewModel.Population == 3);
+
+                ClickRobot(window, viewport, setup, first, RawInputModifiers.None);
+                toggle.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => toggle.IsChecked && Focused(first));
+                ClickRobot(window, viewport, setup, higher, RawInputModifiers.Shift);
+                ClickRobot(window, viewport, setup, lower, RawInputModifiers.Shift);
+                await session.StepAsync(0);
+                kill.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => viewModel.Population == 2 && Focused(higher));
+                Assert.True(kill.IsEnabled);
+
+                await session.SetOrganismEnergyAsync(higher.Slot, higher.Generation, 1);
+                await session.StepAsync();
+                await WaitFor(() => viewModel.Population == 1 && Focused(lower));
+                Assert.True(toggle.IsChecked);
+
+                bool Focused(OrganismSnapshot robot)
                 {
-                    var scaleX = viewport.Bounds.Width / setup.WorldWidth;
-                    var scaleY = viewport.Bounds.Height / setup.WorldHeight;
-                    if (viewport.FixedRatio) scaleX = scaleY = Math.Min(scaleX, scaleY);
-                    var point = viewport.TranslatePoint(new Point(robot.Position[0] * scaleX * viewport.Zoom + viewport.Pan.X,
-                        robot.Position[1] * scaleY * viewport.Zoom + viewport.Pan.Y), window)!.Value;
-                    window.MouseDown(point, MouseButton.Left, modifiers);
-                    window.MouseUp(point, MouseButton.Left, modifiers);
+                    var key = new OrganismKey(robot.Slot, robot.Generation);
+                    return session.LatestSnapshot.PlayerBot.Focus == key
+                        && viewModel.SelectedKey == key
+                        && viewport.OverlayProjection.Gauges.FirstOrDefault()?.Organism == key;
                 }
             }
             finally
@@ -308,6 +360,18 @@ public sealed class PlayerBotRenderedTests
                 window.Close();
             }
         }, CancellationToken.None);
+    }
+
+    private static void ClickRobot(MainWindow window, WorldViewport viewport, WorldSetupOptions setup,
+        OrganismSnapshot robot, RawInputModifiers modifiers)
+    {
+        var scaleX = viewport.Bounds.Width / setup.WorldWidth;
+        var scaleY = viewport.Bounds.Height / setup.WorldHeight;
+        if (viewport.FixedRatio) scaleX = scaleY = Math.Min(scaleX, scaleY);
+        var point = viewport.TranslatePoint(new Point(robot.Position[0] * scaleX * viewport.Zoom + viewport.Pan.X,
+            robot.Position[1] * scaleY * viewport.Zoom + viewport.Pan.Y), window)!.Value;
+        window.MouseDown(point, MouseButton.Left, modifiers);
+        window.MouseUp(point, MouseButton.Left, modifiers);
     }
 
     private static void CaptureAndAdd(
