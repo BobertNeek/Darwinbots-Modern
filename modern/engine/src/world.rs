@@ -4800,7 +4800,16 @@ impl Engine {
             });
         apply_restriction_column(&mut state, &restriction_column);
         state.identity.absolute_id = self.allocate_absolute_identity();
-        Ok(self.slots.spawn(state))
+        Ok(self.insert_live_robot(state))
+    }
+
+    fn insert_live_robot(&mut self, state: RobotState) -> OrganismId {
+        // The bare API also seeds the native RNG. Only original-clock worlds use posto.
+        if self.native_cycle.is_some() {
+            self.slots.spawn_first_free(state)
+        } else {
+            self.slots.spawn(state)
+        }
     }
 
     pub fn remove(&mut self, id: OrganismId) -> Result<(), EngineError> {
@@ -5190,7 +5199,7 @@ impl Engine {
                 self.native_random.is_some(),
             ),
         );
-        let clone = self.slots.spawn(cloned_organism);
+        let clone = self.insert_live_robot(cloned_organism);
         self.record_offspring([Some(id), None]);
         self.propagate_descendant_count([Some(id), None]);
         self.stats.births = self.stats.births.saturating_add(1);

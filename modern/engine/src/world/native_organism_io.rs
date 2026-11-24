@@ -149,7 +149,7 @@ impl Engine {
                 self.next_absolute_id = self.next_absolute_id.saturating_add(1);
             }
             let absolute_id = robot.identity.absolute_id;
-            let id = self.slots.spawn(robot);
+            let id = self.insert_live_robot(robot);
             old_slots.insert(old_slot, id);
             parents.entry(absolute_id).or_insert(id);
         }
@@ -255,8 +255,16 @@ mod tests {
 
     #[test]
     fn native_group_import_preserves_memory_singles_and_ties_in_reused_slots() {
+        assert_native_group_in_reused_slots(Engine::new(EngineConfig::testing()).unwrap(), 2, 0);
+        assert_native_group_in_reused_slots(
+            Engine::new_native(EngineConfig::testing()).unwrap(),
+            0,
+            2,
+        );
+    }
+
+    fn assert_native_group_in_reused_slots(mut target: Engine, first_slot: u32, second_slot: u32) {
         let file = tied_file();
-        let mut target = Engine::new(EngineConfig::testing()).unwrap();
         let mut ids = vec![];
         for _ in 0..4 {
             ids.push(
@@ -273,8 +281,8 @@ mod tests {
                 .unwrap(),
             2
         );
-        let first = OrganismId::new(2, 1);
-        let second = OrganismId::new(0, 1);
+        let first = OrganismId::new(first_slot, 1);
+        let second = OrganismId::new(second_slot, 1);
         let robot = target.slots.get(first).unwrap();
         assert_eq!(robot.program.memory.read(1000), -712);
         assert_eq!(
