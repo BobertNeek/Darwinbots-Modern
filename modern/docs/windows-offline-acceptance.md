@@ -6,9 +6,9 @@ The packaged Windows file smoke loads a pinned original-format simulation, advan
 
 ## Prepare the session
 
-1. Use a disposable Windows x64 VM or a dedicated local Windows account. Sign into its desktop and confirm `$env:LOCALAPPDATA` belongs to that account. The package needs the x64 .NET 10 runtime. Close any copies of Darwinbots in the test account.
+1. Use a disposable Windows x64 VM or a dedicated local Windows account for historical packages. Builds that support `DARWINBOTS_PROFILE_DIRECTORY` can use a fresh profile on the same Windows account. The package needs the x64 .NET 10 runtime.
 2. To continue the original walkthrough, download [darwinbots-win-x64, artifact 13329910792](https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/41835933113/artifacts/13329910792) from run 41835933113. Its product revision is `da3581e05903ea5315b8903835519d86a5c7f99d`. For a follow-up build, use that revision's CI `darwinbots-win-x64` ZIP and substitute its SHA-256 below. Record the build revision, artifact ID and hash on each receipt. If the original artifact expires, use a retained ZIP with its recorded hash.
-3. From the test account's PowerShell, run the following with the downloaded ZIP path. Keep all file-picker outputs in the printed test directory. The environment variable redirects autosaves, last-start settings and the first-run marker. Death recordings still use the test account's `%LOCALAPPDATA%\Darwinbots Modern\records\DeadRobots.snp`.
+3. From the test account's PowerShell, run the following with the downloaded ZIP path. Keep all file-picker outputs in the printed test directory. The profile override redirects global settings and death recordings. The autosave override redirects autosaves, last-start settings and the first-run marker. For the older package below, the profile override has no effect.
 
    ```powershell
    $zip = 'C:\path\to\darwinbots-win-x64.zip'
@@ -18,6 +18,7 @@ The packaged Windows file smoke loads a pinned original-format simulation, advan
    }
    $root = Join-Path $env:LOCALAPPDATA ('Darwinbots Acceptance ' + [guid]::NewGuid())
    $package = Join-Path $root 'package'
+   $env:DARWINBOTS_PROFILE_DIRECTORY = Join-Path $root 'profile'
    $env:DARWINBOTS_AUTOSAVE_DIRECTORY = Join-Path $root 'autosaves'
    Expand-Archive -LiteralPath $zip -DestinationPath $package
    $exe = Get-ChildItem -LiteralPath $package -Recurse -Filter Darwinbots.Desktop.exe
@@ -152,7 +153,28 @@ The source predicts that the incumbent keeps slot 1 and the two arrivals with ab
 | [back-pointer-zeroed.dbo](fixtures/native-directed-ties/back-pointer-zeroed.dbo) | `2ef8d2e0b207d91720189956fbd5e378721aa0b5ed81c02af6701e41d1d48c69` | `[3, 0]` | `[0, 0]` |
 | [inactive-tail.dbo](fixtures/native-directed-ties/inactive-tail.dbo) | `2694fce0bb9199dad0ef421192ad3da820e9533a5b602e095105c760b1f7d154` | `[0, 2]` | `[0, 1]` |
 
-The one-way fixture clears the second robot's first pointer. The dormant fixture moves each first tie row and its extension to row 2, clears row 1 and sets the moved reciprocal index to 2. Both files derive from the pinned archive. These cases await observation in the original Windows executable.
+The one-way fixture clears the second robot's first pointer. The dormant fixture moves each first tie row and its extension to row 2, clears row 1 and sets the moved reciprocal index to 2. Both files derive from the pinned archive.
+
+### November 24 original Windows results
+
+Native Windows ran the original 2.48.32 executable with SHA-256 `7f580d9ce8f1095a01fd162e9bcac03fe437599e080786fd670b676671c31990` in an isolated directory. Each run reloaded the same movement SIM, SHA-256 `6678cdd874314aed26d738b29897ee8cee4e269da6befdb55bec47292f19e52e`. The baseline ran briefly before pause, so its cycle differs by run. Each before-and-after pair contains exactly one manual cycle. All six files preserve slots 1, 2 and 3 and absolute IDs 1, 250 and 294.
+
+| Input | Inserted cycle | Slot 2 and slot 3 on insertion | Slot 2 and slot 3 after one cycle |
+| --- | ---: | --- | --- |
+| Tied group | 3295 | `[3, 0]`, `[3, 0]` | `[3, 0]`, `[2, 0]` |
+| Back pointer zeroed | 25 | `[3, 0]`, `[0, 0]` | `[3, 3]`, `[2, 0]` |
+| Inactive tail | 12 | `[0, 2]`, `[0, 1]` | `[3, 2]`, `[2, 1]` |
+
+| Original SIM checkpoint | SHA-256 |
+| --- | --- |
+| Tied group, inserted | `78cd7f45f6564fad3a8c51c8f35ee2dad9b01947116386c638c0e2da7279190d` |
+| Tied group, stepped | `1202ba96f6d7c544b4ac234146df49a0eb07c1d7564ed2629ddc1aac3139a1b1` |
+| Back pointer zeroed, inserted | `9510914f563716b66f8f54a77c577b5d7e1571c7465c8c06c246a55181de5474` |
+| Back pointer zeroed, stepped | `36d8039b18c82210ba0b2e316ab8b3650d970ff5d56aff26137184a5987e8f5a` |
+| Inactive tail, inserted | `aa4fb839ce95a4249ef4c3d462841053995940cfc0ed3fa70e64bdc5b1346732` |
+| Inactive tail, stepped | `8d458f668ce2dcf36ab07778edab95414ad049c539cea3a331302bae653a58a3` |
+
+The source and original output agree on all just-inserted pointers. The port still needs to reproduce the directed rows across import, redraw, commands, and cycle continuation. Saving the pair back to DBO from the original UI remains unobserved.
 
 ## Prepare the Robot Info mutation fixture
 
