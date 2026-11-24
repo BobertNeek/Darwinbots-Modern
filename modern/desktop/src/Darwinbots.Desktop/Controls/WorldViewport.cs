@@ -23,6 +23,7 @@ public sealed class WorldViewport : Control
     private OrganismKey? _selectedKey;
     private readonly HashSet<OrganismKey> _selectedKeys = [];
     private WorldFeatureSelection? _selectedFeature;
+    private NativeTeleporterDrag? _nativeTeleporterDrag;
     private OrganismKey? _followKey;
     private OrganismKey? _dragKey;
     private float[]? _dragPosition;
@@ -52,6 +53,8 @@ public sealed class WorldViewport : Control
     public event Action<OrganismKey>? OrganismDoubleClicked;
     public event Action<float[]>? WorldClicked;
     public event Action<WorldFeatureSelection>? WorldFeatureSelected;
+    public event Action<WorldFeatureSelection, float[]>? NativeTeleporterDragMoved;
+    public Func<bool>? CanDragNativeTeleporter { get; set; }
     public event Action<uint, float[]>? OrganismDragCompleted;
     public event Action<OrganismKey, float[]>? OrganismKeyDragCompleted;
 
@@ -154,6 +157,8 @@ public sealed class WorldViewport : Control
 
     public void SelectFeature(WorldFeatureSelection? feature)
     {
+        if (_nativeTeleporterDrag is { } drag && !ReferenceEquals(drag.Selection, feature))
+            CancelNativeTeleporterDrag();
         _selectedFeature = feature;
         InvalidateVisual();
     }
@@ -486,11 +491,19 @@ public sealed class WorldViewport : Control
         }
         if (selected is null)
         {
-            var feature = FindFeature(point.Position);
+            var mayDragTeleporter = point.Properties.IsLeftButtonPressed
+                && e.KeyModifiers == KeyModifiers.None && CanDragNativeTeleporter?.Invoke() == true;
+            var nativeTeleporter = mayDragTeleporter ? FindNativeTeleporter(point.Position) : null;
+            var feature = nativeTeleporter ?? FindFeature(point.Position, skipNativeTeleporters: mayDragTeleporter);
             if (feature is not null)
             {
                 SelectFeature(feature);
                 WorldFeatureSelected?.Invoke(feature);
+                if (nativeTeleporter is not null)
+                {
+                    _nativeTeleporterDrag = new(e.Pointer, nativeTeleporter, point.Position);
+                    e.Pointer.Capture(this);
+                }
                 e.Handled = true;
                 return;
             }
@@ -522,6 +535,18 @@ public sealed class WorldViewport : Control
     protected override void OnPointerMoved(PointerEventArgs e)
     {
         base.OnPointerMoved(e);
+        if (_nativeTeleporterDrag is { } teleporter && ReferenceEquals(teleporter.Pointer, e.Pointer))
+        {
+            var dragPoint = e.GetCurrentPoint(this);
+            if (dragPoint.Properties.IsLeftButtonPressed && !dragPoint.Properties.IsRightButtonPressed
+                && !dragPoint.Properties.IsMiddleButtonPressed && dragPoint.Position != teleporter.LastPoint)
+            {
+                _nativeTeleporterDrag = teleporter with { LastPoint = dragPoint.Position };
+                NativeTeleporterDragMoved?.Invoke(teleporter.Selection, WorldPoint(dragPoint.Position, clamp: false));
+            }
+            e.Handled = true;
+            return;
+        }
         if (_dragKey is not null)
         {
             var pointer = e.GetPosition(this);
@@ -543,6 +568,12 @@ public sealed class WorldViewport : Control
     protected override void OnPointerReleased(PointerReleasedEventArgs e)
     {
         base.OnPointerReleased(e);
+        if (_nativeTeleporterDrag is { } teleporter && ReferenceEquals(teleporter.Pointer, e.Pointer))
+        {
+            if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) CancelNativeTeleporterDrag();
+            e.Handled = true;
+            return;
+        }
         _panAnchor = null;
         if (_dragMoved && _dragKey is { } key && _dragPosition is { } position)
         {
@@ -553,6 +584,20 @@ public sealed class WorldViewport : Control
         _dragOrigin = null;
         _dragMoved = false;
         e.Pointer.Capture(null);
+    }
+
+    protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e)
+    {
+        base.OnPointerCaptureLost(e);
+        if (_nativeTeleporterDrag is { } teleporter && ReferenceEquals(teleporter.Pointer, e.Pointer))
+            _nativeTeleporterDrag = null;
+    }
+
+    public void CancelNativeTeleporterDrag()
+    {
+        var teleporter = _nativeTeleporterDrag;
+        _nativeTeleporterDrag = null;
+        teleporter?.Pointer.Capture(null);
     }
 
     protected override void OnPointerWheelChanged(PointerWheelEventArgs e)
@@ -607,15 +652,19 @@ public sealed class WorldViewport : Control
         return best;
     }
 
-    private float[] WorldPoint(Point point)
+    private float[] WorldPoint(Point point, bool clamp = true)
     {
-        var scaleX = ScaleX;
-        var scaleY = ScaleY;
+        var x = (point.X - _pan.X) / (ScaleX * _zoom);
+        var y = (point.Y - _pan.Y) / (ScaleY * _zoom);
+        if (!clamp)
+            return [(float)x, (float)y];
         return [
-            (float)Math.Clamp((point.X - _pan.X) / (scaleX * _zoom), 0, _snapshot.WorldSize[0]),
-            (float)Math.Clamp((point.Y - _pan.Y) / (scaleY * _zoom), 0, _snapshot.WorldSize[1]),
+            (float)Math.Clamp(x, 0, _snapshot.WorldSize[0]),
+            (float)Math.Clamp(y, 0, _snapshot.WorldSize[1]),
         ];
     }
+
+    private sealed record NativeTeleporterDrag(IPointer Pointer, WorldFeatureSelection Selection, Point LastPoint);
 
     private static OrganismKey KeyOf(OrganismSnapshot organism) =>
         new(organism.Slot, organism.Generation);
@@ -641,7 +690,21 @@ public sealed class WorldViewport : Control
         }
     }
 
-    private WorldFeatureSelection? FindFeature(Point pointer)
+    private WorldFeatureSelection? FindNativeTeleporter(Point point)
+    {
+        var position = WorldPoint(point, clamp: false);
+        foreach (var teleporter in _snapshot.Teleporters)
+        {
+            if (teleporter.Internet || teleporter.NativeTopLeft is not { } topLeft
+                || teleporter.Width is not { } width || teleporter.Height is not { } height) continue;
+            if (position[0] >= topLeft[0] && position[0] <= topLeft[0] + width
+                && position[1] >= topLeft[1] && position[1] <= topLeft[1] + height)
+                return new WorldFeatureSelection(WorldFeatureKind.Teleporter, teleporter.Id);
+        }
+        return null;
+    }
+
+    private WorldFeatureSelection? FindFeature(Point pointer, bool skipNativeTeleporters)
     {
         var scaleX = ScaleX * _zoom;
         var scaleY = ScaleY * _zoom;
@@ -656,6 +719,7 @@ public sealed class WorldViewport : Control
         }
         foreach (var teleporter in _snapshot.Teleporters.AsEnumerable().Reverse())
         {
+            if (skipNativeTeleporters && teleporter.NativeTopLeft is not null && !teleporter.Internet) continue;
             var x = teleporter.Center[0] * scaleX + _pan.X;
             var y = teleporter.Center[1] * scaleY + _pan.Y;
             var radius = Math.Max(6, teleporter.Radius * Math.Min(scaleX, scaleY));

@@ -463,6 +463,9 @@ public sealed partial class NativeEngineClient : IEngineClient
         },
     }, "add original teleporter");
 
+    public void DragNativeTeleporter(uint id, float[] center) => ExecuteBatch(
+        new { version = 1, commands = new[] { new { type = "drag_native_teleporter", id, center } } }, "drag original teleporter");
+
     public void UpdateTeleporter(TeleporterSnapshot teleporter)
     {
         ValidateTeleporter(teleporter);
