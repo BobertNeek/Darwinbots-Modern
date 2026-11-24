@@ -117,11 +117,17 @@ public static class Db2GenomeRecordFile
 
     public static string EncodeLiving(
         EngineSnapshot snapshot,
-        IReadOnlyDictionary<OrganismKey, string> dnaByOrganism)
+        IReadOnlyDictionary<OrganismKey, string> dnaByOrganism) => EncodeLiving(snapshot, dnaByOrganism, true);
+
+    internal static string EncodeLiving(
+        EngineSnapshot snapshot,
+        IReadOnlyDictionary<OrganismKey, string> dnaByOrganism,
+        bool includeHeader)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         ArgumentNullException.ThrowIfNull(dnaByOrganism);
-        var builder = new StringBuilder().Append(Header).Append("\r\n");
+        var builder = new StringBuilder();
+        if (includeHeader) builder.Append(Header).Append("\r\n");
         foreach (var organism in snapshot.Organisms)
         {
             var key = new OrganismKey(organism.Slot, organism.Generation);
@@ -249,6 +255,8 @@ public static class Db2GenomeRecordFile
 
     private static bool LooksLikeRecord(string line)
     {
+        // Detokenized DNA comments can contain quotes, including in the hash.
+        if (line.TrimStart().StartsWith('\'')) return false;
         var fields = CsvFields(line);
         if (fields.Count != 14) return false;
         try

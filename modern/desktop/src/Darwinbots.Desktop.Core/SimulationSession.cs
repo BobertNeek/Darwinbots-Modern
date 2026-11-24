@@ -125,6 +125,40 @@ public sealed class SimulationSession : IAsyncDisposable
         return Enqueue(engine => engine.RemoveMany(stableOrganisms, suppressDeathPoffs), cancellationToken);
     }
 
+    public async Task<(EngineSnapshot Snapshot, IReadOnlyDictionary<OrganismKey, string> Dna)> RemoveWithDnaAsync(
+        IReadOnlyList<OrganismKey> organisms,
+        bool suppressDeathPoffs,
+        bool excludeVegetables,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(organisms);
+        if (organisms.Count == 0)
+            throw new ArgumentException("At least one organism is required.", nameof(organisms));
+        var stableKeys = organisms.ToArray();
+        var snapshot = EngineSnapshot.Empty;
+        var dna = new Dictionary<OrganismKey, string>();
+        await Enqueue(engine =>
+        {
+            // Read the still-live state and remove it at one session boundary.
+            snapshot = engine.Snapshot();
+            foreach (var key in stableKeys)
+            {
+                var robot = snapshot.Organisms.FirstOrDefault(value => value.Slot == key.Slot && value.Generation == key.Generation)
+                    ?? throw new InvalidDataException("A selected robot is no longer available.");
+                // Corpses already go through the corpse recording path.
+                if (robot.IsCorpse || robot.DnaLength == 1 || (excludeVegetables && robot.Vegetable)) continue;
+                var source = engine.ExportDna(key.Slot, key.Generation);
+                if (!string.IsNullOrWhiteSpace(source)) dna[key] = source;
+            }
+
+            if (stableKeys.Length == 1 && !suppressDeathPoffs)
+                engine.Remove(stableKeys[0].Slot, stableKeys[0].Generation);
+            else
+                engine.RemoveMany(stableKeys, suppressDeathPoffs);
+        }, cancellationToken).ConfigureAwait(false);
+        return (snapshot, dna);
+    }
+
     public Task SetDeathPoffsEnabledAsync(bool enabled, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.SetDeathPoffsEnabled(enabled), cancellationToken);
 

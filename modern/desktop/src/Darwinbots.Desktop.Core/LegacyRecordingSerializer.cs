@@ -30,6 +30,16 @@ public static class LegacyRecordingSerializer
             _ => throw new ArgumentOutOfRangeException(nameof(format), format, "Unsupported legacy recording format."),
         };
 
+    public static string SerializeRemoved(
+        EngineSnapshot snapshot,
+        IReadOnlyDictionary<OrganismKey, string> dnaByOrganism,
+        bool includeHeader,
+        LegacyRecordingFormat format) => format switch
+        {
+            LegacyRecordingFormat.Db2GenomeRecords => Db2GenomeRecordFile.EncodeLiving(snapshot, dnaByOrganism, includeHeader),
+            _ => throw new ArgumentOutOfRangeException(nameof(format), format, "Unsupported legacy recording format."),
+        };
+
     public static string SerializeDead(
         IEnumerable<CorpseSnapshot> corpses,
         IReadOnlyList<SpeciesSnapshot> species,

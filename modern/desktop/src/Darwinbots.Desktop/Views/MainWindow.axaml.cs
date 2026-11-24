@@ -65,6 +65,7 @@ public sealed partial class MainWindow : Window
         e.Handled = true;
     }
 
+    private static readonly SemaphoreSlim DeadRecordingGate = new(1, 1);
     private readonly MainWindowViewModel _viewModel = new();
     private SimulationSession? _session;
     private readonly DispatcherTimer _runTimer;
@@ -974,9 +975,7 @@ public sealed partial class MainWindow : Window
         if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
         if (_viewModel.SelectedOrganism is not { } organism)
             return LegacyCommandResult.Failure("SELECT A ROBOT FIRST");
-        await _session.RemoveAsync(organism.Slot, organism.Generation);
-        Viewport.SelectSlot(null);
-        return LegacyCommandResult.Success("ROBOT KILLED");
+        return await KillRobotsAsync(_session, [new OrganismKey(organism.Slot, organism.Generation)], false, "ROBOT KILLED");
     }
 
     private async Task<LegacyCommandResult> KillSelectedOrganismAsync()
@@ -985,10 +984,33 @@ public sealed partial class MainWindow : Window
         var group = SelectedOrganismGroup();
         if (group.Count == 0) return LegacyCommandResult.Failure("SELECT A ROBOT FIRST");
         OrganismKey[] keys = [.. group.Select(value => new OrganismKey(value.Slot, value.Generation))];
-        await _session.RemoveManyAsync(keys, suppressDeathPoffs: true);
+        return await KillRobotsAsync(_session, keys, true, $"ORGANISM KILLED · {keys.Length:N0} BOT(S)");
+    }
+
+    private async Task<LegacyCommandResult> KillRobotsAsync(
+        SimulationSession session, OrganismKey[] keys, bool suppressDeathPoffs, string status)
+    {
+        (EngineSnapshot Snapshot, IReadOnlyDictionary<OrganismKey, string> Dna)? recording = null;
+        if (_deadRecordingEnabled)
+            recording = await session.RemoveWithDnaAsync(keys, suppressDeathPoffs, _excludeRepopulatingDead);
+        else if (suppressDeathPoffs)
+            await session.RemoveManyAsync(keys, suppressDeathPoffs: true);
+        else
+            await session.RemoveAsync(keys[0].Slot, keys[0].Generation);
         _viewModel.ClearSelection();
         Viewport.SelectSlot(null);
-        return LegacyCommandResult.Success($"ORGANISM KILLED · {keys.Length:N0} BOT(S)");
+
+        if (recording is not { } removed || removed.Dna.Count == 0)
+            return LegacyCommandResult.Success(status);
+
+        await DeadRecordingGate.WaitAsync();
+        try
+        {
+            var (appended, error) = await AppendDeadRecordsAsync((includeHeader, format) =>
+                LegacyRecordingSerializer.SerializeRemoved(removed.Snapshot, removed.Dna, includeHeader, format));
+            return LegacyCommandResult.Success(appended ? status : $"{status} · {error ?? "DEAD RECORDING UNAVAILABLE"}");
+        }
+        finally { DeadRecordingGate.Release(); }
     }
 
     private Task<LegacyCommandResult> OpenNewSimulationSetupAsync() => ReplaceSimulationAsync(openSetup: true);
@@ -1399,30 +1421,43 @@ public sealed partial class MainWindow : Window
 
     private async Task RecordDeadSnapshotAsync(EngineSnapshot snapshot)
     {
-        if (!_deadRecordingEnabled)
+        await DeadRecordingGate.WaitAsync();
+        try
         {
-            _recordedCorpseCount = snapshot.Corpses.Count;
-            return;
+            if (!_deadRecordingEnabled)
+            {
+                _recordedCorpseCount = snapshot.Corpses.Count;
+                return;
+            }
+            if (snapshot.Corpses.Count < _recordedCorpseCount) _recordedCorpseCount = 0;
+            if (snapshot.Corpses.Count == _recordedCorpseCount) return;
+            var corpses = snapshot.Corpses.Skip(_recordedCorpseCount)
+                .Where(corpse => !_excludeRepopulatingDead || !corpse.Repopulating)
+                .ToArray();
+            if (!corpses.Any(corpse => !string.IsNullOrWhiteSpace(corpse.Dna)))
+            {
+                _recordedCorpseCount = snapshot.Corpses.Count;
+                return;
+            }
+            var (appended, error) = await AppendDeadRecordsAsync((includeHeader, format) =>
+                LegacyRecordingSerializer.SerializeDead(corpses, snapshot.Species, includeHeader, format));
+            if (appended) _recordedCorpseCount = snapshot.Corpses.Count;
+            if (error is not null) _viewModel.Status = error;
         }
-        if (snapshot.Corpses.Count < _recordedCorpseCount) _recordedCorpseCount = 0;
-        if (snapshot.Corpses.Count == _recordedCorpseCount) return;
-        var corpses = snapshot.Corpses.Skip(_recordedCorpseCount)
-            .Where(corpse => !_excludeRepopulatingDead || !corpse.Repopulating)
-            .ToArray();
-        if (!corpses.Any(corpse => !string.IsNullOrWhiteSpace(corpse.Dna)))
-        {
-            _recordedCorpseCount = snapshot.Corpses.Count;
-            return;
-        }
+        finally { DeadRecordingGate.Release(); }
+    }
+
+    private async Task<(bool Appended, string? Error)> AppendDeadRecordsAsync(Func<bool, LegacyRecordingFormat, string> serialize)
+    {
         try
         {
             var appended = await _storage.AppendDeadSnapshotAsync(async stream =>
             {
                 var format = LegacyRecordingSerializer.Select(LegacyCommandId.RecordingDeadEnable).Format;
-                var text = LegacyRecordingSerializer.SerializeDead(corpses, snapshot.Species, stream.Length == 0, format);
+                var text = serialize(stream.Length == 0, format);
                 await stream.WriteAsync(LegacyDnaText.Encode(text));
             });
-            if (appended) _recordedCorpseCount = snapshot.Corpses.Count;
+            return (appended, null);
         }
         catch (Exception error)
         {
@@ -1431,7 +1466,7 @@ public sealed partial class MainWindow : Window
                 await ApplyRecordingPreferencesAsync((_liveEnvironment.Recording ?? new()) with { DeadSnapshotEnabled = false });
             }
             catch { /* The recording error remains the useful diagnostic when the engine also fails. */ }
-            _viewModel.Status = $"DEAD RECORDING FAILED · {error.Message}";
+            return (false, $"DEAD RECORDING FAILED · {error.Message}");
         }
     }
 
