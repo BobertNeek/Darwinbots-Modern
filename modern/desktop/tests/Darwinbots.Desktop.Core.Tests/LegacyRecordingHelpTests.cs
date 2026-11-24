@@ -68,7 +68,6 @@ public sealed class LegacyRecordingHelpTests
         var expectedHelpCommands = new[]
         {
             LegacyCommandId.HelpDna,
-            LegacyCommandId.HelpSurvivalInfo,
             LegacyCommandId.HelpAbout,
         };
         Assert.Equal(expectedHelpCommands, LegacyHelpResolver.Topics.Select(topic => topic.Command));

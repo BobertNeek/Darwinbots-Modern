@@ -17,12 +17,6 @@ public static class LegacyHelpResolver
             "Legacy DNA quick reference",
             "Darwinbots DNA is plain text. Conditions appear between cond and start; actions appear between start and stop. Values are pushed onto the stack, sysvars are read with * and written with store.\n\nExample:\ncond\n*.eye5 0 >\nstart\n30 .up store\nstop\nend\n\nApostrophes begin comments. Imported bot files keep the historical .txt format and sysvar names."),
         new(
-            LegacyCommandId.HelpSurvivalInfo,
-            "Survival Info",
-            "Reading the ecosystem",
-            "Energy keeps a bot alive and powers movement, shots, and reproduction. Body is a durable energy reserve and influences rendered size. Vegetables gain energy from chloroplasts and sunlight; animals must feed or exchange energy.\n\nPopulation, births, deaths, energy, mutation, shots, and feeding totals are recorded below the world view.",
-            Visible: false),
-        new(
             LegacyCommandId.HelpAbout,
             "About Darwinbots Modern",
             "Behavioral modernization",

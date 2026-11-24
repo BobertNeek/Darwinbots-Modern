@@ -869,7 +869,9 @@ public sealed partial class MainWindow : Window
         handlers[LegacyCommandId.EGridSmall] = EnergyGridSizeHandler(EnergyGridSize.Small);
         handlers[LegacyCommandId.HelpDna] = HelpHandler(LegacyCommandId.HelpDna);
         handlers[LegacyCommandId.HelpRobotTagInformation] = Handler(EngineState, _ => CopyRobotTagReportAsync());
-        handlers[LegacyCommandId.HelpSurvivalInfo] = HelpHandler(LegacyCommandId.HelpSurvivalInfo);
+        handlers[LegacyCommandId.HelpSurvivalInfo] = Handler(
+            () => ActiveStagedSurvival() is not null ? LegacyCommandState.Available : new(false, false, Visible: false),
+            _ => ShowSurvivalInfoAsync());
         handlers[LegacyCommandId.HelpAbout] = HelpHandler(LegacyCommandId.HelpAbout);
 
         return new LegacyCommandRouter(handlers);
@@ -1570,6 +1572,35 @@ public sealed partial class MainWindow : Window
 
     private Task<LegacyCommandResult> ShowDocumentAsync(LegacyHelpTopic topic) =>
         ShowDocumentAsync(topic.Title, topic.Section, topic.Content);
+
+    private LocalModeSnapshot? ActiveStagedSurvival() => _session?.LatestSnapshot.LocalMode is
+    {
+        Kind: LocalModeKind.SimpleSurvival or LocalModeKind.EcoSurvival,
+        Status: LocalModeStatus.Running or LocalModeStatus.RoundComplete or LocalModeStatus.Completed,
+        Evolution: not null,
+    } mode ? mode : null;
+
+    private async Task<LegacyCommandResult> ShowSurvivalInfoAsync()
+    {
+        if (ActiveStagedSurvival() is not { Evolution: { } evolution } mode)
+            return LegacyCommandResult.Failure("STAGED SURVIVAL IS NOT ACTIVE");
+
+        var normalized = mode.Configuration?.StagedEvolution?.NormalizeDnaSize == true;
+        string DnaSize(uint? size) => normalized ? size?.ToString() ?? "N/A" : "N/A";
+        var lines = new List<string>
+        {
+            $"Target DNA size: {DnaSize(evolution.CurrentDnaSize)}",
+            $"Next DNA size change: {DnaSize(evolution.TargetDnaSize)}",
+            $"Reduction unit: {evolution.ReductionUnit}",
+            $"On/Off cycles: {evolution.HideCycles}",
+        };
+        if (evolution.Phase == "evolving")
+            lines.Add($"Current Handicap: {evolution.RawHandicap} - {evolution.InverseHandicap} = {evolution.Handicap}");
+
+        var section = mode.Kind == LocalModeKind.EcoSurvival ? "Eco Survival" : "Simple Survival";
+        await new LegacyDocumentWindow("Survival information", section, string.Join('\n', lines)).ShowDialog(this);
+        return LegacyCommandResult.Success("SURVIVAL INFORMATION");
+    }
 
     private Task<LegacyCommandResult> ShowDocumentAsync(string title, string section, string content)
     {
