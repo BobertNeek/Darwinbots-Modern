@@ -449,26 +449,58 @@ impl LegacyDna {
     }
 
     pub(crate) fn native_gene_count(&self) -> i32 {
+        self.native_gene_starts().count() as i32
+    }
+
+    fn native_gene_starts(&self) -> impl Iterator<Item = usize> + '_ {
         // Module1.CountGenes assigns the first start or else to its cond.
         // Subsequent starts and elses begin new genes even without a stop.
-        let mut count = 0;
         let mut awaiting_branch = false;
-        for block in self.blocks.iter().take(MAX_DNA_BLOCKS) {
-            match (block.class, block.value) {
-                (TokenClass::End, 1) => break,
+        self.blocks
+            .iter()
+            .take(MAX_DNA_BLOCKS)
+            .enumerate()
+            .take_while(|(_, block)| (block.class, block.value) != (TokenClass::End, 1))
+            .filter_map(move |(index, block)| match (block.class, block.value) {
                 (TokenClass::Flow, 1) => {
-                    count += 1;
                     awaiting_branch = true;
+                    Some(index)
                 }
                 (TokenClass::Flow, 2 | 3) => {
-                    count += i32::from(!awaiting_branch);
+                    let begins_gene = !awaiting_branch;
                     awaiting_branch = false;
+                    begins_gene.then_some(index)
                 }
-                (TokenClass::Flow, 4) => awaiting_branch = false,
-                _ => {}
-            }
-        }
-        count
+                (TokenClass::Flow, 4) => {
+                    awaiting_branch = false;
+                    None
+                }
+                _ => None,
+            })
+    }
+
+    fn native_gene_range(&self, index: usize) -> Option<(usize, usize)> {
+        let start = self.native_gene_starts().nth(index)?;
+        let limit = self.blocks.len().min(MAX_DNA_BLOCKS);
+        let mut awaiting_branch = self.blocks[start].value == 1;
+        // Module1.GeneEnd includes an explicit stop and stops before the next
+        // gene start or any master flow token.
+        let end = self.blocks[..limit]
+            .iter()
+            .enumerate()
+            .skip(start + 1)
+            .find_map(|(index, block)| match (block.class, block.value) {
+                (TokenClass::End, _) | (TokenClass::Flow, 1) => Some(index),
+                (TokenClass::Flow, 4) => Some(index + 1),
+                (TokenClass::Flow, 2 | 3) if !awaiting_branch => Some(index),
+                (TokenClass::Flow, 2 | 3) => {
+                    awaiting_branch = false;
+                    None
+                }
+                _ => None,
+            })
+            .unwrap_or(limit);
+        Some((start, end))
     }
 
     pub(crate) fn gene(&self, requested: i32) -> Option<Self> {
@@ -477,13 +509,17 @@ impl LegacyDna {
         Some(self.with_blocks(self.blocks[start..end].to_vec()))
     }
 
-    pub(crate) fn delete_gene(&self, requested: i32) -> Option<Self> {
+    pub(crate) fn delete_gene(&self, requested: i32, native_flow: bool) -> Option<Self> {
         let index = usize::try_from(requested.saturating_sub(1)).ok()?;
-        let ranges = self.gene_ranges();
-        if ranges.len() <= 1 {
-            return None;
-        }
-        let (start, end) = *ranges.get(index)?;
+        let (start, end) = if native_flow {
+            self.native_gene_range(index)?
+        } else {
+            let ranges = self.gene_ranges();
+            if ranges.len() <= 1 {
+                return None;
+            }
+            *ranges.get(index)?
+        };
         let mut blocks = self.blocks[..start].to_vec();
         blocks.extend_from_slice(&self.blocks[end..]);
         Some(self.with_blocks(blocks))
