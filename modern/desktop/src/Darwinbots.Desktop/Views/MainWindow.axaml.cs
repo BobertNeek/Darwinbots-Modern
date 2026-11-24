@@ -104,6 +104,7 @@ public sealed partial class MainWindow : Window
     private (SimulationSession Session, WorldFeatureSelection Selection, float[] Center)? _pendingTeleporterDrag;
     private bool _sendingTeleporterDrag;
     private int _teleporterDeletionsInFlight;
+    private TeleporterEditorWindow? _nativeTeleporterEditor;
     private readonly ZerobotProgressionController? _zerobotProgression;
     private bool _progressionInFlight;
     private const string EnergyOnlyFeederDna = "cond\r\nstart\r\n-2 .shoot store\r\n50 .shootval store\r\n314 rnd .aimdx store\r\nstop";
@@ -1997,6 +1998,8 @@ public sealed partial class MainWindow : Window
         try
         {
             InvalidateTeleporterDrag();
+            if (_nativeTeleporterEditor is { } editor && teleporterIds.Contains(editor.TeleporterId))
+                CloseNativeTeleporterEditor();
             foreach (var id in teleporterIds) await session.RemoveTeleporterAsync(id);
             foreach (var id in fileTeleporterIds) await session.RemoveFileTeleporterAsync(id);
         }
@@ -2231,6 +2234,10 @@ public sealed partial class MainWindow : Window
                         _viewModel.Status = "ZEROBOT EVOLUTION COMPLETE";
                     }
                     Viewport.SetSnapshot(snapshot);
+                    if (_nativeTeleporterEditor is { } editor
+                        && (!snapshot.NativeCycle.HasValue
+                            || !snapshot.Teleporters.Any(teleporter => teleporter.Id == editor.TeleporterId && !teleporter.Internet)))
+                        CloseNativeTeleporterEditor();
                     Viewport.SelectKey(_viewModel.SelectedKey);
                     var graphInterval = (ulong)Math.Max(1, _globalSettings.Main.GraphUpdatesPerTick);
                     var updateGraphs = _lastGraphRefreshTick is not { } lastTick
@@ -2674,12 +2681,18 @@ public sealed partial class MainWindow : Window
 
     private async Task EditSelectedTeleporterAsync()
     {
-        if (_session is null || _selectedFeature is not { Kind: WorldFeatureKind.Teleporter } feature
+        if (_session is not { } session || _selectedFeature is not { Kind: WorldFeatureKind.Teleporter } feature
             || !ObjectEditorPolicy.CanEdit(ObjectEditorKind.Teleporter, SelectedObject())) return;
-        var localTeleporter = _session.LatestSnapshot.Teleporters.FirstOrDefault(value => value.Id == feature.Id);
+        var snapshot = session.LatestSnapshot;
+        var localTeleporter = snapshot.Teleporters.FirstOrDefault(value => value.Id == feature.Id);
         if (localTeleporter is not null)
         {
             if (localTeleporter.Internet || string.Equals(localTeleporter.Mode.Trim(), "internet", StringComparison.OrdinalIgnoreCase)) return;
+            if (snapshot.NativeCycle.HasValue)
+            {
+                OpenNativeTeleporterEditor(session, localTeleporter);
+                return;
+            }
             var dialog = new TeleporterEditorWindow(localTeleporter);
             await dialog.ShowDialog(this);
             if (dialog.Result is not { } result) return;
@@ -2698,6 +2711,79 @@ public sealed partial class MainWindow : Window
         if (fileDialog.Result is not { } fileResult) return;
         await _session.UpdateFileTeleporterAsync(fileResult);
         _viewModel.Status = $"FILE TELEPORTER {fileResult.Id} UPDATED · OFFLINE";
+    }
+
+    private void OpenNativeTeleporterEditor(SimulationSession session, TeleporterSnapshot teleporter)
+    {
+        if (_loadingSimulation || _navigationInFlight || _teleporterDeletionsInFlight > 0) return;
+        if (_nativeTeleporterEditor is { } existing)
+        {
+            if (!existing.IsVisible) return;
+            existing.LoadTeleporter(teleporter);
+            existing.Activate();
+            return;
+        }
+
+        var editor = new TeleporterEditorWindow(teleporter) { Topmost = true };
+        _nativeTeleporterEditor = editor;
+        editor.Activated += (_, _) =>
+        {
+            if (!ReferenceEquals(_nativeTeleporterEditor, editor)) return;
+            if (CurrentNativeTeleporter(session) is { } focused)
+                editor.LoadTeleporter(focused);
+            else
+                CloseNativeTeleporterEditor();
+        };
+        editor.Closed += async (_, _) =>
+        {
+            try
+            {
+                if (editor.Result is not null && CurrentNativeTeleporter(session)?.Id == editor.TeleporterId)
+                    await ApplyNativeTeleporterEditAsync(session, editor);
+            }
+            finally
+            {
+                if (ReferenceEquals(_nativeTeleporterEditor, editor)) _nativeTeleporterEditor = null;
+            }
+        };
+        editor.Show(this);
+    }
+
+    private async Task ApplyNativeTeleporterEditAsync(SimulationSession session, TeleporterEditorWindow editor)
+    {
+        await _advanceGate.WaitAsync();
+        try
+        {
+            if (!IsVisible || _loadingSimulation || _navigationInFlight || !ReferenceEquals(_session, session)
+                || !ReferenceEquals(_nativeTeleporterEditor, editor)) return;
+            var current = session.LatestSnapshot.Teleporters
+                .FirstOrDefault(teleporter => teleporter.Id == editor.TeleporterId && !teleporter.Internet);
+            if (current is null) return;
+            await session.UpdateTeleporterAsync(editor.BuildResult(current));
+            if (ReferenceEquals(_nativeTeleporterEditor, editor))
+                _viewModel.Status = $"TELEPORTER {current.Id} UPDATED · OFFLINE";
+        }
+        catch (Exception error) { await HandleEngineErrorAsync(error, attemptRecovery: false); }
+        finally { _advanceGate.Release(); }
+    }
+
+    private void CloseNativeTeleporterEditor()
+    {
+        var editor = _nativeTeleporterEditor;
+        _nativeTeleporterEditor = null;
+        if (editor?.IsVisible == true) editor.Close();
+    }
+
+    private TeleporterSnapshot? CurrentNativeTeleporter(SimulationSession session)
+    {
+        if (_loadingSimulation || _navigationInFlight || !ReferenceEquals(_session, session)
+            || _selectedFeature is not { Kind: WorldFeatureKind.Teleporter } feature)
+            return null;
+        var snapshot = session.LatestSnapshot;
+        if (!snapshot.NativeCycle.HasValue) return null;
+        return snapshot.Teleporters.FirstOrDefault(teleporter =>
+            teleporter.Id == feature.Id && !teleporter.Internet
+            && !string.Equals(teleporter.Mode.Trim(), "internet", StringComparison.OrdinalIgnoreCase));
     }
 
     private async void RemoveFeature_Click(object? sender, RoutedEventArgs e)
@@ -3219,6 +3305,7 @@ public sealed partial class MainWindow : Window
             _loadingSimulation = true;
             InvalidateTeleporterDrag();
             await _session.LoadAsync(save);
+            CloseNativeTeleporterEditor();
             _toolWindows.Close(NewTeleporterToolKey);
             // A rejected load publishes no snapshot and must keep user-closed
             // graphs closed. Loading publications defer this until success.
@@ -3272,6 +3359,7 @@ public sealed partial class MainWindow : Window
 
     private async void Window_Closed(object? sender, EventArgs e)
     {
+        CloseNativeTeleporterEditor();
         InvalidateTeleporterDrag();
         _runTimer.Stop();
         _runtimeClock.Stop();
