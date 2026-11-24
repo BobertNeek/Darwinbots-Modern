@@ -1097,7 +1097,7 @@ fn db_engine_command_batch_impl(
                     .map(|id| OrganismId::new(id.slot, id.generation))
                     .collect();
                 engine
-                    .export_native_organisms(&members)
+                    .export_original_organism_file(&members)
                     .map(|bytes| serde_json::json!({ "payload": bytes }))
             }
             EngineCommand::ManualReproduce {
