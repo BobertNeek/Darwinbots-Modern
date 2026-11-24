@@ -66,8 +66,7 @@ public sealed class PositionalStartupSaveTests
                 }
                 finally
                 {
-                    runtime.Close();
-                    await WaitFor(() => !runtime.IsVisible);
+                    await LastExitResumeRenderedTests.CloseRuntimeAsync(runtime);
                 }
             }, CancellationToken.None);
         }
