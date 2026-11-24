@@ -705,7 +705,9 @@ fn total_energy_threshold_modes_apply_vb6_sun_overrides() {
         )
     }
 
-    assert_eq!(run(true, 0, false, true), (0, true));
+    // Changing the SunButton value triggers its Click handler, which writes
+    // the effective feeding state back to Daytime even in temporary mode.
+    assert_eq!(run(true, 0, false, true), (0, false));
     assert_eq!(run(true, 1, false, true), (0, false));
     assert_eq!(run(true, 2, false, true), (0, false));
     assert_eq!(run(false, 0, true, false), (1, false));
