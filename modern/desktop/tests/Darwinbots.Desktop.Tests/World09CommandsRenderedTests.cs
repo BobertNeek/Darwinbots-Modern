@@ -106,7 +106,7 @@ public sealed class World09CommandsRenderedTests
                     var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
                     var robotInfo = menu.FindCommandItem(LegacyCommandId.RobotShowInfo)!;
 
-                    Assert.Equal(firstKey, viewModel.SelectedKey);
+                    Assert.Equal(playerBot ? secondKey : firstKey, viewModel.SelectedKey);
                     ClickWorld(window, viewport, 220, 200);
                     Assert.Equal(secondKey, viewModel.SelectedKey);
                     Assert.True(robotInfo.IsEnabled);
