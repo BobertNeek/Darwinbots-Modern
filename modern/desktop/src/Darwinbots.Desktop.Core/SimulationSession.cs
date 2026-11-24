@@ -11,6 +11,8 @@ public sealed class SimulationSession : IAsyncDisposable
     private bool _disposed;
     private readonly Stopwatch _performanceClock = Stopwatch.StartNew();
     private ulong? _lastPublishedTick;
+    private float[]? _pendingPlayerBotPointer;
+    private float[]? _appliedPlayerBotPointer;
 
     public SimulationSession(IEngineClient engine)
     {
@@ -31,7 +33,35 @@ public sealed class SimulationSession : IAsyncDisposable
         Enqueue(_ => { }, cancellationToken);
 
     public Task StepAsync(uint count = 1, CancellationToken cancellationToken = default) =>
-        Enqueue(engine => engine.Tick(count), cancellationToken, measureTicks: true);
+        Enqueue(engine =>
+        {
+            ApplyPlayerBotPointer(engine);
+            engine.Tick(count);
+        }, cancellationToken, measureTicks: true);
+
+    public Task SetPlayerBotTargetsAsync(OrganismKey? focus, IReadOnlyList<OrganismKey> highlights,
+        CancellationToken cancellationToken = default)
+    {
+        var targets = highlights.ToArray();
+        return Enqueue(engine => engine.SetPlayerBotTargets(focus, targets), cancellationToken);
+    }
+
+    public void SetPlayerBotPointer(float[]? position)
+    {
+        if (position is not null) ValidatePosition(position);
+        Volatile.Write(ref _pendingPlayerBotPointer, position?.ToArray());
+    }
+
+    private void ApplyPlayerBotPointer(IEngineClient engine)
+    {
+        // Pointer motion can outpace the simulation worker. Apply its latest
+        // position just before ticking, including a pending button release.
+        var position = Volatile.Read(ref _pendingPlayerBotPointer);
+        if (ReferenceEquals(_appliedPlayerBotPointer, position))
+            return;
+        engine.SetPlayerBotPointer(position);
+        _appliedPlayerBotPointer = position;
+    }
 
     public Task StepRecordingDeathsAsync(
         uint count, Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted, CancellationToken cancellationToken = default) =>
@@ -565,7 +595,12 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task LoadAsync(byte[] save, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(save);
-        return Enqueue(engine => engine.Load(save), cancellationToken);
+        return Enqueue(engine =>
+        {
+            engine.Load(save);
+            _appliedPlayerBotPointer = null;
+            SetPlayerBotPointer(null);
+        }, cancellationToken);
     }
 
     private Task Enqueue(Action<IEngineClient> action, CancellationToken cancellationToken, bool measureTicks = false)

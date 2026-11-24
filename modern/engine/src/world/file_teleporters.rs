@@ -241,10 +241,10 @@ impl Engine {
                     if imported.is_ok_and(|count| count > 0)
                         && transfers.claim_input(&path, &bytes).is_ok()
                     {
-                        // Importing into a candidate must preserve the active
-                        // backend and the transient recorder for the current tick batch.
+                        // Preserve the active backend and transient state for this batch.
                         std::mem::swap(&mut candidate.physics, &mut self.physics);
                         std::mem::swap(&mut candidate.recorded_deaths, &mut self.recorded_deaths);
+                        std::mem::swap(&mut candidate.player_bot_input, &mut self.player_bot_input);
                         *self = candidate;
                         received = received.saturating_add(1);
                     }

@@ -92,6 +92,8 @@ public interface IEngineClient : IDisposable
     void UpdateLegacyRestrictions(bool robotFixingAllowed, bool asexualReproductionAllowed);
     void ConfigurePlayerBot(PlayerBotConfig config);
     void SetPlayerBotKey(uint slot, uint generation, int keyCode, bool pressed);
+    void SetPlayerBotTargets(OrganismKey? focus, IReadOnlyList<OrganismKey> highlights) { }
+    void SetPlayerBotPointer(float[]? position) { }
     void SetOrganismMemory(uint slot, uint generation, ushort address, int value);
     ushort ResolveMemoryAddress(string name) => ushort.TryParse(name, out var address) && address is >= 1 and <= 1000
         ? address : throw new FormatException($"Unknown memory address '{name}'.");
