@@ -237,7 +237,7 @@ public sealed class SetupAddSpeciesRenderedTests
                     WorldSetupOptions? created = null;
                     window.WorldCreated += options => created = options;
                     Click(window, "CreateWorldButton");
-                    var imported = Assert.Single(Assert.IsType<WorldSetupOptions>(created).Species, row => row.Name == "Added Species");
+                    var imported = Assert.Single(Assert.IsType<WorldSetupOptions>(created).Species, row => row.Name == "Added Species.txt");
                     Assert.Equal(5, imported.InitialCount);
                     Assert.Equal(3_000, imported.InitialEnergy);
                     Assert.Equal(file, imported.DnaPath);
@@ -289,7 +289,7 @@ public sealed class SetupAddSpeciesRenderedTests
 
                     await WaitForAsync(() => world.OwnedWindows.OfType<SetupWindow>().Any(), "Edit Species did not open.");
                     var editor = Assert.Single(world.OwnedWindows.OfType<SetupWindow>());
-                    var picker = new DnaPicker(editor, file);
+                    var picker = new DnaPicker(editor, file, filename: "Base.txt");
                     var added = await AddSpeciesAsync(editor, native ? 5 : 50, native ? 3_000 : 1_000,
                         native ? "Base.txt" : "Base");
                     Assert.Equal(native ? 0xff0000ffu : 0xffd07a2du, added.Color);
@@ -427,12 +427,13 @@ public sealed class SetupAddSpeciesRenderedTests
     private static void Click(Window window, string button) =>
         window.FindControl<Button>(button)!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
-    private static async Task<SetupSpeciesRow> AddSpeciesAsync(SetupWindow window, int count, float energy)
+    private static async Task<SetupSpeciesRow> AddSpeciesAsync(SetupWindow window, int count, float energy,
+        string expectedName = "Added Species.txt")
     {
         Click(window, "AddDnaButton");
-        await WaitForAsync(() => window.Species.Any(row => row.Name == "Added Species"),
+        await WaitForAsync(() => window.Species.Any(row => row.Name == expectedName),
             $"Add Species did not add the picked DNA. {window.FindControl<TextBlock>("SetupStatus")!.Text}");
-        var row = Assert.Single(window.Species, row => row.Name == "Added Species");
+        var row = Assert.Single(window.Species, row => row.Name == expectedName);
         Assert.Equal(count, row.InitialCount);
         Assert.Equal(energy, row.InitialEnergy);
         return row;
@@ -460,7 +461,7 @@ public sealed class SetupAddSpeciesRenderedTests
                 method.Name == nameof(IDisposable.Dispose) ? null : throw new NotSupportedException(method.Name));
             var file = PickerProxy.CreateFor<IStorageFile>((method, _) => method.Name switch
             {
-                "get_Name" => Path.GetFileName(path),
+                "get_Name" => filename ?? Path.GetFileName(path),
                 "get_Path" => new Uri(path),
                 nameof(IStorageFile.OpenReadAsync) => Task.FromResult<Stream>(File.OpenRead(path)),
                 _ => throw new NotSupportedException(method.Name),
