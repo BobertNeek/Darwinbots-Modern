@@ -1,5 +1,6 @@
 //! Keep native force accumulation separate from collision velocities and integration.
 use super::*;
+use crate::physics::apply_uncapped_resistance;
 
 impl Engine {
     pub(super) fn capture_native_added_mass(&mut self) {
@@ -53,7 +54,9 @@ impl Engine {
                 robot.kinematics.pending_velocity = [0.0; 2];
                 continue;
             }
-            apply_resistance(
+            // NetForces keeps the collision velocity until UpdatePosition
+            // adds the full impulse and then applies the speed limit.
+            apply_uncapped_resistance(
                 &mut robot.kinematics.velocity,
                 mass,
                 robot.materials.radius,
@@ -302,6 +305,67 @@ mod tests {
             world.slots.get(id).unwrap().kinematics.position,
             [510.0, 500.0]
         );
+    }
+
+    #[test]
+    fn native_integration_caps_the_combined_velocity_and_impulse() {
+        let mut config = EngineConfig::testing();
+        config.physics.max_velocity = 60.0;
+        let mut world = Engine::new_native(config).unwrap();
+        let id = world
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [500.0; 2])
+            .unwrap();
+        let collision_velocity = [0.0, -80.0];
+        let robot = world.slots.get_mut(id).unwrap();
+        robot.kinematics.velocity = collision_velocity;
+        robot.kinematics.pending_velocity = [20.0, 0.0];
+        world.native_intent_phase();
+        assert_eq!(
+            world.slots.get(id).unwrap().kinematics.velocity,
+            collision_velocity
+        );
+        world.native_finalize_forces();
+        world.physics_phase().unwrap();
+        let expected = [20.0, -80.0].map(|component| component / 20.0_f32.hypot(80.0) * 60.0);
+        assert_eq!(world.slots.get(id).unwrap().kinematics.velocity, expected);
+
+        let mut portable_velocity = collision_velocity;
+        apply_resistance(
+            &mut portable_velocity,
+            1.0,
+            60.0,
+            0.0,
+            &world.config.physics,
+        );
+        assert_eq!(portable_velocity, [0.0, -60.0]);
+    }
+
+    #[test]
+    fn genuine_cycle_282_collision_velocity_matches_the_original_capture() {
+        // Original 2.48.32 cycle-282 capture SHA-256
+        // c49c002f66898a52db81645b78b11ecbb2ed1941dbeea03fe7d53dd3b24b9e91.
+        let input = include_bytes!("../../tests/fixtures/db24832-original-user.sim");
+        let mut world = Engine::from_native_sim(input).unwrap();
+        world.tick().unwrap();
+        assert_eq!(world.native_cycle, Some(282));
+        let robot = world
+            .slots
+            .iter()
+            .filter_map(|slot| slot.organism.as_ref())
+            .find(|robot| robot.identity.absolute_id == 139)
+            .unwrap();
+        assert_eq!(robot.kinematics.actual_velocity, [-22.375, -56.375]);
+        for (actual, expected) in robot
+            .kinematics
+            .velocity
+            .into_iter()
+            .zip([-20.592_808, -56.355_446])
+        {
+            assert!(
+                (actual - expected).abs() <= 0.000_01,
+                "{actual} != {expected}"
+            );
+        }
     }
 
     #[test]

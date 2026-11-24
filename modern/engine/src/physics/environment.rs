@@ -175,15 +175,26 @@ pub(crate) fn apply_resistance(
     linear_drag: f32,
     settings: &PhysicsSettings,
 ) -> f32 {
-    let solid_impulse = apply_surface_friction(velocity, mass, settings);
-    apply_fluid_drag(velocity, radius, settings);
-    apply_linear_drag(velocity, linear_drag);
+    let solid_impulse = apply_uncapped_resistance(velocity, mass, radius, linear_drag, settings);
     let speed = velocity[0].hypot(velocity[1]);
     let maximum = settings.max_velocity.max(0.0);
     if speed > maximum && speed > f32::EPSILON {
         velocity[0] = velocity[0] / speed * maximum;
         velocity[1] = velocity[1] / speed * maximum;
     }
+    solid_impulse
+}
+
+pub(crate) fn apply_uncapped_resistance(
+    velocity: &mut [f32; 2],
+    mass: f32,
+    radius: f32,
+    linear_drag: f32,
+    settings: &PhysicsSettings,
+) -> f32 {
+    let solid_impulse = apply_surface_friction(velocity, mass, settings);
+    apply_fluid_drag(velocity, radius, settings);
+    apply_linear_drag(velocity, linear_drag);
     solid_impulse
 }
 
