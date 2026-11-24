@@ -2570,7 +2570,8 @@ mod tests {
         };
         let mut world = Engine::from_native_sim(SIM).unwrap();
         let strict = serde_json::json!([{
-            "type": "tick", "count": 1, "require_native_repopulation_source": true
+            "type": "tick", "count": 1, "require_native_repopulation_source": true,
+            "capture_deaths": true, "recording_weight": 50
         }]);
         // Loading a stale path and running an ordinary cycle both succeed.
         assert!(has_unresolved(&mut world));
@@ -2670,8 +2671,10 @@ mod tests {
         assert!(!has_unresolved(&mut world));
         let mut restored = SaveFile::decode(&SaveFile::encode(&world).unwrap()).unwrap();
         assert!(!has_unresolved(&mut restored));
-        let (status, _) = classic_test_batch(&mut world, strict);
+        let (status, response) = classic_test_batch(&mut world, strict);
         assert_eq!(status, DbStatus::Ok);
+        let response: serde_json::Value = serde_json::from_slice(&response).unwrap();
+        assert!(response["results"][0]["death_records"].is_array());
         assert_eq!(world.snapshot().native_cycle, Some(283));
         assert!(world.snapshot().stats.reseeds > reseeds);
         let expected = world.load_dna_source(ALGA).unwrap();
