@@ -29,6 +29,11 @@ pub(super) fn receive_energy(materials: &mut BiologyState, partial: f32) -> f32 
     (f64::from(partial) * 0.95) as f32
 }
 
+fn native_shot_dot(first: [f32; 2], second: [f32; 2]) -> f32 {
+    // Common.bas Dot and VectorMagnitudeSquare narrow once at return.
+    (f64::from(first[0]) * f64::from(second[0]) + f64::from(first[1]) * f64::from(second[1])) as f32
+}
+
 impl Engine {
     pub(super) fn current_native_shot_owner(&self, owner: OrganismId) -> Option<OrganismId> {
         // Source rob(parent) addresses the current occupant, irrespective of old generation.
@@ -92,8 +97,8 @@ impl Engine {
             });
             let p = [start[0] - center[0], start[1] - center[1]];
             let radius = robot.materials.radius;
-            let p2 = p[0] * p[0] + p[1] * p[1];
-            if (f64::from(p2).sqrt() as f32) < radius {
+            let distance_squared = p[0] * p[0] + p[1] * p[1];
+            if (f64::from(distance_squared).sqrt() as f32) < radius {
                 earliest = 0.0;
                 selected = Some(target);
                 break;
@@ -102,13 +107,14 @@ impl Engine {
                 velocity[0] - robot.kinematics.actual_velocity[0],
                 velocity[1] - robot.kinematics.actual_velocity[1],
             ];
-            let d2 = d[0] * d[0] + d[1] * d[1];
+            // Common.bas VectorMagnitudeSquare stores the sum of both
+            // products as Single before NewShotCollision uses it.
+            let p2 = native_shot_dot(p, p);
+            let d2 = native_shot_dot(d, d);
             if d2 == 0.0 {
                 continue;
             }
-            // Common.bas Dot rounds to Single at the function return.
-            let dot =
-                (f64::from(d[0]) * f64::from(p[0]) + f64::from(d[1]) * f64::from(p[1])) as f32;
+            let dot = native_shot_dot(d, p);
             let discriminant = (f64::from(dot).powi(2)
                 - f64::from(d2) * (f64::from(p2) - f64::from(radius).powi(2)))
                 as f32;
@@ -756,6 +762,73 @@ mod native_loop_tests {
             world.projectiles.positions[shot].map(f32::to_bits),
             [0x44eb9fe0, 0x45152714]
         );
+    }
+
+    #[test]
+    fn native_collision_rounds_each_squared_magnitude_at_the_single_return_boundary() {
+        for (
+            kind,
+            position,
+            previous,
+            velocity,
+            target,
+            target_velocity,
+            target_actual,
+            radius,
+            impact,
+            end,
+        ) in [
+            // Original C285 shot 16 versus absolute robot ID 232.
+            (
+                -2,
+                [0x4666_5000, 0x4595_e800],
+                [0x4664_c400, 0x4595_d000],
+                [0x42c6_0000, 0x4040_0000],
+                [0x4667_e97f, 0x4595_e346],
+                [0xc1f3_292f, 0xbfae_90b6],
+                [0xc1db_1e00, 0xbfab_5000],
+                0x4290_5e12,
+                [0x4666_b812, 0x4595_ee4f],
+                [0x4668_4412, 0x4596_064f],
+            ),
+            // Original C287 shot 91 versus absolute robot ID 223.
+            (
+                -1,
+                [0x44e8_27ac, 0x43ef_c8f5],
+                [0x44e6_3e67, 0x4400_d984],
+                [0x4174_a286, 0xc20f_5095],
+                [0x44f9_deeb, 0x43e7_b9b4],
+                [0xc252_6fea, 0xc1c9_449f],
+                [0xc252_6fe0, 0xc1c9_44a0],
+                0x4298_31b2,
+                [0x44ea_022b, 0x43de_6960],
+                [0x44eb_eb70, 0x43cc_7f4d],
+            ),
+        ] {
+            let (mut world, owner, target_id) = feeding_world(100);
+            world.config.world_width = 16_000.0;
+            world.config.world_height = 12_000.0;
+            world.config.physics.max_velocity = 180.0;
+            let robot = world.slots.get_mut(target_id).unwrap();
+            robot.kinematics.position = target.map(f32::from_bits);
+            robot.kinematics.velocity = target_velocity.map(f32::from_bits);
+            robot.kinematics.actual_velocity = target_actual.map(f32::from_bits);
+            robot.materials.radius = f32::from_bits(radius);
+
+            let shot = feeding_shot(&mut world, owner);
+            world.projectiles.kinds[shot] = kind;
+            world.projectiles.positions[shot] = position.map(f32::from_bits);
+            world.projectiles.previous_positions[shot] = previous.map(f32::from_bits);
+            world.projectiles.velocities[shot] = velocity.map(f32::from_bits);
+            phase(&mut world);
+
+            assert!(world.projectiles.impact_flash[shot]);
+            assert_eq!(
+                world.projectiles.previous_positions[shot].map(f32::to_bits),
+                impact
+            );
+            assert_eq!(world.projectiles.positions[shot].map(f32::to_bits), end);
+        }
     }
 
     #[test]
