@@ -159,9 +159,9 @@ public static class Db2GenomeRecordFile
             if (!dnaByOrganism.TryGetValue(key, out var dna)) continue;
             Append(builder, Record(
                 organism.UniqueId == 0 ? organism.Slot : organism.UniqueId,
-                organism.Parents?.FirstOrDefault()?.Slot ?? 0,
+                organism.ParentAbsoluteId ?? organism.Parents?.FirstOrDefault()?.Slot ?? 0,
                 organism.IsCorpse ? "Corpse" : SpeciesName(snapshot, organism.Species),
-                organism.Generation,
+                organism.LineageGeneration ?? organism.Generation,
                 organism.BirthCycle,
                 organism.Age,
                 organism.TotalMutations,
