@@ -130,6 +130,9 @@ pub struct Teleporter {
     pub width: f32,
     #[serde(default)]
     pub height: f32,
+    /// The original rectangle keeps its upper-left coordinates as Singles.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub native_top_left: Option<[f32; 2]>,
     #[serde(default = "default_shape_color")]
     pub color: u32,
     #[serde(default)]
@@ -186,6 +189,7 @@ impl Teleporter {
             random_destination: false,
             width: radius * 2.0,
             height: radius * 2.0,
+            native_top_left: None,
             color: default_shape_color(),
             velocity: [0.0; 2],
             path: PathBuf::new(),
