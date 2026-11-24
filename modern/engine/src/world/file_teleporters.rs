@@ -2,6 +2,13 @@
 
 use super::*;
 use crate::SaveFile;
+use std::path::PathBuf;
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum FileTransferPhase {
+    BeforeRobots,
+    AfterPortalMovement,
+}
 
 impl Engine {
     pub(super) fn has_file_transfers(&self) -> bool {
@@ -21,8 +28,20 @@ impl Engine {
     pub(super) fn apply_file_teleporters(&mut self) -> Result<(), EngineError> {
         let checkpoint = self.cycle_checkpoint();
         let mut transfers = FileTransferTransaction::default();
+        let mut shared_path_exports = HashMap::new();
         let result = self
-            .apply_file_teleporters_staged(&mut transfers)
+            .apply_file_teleporters_staged(
+                &mut transfers,
+                FileTransferPhase::BeforeRobots,
+                &mut shared_path_exports,
+            )
+            .and_then(|()| {
+                self.apply_file_teleporters_staged(
+                    &mut transfers,
+                    FileTransferPhase::AfterPortalMovement,
+                    &mut shared_path_exports,
+                )
+            })
             .and_then(|()| transfers.commit());
         if result.is_err() {
             self.restore_cycle_checkpoint(checkpoint);
@@ -33,16 +52,28 @@ impl Engine {
     pub(super) fn apply_file_teleporters_staged(
         &mut self,
         transfers: &mut FileTransferTransaction,
+        phase: FileTransferPhase,
+        shared_path_exports: &mut HashMap<u32, Vec<PathBuf>>,
     ) -> Result<(), EngineError> {
-        let configured_count = self.file_teleporters.len();
-        let mut gateways = self
-            .file_teleporters
-            .iter()
-            .cloned()
-            .map(|gateway| (gateway, None))
-            .collect::<Vec<_>>();
+        let late = phase == FileTransferPhase::AfterPortalMovement;
+        let native_world = self.native_cycle.is_some();
+        if late && !native_world {
+            return Ok(());
+        }
+        let mut gateways = if late {
+            Vec::new()
+        } else {
+            self.file_teleporters
+                .iter()
+                .cloned()
+                .map(|gateway| (gateway, None))
+                .collect::<Vec<_>>()
+        };
         for (index, tele) in self.teleporters.iter().enumerate() {
-            if tele.internet || (!tele.inbound && !tele.outbound) {
+            if tele.internet
+                || !(late && tele.inbound
+                    || !late && (tele.outbound || (!native_world && tele.inbound)))
+            {
                 continue;
             }
             let inbound = if tele.inbound {
@@ -85,9 +116,15 @@ impl Engine {
             };
             let previous_guard = settings.backflow_guard.clone();
             let mut sent = 0_u64;
-            let mut emitted_paths = Vec::new();
+            let mut emitted_paths = if late && settings.inbound_path == settings.outbound_path {
+                let mut paths = shared_path_exports.remove(&settings.id).unwrap_or_default();
+                paths.retain(|path| path.parent() == Some(settings.inbound_path.as_path()));
+                paths
+            } else {
+                Vec::new()
+            };
 
-            if !settings.outbound_path.as_os_str().is_empty() {
+            if !late && !settings.outbound_path.as_os_str().is_empty() {
                 for id in self.slots.ids_in_slot_order() {
                     if native_index.is_none() && sent >= settings.capacity as u64 {
                         break;
@@ -168,18 +205,20 @@ impl Engine {
                 }
             }
 
-            let poll_due = if settings.inbound_path.as_os_str().is_empty() {
-                false
-            } else {
-                let teleporter = &mut gateway;
-                if teleporter.poll_countdown > 0 {
-                    teleporter.poll_countdown -= 1;
-                    native_index.is_none() && teleporter.poll_countdown == 0
+            let separate_native_departures = native_world && native_index.is_some() && !late;
+            let poll_due =
+                if separate_native_departures || settings.inbound_path.as_os_str().is_empty() {
+                    false
                 } else {
-                    teleporter.poll_countdown = teleporter.poll_interval;
-                    true
-                }
-            };
+                    let teleporter = &mut gateway;
+                    if teleporter.poll_countdown > 0 {
+                        teleporter.poll_countdown -= 1;
+                        native_index.is_none() && teleporter.poll_countdown == 0
+                    } else {
+                        teleporter.poll_countdown = teleporter.poll_interval;
+                        true
+                    }
+                };
             let mut received = 0_u64;
             if poll_due {
                 let mut paths = fs::read_dir(&settings.inbound_path)
@@ -213,31 +252,42 @@ impl Engine {
                     // TeleportInBots counts files, not cells. Its type filters
                     // apply to departures. Claim the input under a recovery name
                     // before accepting it; finish only after the cycle succeeds.
+                    let position = native_index.map_or(settings.center, |native_index| {
+                        let portal = &self.teleporters[native_index];
+                        if late && let Some(position) = portal.native_top_left {
+                            // TeleportInBots reads the corrected top-left after MoveTeleporter.
+                            [
+                                (f64::from(position[0]) + f64::from(portal.width) / 2.0) as f32,
+                                (f64::from(position[1]) + f64::from(portal.height) / 3.0) as f32,
+                            ]
+                        } else {
+                            [settings.center[0], settings.center[1] - portal.height / 6.0]
+                        }
+                    });
+                    if late {
+                        // Loading a save would discard the current cycle's runtime state.
+                        let checkpoint = self.cycle_checkpoint();
+                        let tie_index = self.native_tie_index.clone();
+                        if self
+                            .apply_file_teleporter_payload(&bytes, position, false)
+                            .is_ok_and(|count| count > 0)
+                            && transfers.claim_input(&path, &bytes).is_ok()
+                        {
+                            self.native_buckets.synchronize(
+                                [self.config.world_width, self.config.world_height],
+                                &self.slots,
+                            );
+                            received = received.saturating_add(1);
+                        } else {
+                            self.restore_cycle_checkpoint(checkpoint);
+                            self.native_tie_index = tie_index;
+                        }
+                        continue;
+                    }
+
+                    // Keep the existing transaction path for configured file exchange.
                     let mut candidate = SaveFile::decode(&SaveFile::encode(self)?)?;
-                    let imported = if bytes.starts_with(b"DB2S") {
-                        LegacySimulationFile::decode(&bytes).and_then(|transfer| {
-                            for organism in &transfer.organisms {
-                                candidate.import_legacy_organism(organism)?;
-                            }
-                            Ok(transfer.organisms.len())
-                        })
-                    } else if bytes.starts_with(b"DB2O") {
-                        LegacyOrganismFile::decode(&bytes)
-                            .and_then(|file| candidate.import_legacy_organism_file(&file))
-                    } else {
-                        candidate.import_native_organisms(
-                            &bytes,
-                            Some(if let Some(native_index) = native_index {
-                                [
-                                    settings.center[0],
-                                    settings.center[1]
-                                        - self.teleporters[native_index].height / 6.0,
-                                ]
-                            } else {
-                                settings.center
-                            }),
-                        )
-                    };
+                    let imported = candidate.apply_file_teleporter_payload(&bytes, position, true);
                     if imported.is_ok_and(|count| count > 0)
                         && transfers.claim_input(&path, &bytes).is_ok()
                     {
@@ -258,24 +308,55 @@ impl Engine {
                 teleporter.backflow_guard = None;
             }
             if settings.inbound_path == settings.outbound_path && !emitted_paths.is_empty() {
-                teleporter.backflow_guard = emitted_paths.last().cloned();
+                if separate_native_departures {
+                    // The early outputs become visible only when both passes commit.
+                    shared_path_exports.insert(settings.id, emitted_paths);
+                } else {
+                    teleporter.backflow_guard = emitted_paths.pop();
+                }
             }
-            if index < configured_count {
-                self.file_teleporters[index] = teleporter.clone();
-            } else if let Some(native_index) = native_index {
+            if let Some(native_index) = native_index {
                 let native = &mut self.teleporters[native_index];
                 native.sent = teleporter.sent;
                 native.received = teleporter.received;
                 native.poll_countdown = teleporter.poll_countdown;
                 native.file_backflow_guard = teleporter.backflow_guard.clone();
+            } else {
+                self.file_teleporters[index] = teleporter.clone();
             }
         }
         Ok(())
     }
+
     pub fn legacy_organism_group(&self, seed: OrganismId) -> Vec<OrganismId> {
         self.list_organism_cells(seed, 50)
     }
 
+    fn apply_file_teleporter_payload(
+        &mut self,
+        bytes: &[u8],
+        position: [f32; 2],
+        publish: bool,
+    ) -> Result<usize, EngineError> {
+        if bytes.starts_with(b"DB2S") {
+            let file = LegacySimulationFile::decode(bytes)?;
+            for organism in &file.organisms {
+                self.import_legacy_organism(organism, publish)?;
+            }
+            Ok(file.organisms.len())
+        } else if bytes.starts_with(b"DB2O") {
+            let file = LegacyOrganismFile::decode(bytes)?;
+            self.apply_legacy_organism_file(&file, publish)
+        } else if publish {
+            self.import_native_organisms(bytes, Some(position))
+        } else {
+            let file = Self::decode_native_organisms(bytes, Some(position))?;
+            self.apply_native_organisms(file, Some(position), false)
+        }
+    }
+
+    // Multibots.ListCells follows ties from cells marked Multibot;
+    // a birth tie alone does not turn its parent into a group.
     pub(super) fn file_transfer_group(
         &self,
         seed: OrganismId,
@@ -589,7 +670,109 @@ mod tests {
             .slots
             .get(resumed.slots.ids_in_slot_order()[0])
             .unwrap();
-        assert_eq!(robot.kinematics.position, [500.0, 500.0 - 200.0 / 6.0]);
+        assert_eq!(
+            robot.kinematics.position,
+            [500.0, (400.0 + 200.0 / 3.0) as f32]
+        );
+    }
+
+    #[test]
+    fn native_file_admission_follows_movement_and_uses_one_transfer_journal() {
+        use crate::native_binary::NativeValue;
+
+        let inbound = tempdir().unwrap();
+        let outbound = tempdir().unwrap();
+        let mut incoming = NativeRecordFile::decode(include_bytes!(
+            "../../tests/fixtures/db24832-genuine-reproduction-cycle1-20261017.sim"
+        ))
+        .unwrap();
+        incoming.tail.clear();
+        let robot = &mut incoming.robots[0];
+        robot
+            .set_value("absolute_id", NativeValue::Long(888))
+            .unwrap();
+        robot.set_value("age", NativeValue::Long(73)).unwrap();
+        robot.set_single("position_x", 5000.0).unwrap();
+        robot.set_single("position_y", 5000.0).unwrap();
+        robot.set_single("energy", 1500.25).unwrap();
+        robot.set_single("actual_velocity_x", 17.125).unwrap();
+        let payload = incoming.encode().unwrap();
+        let input = inbound.path().join("arriving.dbo");
+        fs::write(&input, &payload).unwrap();
+
+        let mut world = Engine::new_native(EngineConfig {
+            world_width: 10_000.0,
+            world_height: 10_000.0,
+            metabolism_cost: 7,
+            sunlight_energy: 0,
+            allow_cpu_fallback: false,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let departing = world
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [1000.0, 1000.0])
+            .unwrap();
+        let portal = |id, center: [f32; 2], receives: bool, path: &std::path::Path| {
+            let mut tele = Teleporter::new(id, center, 100.0, center);
+            tele.local = false;
+            tele.inbound = receives;
+            tele.outbound = !receives;
+            tele.path = path.to_owned();
+            let anchor = [center[0] - 100.0, center[1] - 100.0];
+            tele.native_top_left = Some(anchor);
+            tele.native_contact_center = Some(tele.native_contact_center_at(anchor));
+            tele
+        };
+        let mut receiver = portal(1, [5000.0, 5000.0], true, inbound.path());
+        receiver.drift_horizontal = true;
+        receiver.drift_vertical = true;
+        receiver.fixed_position = false;
+        receiver.velocity = [8.0, 3.0];
+        let old_anchor = receiver.native_top_left.unwrap();
+        // The earlier combined pass forwarded arrivals through the next sender.
+        world.teleporters = vec![
+            receiver,
+            portal(2, [5000.0, 5000.0], false, outbound.path()),
+            portal(3, [1000.0, 1000.0], false, outbound.path()),
+        ];
+
+        let before = SaveFile::encode(&world).unwrap();
+        // The publication check runs after both transfer stages, even on CPU.
+        world.forced_sensing_error_for_tests = Some("late transfer rollback".into());
+        assert!(matches!(world.tick(), Err(EngineError::Gpu(_))));
+        assert_eq!(SaveFile::encode(&world).unwrap(), before);
+        assert_eq!(fs::read(&input).unwrap(), payload);
+        assert_eq!(fs::read_dir(inbound.path()).unwrap().count(), 1);
+        assert_eq!(fs::read_dir(outbound.path()).unwrap().count(), 0);
+
+        world.tick().unwrap();
+        assert!(world.slots.get(departing).is_err());
+        assert!(!input.exists());
+        assert_eq!(world.teleporters[0].received, 1);
+        assert_eq!(world.teleporters[0].poll_countdown, 1);
+        assert_eq!(world.teleporters[1].sent, 0);
+        assert_eq!(world.teleporters[2].sent, 1);
+        assert_eq!(fs::read_dir(outbound.path()).unwrap().count(), 1);
+        let anchor = world.teleporters[0].native_top_left.unwrap();
+        assert_ne!(anchor, old_anchor);
+        let arrival = world.slots.get(world.slots.ids_in_slot_order()[0]).unwrap();
+        assert_eq!(arrival.identity.absolute_id, 888);
+        assert_eq!(arrival.counters.age, 73);
+        assert_eq!(arrival.materials.energy, 1500.25);
+        assert_eq!(arrival.kinematics.actual_velocity[0], 17.125);
+        assert_eq!(
+            arrival.kinematics.position,
+            [
+                (f64::from(anchor[0]) + 100.0) as f32,
+                (f64::from(anchor[1]) + 200.0 / 3.0) as f32,
+            ]
+        );
+
+        world.tick().unwrap();
+        assert_eq!(world.population(), 0);
+        assert_eq!(world.teleporters[1].sent, 1);
+        assert_eq!(world.teleporters[2].sent, 1);
+        assert_eq!(fs::read_dir(outbound.path()).unwrap().count(), 2);
     }
 
     #[test]
