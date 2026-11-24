@@ -956,6 +956,8 @@ impl Engine {
             tele.internet = w("internet")? != 0;
             if !tele.internet {
                 tele.native_top_left = Some(position);
+                // SIM carries no cached center. A fresh VB6 process starts with zeroed slots.
+                tele.native_contact_center = Some([0.0; 2]);
             }
             // DB2 stores the gateway geometry, not a fixed output position.
             tele.random_destination = tele.local && !tele.outbound && !tele.internet;

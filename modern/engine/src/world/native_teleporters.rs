@@ -55,6 +55,8 @@ impl Engine {
         teleporter.width = width;
         teleporter.height = height;
         teleporter.native_top_left = Some(position);
+        // NewTeleporter leaves the virgin slot's center at zero until MoveTeleporter.
+        teleporter.native_contact_center = Some([0.0; 2]);
         teleporter.color = 0xffffffff;
         teleporter.local = options.kind == NativeTeleporterKind::Intrasim;
         teleporter.inbound = options.kind == NativeTeleporterKind::Inbound;
@@ -106,11 +108,14 @@ impl Engine {
             }
 
             let size = [teleporter.width, teleporter.height];
+            if drift == [true; 2] {
+                position[0] += teleporter.velocity[0];
+                position[1] += teleporter.velocity[1];
+            }
+            // MoveTeleporter stores this before the rectangle wraps or bounces.
+            teleporter.native_contact_center = Some(teleporter.native_contact_center_at(position));
             for axis in 0..2 {
                 let velocity = &mut teleporter.velocity[axis];
-                if drift == [true; 2] {
-                    position[axis] += *velocity;
-                }
                 correct_teleporter_edge(
                     &mut position[axis],
                     velocity,
@@ -129,6 +134,9 @@ impl Engine {
 impl Teleporter {
     pub(super) fn retain_native_movement(&mut self, previous: &Self) -> Result<(), EngineError> {
         self.native_top_left = previous.native_top_left;
+        self.native_contact_center = previous
+            .native_contact_center
+            .or_else(|| previous.native_contact().map(|contact| contact.center));
         if self.native_top_left.is_none() {
             return Ok(());
         }
@@ -196,6 +204,7 @@ fn correct_teleporter_edge(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::environment::inside_teleporter;
     use crate::{BackendPreference, EngineConfig, SaveFile, TeleporterFilters};
 
     #[test]
@@ -227,6 +236,7 @@ mod tests {
         assert_eq!(engine.native_random.as_ref(), Some(&expected_rng));
         let teleporter = &engine.teleporters[0];
         assert_eq!(teleporter.native_top_left, Some([x as f32, y as f32]));
+        assert_eq!(teleporter.native_contact_center, Some([0.0; 2]));
         assert_eq!(teleporter.center, [x as f32 + 75.0, y as f32 + 150.0]);
         assert_eq!([teleporter.width, teleporter.height], [150.0, 300.0]);
         assert_eq!(teleporter.radius, 75.0);
@@ -275,6 +285,69 @@ mod tests {
             fixed_position: drift == [false; 2],
             ..Teleporter::new(id, center, size[0] / 2.0, center)
         }
+    }
+
+    #[test]
+    fn native_teleporter_contact_uses_strict_robot_radius_and_old_checkpoint_fallback() {
+        let mut portal = native_portal(1, [90.0, 60.0], [20.0, 100.0], [0.0; 2], [false; 2]);
+        // #83 checkpoints only contained a corrected top-left and renderer center.
+        assert_eq!(portal.native_contact_center, None);
+        assert_eq!(portal.center, [100.0, 110.0]);
+        assert_eq!(portal.native_contact().unwrap().center, [100.0, 90.0]);
+        assert!(!inside_teleporter(&portal, [114.0, 90.0], 0.0));
+        assert!(inside_teleporter(&portal, [114.0, 90.0], 5.0));
+        assert!(!inside_teleporter(&portal, [115.0, 90.0], 5.0));
+
+        portal.native_top_left = None;
+        assert!(inside_teleporter(&portal, [110.0, 110.0], 0.0));
+        assert!(!inside_teleporter(&portal, [111.0, 110.0], 5.0));
+    }
+
+    #[test]
+    fn native_teleporter_contact_keeps_pre_wrap_center_through_checkpoint_and_edit() {
+        let mut engine = Engine::new_native(EngineConfig {
+            world_width: 400.0,
+            world_height: 200.0,
+            axis_topology: Some([true, false]),
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let mut portal = native_portal(1, [352.0, 96.0], [50.0, 80.0], [0.0; 2], [false; 2]);
+        portal.native_contact_center = Some([0.0; 2]);
+        assert!(inside_teleporter(&portal, [14.0, 16.0], 0.0));
+        assert!(!inside_teleporter(&portal, [377.0, 120.0], 0.0));
+        engine.teleporters.push(portal);
+
+        engine.native_cycle = Some(0);
+        engine.move_native_teleporters();
+        let moved = &engine.teleporters[0];
+        assert_eq!(moved.native_top_left, Some([2.0, 96.0]));
+        assert_eq!(moved.center, [27.0, 136.0]);
+        assert_eq!(moved.native_contact_center, Some([377.0, 120.0]));
+        let mut resumed = SaveFile::decode(&SaveFile::encode(&engine).unwrap()).unwrap();
+        assert_eq!(resumed.teleporters[0], *moved);
+        let edit = Teleporter {
+            center: [27.0, 138.0],
+            native_contact_center: None, // The desktop sends only authored geometry.
+            ..moved.clone()
+        };
+        resumed.update_teleporter(edit).unwrap();
+        let cached = &resumed.teleporters[0];
+        assert!(inside_teleporter(cached, [377.0, 120.0], 0.0));
+        assert!(!inside_teleporter(cached, [27.0, 122.0], 0.0));
+
+        resumed.native_cycle = Some(1);
+        resumed.move_native_teleporters();
+        assert!(inside_teleporter(
+            &resumed.teleporters[0],
+            [27.0, 122.0],
+            0.0
+        ));
+        assert!(!inside_teleporter(
+            &resumed.teleporters[0],
+            [377.0, 120.0],
+            0.0
+        ));
     }
 
     #[test]
