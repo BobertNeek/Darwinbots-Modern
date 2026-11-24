@@ -669,7 +669,6 @@ public sealed class SimulationSession : IAsyncDisposable
             CancellationToken.None, publishSnapshot: false).ConfigureAwait(false);
         return appearance;
     }
-    }
 
     public async Task<byte[]> SaveWithoutRestartModeAsync(CancellationToken cancellationToken = default)
     {

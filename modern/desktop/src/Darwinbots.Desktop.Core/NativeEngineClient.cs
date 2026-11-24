@@ -894,12 +894,6 @@ public sealed partial class NativeEngineClient : IEngineClient
 
     private static void ValidateMutationSettings(MutationSettingsUpdate update)
     {
-        ValidateMutationSettings(update);
-        ExecuteBatch(NativeCommandSerializer.CreateMutationSettingsBatch(update), "update mutation settings");
-    }
-
-    private static void ValidateMutationSettings(MutationSettingsUpdate update)
-    {
         ArgumentNullException.ThrowIfNull(update);
         if (!float.IsFinite(update.GlobalMultiplier) || update.GlobalMultiplier is < 0 or > 100)
             throw new ArgumentOutOfRangeException(nameof(update));

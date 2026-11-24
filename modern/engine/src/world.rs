@@ -14396,6 +14396,9 @@ impl Engine {
             if engine.config.shape_drift.is_none() {
                 engine.config.shape_drift = Some(native_io::shape_drift(&tail)?);
             }
+            if engine.config.native_cost_preset.is_none() {
+                engine.config.native_cost_preset = Some(native_io::read_cost_preset(&tail)?);
+            }
         }
         if !engine.native_obstacle_extents.is_empty() {
             let ids: HashSet<_> = engine.obstacles.iter().map(|shape| shape.id).collect();
@@ -14411,9 +14414,6 @@ impl Engine {
                     .native_obstacle_extents
                     .entry(obstacle.id)
                     .or_insert_with(|| obstacle.extents());
-            }
-            if engine.config.native_cost_preset.is_none() {
-                engine.config.native_cost_preset = Some(native_io::read_cost_preset(&tail)?);
             }
         }
         engine.migrate_complete_archived_corpses()?;

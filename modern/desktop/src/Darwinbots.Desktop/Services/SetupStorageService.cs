@@ -176,7 +176,7 @@ public static class SetupStorageService
     internal static int? ReadNativeStartingChloroplasts(string? mainDirectory)
     {
         if (string.IsNullOrWhiteSpace(mainDirectory)) return null;
-        var directory = mainDirectory.Replace('\', '/');
+        var directory = PortablePath(mainDirectory);
         if (!IsLocalPath(directory) || !Path.IsPathFullyQualified(directory)) return null;
         try
         {

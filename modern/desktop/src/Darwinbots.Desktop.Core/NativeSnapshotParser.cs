@@ -254,7 +254,6 @@ public static class NativeSnapshotParser
                 Profile = ParseMutationProfile(native.MutationProfile),
             },
             TiesEnabled = native.TiesEnabled ?? true,
-            NativeF1Enabled = native.NativeF1Enabled,
             DeathPoffsEnabled = native.DeathPoffsEnabled ?? true,
             RobotFixingAllowed = native.RobotFixingAllowed ?? true,
             AsexualReproductionAllowed = native.AsexualReproductionAllowed ?? true,
