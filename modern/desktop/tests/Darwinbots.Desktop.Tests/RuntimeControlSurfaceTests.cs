@@ -237,6 +237,41 @@ public sealed class RuntimeControlSurfaceTests
     }
 
     [Fact]
+    public async Task BaselineHideIntervalUsesOriginalDefaultsAndPreservesUneditedOlderProfiles()
+    {
+        await DesktopTestApplication.Session.Dispatch(() =>
+        {
+            var defaults = GlobalSettings.FromJson("{}");
+            var previous = GlobalSettings.FromJson("""{"evolution":{"cycleLength":100}}""");
+            foreach (var (settings, expectedMinimum, edit, applied) in new (GlobalSettings, decimal, decimal?, int)[]
+            {
+                (defaults, 150m, null, 1_500),
+                (defaults, 150m, 10m, 150),
+                (defaults, 150m, 20_000m, 15_000),
+                (previous, 100m, null, 100),
+                (previous, 100m, 125m, 150),
+                (previous, 100m, 375m, 375),
+            })
+            {
+                var dialog = new GlobalSettingsWindow(settings);
+                dialog.Show();
+                try
+                {
+                    var input = dialog.FindControl<NumericUpDown>("CycleLength")!;
+                    Assert.Equal((decimal)settings.Evolution.CycleLength, input.Value);
+                    Assert.Equal(expectedMinimum, input.Minimum);
+                    Assert.Equal(15_000m, input.Maximum);
+                    if (edit is { } value) input.Value = value;
+                    dialog.FindControl<Button>("ApplyButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    Assert.True(dialog.Accepted);
+                    Assert.Equal(applied, GlobalSettings.FromJson(dialog.Settings.ToJson()).Evolution.CycleLength);
+                }
+                finally { if (dialog.IsVisible) dialog.Close(); }
+            }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
     public async Task EditedGlobalSettingsReachNextWorldCreatePayloadAfterReset()
     {
         var factory = new SetupCapturingEngineClientFactory();

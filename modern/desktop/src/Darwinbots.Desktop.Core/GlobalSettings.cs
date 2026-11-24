@@ -178,7 +178,7 @@ public sealed record GlobalEvolutionSettings
     public EvolutionMode Mode { get; init; } = EvolutionMode.SimpleSurvival;
     public string SourceBot { get; init; } = string.Empty;
     public double StageLength { get; init; } = 10;
-    public int CycleLength { get; init; } = 100;
+    public int CycleLength { get; init; } = 1_500;
     public bool ReducePopulationOscillation { get; init; }
     public bool AutoGraphs { get; init; }
     public bool OptionalInternetStartup { get; init; }
