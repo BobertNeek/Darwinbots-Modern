@@ -159,7 +159,6 @@ public sealed partial class MainWindow : Window
     private bool _ownsRestartContinuation;
     private bool _savingLastExit;
     private bool _skipLastExitCheckpoint;
-    private bool _windowClosed;
     private bool _playerBotEnabled;
     private IReadOnlyList<PlayerBotBinding> _playerBotBindings = [];
     private readonly HashSet<OrganismKey> _playerBotHighlights = [];
