@@ -657,8 +657,8 @@ public sealed class RobotConsoleRenderedTests
                 engine.Calls.Clear();
                 var command = SubmitThroughConsoleAsync(console, "set 901 88");
                 await resolving.Task.WaitAsync(TimeSpan.FromSeconds(5));
-                menu.FindCommandItem(LegacyCommandId.FileLoadSimulation)!
-                    .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                window.FindControl<Button>("LoadButton")!
+                    .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 var loading = typeof(MainWindow).GetField("_loadingSimulation", BindingFlags.Instance | BindingFlags.NonPublic)!;
                 await WaitForAsync(() => (bool)loading.GetValue(window)!);
                 releaseResolution.Set();

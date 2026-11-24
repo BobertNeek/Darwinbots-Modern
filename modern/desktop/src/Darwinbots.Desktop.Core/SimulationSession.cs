@@ -718,6 +718,7 @@ public sealed class SimulationSession : IAsyncDisposable
         {
             validate?.Invoke();
             address = engine.ResolveMemoryAddress(name, focus);
+            validate?.Invoke();
             engine.SetOrganismMemory(focus.Slot, focus.Generation, address, value);
         }, cancellationToken).ConfigureAwait(false);
         return address;
