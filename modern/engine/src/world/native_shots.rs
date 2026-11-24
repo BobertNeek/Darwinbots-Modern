@@ -478,6 +478,83 @@ mod native_loop_tests {
     }
 
     #[test]
+    fn native_energy_hit_radius_reproduces_original_robot_148_border_contact() {
+        let mut world = Engine::new_native(EngineConfig {
+            world_width: 16_000.0,
+            world_height: 12_000.0,
+            axis_topology: Some([false; 2]),
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let idle = LegacyDna::parse("stop").unwrap();
+        let owner = world.spawn_at(idle.clone(), [800.0; 2]).unwrap();
+        // Robot 148 immediately before its border check, after the first two
+        // C283 contacts in the genuine 2.48.32 comparison.
+        let target = world
+            .spawn_at(
+                idle,
+                [f32::from_bits(0x43c2_eeef), f32::from_bits(0x442f_3630)],
+            )
+            .unwrap();
+        let robot = world.slots.get_mut(target).unwrap();
+        robot.materials.energy = 5_000.0;
+        robot.materials.body = f32::from_bits(0x4518_5101);
+        robot.materials.chloroplasts = f32::from_bits(0x46e4_b4a6);
+        world.projectiles.reset_native_slots(100);
+        assert!(
+            world
+                .apply_projectile_effect_at_boundary(
+                    owner,
+                    ProjectileTarget::Organism(target.slot() as usize),
+                    ProjectileEffect::ReleaseEnergy,
+                    f32::from_bits(0x4417_ac20),
+                    0.0,
+                    None,
+                    None,
+                    0,
+                    0,
+                    [450.0, 700.0],
+                    [-40.0, 0.0],
+                    10.0,
+                    100.0,
+                    true,
+                )
+                .unwrap()
+        );
+        let robot = world.slots.get(target).unwrap();
+        assert_eq!(robot.materials.body.to_bits(), 0x4517_efef);
+        assert_eq!(robot.materials.radius.to_bits(), 0x43c4_a39f);
+        world.border_collision_phase();
+        let robot = world.slots.get(target).unwrap();
+        assert_eq!(robot.kinematics.position[0].to_bits(), 0x43c4_a39f);
+
+        let mut positions = [
+            robot.kinematics.position,
+            [f32::from_bits(0x41b6_7f78), f32::from_bits(0x4420_698e)],
+        ];
+        let mut velocities = [
+            [f32::from_bits(0xbf5f_f7ef), f32::from_bits(0x3d2b_74db)],
+            [f32::from_bits(0xc221_f0fe), f32::from_bits(0xc22b_61a4)],
+        ];
+        // The final contact is robot 148 against robot 157. Use the recorded
+        // post-force velocity for the subsequent UpdatePosition addition.
+        crate::physics::resolve_native_collisions(
+            &mut positions,
+            &mut velocities,
+            &[robot.materials.radius, f32::from_bits(0x427d_30ba)],
+            &[f32::from_bits(0x46e2_7006), f32::from_bits(0x3f9b_e76d)],
+            &[false; 2],
+            &[(0, 1)],
+            0.0,
+        );
+        assert_eq!(positions[0][0].to_bits(), 0x43c4_a3b9);
+        assert_eq!(
+            (positions[0][0] + f32::from_bits(0xbf5f_f53e)).to_bits(),
+            0x43c4_33be
+        );
+    }
+
+    #[test]
     fn native_flash_cleanup_also_clears_dead_slots_and_continues_exactly_after_db3s() {
         for was_alive in [false, true] {
             let (mut world, owner, _) = feeding_world(100);
