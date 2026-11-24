@@ -186,7 +186,11 @@ impl Engine {
                 .get(&(record.long("parent")? as u32 as u64))
                 .copied();
         }
-        self.native_ties(&file, &old_slots)?;
+        if native {
+            self.load_native_tie_rows(&file, &old_slots, true)?;
+        } else {
+            self.native_ties(&file, &old_slots)?;
+        }
         // LoadOrganism remaps links for display and traversal without writing
         // tie readbacks into either imported or existing robots' memory.
         self.refresh_tie_projections_impl(false, &HashMap::new(), publish && !native);
@@ -570,6 +574,89 @@ mod tests {
                 .other,
             Some(first)
         );
+    }
+
+    #[test]
+    fn original_dbo_directed_and_inactive_rows_keep_the_original_insert_pointers() {
+        let original_world =
+            include_bytes!("../../tests/fixtures/db24832-movement-start-48032.sim");
+        let one_way =
+            include_bytes!("../../../docs/fixtures/native-directed-ties/back-pointer-zeroed.dbo");
+        let inactive =
+            include_bytes!("../../../docs/fixtures/native-directed-ties/inactive-tail.dbo");
+        let mut original = NativeRecordFile::decode(one_way).unwrap();
+        let old_first = original.robots[0].word("old_slot").unwrap();
+        let mut back = original.robots[1].bytes("ties_core").unwrap().to_vec();
+        back[40..42].copy_from_slice(&old_first.to_le_bytes());
+        original.robots[1]
+            .set_value("ties_core", NativeValue::Bytes(back))
+            .unwrap();
+        let reciprocal = original.encode().unwrap();
+
+        fn pointers(world: &Engine, ids: &[OrganismId]) -> Vec<[i16; 2]> {
+            let output =
+                NativeRecordFile::decode(&world.export_original_organism_file(ids).unwrap())
+                    .unwrap();
+            output
+                .robots
+                .iter()
+                .map(|record| {
+                    let rows = record.bytes("ties_core").unwrap();
+                    [
+                        i16::from_le_bytes(rows[40..42].try_into().unwrap()),
+                        i16::from_le_bytes(rows[78..80].try_into().unwrap()),
+                    ]
+                })
+                .collect()
+        }
+
+        for (bytes, expected, counts, replaced) in [
+            (reciprocal.as_slice(), [[3, 0], [3, 0]], [1, 1], None),
+            (
+                one_way.as_slice(),
+                [[3, 0], [0, 0]],
+                [1, 0],
+                Some([[3, 3], [2, 0]]),
+            ),
+            (
+                inactive.as_slice(),
+                [[0, 2], [0, 1]],
+                [0, 0],
+                Some([[3, 2], [2, 1]]),
+            ),
+        ] {
+            let mut world = Engine::from_native_sim(original_world).unwrap();
+            assert_eq!(world.insert_native_organisms(bytes).unwrap(), 2);
+            let ids = world.slots.ids_in_slot_order();
+            assert_eq!(ids.len(), 3);
+            assert_eq!(
+                ids.iter()
+                    .map(|id| world.slots.get(*id).unwrap().identity.absolute_id)
+                    .collect::<Vec<_>>(),
+                [1, 250, 294]
+            );
+            let resume = SaveFile::decode(&SaveFile::encode(&world).unwrap()).unwrap();
+            let saved_sim = world.export_native_sim().unwrap();
+            let sim_resume = Engine::from_native_sim(&saved_sim).unwrap();
+            for unchanged in [&world, &resume, &sim_resume] {
+                let actual = pointers(unchanged, &ids[1..]);
+                assert_eq!(actual, expected);
+                assert_eq!(
+                    [
+                        unchanged.tie_indices_for(ids[1]).len(),
+                        unchanged.tie_indices_for(ids[2]).len()
+                    ],
+                    counts
+                );
+            }
+            if let Some(expected_after_creation) = replaced {
+                world.slots.get_mut(ids[2]).unwrap().materials.slime = 0.0;
+                assert!(world.native_make_tie(ids[1], ids[2], 32_000, 50, 7));
+                assert_eq!(pointers(&world, &ids[1..]), expected_after_creation);
+                let resumed = SaveFile::decode(&SaveFile::encode(&world).unwrap()).unwrap();
+                assert_eq!(pointers(&resumed, &ids[1..]), expected_after_creation);
+            }
+        }
     }
 
     #[test]
