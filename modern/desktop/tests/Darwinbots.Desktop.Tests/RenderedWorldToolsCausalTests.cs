@@ -507,6 +507,7 @@ public sealed class RenderedWorldToolsCausalTests
                 var session = TryField<SimulationSession>(window, "_session")!;
                 var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
                 var viewport = window.FindControl<WorldViewport>("Viewport")!;
+                var viewModel = Assert.IsType<MainWindowViewModel>(window.DataContext);
 
                 await session.StepAsync(20);
                 await WaitFor(
