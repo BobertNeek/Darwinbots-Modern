@@ -226,8 +226,8 @@ public sealed partial class MainWindow : Window
             ToolbarSlot17.SelectedIndex = 0;
         }
         InitializeTray();
-        KeyDown += PlayerBot_KeyDown;
-        KeyUp += PlayerBot_KeyUp;
+        KeyDown += async (_, e) => await UpdatePlayerBotKeyAsync(e, pressed: true);
+        KeyUp += async (_, e) => await UpdatePlayerBotKeyAsync(e, pressed: false);
         _legacyCommands = CreateLegacyCommandRouter();
         HistoricMenuBar.CommandInvoked += HistoricMenuBar_CommandInvoked;
         _ticksPerUpdate = setup.TicksPerUpdate;
@@ -734,7 +734,7 @@ public sealed partial class MainWindow : Window
             EngineState,
             async _ => await OpenPlayerBotSettingsAsync());
         handlers[LegacyCommandId.EditEnablePlayerBot] = Handler(
-            () => SelectedRobotState() with { Checked = _playerBotEnabled },
+            () => EngineState() with { Checked = _playerBotEnabled },
             async _ => await TogglePlayerBotAsync());
         handlers[LegacyCommandId.EditEyeDesigner] = Handler(
             SelectedRobotState,
@@ -1094,17 +1094,18 @@ public sealed partial class MainWindow : Window
             await session.RemoveAsync(keys[0].Slot, keys[0].Generation);
         _viewModel.ClearSelection();
         Viewport.SelectSlot(null);
-
-        if (removed.Count == 0)
-            return LegacyCommandResult.Success(status);
-
-        await DeadRecordingGate.WaitAsync();
-        try
+        if (removed.Count > 0)
         {
-            var (appended, error) = await AppendDeadRecordsAsync(removed);
-            return LegacyCommandResult.Success(appended ? status : $"{status} · {error ?? "DEAD RECORDING UNAVAILABLE"}");
+            await DeadRecordingGate.WaitAsync();
+            try
+            {
+                var (appended, error) = await AppendDeadRecordsAsync(removed);
+                if (!appended) status = $"{status} · {error ?? "DEAD RECORDING UNAVAILABLE"}";
+            }
+            finally { DeadRecordingGate.Release(); }
         }
-        finally { DeadRecordingGate.Release(); }
+        await SynchronizePlayerBotTargetsAsync();
+        return LegacyCommandResult.Success(status);
     }
 
     private Task<LegacyCommandResult> OpenNewSimulationSetupAsync() => ReplaceSimulationAsync(openSetup: true);
@@ -1323,8 +1324,6 @@ public sealed partial class MainWindow : Window
     {
         if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
         var next = !_playerBotEnabled;
-        if (next && SelectedRobotKey() is null)
-            return LegacyCommandResult.Failure("SELECT A ROBOT BEFORE ENABLING PLAYERBOT");
         _playerBotBindings = _session.LatestSnapshot.PlayerBot.Bindings.Count > 0
             ? _session.LatestSnapshot.PlayerBot.Bindings
             : _playerBotBindings;
@@ -1337,24 +1336,14 @@ public sealed partial class MainWindow : Window
         return LegacyCommandResult.Success($"PLAYERBOT MODE · {(next ? "ON · MAPPED KEYS WRITE AFTER SENSE CLEAR" : "OFF")}");
     }
 
-    private async void PlayerBot_KeyDown(object? sender, Avalonia.Input.KeyEventArgs e)
+    private async Task UpdatePlayerBotKeyAsync(Avalonia.Input.KeyEventArgs e, bool pressed)
     {
-        if (!_playerBotEnabled || _session is null || SelectedRobotKey() is not { } focus) return;
+        if (!_playerBotEnabled || _session is not { } session) return;
         var keyCode = (int)e.Key;
-        if (!_session.LatestSnapshot.PlayerBot.Bindings.Any(binding => binding.KeyCode == keyCode)
+        if (!session.LatestSnapshot.PlayerBot.Bindings.Any(binding => binding.KeyCode == keyCode)
             && !_playerBotBindings.Any(binding => binding.KeyCode == keyCode)) return;
-        await _session.SetPlayerBotKeyAsync(focus, keyCode, pressed: true);
         e.Handled = true;
-    }
-
-    private async void PlayerBot_KeyUp(object? sender, Avalonia.Input.KeyEventArgs e)
-    {
-        if (!_playerBotEnabled || _session is null || SelectedRobotKey() is not { } focus) return;
-        var keyCode = (int)e.Key;
-        if (!_session.LatestSnapshot.PlayerBot.Bindings.Any(binding => binding.KeyCode == keyCode)
-            && !_playerBotBindings.Any(binding => binding.KeyCode == keyCode)) return;
-        await _session.SetPlayerBotKeyAsync(focus, keyCode, pressed: false);
-        e.Handled = true;
+        await session.SetPlayerBotKeyStateAsync(keyCode, pressed);
     }
 
     private OrganismKey? SelectedRobotKey() =>
@@ -1985,11 +1974,13 @@ public sealed partial class MainWindow : Window
         if (result.Restarted) {
             _viewModel.ClearSelection();
             Viewport.SelectKey(null);
+            await SynchronizePlayerBotTargetsAsync();
             return LegacyCommandResult.Success("ZEROBOT ADVANCED TO TESTING");
         }
         if (result.Robot is not { } key) return LegacyCommandResult.Failure("NO LIVING ROBOTS");
         _viewModel.Select(key);
         Viewport.SelectKey(key);
+        await SynchronizePlayerBotTargetsAsync();
         return LegacyCommandResult.Success($"BEST FAMILY · {key.Slot}:{key.Generation}");
     }
 
@@ -2262,7 +2253,7 @@ public sealed partial class MainWindow : Window
             {
                 var loading = _loadingSimulation;
                 if (!loading && snapshot.OrdinaryRestartPending) return;
-                Dispatcher.UIThread.Post(() =>
+                Dispatcher.UIThread.Post(async () =>
                 {
                     if (_windowClosed) return;
                     if (!loading && snapshot.OrdinaryRestartCount > _presentedOrdinaryRestartCount)
@@ -2271,6 +2262,7 @@ public sealed partial class MainWindow : Window
                     SynchronizeOrdinaryRestartControl(snapshot);
                     _playerBotEnabled = snapshot.PlayerBot.Enabled;
                     _playerBotBindings = snapshot.PlayerBot.Bindings;
+                    var previousSelection = _viewModel.SelectedKey;
                     _viewModel.Update(snapshot, _runtimeClock.Elapsed, _activeCostMultiplier);
                     SynchronizeDeathPoffPolicy(snapshot.DeathPoffsEnabled);
                     if (snapshot.NativeSunOn is { } sunOn) UpdateSunIndicator(sunOn);
@@ -2283,7 +2275,7 @@ public sealed partial class MainWindow : Window
                         && (!snapshot.NativeCycle.HasValue
                             || !snapshot.Teleporters.Any(teleporter => teleporter.Id == editor.TeleporterId && !teleporter.Internet)))
                         CloseNativeTeleporterEditor();
-                    Viewport.SelectKey(_viewModel.SelectedKey);
+                    Viewport.SelectKeys(_playerBotHighlights, _viewModel.SelectedKey);
                     var graphInterval = (ulong)Math.Max(1, _globalSettings.Main.GraphUpdatesPerTick);
                     var updateGraphs = _lastGraphRefreshTick is not { } lastTick
                         || snapshot.Tick < lastTick || snapshot.Tick - lastTick >= graphInterval;
@@ -2302,6 +2294,8 @@ public sealed partial class MainWindow : Window
                     if (_zerobotProgression is not null && !_progressionInFlight
                         && _zerobotProgression.Observe(snapshot) is { } transition)
                         _ = ApplyZerobotTransitionAsync(transition);
+                    if (!loading && previousSelection is not null && _viewModel.SelectedKey is null)
+                        await SynchronizePlayerBotTargetsAsync();
                 });
             };
             _viewModel.Status = "ENGINE READY — IMPORT A LEGACY BOT";
@@ -2572,10 +2566,11 @@ public sealed partial class MainWindow : Window
         var child = await _session.ReproduceAsync(request);
         if (request.Focus)
         {
-            Dispatcher.UIThread.Post(() =>
+            Dispatcher.UIThread.Post(async () =>
             {
                 _viewModel.Select(child);
                 Viewport.SelectKey(child);
+                await SynchronizePlayerBotTargetsAsync();
             });
         }
         _viewModel.Status = "MANUAL REPRODUCTION COMPLETE · 50% SPLIT";

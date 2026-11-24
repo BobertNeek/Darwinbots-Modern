@@ -4592,12 +4592,27 @@ impl Engine {
         pressed: bool,
     ) -> Result<(), EngineError> {
         self.valid_slot(focus)?;
+        self.update_player_bot_key(Some(focus), key, pressed)
+    }
+
+    pub fn set_player_bot_key_state(&mut self, key: u32, pressed: bool) -> Result<(), EngineError> {
+        self.update_player_bot_key(None, key, pressed)
+    }
+
+    fn update_player_bot_key(
+        &mut self,
+        legacy_focus: Option<OrganismId>,
+        key: u32,
+        pressed: bool,
+    ) -> Result<(), EngineError> {
         if key > 65_535 {
             return Err(EngineError::Invariant(
                 "PlayerBot key codes must be between 0 and 65535".to_owned(),
             ));
         }
-        self.player_bot.focus = Some(focus);
+        if let Some(focus) = legacy_focus {
+            self.player_bot.focus = Some(focus);
+        }
         if pressed {
             if !self.player_bot.pressed_keys.contains(&key) {
                 self.player_bot.pressed_keys.push(key);

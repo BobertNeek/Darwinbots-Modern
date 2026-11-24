@@ -171,6 +171,39 @@ fn player_bot_release_and_invert_follow_pressed_xor_invert() {
 }
 
 #[test]
+fn player_bot_tracks_keys_without_a_focused_organism() {
+    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    let dna = LegacyDna::parse("start\nstop").unwrap();
+    let highlight = engine.spawn_at(dna.clone(), [900.0, 500.0]).unwrap();
+    let focus = engine.spawn_at(dna, [1300.0, 500.0]).unwrap();
+    engine
+        .configure_player_bot(true, None, vec![binding(65, 50, 77, false)])
+        .unwrap();
+    engine.set_player_bot_key_state(65, true).unwrap();
+    assert_eq!(engine.snapshot().player_bot.focus, None);
+    engine.tick().unwrap();
+    assert_eq!(engine.memory_at(highlight, 50).unwrap(), 0);
+    assert_eq!(engine.memory_at(focus, 50).unwrap(), 0);
+
+    engine.set_player_bot_targets(None, vec![highlight]);
+    engine.tick().unwrap();
+    assert_eq!(engine.memory_at(highlight, 50).unwrap(), 77);
+    assert_eq!(engine.memory_at(focus, 50).unwrap(), 0);
+
+    engine.set_player_bot_targets(Some(focus), vec![highlight]);
+    engine.set_player_bot_key_state(65, true).unwrap();
+    assert_eq!(engine.snapshot().player_bot.focus, Some(focus));
+    engine.remove(focus).unwrap();
+    engine.set_player_bot_targets(None, vec![highlight]);
+    engine.set_player_bot_key_state(65, false).unwrap();
+    engine.set_organism_memory(highlight, 50, 0).unwrap();
+    engine.tick().unwrap();
+    assert!(engine.snapshot().player_bot.enabled);
+    assert_eq!(engine.snapshot().player_bot.focus, None);
+    assert_eq!(engine.memory_at(highlight, 50).unwrap(), 0);
+}
+
+#[test]
 fn player_bot_aims_at_current_pointer_for_focus_and_stable_highlights_only() {
     let mut engine = Engine::new_native(EngineConfig::testing()).unwrap();
     let dna = LegacyDna::parse("start\nstop").unwrap();

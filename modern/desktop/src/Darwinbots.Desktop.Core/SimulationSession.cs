@@ -462,6 +462,13 @@ public sealed class SimulationSession : IAsyncDisposable
         return Enqueue(engine => engine.SetPlayerBotKey(focus.Slot, focus.Generation, keyCode, pressed), cancellationToken);
     }
 
+    public Task SetPlayerBotKeyStateAsync(int keyCode, bool pressed, CancellationToken cancellationToken = default)
+    {
+        if (keyCode is < 0 or > 65_535)
+            throw new ArgumentOutOfRangeException(nameof(keyCode));
+        return Enqueue(engine => engine.SetPlayerBotKeyState(keyCode, pressed), cancellationToken);
+    }
+
     public Task SetOrganismMemoryAsync(uint slot, uint generation, ushort address, int value, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.SetOrganismMemory(slot, generation, address, value), cancellationToken);
 

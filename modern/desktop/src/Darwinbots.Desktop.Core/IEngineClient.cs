@@ -92,6 +92,8 @@ public interface IEngineClient : IDisposable
     void UpdateLegacyRestrictions(bool robotFixingAllowed, bool asexualReproductionAllowed);
     void ConfigurePlayerBot(PlayerBotConfig config);
     void SetPlayerBotKey(uint slot, uint generation, int keyCode, bool pressed);
+    void SetPlayerBotKeyState(int keyCode, bool pressed) =>
+        throw new NotSupportedException("This engine client does not support independent PlayerBot key state.");
     void SetPlayerBotTargets(OrganismKey? focus, IReadOnlyList<OrganismKey> highlights) { }
     void SetPlayerBotPointer(float[]? position) { }
     void SetOrganismMemory(uint slot, uint generation, ushort address, int value);
