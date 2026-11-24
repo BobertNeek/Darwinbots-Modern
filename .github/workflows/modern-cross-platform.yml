@@ -47,7 +47,12 @@ jobs:
         id: rust_workspace
         env:
           DARWINBOTS_GPU_FFI_TRACE: ${{ runner.os == 'Windows' && '1' || '0' }}
-        run: cargo test --release --workspace --no-fail-fast
+        shell: pwsh
+        run: |
+          # The Windows hosted adapter can crash when several FFI tests initialize it at once.
+          if ($IsWindows) { $env:RUST_TEST_THREADS = '1' }
+          cargo test --release --workspace --no-fail-fast
+          exit $LASTEXITCODE
       - name: Diagnose Windows GPU FFI test failures
         if: ${{ failure() && runner.os == 'Windows' && steps.rust_workspace.outcome == 'failure' }}
         timeout-minutes: 5
@@ -78,7 +83,7 @@ jobs:
               if ($exitCode -ne 0) { $failedCases += $case }
           }
           if ($failedCases.Count -ne 0) { throw ("Isolated GPU FFI failures: " + ($failedCases -join ", ")) }
-          Write-Host "All isolated GPU FFI invocations succeeded. Review the parallel-run case trace."
+          Write-Host "All isolated GPU FFI invocations succeeded. Review the Rust workspace case trace."
       - name: Test desktop core
         run: dotnet test modern/desktop/tests/Darwinbots.Desktop.Core.Tests/Darwinbots.Desktop.Core.Tests.csproj -c Release
       - name: Test rendered desktop controls
