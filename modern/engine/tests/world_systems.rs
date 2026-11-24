@@ -61,7 +61,11 @@ fn sensing_projects_focus_reference_occurrences_materials_and_addressed_memory()
     let mut engine = SaveFile::decode(&save).unwrap();
     engine.set_organism_memory(target, 800, 321).unwrap();
     engine.set_organism_memory(target, 950, 456).unwrap();
+    // The observer visits before the target republishes its native telemetry.
+    engine.set_organism_memory(target, 18, 77).unwrap();
     engine.set_organism_memory(target, 19, 77).unwrap();
+    engine.set_organism_memory(target, 825, 30).unwrap();
+    engine.set_organism_memory(target, 827, 20).unwrap();
     assert_eq!(engine.memory(target, "out1").unwrap(), 321);
 
     engine.tick().unwrap();
