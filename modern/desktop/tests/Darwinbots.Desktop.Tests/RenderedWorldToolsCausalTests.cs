@@ -239,6 +239,97 @@ public sealed class RenderedWorldToolsCausalTests
         }, CancellationToken.None);
     }
 
+    [Fact]
+    public async Task GlobalMutationMenuAppliesAndCancelsNativePolicyWithoutOverwritingRobotProfiles()
+    {
+        var setup = new WorldSetupOptions
+        {
+            Backend = "Cpu", PopulationCapacity = 64, WorldWidth = 1_000, WorldHeight = 800,
+            GlobalSettings = new GlobalSettings
+            {
+                Main = new GlobalMainSettings { EpigeneticAmplification = 2 },
+                AdvancedMutation = new GlobalAdvancedMutationSettings { EpigeneticAmplification = 1.25 },
+            },
+            Species = [new("Control", "start\nstop", false, 0xff3f8e34u, 1, 1_000, 0, false, 0f)],
+        };
+
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], setup, NativeEngineClientFactory.Instance, new AuditStorageService());
+            window.Show();
+            try
+            {
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                var command = menu.FindCommandItem(LegacyCommandId.EditGlobalMutationRates)!;
+                await WaitFor(() => TryField<SimulationSession>(window, "_session")?.LatestSnapshot.Organisms.Count == 1
+                    && command.IsEnabled, () => "The mutation menu did not become available.");
+                var session = TryField<SimulationSession>(window, "_session")!;
+                var robot = Assert.Single(session.LatestSnapshot.Organisms);
+                var custom = robot.MutationProfile with { Point = new MutationRateUpdate(42, 3, 1) };
+                await session.UpdateOrganismMutationProfileAsync(robot.Slot, robot.Generation, custom);
+                var startingAdvanced = (await session.ReadConfigurationAsync())!.AdvancedMutation;
+
+                async Task<MutationRatesWindow> Reopen()
+                {
+                    command.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    await WaitFor(() => window.OwnedWindows.OfType<MutationRatesWindow>().Any(),
+                        () => "Global Mutation Rates did not open the editor.");
+                    return Assert.Single(window.OwnedWindows.OfType<MutationRatesWindow>());
+                }
+
+                var dialog = await Reopen();
+                Assert.True(dialog.FindControl<Border>("GlobalMutationPanel")!.IsVisible);
+                Assert.True(dialog.FindControl<CheckBox>("GlobalMutationsEnabled")!.IsChecked);
+                Assert.Equal(1m, dialog.FindControl<NumericUpDown>("GlobalMultiplier")!.Value);
+                Assert.Equal((int)GlobalMutationOscillationMode.Disabled, dialog.FindControl<ComboBox>("GlobalOscillationMode")!.SelectedIndex);
+                Assert.NotNull(dialog.FindControl<NumericUpDown>("OneIn"));
+                dialog.FindControl<CheckBox>("GlobalMutationsEnabled")!.IsChecked = false;
+                dialog.FindControl<NumericUpDown>("GlobalMultiplier")!.Value = 2.25m;
+                dialog.FindControl<ComboBox>("GlobalOscillationMode")!.SelectedIndex = (int)GlobalMutationOscillationMode.Sawtooth;
+                dialog.FindControl<NumericUpDown>("GlobalHighCycles")!.Value = 25m;
+                dialog.FindControl<NumericUpDown>("GlobalLowCycles")!.Value = 75m;
+                dialog.FindControl<Button>("ApplyButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+                var viewModel = Assert.IsType<MainWindowViewModel>(window.DataContext);
+                await WaitFor(() => viewModel.Status == "GLOBAL MUTATION RATES APPLIED", () => viewModel.Status);
+                var snapshot = session.LatestSnapshot;
+                Assert.False(snapshot.MutationSettings.Enabled);
+                Assert.Equal(2.25f, snapshot.MutationSettings.GlobalMultiplier);
+                Assert.Equal(custom, Assert.Single(snapshot.Organisms).MutationProfile);
+                Assert.Equal(startingAdvanced with
+                {
+                    OscillationMode = GlobalMutationOscillationMode.Sawtooth,
+                    OscillationHighCycles = 25,
+                    OscillationLowCycles = 75,
+                }, (await session.ReadConfigurationAsync())!.AdvancedMutation);
+
+                var applied = await session.SaveAsync();
+                dialog = await Reopen();
+                Assert.False(dialog.FindControl<CheckBox>("GlobalMutationsEnabled")!.IsChecked);
+                Assert.Equal(2.25m, dialog.FindControl<NumericUpDown>("GlobalMultiplier")!.Value);
+                Assert.Equal((int)GlobalMutationOscillationMode.Sawtooth, dialog.FindControl<ComboBox>("GlobalOscillationMode")!.SelectedIndex);
+                Assert.Equal(25m, dialog.FindControl<NumericUpDown>("GlobalHighCycles")!.Value);
+                Assert.Equal(75m, dialog.FindControl<NumericUpDown>("GlobalLowCycles")!.Value);
+                dialog.FindControl<CheckBox>("GlobalMutationsEnabled")!.IsChecked = true;
+                dialog.FindControl<NumericUpDown>("GlobalMultiplier")!.Value = 4m;
+                dialog.FindControl<ComboBox>("GlobalOscillationMode")!.SelectedIndex = (int)GlobalMutationOscillationMode.Sine;
+                dialog.FindControl<NumericUpDown>("GlobalHighCycles")!.Value = 50m;
+                dialog.FindControl<NumericUpDown>("OneIn")!.Value = 777m;
+                dialog.FindControl<Button>("CancelButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => window.OwnedWindows.OfType<MutationRatesWindow>().Count() == 0,
+                    () => "Cancel did not close Global Mutation Rates.");
+                Assert.Equal(applied, await session.SaveAsync());
+                await session.StepAsync(1);
+                Assert.Equal(16f, session.LatestSnapshot.MutationSettings.GlobalMultiplier);
+            }
+            finally
+            {
+                foreach (var owned in window.OwnedWindows.ToArray()) owned.Close();
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
     private static bool IsMutationWindow(Window window) =>
         window.Title?.Contains("mutation", StringComparison.OrdinalIgnoreCase) == true;
 

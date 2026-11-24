@@ -1610,21 +1610,27 @@ public sealed partial class MainWindow : Window
     private async Task<LegacyCommandResult> OpenGlobalMutationRatesCommandAsync()
     {
         if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        var snapshot = _session.LatestSnapshot;
-        var dialog = new MutationRatesWindow(snapshot.MutationSettings.Profile);
+        var session = _session;
+        var configuration = await session.ReadConfigurationAsync();
+        var advanced = configuration?.AdvancedMutation ?? _globalSettings.AdvancedMutation;
+        var dialog = new MutationRatesWindow(session.LatestSnapshot.MutationSettings, advanced);
         await dialog.ShowDialog(this);
         if (!dialog.Accepted) return LegacyCommandResult.Cancel();
-        var speciesRates = snapshot.Species
-            .Select((species, index) => new SpeciesMutationRateUpdate((uint)index, species.MutationRate))
-            .ToArray();
-        var update = new MutationSettingsUpdate(
-            snapshot.MutationSettings.Enabled,
-            snapshot.MutationSettings.GlobalMultiplier,
-            speciesRates)
+        var update = dialog.ReadGlobalMutationUpdate();
+        var oscillation = dialog.ReadOscillation(advanced);
+        // Native readback already includes the main epigenetic factors.
+        var main = configuration is null ? _globalSettings.Main : new GlobalMainSettings();
+        await session.UpdateGlobalMutationSettingsAsync(update, oscillation == advanced ? null : oscillation, main);
+        _globalSettings = _globalSettings with { AdvancedMutation = dialog.ReadOscillation(_globalSettings.AdvancedMutation) };
+        _setup = _setup with
         {
-            Profile = dialog.Profile,
+            MutationSettings = _setup.MutationSettings with
+            {
+                Enabled = update.Enabled,
+                GlobalMultiplier = update.GlobalMultiplier,
+                Profile = update.Profile ?? _setup.MutationSettings.Profile,
+            },
         };
-        await _session.UpdateMutationSettingsAsync(update);
         return LegacyCommandResult.Success("GLOBAL MUTATION RATES APPLIED");
     }
 

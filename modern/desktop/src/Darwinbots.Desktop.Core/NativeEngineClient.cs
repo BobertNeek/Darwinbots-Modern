@@ -618,14 +618,20 @@ public sealed partial class NativeEngineClient : IEngineClient
             type = "update_cost_settings", costs = NativeCommandSerializer.DnaCosts(settings),
         } } }, "update simulation costs");
 
-    public void UpdateMutationSettings(MutationSettingsUpdate update)
+    public void UpdateMutationSettings(MutationSettingsUpdate update) =>
+        ApplyMutationSettings(update, null, null);
+
+    public void UpdateGlobalMutationSettings(MutationSettingsUpdate update, GlobalAdvancedMutationSettings? advanced, GlobalMainSettings main) =>
+        ApplyMutationSettings(update, advanced, main);
+
+    private void ApplyMutationSettings(MutationSettingsUpdate update, GlobalAdvancedMutationSettings? advanced, GlobalMainSettings? main)
     {
         ArgumentNullException.ThrowIfNull(update);
         if (!float.IsFinite(update.GlobalMultiplier) || update.GlobalMultiplier is < 0 or > 100)
             throw new ArgumentOutOfRangeException(nameof(update));
         if (update.SpeciesRates.Any(value => !float.IsFinite(value.Rate) || value.Rate is < 0 or > 100))
             throw new ArgumentOutOfRangeException(nameof(update));
-        ExecuteBatch(NativeCommandSerializer.CreateMutationSettingsBatch(update), "update mutation settings");
+        ExecuteBatch(NativeCommandSerializer.CreateMutationSettingsBatch(update, advanced, main), "update mutation settings");
     }
 
     public void UpdateOrganismMutationProfile(uint slot, uint generation, MutationProfileUpdate profile)
