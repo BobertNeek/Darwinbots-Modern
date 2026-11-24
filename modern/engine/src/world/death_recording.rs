@@ -148,7 +148,7 @@ impl Engine {
             fitness,
             energy: robot.materials.energy + robot.materials.body * 10.0_f32,
             chloroplasts: robot.materials.chloroplasts,
-            dna: self.export_dna(id)?,
+            dna: robot.program.dna.to_snapshot_source(),
             mutation_log: robot.program.mutation_metadata.detailed_log.clone(),
         })
     }
@@ -213,6 +213,52 @@ mod tests {
         assert_eq!(deleted[0].id, parent_absolute_id);
         assert_eq!(deleted[0].fitness, 112.75_f64.sqrt());
         assert_eq!(world.population(), 0);
+    }
+
+    #[test]
+    fn snp_uses_original_dna_layout_for_living_and_dead_robots() {
+        let mut world = world(false);
+        let dna = LegacyDna::parse(concat!(
+            "NewMove\ndef private 777\n",
+            "start 10 .up store stop\n",
+            "cond *.aimdx 10 > true and\n",
+            "start 5 .light store\n",
+            "else *.private .private store stop\n",
+            "start 7 end"
+        ))
+        .unwrap();
+        let robot = world.spawn_at(dna, [500.0; 2]).unwrap();
+        world
+            .slots
+            .get_mut(robot)
+            .unwrap()
+            .program
+            .memory
+            .write(971, 9);
+        world
+            .config
+            .advanced_mutation
+            .epigenetic
+            .save_as_temporary_gene = true;
+
+        let expected = concat!(
+            "\r\n start\r\n 10 .up store\r\n stop\r\n",
+            "''''''''''''''''''''''''  Gene:  1 Ends at position  5  '''''''''''''''''''''''\r\n",
+            "\r\n''''''''''''''''''''''''  Gene:  2 Begins at position  6  '''''''''''''''''''''''\r\n",
+            " cond\r\n *.aimright 10 >\r\n true\r\n and\r\n start\r\n 5 .availability store\r\n\r\n",
+            "''''''''''''''''''''''''  Gene:  2 Ends at position  15  '''''''''''''''''''''''\r\n",
+            "''''''''''''''''''''''''  Gene:  3 Begins at position  16  '''''''''''''''''''''''\r\n",
+            " else\r\n *777 777 store\r\n stop\r\n",
+            "''''''''''''''''''''''''  Gene:  3 Ends at position  20  '''''''''''''''''''''''\r\n",
+            "\r\n''''''''''''''''''''''''  Gene:  4 Begins at position  21  '''''''''''''''''''''''\r\n",
+            " start\r\n 7''''''''''''''''''''''''  Gene:  4 Ends at position  22  '''''''''''''''''''''''\r\n"
+        );
+        let living = world.living_genome_records(100).unwrap();
+        assert_eq!(living[0].dna, expected);
+        let dead = world
+            .remove_many_recording_deaths(&[robot], true, 100, false)
+            .unwrap();
+        assert_eq!(dead[0].dna, expected);
     }
 
     #[test]
