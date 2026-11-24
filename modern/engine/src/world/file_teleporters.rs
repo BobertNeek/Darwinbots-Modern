@@ -104,6 +104,15 @@ impl Engine {
             gateway.backflow_guard = tele.file_backflow_guard.clone();
             gateways.push((gateway, Some(index)));
         }
+        // TeleportInBots checks SpeciesNum once, before touching any legacy inbound gateway.
+        if late
+            && (gateways
+                .iter()
+                .all(|(gateway, _)| gateway.inbound_path.as_os_str().is_empty())
+                || self.legacy_inbound_species_limit_reached())
+        {
+            return Ok(());
+        }
         for (index, (mut gateway, native_index)) in gateways.into_iter().enumerate() {
             let settings = gateway.clone();
             let native_contact =
@@ -411,6 +420,125 @@ mod tests {
     use super::*;
     use crate::native_binary::NativeRecordFile;
     use tempfile::tempdir;
+
+    fn dbo_with_species(name: &str) -> Vec<u8> {
+        let mut donor = Engine::new_native(EngineConfig::testing()).unwrap();
+        let species = donor.register_species(SpeciesDefinition {
+            name: name.into(),
+            ..SpeciesDefinition::default()
+        });
+        let dna = LegacyDna::parse("start stop").unwrap();
+        let members = donor
+            .spawn_species_batch(dna, species, [[500.0; 2]], 3000)
+            .unwrap();
+        donor.export_native_organisms(&members).unwrap()
+    }
+
+    fn world_with_full_inbound_roster() -> Engine {
+        let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+        for index in 0..45 {
+            world.register_species_unpublished(SpeciesDefinition {
+                name: format!("Resident-{index}.txt"),
+                reseed: true,
+                ..SpeciesDefinition::default()
+            });
+        }
+        world
+    }
+
+    #[test]
+    fn native_inbound_samples_the_roster_once_and_leaves_the_next_blocked_countdown_untouched() {
+        let first = tempdir().unwrap();
+        let second = tempdir().unwrap();
+        for (index, name) in ["First.txt", "Second.txt", "Waiting.txt"]
+            .into_iter()
+            .enumerate()
+        {
+            fs::write(
+                first.path().join(format!("{index}.dbo")),
+                dbo_with_species(name),
+            )
+            .unwrap();
+        }
+        let other_file = second.path().join("other.dbo");
+        fs::write(&other_file, dbo_with_species("Other.txt")).unwrap();
+
+        let mut world = world_with_full_inbound_roster();
+        for (id, folder, capacity) in [(1, first.path(), 2), (2, second.path(), 1)] {
+            let mut gate = Teleporter::new(id, [700.0; 2], 100.0, [0.0; 2]);
+            gate.local = false;
+            gate.path = folder.to_owned();
+            gate.capacity = capacity;
+            gate.poll_interval = 6;
+            world.add_teleporter(gate).unwrap();
+        }
+        assert_eq!(world.species.len(), 46, "the fresh empty row is internal");
+
+        world.apply_file_teleporters().unwrap();
+        assert_eq!(world.teleporters[0].received, 2);
+        assert_eq!(world.teleporters[1].received, 1);
+        assert_eq!(world.population(), 3);
+        assert_eq!(world.species.len(), 49);
+        assert_eq!(fs::read_dir(first.path()).unwrap().count(), 1);
+        assert!(!other_file.exists());
+
+        world.apply_file_teleporters().unwrap();
+        assert_eq!(world.teleporters[0].received, 2);
+        assert_eq!(world.teleporters[0].poll_countdown, 6);
+        assert_eq!(world.teleporters[1].poll_countdown, 6);
+        assert_eq!(fs::read_dir(first.path()).unwrap().count(), 1);
+    }
+
+    #[test]
+    fn persisted_roster_blocks_legacy_inbound_but_preserves_outbound_and_configured_file_exchange()
+    {
+        let inbound = tempdir().unwrap();
+        let outbound = tempdir().unwrap();
+        let configured = tempdir().unwrap();
+        let waiting = inbound.path().join("waiting.dbo");
+        fs::write(&waiting, dbo_with_species("Waiting.txt")).unwrap();
+        let extension_file = configured.path().join("extension.dbo");
+        fs::write(&extension_file, dbo_with_species("Extension.txt")).unwrap();
+
+        let mut fixture = world_with_full_inbound_roster();
+        let dna = LegacyDna::parse("start stop").unwrap();
+        fixture
+            .spawn_species_batch(dna, SpeciesId(1), [[500.0; 2]], 3000)
+            .unwrap();
+        let mut world = Engine::from_native_sim(&fixture.export_native_sim().unwrap()).unwrap();
+        assert_eq!(world.species.len(), 46);
+        assert_eq!(
+            world.species[0].name, "Unassigned",
+            "a saved row counts even with this name"
+        );
+
+        let mut input = Teleporter::new(1, [150.0; 2], 100.0, [0.0; 2]);
+        input.local = false;
+        input.path = inbound.path().to_owned();
+        world.add_teleporter(input).unwrap();
+        let mut output = Teleporter::new(2, [500.0; 2], 100.0, [0.0; 2]);
+        output.local = false;
+        output.inbound = false;
+        output.outbound = true;
+        output.path = outbound.path().to_owned();
+        world.add_teleporter(output).unwrap();
+        world
+            .add_file_teleporter(
+                FileTeleporter::new(3, [850.0; 2], 50.0).with_paths(configured.path(), ""),
+            )
+            .unwrap();
+        world.move_native_teleporters();
+
+        world.apply_file_teleporters().unwrap();
+        assert!(waiting.exists());
+        assert_eq!(world.teleporters[0].received, 0);
+        assert_eq!(world.teleporters[0].poll_countdown, 0);
+        assert_eq!(world.teleporters[1].sent, 1);
+        assert_eq!(fs::read_dir(outbound.path()).unwrap().count(), 1);
+        assert!(!extension_file.exists());
+        assert_eq!(world.file_teleporters[0].received, 1);
+        assert_eq!(world.population(), 1);
+    }
 
     #[test]
     fn list_cells_uses_native_multibot_flags_and_endpoint_order_through_import() {
