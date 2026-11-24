@@ -340,6 +340,22 @@ public sealed partial class NativeEngineClient : IEngineClient
         ExecuteBatch(new { version = 1, commands = new[] { new { type = "move_organism", slot, generation, position } } }, "move organism");
     }
 
+    public void DragHighlightedRobots(HighlightedRobotDrag drag) => ExecuteBatch(new
+    {
+        version = 1,
+        commands = new[] { new
+        {
+            type = "drag_highlighted_robots",
+            anchor = OrganismPayload(drag.Anchor),
+            grabbed = OrganismPayload(drag.Grabbed),
+            placements = drag.Placements.Select(placement => new
+            {
+                id = OrganismPayload(placement.Key),
+                position = new[] { placement.X, placement.Y },
+            }).ToArray(),
+        } },
+    }, "drag highlighted robots");
+
     public OrganismKey CloneOrganism(uint slot, uint generation, float[] position)
     {
         ValidatePosition(position);
@@ -381,6 +397,16 @@ public sealed partial class NativeEngineClient : IEngineClient
         }, "export startup species DNA");
         return result.GetProperty("results")[0].GetProperty("dna").GetString()
             ?? throw new InvalidDataException("Native engine returned no startup species DNA.");
+    }
+
+    public IReadOnlyList<OrganismKey> ListLegacyOrganismGroup(OrganismKey seed)
+    {
+        var result = ExecuteBatchForResult(new
+        {
+            version = 1,
+            commands = new[] { new { type = "list_legacy_organism_group", slot = seed.Slot, generation = seed.Generation } },
+        }, "resolve organism group");
+        return result.GetProperty("results")[0].EnumerateArray().Select(ReadKey).ToArray();
     }
 
     public byte[] ExportOrganismGroup(IReadOnlyList<OrganismKey> organisms)

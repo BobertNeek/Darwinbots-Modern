@@ -371,6 +371,7 @@ public sealed record EngineSnapshot(
     // Original VB6 cycle; Tick remains the unsigned scheduling clock.
     public int? NativeCycle { get; init; }
     public bool? NativeSunOn { get; init; }
+    public bool NativeF1Enabled { get; init; }
     public IReadOnlyList<RenderInstanceSnapshot> RenderInstances { get; init; } = [];
     public IReadOnlyList<SpeciesSnapshot> Species { get; init; } = [];
     public MutationSettingsSnapshot MutationSettings { get; init; } = MutationSettingsSnapshot.Default;

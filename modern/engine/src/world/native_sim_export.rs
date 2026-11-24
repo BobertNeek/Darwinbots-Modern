@@ -80,6 +80,35 @@ fn add_species_projection<'a>(
 }
 
 impl Engine {
+    pub(super) fn legacy_inbound_species_limit_reached(&self) -> bool {
+        const INBOUND_ROSTER_LIMIT: usize = 45;
+        if self.classic_native_species_aliases().is_some()
+            && let Ok(rows) = self.native_species_projection(&self.slots.ids_in_slot_order())
+        {
+            return rows.len() > INBOUND_ROSTER_LIMIT;
+        }
+
+        let count = self.species.len();
+        if count != INBOUND_ROSTER_LIMIT + 1 {
+            return count > INBOUND_ROSTER_LIMIT;
+        }
+        // Fresh Modern worlds reserve species zero. A .sim supplies its actual
+        // first row, even when that row happens to be named Unassigned.
+        let empty_placeholder = self.native_origin.is_none()
+            && self.species[0].name == "Unassigned"
+            && self.species_templates.first().is_none_or(Option::is_none)
+            && !self
+                .slots
+                .iter()
+                .filter_map(|slot| slot.organism.as_ref())
+                .any(|robot| {
+                    robot.flags.exists
+                        && !robot.flags.corpse
+                        && robot.identity.species == SpeciesId::default()
+                });
+        !empty_placeholder
+    }
+
     fn native_species_projection(
         &self,
         members: &[OrganismId],

@@ -44,6 +44,12 @@ struct OrganismIdCommand {
 }
 
 #[derive(Deserialize)]
+struct RobotDragPlacementCommand {
+    id: OrganismIdCommand,
+    position: [f32; 2],
+}
+
+#[derive(Deserialize)]
 #[serde(rename_all = "snake_case")]
 enum ManualReproductionMutationMode {
     Preserve,
@@ -175,6 +181,11 @@ enum EngineCommand {
         position: [f32; 2],
         initial_energy: i32,
     },
+    DragHighlightedRobots {
+        anchor: OrganismIdCommand,
+        grabbed: OrganismIdCommand,
+        placements: Vec<RobotDragPlacementCommand>,
+    },
     MoveOrganism {
         slot: u32,
         generation: u32,
@@ -200,6 +211,10 @@ enum EngineCommand {
     },
     ExportSpeciesTemplateDna {
         species: u32,
+    },
+    ListLegacyOrganismGroup {
+        slot: u32,
+        generation: u32,
     },
     ExportOrganismGroup {
         organisms: Vec<OrganismIdCommand>,
@@ -663,6 +678,7 @@ fn db_engine_command_batch_impl(
                     | EngineCommand::ExportSpeciesTemplateDna { .. }
                     | EngineCommand::FindBestRobot { .. }
                     | EngineCommand::CaptureLivingGenomeRecords { .. }
+                    | EngineCommand::ListLegacyOrganismGroup { .. }
             )
         })
     {
@@ -707,6 +723,11 @@ fn db_engine_command_batch_impl(
                         serde_json::Value::Null,
                         |id| serde_json::json!({"slot":id.slot(),"generation":id.generation()}),
                     ))
+                }
+                EngineCommand::ListLegacyOrganismGroup { slot, generation } => {
+                    Ok(serde_json::json!(engine.legacy_organism_group(
+                        OrganismId::new(*slot, *generation)
+                    )))
                 }
                 _ => unreachable!("pure queries were validated above"),
             })
@@ -1017,6 +1038,25 @@ fn db_engine_command_batch_impl(
                         })
                     })
             }),
+            EngineCommand::DragHighlightedRobots {
+                anchor,
+                grabbed,
+                placements,
+            } => engine
+                .drag_highlighted_robots(
+                    OrganismId::new(anchor.slot, anchor.generation),
+                    OrganismId::new(grabbed.slot, grabbed.generation),
+                    &placements
+                        .into_iter()
+                        .map(|placement| {
+                            (
+                                OrganismId::new(placement.id.slot, placement.id.generation),
+                                placement.position,
+                            )
+                        })
+                        .collect::<Vec<_>>(),
+                )
+                .map(|_| serde_json::Value::Null),
             EngineCommand::MoveOrganism {
                 slot,
                 generation,
@@ -1048,13 +1088,16 @@ fn db_engine_command_batch_impl(
             EngineCommand::ExportSpeciesTemplateDna { species } => engine
                 .export_species_template_dna(crate::SpeciesId(species))
                 .map(|dna| serde_json::json!({ "dna": dna })),
+            EngineCommand::ListLegacyOrganismGroup { slot, generation } => Ok(serde_json::json!(
+                engine.legacy_organism_group(OrganismId::new(slot, generation))
+            )),
             EngineCommand::ExportOrganismGroup { organisms } => {
                 let members: Vec<_> = organisms
                     .into_iter()
                     .map(|id| OrganismId::new(id.slot, id.generation))
                     .collect();
                 engine
-                    .export_native_organisms(&members)
+                    .export_original_organism_file(&members)
                     .map(|bytes| serde_json::json!({ "payload": bytes }))
             }
             EngineCommand::ManualReproduce {

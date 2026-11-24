@@ -16,6 +16,7 @@ using Darwinbots.Desktop.Services;
 using Darwinbots.Desktop.ViewModels;
 using Avalonia.VisualTree;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 
@@ -139,6 +140,8 @@ public sealed partial class MainWindow : Window
     private bool _playerBotEnabled;
     private IReadOnlyList<PlayerBotBinding> _playerBotBindings = [];
     private readonly HashSet<OrganismKey> _playerBotHighlights = [];
+    private HighlightedRobotDrag? _pendingHighlightedDrag;
+    private bool _sendingHighlightedDrag;
     private bool _rgbMemoryMonitorEnabled;
     private RgbMemoryMonitorSettings? _rgbMemorySettings;
     private const string RgbMonitorToolKey = "rgb-memory-monitor";
@@ -257,6 +260,8 @@ public sealed partial class MainWindow : Window
         Viewport.CanAimPlayerBot = () => _playerBotEnabled && _insertion?.IsActive != true
             && _moveOrganism is null && _environmentPlacement == EnvironmentPlacement.None;
         Viewport.PlayerBotPointerChanged += position => _session?.SetPlayerBotPointer(position);
+        Viewport.HighlightedRobotKeys = () => _playerBotHighlights;
+        Viewport.HighlightedRobotDragMoved += async drag => await ApplyHighlightedDragAsync(drag);
         Viewport.PlayerBotHighlightRequested += async key =>
         {
             if (_playerBotHighlights.Add(key))
@@ -267,7 +272,7 @@ public sealed partial class MainWindow : Window
         };
         Viewport.OrganismKeySelected += async key =>
         {
-            if (!_playerBotEnabled || !_playerBotHighlights.Contains(key))
+            if (!_playerBotHighlights.Contains(key))
                 _playerBotHighlights.Clear();
             _viewModel.Select(key);
             Viewport.SelectKeys(_playerBotHighlights, key);
@@ -741,10 +746,10 @@ public sealed partial class MainWindow : Window
             EngineState,
             async _ => await OpenPlayerBotSettingsAsync());
         handlers[LegacyCommandId.EditEnablePlayerBot] = Handler(
-            () => EngineState() with { Checked = _playerBotEnabled },
+            () => F1ToolState(EngineState() with { Checked = _playerBotEnabled }),
             async _ => await TogglePlayerBotAsync());
         handlers[LegacyCommandId.EditEyeDesigner] = Handler(
-            SelectedRobotState,
+            () => F1ToolState(LegacyCommandState.Available),
             async _ => await OpenEyeDesignerAsync());
         handlers[LegacyCommandId.EditRestrictionOverwrites] = Handler(
             EngineState,
@@ -914,6 +919,11 @@ public sealed partial class MainWindow : Window
         ? new LegacyCommandState(false, false, "Select a robot first.")
         : LegacyCommandState.Available;
 
+    private LegacyCommandState F1ToolState(LegacyCommandState state) =>
+        _session?.LatestSnapshot.NativeF1Enabled == true
+            ? state with { Enabled = false, DisabledReason = "Unavailable in F1 competition." }
+            : state;
+
     private LegacyCommandState FeatureState(WorldFeatureKind kind)
     {
         if (_session is null)
@@ -1081,11 +1091,18 @@ public sealed partial class MainWindow : Window
 
     private async Task<LegacyCommandResult> KillSelectedOrganismAsync()
     {
-        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        var group = SelectedOrganismGroup();
-        if (group.Count == 0) return LegacyCommandResult.Failure("SELECT A ROBOT FIRST");
-        OrganismKey[] keys = [.. group.Select(value => new OrganismKey(value.Slot, value.Generation))];
-        return await KillRobotsAsync(_session, keys, true, $"ORGANISM KILLED · {keys.Length:N0} BOT(S)");
+        if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        if (SelectedRobotKey() is not { } seed) return LegacyCommandResult.Failure("SELECT A ROBOT FIRST");
+        await _advanceGate.WaitAsync();
+        try
+        {
+            if (_session != session || _loadingSimulation || _savingLastExit || SelectedRobotKey() != seed)
+                return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+            var group = await session.ListLegacyOrganismGroupAsync(seed);
+            if (group.Count == 0) return LegacyCommandResult.Failure("SELECT A ROBOT FIRST");
+            return await KillRobotsAsync(session, [.. group], true, $"ORGANISM KILLED · {group.Count:N0} BOT(S)");
+        }
+        finally { _advanceGate.Release(); }
     }
 
     private async Task<LegacyCommandResult> KillRobotsAsync(
@@ -1373,13 +1390,51 @@ public sealed partial class MainWindow : Window
 
     private Task<LegacyCommandResult> OpenEyeDesignerAsync()
     {
-        if (_session is null || SelectedRobotKey() is not { } focus)
-            return Task.FromResult(LegacyCommandResult.Failure("NO ROBOT SELECTED"));
-        var window = _toolWindows.ShowOrActivate(
-            $"eye-designer:{focus.Slot}:{focus.Generation}",
-            () => new EyeDesignerWindow(_session, focus));
-        window.SetSnapshot(_session.LatestSnapshot);
+        var window = _toolWindows.ShowOrActivate("eye-designer", () =>
+        {
+            var designer = new EyeDesignerWindow(_storage, WriteEyeMemoryAsync, DisableEyeBrownianMotionAsync, DisableEyeCostsAsync);
+            void OnSelectionChanged(object? sender, PropertyChangedEventArgs change)
+            {
+                if (change.PropertyName == nameof(MainWindowViewModel.SelectedId)) UpdateEyeDesignerFocus(designer);
+            }
+            _viewModel.PropertyChanged += OnSelectionChanged;
+            designer.Closed += (_, _) => _viewModel.PropertyChanged -= OnSelectionChanged;
+            return designer;
+        });
+        UpdateEyeDesignerFocus(window);
         return Task.FromResult(LegacyCommandResult.Success("EYE DESIGNER OPEN"));
+    }
+
+    private void UpdateEyeDesignerFocus(EyeDesignerWindow window) =>
+        window.SetFocus(_session?.LatestSnapshot ?? EngineSnapshot.Empty, SelectedRobotKey());
+
+    private Task WriteEyeMemoryAsync(OrganismKey focus, ushort address, int value) =>
+        RequireEyeDesignerSession().SetOrganismMemoryAsync(focus.Slot, focus.Generation, address, value);
+
+    private SimulationSession RequireEyeDesignerSession()
+    {
+        if (_session is not { } session || _loadingSimulation || _navigationInFlight)
+            throw new InvalidOperationException("The simulation is not ready.");
+        if (session.LatestSnapshot.NativeF1Enabled)
+            throw new InvalidOperationException("Unavailable in F1 competition.");
+        return session;
+    }
+
+    private async Task DisableEyeBrownianMotionAsync()
+    {
+        var session = RequireEyeDesignerSession();
+        await session.SetBrownianMotionAsync(0f);
+        if (IsVisible && ReferenceEquals(_session, session))
+            _liveEnvironment = _liveEnvironment with { BrownianMotion = 0f };
+    }
+
+    private async Task DisableEyeCostsAsync()
+    {
+        var session = RequireEyeDesignerSession();
+        await session.SetGlobalCostMultiplierAsync(0.0);
+        if (!IsVisible || !ReferenceEquals(_session, session)) return;
+        _activeCostMultiplier = 0.0;
+        await session.RefreshSnapshotAsync();
     }
 
     private async Task<LegacyCommandResult> ShowRestrictionOverridesAsync()
@@ -1918,54 +1973,33 @@ public sealed partial class MainWindow : Window
         return LegacyCommandResult.Success($"NEW SPECIES · {name.ToUpperInvariant()}");
     }
 
-    private IReadOnlyList<OrganismSnapshot> SelectedOrganismGroup()
-    {
-        var selected = _viewModel.SelectedOrganism;
-        if (selected is null || _session is null) return [];
-        var snapshot = _session.LatestSnapshot;
-        var snapshotKeys = snapshot.Organisms
-            .Select(value => new OrganismKey(value.Slot, value.Generation))
-            .ToHashSet();
-        var selectedKey = new OrganismKey(selected.Slot, selected.Generation);
-        if (!snapshotKeys.Contains(selectedKey)) return [];
-        var pending = new Queue<OrganismKey>();
-        var memberKeys = new HashSet<OrganismKey> { selectedKey };
-        pending.Enqueue(selectedKey);
-        while (pending.Count > 0)
-        {
-            var current = pending.Dequeue();
-            foreach (var tie in snapshot.Ties.Where(value => value.First == current || value.Second == current))
-            {
-                var other = tie.First == current ? tie.Second : tie.First;
-                if (snapshotKeys.Contains(other) && memberKeys.Add(other)) pending.Enqueue(other);
-            }
-        }
-        return snapshot.Organisms
-            .Where(value => memberKeys.Contains(new OrganismKey(value.Slot, value.Generation)))
-            .ToArray();
-    }
-
     private async Task<LegacyCommandResult> SelectEntireOrganismAsync()
     {
-        var group = SelectedOrganismGroup();
-        var selected = _viewModel.SelectedOrganism!;
-        if (!_playerBotEnabled)
-            _playerBotHighlights.Clear();
-        _playerBotHighlights.UnionWith(group.Select(value => new OrganismKey(value.Slot, value.Generation)));
-        Viewport.SelectKeys(_playerBotHighlights, new OrganismKey(selected.Slot, selected.Generation));
+        if (_session is not { } session || SelectedRobotKey() is not { } seed)
+            return LegacyCommandResult.Failure("SELECT A ROBOT FIRST");
+        var group = await session.ListLegacyOrganismGroupAsync(seed);
+        if (group.Count == 0) return LegacyCommandResult.Failure("SELECT A ROBOT FIRST");
+        _playerBotHighlights.UnionWith(group);
+        Viewport.SelectKeys(_playerBotHighlights, SelectedRobotKey());
         await SynchronizePlayerBotTargetsAsync();
         return LegacyCommandResult.Success($"ORGANISM SELECTED · {group.Count:N0} BOT(S)");
     }
 
     private async Task<LegacyCommandResult> SaveEntireOrganismAsync()
     {
-        var group = SelectedOrganismGroup();
-        if (_session is null || group.Count == 0) return LegacyCommandResult.Failure("NO ORGANISM SELECTED");
-        var selected = SelectedRobotKey();
-        var members = group.Select(value => new OrganismKey(value.Slot, value.Generation))
-            .OrderBy(key => key == selected ? 0 : 1).ToArray();
-        var bytes = await _session.ExportOrganismGroupAsync(members);
-        var saved = await _storage.SaveOrganismAsync(this, $"organism-{members[0].Slot}.dbo",
+        if (_session is not { } session || SelectedRobotKey() is not { } seed)
+            return LegacyCommandResult.Failure("NO ORGANISM SELECTED");
+        await _advanceGate.WaitAsync();
+        IReadOnlyList<OrganismKey> group;
+        byte[] bytes;
+        try
+        {
+            group = await session.ListLegacyOrganismGroupAsync(seed);
+            if (group.Count == 0) return LegacyCommandResult.Failure("NO ORGANISM SELECTED");
+            bytes = await session.ExportOrganismGroupAsync(group);
+        }
+        finally { _advanceGate.Release(); }
+        var saved = await _storage.SaveOrganismAsync(this, $"organism-{seed.Slot}.dbo",
             async stream => await stream.WriteAsync(bytes));
         return saved
             ? LegacyCommandResult.Success($"ORGANISM SAVED · {group.Count:N0} BOT(S)")
@@ -3534,6 +3568,32 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    private async Task ApplyHighlightedDragAsync(HighlightedRobotDrag drag)
+    {
+        if (_loadingSimulation || _session is not { } session) return;
+        _pendingHighlightedDrag = drag;
+        if (_sendingHighlightedDrag) return;
+        _sendingHighlightedDrag = true;
+        try
+        {
+            // Keep at most one queued worker operation and the latest waiting pointer sample.
+            while (_pendingHighlightedDrag is { } latest && !_loadingSimulation && _session == session)
+            {
+                _pendingHighlightedDrag = null;
+                await session.DragHighlightedRobotsAsync(latest);
+            }
+        }
+        catch (Exception error)
+        {
+            await HandleEngineErrorAsync(error, attemptRecovery: false);
+        }
+        finally
+        {
+            _pendingHighlightedDrag = null;
+            _sendingHighlightedDrag = false;
+        }
+    }
+
     private async Task LoadSimulationAsync(byte[] save)
     {
         _runTimer.Stop();
@@ -3543,6 +3603,8 @@ public sealed partial class MainWindow : Window
             if (_session is null || _savingLastExit) return;
             _loadingSimulation = true;
             InvalidateTeleporterDrag();
+            _pendingHighlightedDrag = null;
+            Viewport.CancelHighlightedDrag();
             await _session.LoadAsync(save);
             CloseNativeTeleporterEditor();
             _toolWindows.Close(NewTeleporterToolKey);

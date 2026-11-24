@@ -171,6 +171,83 @@ fn player_bot_release_and_invert_follow_pressed_xor_invert() {
 }
 
 #[test]
+fn highlighted_drag_places_explicit_stable_robots_without_moving_tied_neighbors() {
+    let mut engine = Engine::new(EngineConfig {
+        world_width: 3_000.0,
+        world_height: 2_000.0,
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    let idle = LegacyDna::parse("start stop").unwrap();
+    let anchor = engine
+        .spawn_at(
+            LegacyDna::parse("start 41 .tie store stop").unwrap(),
+            [400.0, 1_000.0],
+        )
+        .unwrap();
+    let tied = engine.spawn_at(idle.clone(), [700.0, 1_000.0]).unwrap();
+    let grabbed = engine.spawn_at(idle.clone(), [1000.0, 1000.0]).unwrap();
+    let stale = engine.spawn_at(idle.clone(), [1300.0, 1000.0]).unwrap();
+    engine.set_organism_aim(anchor, 0).unwrap();
+    engine.tick().unwrap();
+    assert_eq!(engine.snapshot().ties.len(), 1);
+    let tied_position = engine.robot_state(tied).unwrap().kinematics.position;
+    engine.remove(stale).unwrap();
+    let replacement = engine.spawn_at(idle, [1300.0, 1000.0]).unwrap();
+    assert_eq!(stale.slot(), replacement.slot());
+    assert_ne!(stale.generation(), replacement.generation());
+    let mut physics = engine.physics_batch();
+    let anchor_index = physics.ids.iter().position(|&id| id == anchor).unwrap();
+    physics.batch.velocities[anchor_index] = [7.0, -9.0];
+    engine.apply_physics_batch(physics).unwrap();
+
+    let placements = [
+        (anchor, [-5.0, 900.0]),
+        (grabbed, [595.0, 900.0]),
+        (stale, [0.0; 2]),
+    ];
+    engine
+        .drag_highlighted_robots(anchor, grabbed, &placements)
+        .unwrap();
+    assert_eq!(
+        engine.robot_state(anchor).unwrap().kinematics.position,
+        [-5.0, 900.0]
+    );
+    assert_eq!(
+        engine.robot_state(grabbed).unwrap().kinematics.position,
+        [595.0, 900.0]
+    );
+    assert_eq!(
+        engine.robot_state(tied).unwrap().kinematics.position,
+        tied_position
+    );
+    assert_eq!(
+        engine.robot_state(replacement).unwrap().kinematics.position,
+        [1300.0, 1000.0]
+    );
+    let moved = &engine.robot_state(anchor).unwrap().kinematics;
+    assert_eq!(moved.velocity, [0.0; 2]);
+    assert_eq!(moved.actual_velocity, [0.0; 2]);
+
+    engine
+        .drag_highlighted_robots(stale, grabbed, &[(grabbed, [2.0; 2])])
+        .unwrap();
+    assert!(
+        engine
+            .drag_highlighted_robots(
+                anchor,
+                grabbed,
+                &[(grabbed, [3.0; 2]), (anchor, [f32::NAN, 3.0])]
+            )
+            .is_err()
+    );
+    assert_eq!(
+        engine.robot_state(grabbed).unwrap().kinematics.position,
+        [595.0, 900.0]
+    );
+}
+
+#[test]
 fn player_bot_tracks_keys_without_a_focused_organism() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
     let dna = LegacyDna::parse("start\nstop").unwrap();

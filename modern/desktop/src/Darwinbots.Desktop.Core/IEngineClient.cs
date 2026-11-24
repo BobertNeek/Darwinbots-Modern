@@ -27,6 +27,8 @@ public interface IEngineClient : IDisposable
     void SetDeathPoffsEnabled(bool enabled) =>
         throw new NotSupportedException("This engine client does not support changing death-particle creation.");
     void Move(uint slot, uint generation, float[] position);
+    void DragHighlightedRobots(HighlightedRobotDrag drag) =>
+        throw new NotSupportedException("This engine client does not support dragging highlighted robots.");
     OrganismKey CloneOrganism(uint slot, uint generation, float[] position);
     void ReplaceDna(uint slot, uint generation, string dna);
     int TagOrganismsByName(string founderName, string tag) =>
@@ -34,6 +36,8 @@ public interface IEngineClient : IDisposable
     string ExportDna(uint slot, uint generation);
     string ExportSpeciesTemplateDna(uint species) =>
         throw new NotSupportedException("This engine client does not support startup species DNA export.");
+    IReadOnlyList<OrganismKey> ListLegacyOrganismGroup(OrganismKey seed) =>
+        throw new NotSupportedException("This engine client does not support organism group lookup.");
     byte[] ExportOrganismGroup(IReadOnlyList<OrganismKey> organisms) =>
         throw new NotSupportedException("This engine client does not support native organism export.");
     OrganismKey Reproduce(uint firstSlot, uint firstGeneration, uint? secondSlot, uint? secondGeneration, float[] position);

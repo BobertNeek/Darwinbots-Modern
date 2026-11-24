@@ -22,6 +22,60 @@ namespace Darwinbots.Desktop.Tests;
 public sealed class PlayerBotRenderedTests
 {
     [Fact]
+    public async Task F1CompetitionDisablesPlayerBotAndEyeDesignerUntilLoadingAnOrdinaryWorld()
+    {
+        var setup = new WorldSetupOptions
+        {
+            Backend = "Cpu",
+            PopulationCapacity = 64,
+            Species =
+            [
+                new("First", "start\nstop", false, 0xff405060, 1, 1_000, 0, false, 0f),
+                new("Second", "start\nstop", false, 0xff8090a0, 1, 1_000, 0, false, 0f),
+            ],
+        };
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], setup, NativeEngineClientFactory.Instance, new AuditStorageService());
+            window.Show();
+            try
+            {
+                var model = Assert.IsType<MainWindowViewModel>(window.DataContext);
+                await WaitFor(() => model.Population == 2);
+                var session = Field<SimulationSession>(window, "_session");
+                var bot = session.LatestSnapshot.Organisms[0];
+                var key = new OrganismKey(bot.Slot, bot.Generation);
+                model.Select(key);
+                window.FindControl<WorldViewport>("Viewport")!.SelectKey(key);
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                var toggle = menu.FindCommandItem(LegacyCommandId.EditEnablePlayerBot)!;
+                var eyeDesigner = menu.FindCommandItem(LegacyCommandId.EditEyeDesigner)!;
+                var settings = menu.FindCommandItem(LegacyCommandId.EditPlayerBotSettings)!;
+                await session.RefreshSnapshotAsync();
+                var ordinarySave = await session.SaveAsync();
+                await WaitFor(() => toggle.IsEnabled && eyeDesigner.IsEnabled);
+
+                await session.ConfigureLocalModeAsync(LocalModeConfig.Default with { Kind = LocalModeKind.Contest });
+                Assert.True(session.LatestSnapshot.NativeF1Enabled);
+                await WaitFor(() => !toggle.IsEnabled && !eyeDesigner.IsEnabled);
+                Assert.True(settings.IsEnabled);
+                window.KeyPress(Key.F11, RawInputModifiers.None, PhysicalKey.F11, null);
+                window.KeyRelease(Key.F11, RawInputModifiers.None, PhysicalKey.F11, null);
+                await session.RefreshSnapshotAsync();
+                Assert.False(session.LatestSnapshot.PlayerBot.Enabled);
+
+                await session.LoadAsync(ordinarySave);
+                Assert.False(session.LatestSnapshot.NativeF1Enabled);
+                await WaitFor(() => toggle.IsEnabled && eyeDesigner.IsEnabled);
+                window.KeyPress(Key.F11, RawInputModifiers.None, PhysicalKey.F11, null);
+                window.KeyRelease(Key.F11, RawInputModifiers.None, PhysicalKey.F11, null);
+                await WaitFor(() => session.LatestSnapshot.PlayerBot.Enabled);
+            }
+            finally { window.Close(); }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
     public async Task HeldFieldPointerAimsFocusedAndShiftHighlightedRobotsUntilRelease()
     {
         var setup = new WorldSetupOptions { Backend = "Cpu", WorldWidth = 1000, WorldHeight = 1000, PopulationCapacity = 8 };
@@ -223,6 +277,152 @@ public sealed class PlayerBotRenderedTests
                         && viewModel.SelectedKey == key
                         && viewport.OverlayProjection.Gauges.FirstOrDefault()?.Organism == key;
                 }
+            }
+            finally
+            {
+                foreach (var ownedWindow in window.OwnedWindows.ToArray()) ownedWindow.Close();
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task DraggingAMarkedMemberMovesTheGroupBeforeRelease(bool playerBot)
+    {
+        var setup = new WorldSetupOptions
+        {
+            Backend = "Cpu", WorldWidth = 1000, WorldHeight = 1000, PopulationCapacity = 8,
+        };
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], setup, NativeEngineClientFactory.Instance, new AuditStorageService());
+            window.Show();
+            try
+            {
+                await WaitFor(() => TryField<SimulationSession>(window, "_session") is not null);
+                var session = Field<SimulationSession>(window, "_session");
+                var viewModel = (MainWindowViewModel)window.DataContext!;
+                var viewport = window.FindControl<WorldViewport>("Viewport")!;
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                const string idle = "start\nstop";
+                await session.ImportDnaAsync(playerBot ? idle : "cond *.numties 0 = start 41 .tie store stop", [250, 400]);
+                await session.ImportDnaAsync(idle, [500, 400]);
+                await session.ImportDnaAsync(idle, [820, 200]);
+                if (!playerBot)
+                {
+                    await session.StepAsync(24);
+                    Assert.Single(session.LatestSnapshot.Ties);
+                }
+                await WaitFor(() => viewModel.Population == 3);
+                var (anchor, grabbed, outsider) = (session.LatestSnapshot.Organisms[0],
+                    session.LatestSnapshot.Organisms[1], session.LatestSnapshot.Organisms[2]);
+                ClickRobot(window, viewport, setup, outsider, RawInputModifiers.None);
+                if (playerBot)
+                {
+                    menu.FindCommandItem(LegacyCommandId.EditEnablePlayerBot)!
+                        .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    await WaitFor(() => session.LatestSnapshot.PlayerBot.Enabled);
+                    ClickRobot(window, viewport, setup, anchor, RawInputModifiers.Shift);
+                    ClickRobot(window, viewport, setup, grabbed, RawInputModifiers.Shift);
+                }
+                ClickRobot(window, viewport, setup, anchor, RawInputModifiers.None);
+                if (!playerBot)
+                {
+                    menu.FindCommandItem(LegacyCommandId.RobotSelectEntireOrganism)!
+                        .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    await WaitFor(() => viewModel.Status == "ORGANISM SELECTED · 2 BOT(S)");
+                }
+
+                window.MouseDown(Screen(grabbed.Position[0], grabbed.Position[1]), MouseButton.Left, RawInputModifiers.None);
+                window.MouseMove(Screen(300, 650), RawInputModifiers.LeftMouseButton);
+                await WaitFor(() => At(anchor.Slot, 300, 650));
+                Assert.True(At(grabbed.Slot, 300 + grabbed.Position[0] - anchor.Position[0],
+                    650 + grabbed.Position[1] - anchor.Position[1]));
+                Assert.True(At(outsider.Slot, outsider.Position[0], outsider.Position[1]));
+                window.MouseMove(Screen(340, 680), RawInputModifiers.LeftMouseButton);
+                await WaitFor(() => At(anchor.Slot, 340, 680));
+                window.MouseUp(Screen(450, 700), MouseButton.Left, RawInputModifiers.None);
+                await session.RefreshSnapshotAsync();
+                Assert.True(At(anchor.Slot, 340, 680));
+
+                bool At(uint slot, float x, float y)
+                {
+                    var position = session.LatestSnapshot.Organisms.Single(robot => robot.Slot == slot).Position;
+                    return Math.Abs(position[0] - x) < 1 && Math.Abs(position[1] - y) < 1;
+                }
+
+                Point Screen(float x, float y)
+                {
+                    var scaleX = viewport.Bounds.Width / setup.WorldWidth;
+                    var scaleY = viewport.Bounds.Height / setup.WorldHeight;
+                    if (viewport.FixedRatio) scaleX = scaleY = Math.Min(scaleX, scaleY);
+                    return viewport.TranslatePoint(new Point(x * scaleX * viewport.Zoom + viewport.Pan.X,
+                        y * scaleY * viewport.Zoom + viewport.Pan.Y), window)!.Value;
+                }
+            }
+            finally
+            {
+                foreach (var ownedWindow in window.OwnedWindows.ToArray()) ownedWindow.Close();
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task OrganismMenusUseTheNativeGroupAndKeepExistingNormalModeMarks()
+    {
+        var setup = new WorldSetupOptions
+        {
+            Backend = "Cpu", WorldWidth = 1000, WorldHeight = 1000, PopulationCapacity = 8,
+        };
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var storage = new AuditStorageService();
+            var window = new MainWindow([], setup, NativeEngineClientFactory.Instance, storage);
+            window.Show();
+            try
+            {
+                await WaitFor(() => TryField<SimulationSession>(window, "_session") is not null);
+                var session = Field<SimulationSession>(window, "_session");
+                var viewModel = (MainWindowViewModel)window.DataContext!;
+                var viewport = window.FindControl<WorldViewport>("Viewport")!;
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                const string idle = "start\nstop";
+                await session.ImportDnaAsync("cond *.numties 0 = start 41 .tie store stop", [250, 400]);
+                await session.ImportDnaAsync(idle, [500, 400]);
+                await session.ImportDnaAsync(idle, [820, 200]);
+                await session.StepAsync(3);
+                Assert.Single(session.LatestSnapshot.Ties);
+                await WaitFor(() => viewModel.Population == 3);
+                var (seed, softNeighbor, other) = (session.LatestSnapshot.Organisms[0],
+                    session.LatestSnapshot.Organisms[1], session.LatestSnapshot.Organisms[2]);
+                var seedKey = new OrganismKey(seed.Slot, seed.Generation);
+                var softKey = new OrganismKey(softNeighbor.Slot, softNeighbor.Generation);
+                ClickRobot(window, viewport, setup, other, RawInputModifiers.None);
+                Invoke(LegacyCommandId.EditEnablePlayerBot);
+                await WaitFor(() => session.LatestSnapshot.PlayerBot.Enabled);
+                ClickRobot(window, viewport, setup, seed, RawInputModifiers.Shift);
+                ClickRobot(window, viewport, setup, softNeighbor, RawInputModifiers.Shift);
+                ClickRobot(window, viewport, setup, seed, RawInputModifiers.None);
+                await WaitFor(() => session.LatestSnapshot.PlayerBot.Focus == seedKey);
+                Invoke(LegacyCommandId.EditEnablePlayerBot);
+                await WaitFor(() => !session.LatestSnapshot.PlayerBot.Enabled);
+
+                Invoke(LegacyCommandId.RobotSelectEntireOrganism);
+                await WaitFor(() => viewModel.Status == "ORGANISM SELECTED · 1 BOT(S)");
+                Assert.Contains(softKey, viewport.HighlightedRobotKeys!.Invoke());
+                Invoke(LegacyCommandId.RobotSaveEntireOrganism);
+                await WaitFor(() => storage.SavedOrganism is not null);
+                Assert.Equal(1, System.Buffers.Binary.BinaryPrimitives.ReadInt16LittleEndian(storage.SavedOrganism));
+                Invoke(LegacyCommandId.RobotKillEntireOrganism);
+                await WaitFor(() => viewModel.Population == 2);
+                Assert.Equal(new[] { softNeighbor.Slot, other.Slot },
+                    session.LatestSnapshot.Organisms.Select(robot => robot.Slot).ToArray());
+
+                void Invoke(LegacyCommandId command) => menu.FindCommandItem(command)!
+                    .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
             }
             finally
             {

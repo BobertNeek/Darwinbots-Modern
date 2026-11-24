@@ -52,6 +52,20 @@ impl Engine {
         bytes: &[u8],
         position: Option<[f32; 2]>,
     ) -> Result<usize, EngineError> {
+        let file = Self::decode_native_organisms(bytes, position)?;
+        // The public method is atomic too, not only its command-batch caller.
+        let mut candidate = SaveFile::decode(&SaveFile::encode(self)?)?;
+        let count = candidate.apply_native_organisms(file, position, true)?;
+        std::mem::swap(&mut candidate.player_bot_input, &mut self.player_bot_input);
+        candidate.publish_snapshot();
+        *self = candidate;
+        Ok(count)
+    }
+
+    pub(super) fn decode_native_organisms(
+        bytes: &[u8],
+        position: Option<[f32; 2]>,
+    ) -> Result<NativeRecordFile, EngineError> {
         let file = NativeRecordFile::decode(bytes)?;
         if !file.tail.is_empty() || file.robots.is_empty() || file.robots.len() > 50 {
             return Err(invalid(
@@ -73,18 +87,14 @@ impl Engine {
                 }
             }
         }
-        // The public method is atomic too, not only its command-batch caller.
-        let mut candidate = SaveFile::decode(&SaveFile::encode(self)?)?;
-        let count = candidate.apply_native_organisms(file, position)?;
-        std::mem::swap(&mut candidate.player_bot_input, &mut self.player_bot_input);
-        *self = candidate;
-        Ok(count)
+        Ok(file)
     }
 
-    fn apply_native_organisms(
+    pub(super) fn apply_native_organisms(
         &mut self,
         file: NativeRecordFile,
         position: Option<[f32; 2]>,
+        publish: bool,
     ) -> Result<usize, EngineError> {
         if file.robots.len() > self.available_robot_capacity() {
             return Err(EngineError::CapacityReached);
@@ -114,7 +124,7 @@ impl Engine {
             {
                 // AddSpecie uses default species mutation rates; the robot
                 // retains its own complete incoming mutation profile.
-                self.register_species(SpeciesDefinition {
+                let species = SpeciesDefinition {
                     name,
                     vegetable: record.word("vegetable")? != 0,
                     color: color(record.long("color")?),
@@ -133,7 +143,12 @@ impl Engine {
                         ..RestrictionColumn::default()
                     }),
                     ..SpeciesDefinition::default()
-                });
+                };
+                if publish {
+                    self.register_species(species);
+                } else {
+                    self.register_species_unpublished(species);
+                }
             }
             let mut robot = self.native_robot(record)?;
             // posto clears the runtime tie count. LoadRobot restores the saved
@@ -174,8 +189,7 @@ impl Engine {
         self.native_ties(&file, &old_slots)?;
         // LoadOrganism remaps links for display and traversal without writing
         // tie readbacks into either imported or existing robots' memory.
-        self.refresh_tie_projections_impl(false, &HashMap::new(), !native);
-        self.publish_snapshot();
+        self.refresh_tie_projections_impl(false, &HashMap::new(), publish && !native);
         Ok(file.robots.len())
     }
 }
@@ -449,7 +463,7 @@ mod tests {
         world.apply_file_teleporters().unwrap();
         assert!(!path.exists());
         assert_eq!(world.teleporters[0].received, 1);
-        assert_eq!(world.snapshot().ties.len(), 1);
+        assert_eq!(world.ties.len(), 1);
         let ids = world.slots.ids_in_slot_order();
         for &id in &ids {
             assert_eq!(tie_readbacks(&world, id), SAVED_TIE_READBACKS);
@@ -457,6 +471,7 @@ mod tests {
         }
 
         world.tick().unwrap();
+        assert_eq!(world.snapshot().ties.len(), 1);
         for &id in &ids {
             assert_eq!(world.slots.get(id).unwrap().kinematics.velocity, [0.0; 2]);
         }

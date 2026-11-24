@@ -1,6 +1,23 @@
 # Darwinbots Modern Verification Ledger
 
-## Current offline assessment — 2026-11-04
+## November 24 integration status
+
+Full offline acceptance remains open. The first follow-up merged to `master` as `45e19d22e639980d7545aace2ede8948d8825dc3`. Its tree matches candidate `32cb60847a1de99c8f6b892e092714bf0c25c298`. Windows, Linux, Intel macOS, and Apple silicon passed tests, publish, and package smoke. Local Windows ran 334 desktop-core tests, 240 rendered checks, and 28 regular FFI cases. The physical FFI case also passed on an NVIDIA RTX 3050 using Vulkan, driver 610.88. The Windows package smoke advanced original-format SIM and round-tripped SIM and DBO. [Merged changes](https://github.com/BobertNeek/Darwinbots-Modern/pull/265) · [CI and artifacts](https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/45349321978)
+
+| Package | Artifact ID | GitHub ZIP SHA-256 |
+| --- | ---: | --- |
+| Windows x64 | 14902060697 | `c64696f1e36129b41946ff4e92297a935e7c860d823ea2a6daeb09d7ca611111` |
+| Linux x64 | 14900726213 | `35aa634fcf42033793f9233cc74d754213668048174dd81d64e76f4ff84b1926` |
+| Intel macOS | 14902270479 | `b04e235cd6cc5a77c0050368129e8076fd2470e44d8354c1e10e57f79dbd9100` |
+| Apple silicon | 14900647291 | `89bef58b9e5bf881aa2292eae2be4d82181acd19c3135391c4b0ab6009219de0` |
+
+The earlier CI package at `da3581e05903ea5315b8903835519d86a5c7f99d` also passed native Windows F2 load, F7 step, and F3 save. A copied original SIM advanced from cycle 281 to 282 and the DB3S readback retained cycle 282 and 194 robots. SHA-256 of the Windows package ZIP was `38684f367d7feed03763e158b5f1a4d24293e041017474e71847ba197cd964cf`. SHA-256 of the DB3S was `b022b5594058f81d30eff15511945744efb8f93563180aa5a5fec64b8a4306f6`.
+
+The later local Windows build at `e465a1ae539ccf6589a55a283010058140d1ff04` opened a positional SIM at cycle 281. F12 ran and paused it twice. The Population graph exported two species at cycle 400 to a CSV with SHA-256 `78ba1ce49f981598729c831e9b7fab995a36d9dc37617975403c71444a5d1203`. Paused Species Apply kept cycle 513, 453 robots, and selected robot `16:0`. Reopening showed the edited name, initial count zero, and energy 777. Starting with that roster kept two species and spawned five organisms from the other species only. Global Settings saved Hide system tray icon, showed the checked value after reopening and prevented the tray button from hiding the simulation. Restoring the option persisted the original unchecked value. Interactive tray restore remains open.
+
+Original Windows directed-tie checkpoints confirm separate import and first-cycle behavior for reciprocal, one-way, and dormant input rows. The corresponding port behavior remains open. [Original executable receipts](windows-offline-acceptance.md#november-24-original-windows-results)
+
+## November 4 offline assessment
 
 Target: functional Darwinbots 2.48.32 offline behavior on native Windows, with Windows/Linux/Intel macOS/Apple silicon CI. Internet Mode is removed from menus, toolbar, setup, advanced/global settings and teleporter choices. Local and file teleporters remain supported. Historical VB6/helper sources remain reference material.
 
@@ -97,7 +114,7 @@ The October 25 recovery rechecked the existing package's engine/desktop hashes a
 - DB2 2.48.32 native `.sim` import/export and `.dbo` organism interchange are implemented. This supersedes the old blanket statement that only modern saves and text DNA exist. See [native simulation export](../engine/src/world/native_sim_export.rs), [native organism interchange](../engine/src/world/native_organism_io.rs) and [desktop native integration tests](../desktop/tests/Darwinbots.Desktop.Tests/LegacySettingsNativeTests.cs).
 - The integration tests load a pinned genuine original simulation and an original-executable continuation of a port export, step the loaded worlds, and compare controlled modern checkpoint continuation. Native organism evidence includes an original simulation saved after `.dbo` import. This is finite fixture coverage, not a guarantee for every historical save, DB2 version or unknown record layout.
 - Modern `DB3S` saves retain their own versioned continuation contract. Native DB2 export and modern save/resume are distinct paths. Identical arbitrary future random trajectories and incidental VB6 bugs are outside the agreed functional scope.
-- All 74 original main-menu actions are represented; three Internet actions remain disabled by agreement. Offline exchange is included. Registration alone is not behavioral proof: the report distinguishes automated interactions from critical workflows observed natively.
+- At the October checkpoint, Internet Mode appeared as disabled controls. The later offline product removed those controls and kept local exchange. The October report distinguishes automated interactions from critical workflows observed natively.
 - Native tray hide was observed; tray restore has automated coverage but was not observed natively. Linux/macOS native window-manager walkthroughs and a manual click of every menu action were not performed. No corresponding product failure was established; these remain explicit verification limits.
 
 ## Existing Windows package

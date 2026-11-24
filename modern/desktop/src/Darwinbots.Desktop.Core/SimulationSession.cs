@@ -103,6 +103,14 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task UpdateCostSettingsAsync(GlobalSimulationCostSettings settings, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.UpdateCostSettings(settings), cancellationToken);
 
+    public Task SetGlobalCostMultiplierAsync(double multiplier, CancellationToken cancellationToken = default) =>
+        Enqueue(engine =>
+        {
+            var configuration = engine.ReadConfiguration()
+                ?? throw new InvalidOperationException("The simulation's current costs are unavailable.");
+            engine.UpdateCostSettings(configuration.Costs with { GlobalMultiplier = multiplier });
+        }, cancellationToken);
+
     public async Task<DnaImportReport> ImportDnaAsync(
         string dna,
         float[]? position = null,
@@ -274,6 +282,9 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task MoveAsync(uint slot, uint generation, float[] position, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.Move(slot, generation, position), cancellationToken);
 
+    public Task DragHighlightedRobotsAsync(HighlightedRobotDrag drag) =>
+        Enqueue(engine => engine.DragHighlightedRobots(drag), CancellationToken.None);
+
     public async Task<OrganismKey> CloneAsync(uint slot, uint generation, float[] position, CancellationToken cancellationToken = default)
     {
         OrganismKey? result = null;
@@ -331,6 +342,14 @@ public sealed class SimulationSession : IAsyncDisposable
         string? result = null;
         await Enqueue(engine => result = engine.ExportSpeciesTemplateDna(species), cancellationToken).ConfigureAwait(false);
         return result ?? throw new InvalidDataException("Engine returned no startup species DNA.");
+    }
+
+    public async Task<IReadOnlyList<OrganismKey>> ListLegacyOrganismGroupAsync(OrganismKey seed)
+    {
+        IReadOnlyList<OrganismKey> members = [];
+        await Enqueue(engine => members = engine.ListLegacyOrganismGroup(seed), CancellationToken.None)
+            .ConfigureAwait(false);
+        return members;
     }
 
     public async Task<byte[]> ExportOrganismGroupAsync(IReadOnlyList<OrganismKey> organisms, CancellationToken cancellationToken = default)

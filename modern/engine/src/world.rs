@@ -87,6 +87,7 @@ mod player_insertion;
 
 #[path = "world/file_teleporters.rs"]
 mod file_teleporters;
+use file_teleporters::FileTransferPhase;
 #[path = "world/native_teleporters.rs"]
 mod native_teleporters;
 mod species_settings;
@@ -567,6 +568,8 @@ pub struct Snapshot {
     /// Last effective state of the original Sun button.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub native_sun_on: Option<bool>,
+    #[serde(default)]
+    pub native_f1_enabled: bool,
     #[serde(default = "default_true")]
     pub death_poffs_enabled: bool,
     #[serde(default)]
@@ -627,6 +630,7 @@ impl Default for Snapshot {
             tick: 0,
             native_cycle: None,
             native_sun_on: None,
+            native_f1_enabled: false,
             death_poffs_enabled: true,
             ordinary_restart_available: false,
             ordinary_restart_on_extinction: false,
@@ -663,6 +667,7 @@ impl PartialEq for Snapshot {
         self.tick == other.tick
             && self.native_cycle == other.native_cycle
             && self.native_sun_on == other.native_sun_on
+            && self.native_f1_enabled == other.native_f1_enabled
             && self.death_poffs_enabled == other.death_poffs_enabled
             && self.ordinary_restart_available == other.ordinary_restart_available
             && self.ordinary_restart_on_extinction == other.ordinary_restart_on_extinction
@@ -2024,6 +2029,7 @@ impl From<Db3sV2Snapshot> for Snapshot {
             tick: value.tick,
             native_cycle: None,
             native_sun_on: None,
+            native_f1_enabled: false,
             death_poffs_enabled: true,
             ordinary_restart_available: false,
             ordinary_restart_on_extinction: false,
@@ -2911,6 +2917,7 @@ impl Engine {
                 tick: 0,
                 native_cycle: None,
                 native_sun_on: None,
+                native_f1_enabled: false,
                 death_poffs_enabled: true,
                 ordinary_restart_available: true,
                 ordinary_restart_on_extinction: false,
@@ -5317,6 +5324,41 @@ impl Engine {
         Ok(())
     }
 
+    pub fn drag_highlighted_robots(
+        &mut self,
+        anchor: OrganismId,
+        grabbed: OrganismId,
+        placements: &[(OrganismId, [f32; 2])],
+    ) -> Result<(), EngineError> {
+        let mut distinct = HashSet::new();
+        if placements.iter().any(|(id, position)| {
+            !distinct.insert(*id) || position.iter().any(|coordinate| !coordinate.is_finite())
+        }) {
+            return Err(EngineError::Invariant(
+                "Robot drag requires distinct IDs and finite coordinates".into(),
+            ));
+        }
+        let can_drag = |robot: &RobotState| robot.flags.exists && !robot.flags.hidden;
+        if [anchor, grabbed]
+            .iter()
+            .any(|&id| !self.slots.get(id).is_ok_and(can_drag))
+        {
+            return Ok(());
+        }
+        for &(id, position) in placements {
+            if let Ok(robot) = self.slots.get_mut(id)
+                && can_drag(robot)
+            {
+                // Form_MouseMove leaves bounds, ties and other forces to the ordinary cycle.
+                robot.kinematics.position = position;
+                robot.kinematics.velocity = [0.0; 2];
+                robot.kinematics.actual_velocity = [0.0; 2];
+            }
+        }
+        self.publish_snapshot();
+        Ok(())
+    }
+
     pub fn move_organism(&mut self, id: OrganismId, position: [f32; 2]) -> Result<(), EngineError> {
         self.valid_slot(id)?;
         let target = [
@@ -6049,7 +6091,8 @@ impl Engine {
             census[1] = census[0];
         }
         self.trace_robot_phase(&mut trace, CyclePhase::TeleporterTest);
-        self.apply_file_teleporters_staged(transfers)?;
+        let mut shared_path_exports = HashMap::new();
+        self.apply_early_teleporters_staged(transfers, &mut shared_path_exports)?;
         self.apply_environment_features(false, true);
         self.trace_robot_phase(&mut trace, CyclePhase::FluidMass);
         if self.native_random.is_some() {
@@ -6188,6 +6231,11 @@ impl Engine {
         trace.phase(CyclePhase::ObjectsTeleporters);
         self.move_obstacles();
         self.move_native_teleporters();
+        self.apply_file_teleporters_staged(
+            transfers,
+            FileTransferPhase::AfterPortalMovement,
+            &mut shared_path_exports,
+        )?;
         trace.phase(CyclePhase::Repopulation);
         let started = Instant::now();
         self.vegetation_repopulation_phase()?;
@@ -10488,6 +10536,11 @@ impl Engine {
             }
             cursor += 1;
         }
+        self.respawn_group(origin, target, &members);
+        members
+    }
+
+    fn respawn_group(&mut self, origin: OrganismId, target: [f32; 2], members: &[OrganismId]) {
         let radius_for = |id| {
             let robot = self.slots.get(id).unwrap();
             robot.materials.radius
@@ -10515,7 +10568,7 @@ impl Engine {
                 delta + delta.signum() * (radii_difference - 1.0)
             }
         });
-        for &member in &members {
+        for &member in members {
             let robot = self.slots.get_mut(member).unwrap();
             for (axis, delta) in displacement.into_iter().enumerate() {
                 robot.kinematics.position[axis] += delta;
@@ -10526,7 +10579,6 @@ impl Engine {
                     .relocate(member, robot.kinematics.position);
             }
         }
-        members
     }
 
     fn physics_phase(&mut self) -> Result<(), EngineError> {
@@ -11587,6 +11639,14 @@ impl Engine {
         &mut self,
         file: &LegacyOrganismFile,
     ) -> Result<usize, EngineError> {
+        self.apply_legacy_organism_file(file, true)
+    }
+
+    fn apply_legacy_organism_file(
+        &mut self,
+        file: &LegacyOrganismFile,
+        publish: bool,
+    ) -> Result<usize, EngineError> {
         if file.members.is_empty() {
             return Err(EngineError::InvalidSave(
                 "DB2 organism file has no members".to_owned(),
@@ -11600,7 +11660,7 @@ impl Engine {
                     "DB2 organism file contains duplicate member identities".to_owned(),
                 ));
             }
-            if let Some(imported) = self.import_legacy_organism(&member.organism)? {
+            if let Some(imported) = self.import_legacy_organism(&member.organism, publish)? {
                 remap.insert(source, imported);
             }
         }
@@ -11614,7 +11674,9 @@ impl Engine {
             self.restore_imported_tie(first, second, tie.rest_length)?;
         }
         self.refresh_tie_projections();
-        self.publish_snapshot();
+        if publish {
+            self.publish_snapshot();
+        }
         Ok(remap.len())
     }
 
@@ -11649,6 +11711,13 @@ impl Engine {
             first_port as i32,
             second_port as i32,
         ));
+        // DB2O records lack a Multibot flag. This adapter already reconstructs
+        // their ties as hardened, so initialize both endpoints consistently.
+        for id in [first, second] {
+            let robot = self.slots.get_mut(id)?;
+            robot.counters.multibot = true;
+            robot.program.memory.write(MEM_MULTI, 1);
+        }
         self.rebuild_native_tie_index();
         Ok(())
     }
@@ -11656,6 +11725,7 @@ impl Engine {
     fn import_legacy_organism(
         &mut self,
         organism: &LegacyOrganism,
+        publish: bool,
     ) -> Result<Option<OrganismId>, EngineError> {
         if organism.corpse {
             self.corpses.push(CorpseSnapshot {
@@ -11670,7 +11740,9 @@ impl Engine {
                 birth_cycle: organism.birth_cycle,
                 ..CorpseSnapshot::default()
             });
-            self.publish_snapshot();
+            if publish {
+                self.publish_snapshot();
+            }
             return Ok(None);
         }
         let dna = LegacyDna::parse(&organism.dna)?;
@@ -11714,7 +11786,9 @@ impl Engine {
                 self.native_random.is_some(),
             ),
         );
-        self.publish_snapshot();
+        if publish {
+            self.publish_snapshot();
+        }
         Ok(Some(id))
     }
 
@@ -11784,6 +11858,7 @@ impl Engine {
     }
 
     fn apply_teleporter_relocation(&mut self) {
+        let native_world = self.native_cycle.is_some();
         let world_size = [self.config.world_width, self.config.world_height];
         let mut fallback_random = self.config.seed ^ self.tick.rotate_left(23);
         let mut positions: Vec<_> = self
@@ -11918,6 +11993,7 @@ impl Engine {
                 };
                 if teleporter.internet
                     || !teleporter.local
+                    || (native_world && teleporter.native_top_left.is_some())
                     || used_capacity[teleporter_index] >= teleporter.capacity.max(1)
                     || !inside_teleporter(teleporter, corpse.position, radius)
                     || !teleporter.filters.accepts(false, true)
@@ -14011,6 +14087,7 @@ impl Engine {
             tick: self.tick,
             native_cycle: self.native_cycle,
             native_sun_on: self.native_sun_on(),
+            native_f1_enabled: self.native_f1_enabled(),
             death_poffs_enabled: self.death_poffs_enabled,
             ordinary_restart_available: self.ordinary_restart_available(),
             ordinary_restart_on_extinction: self.ordinary_restart.enabled,
@@ -14855,19 +14932,26 @@ fn local_teleporter_destination(
     fallback: &mut u64,
 ) -> [f32; 2] {
     if teleporter.random_destination {
-        // VB6 multiplies each field extent by a Single random draw, then
-        // converts the result to Long before respawning the organism.
-        world_size.map(|extent| {
-            (extent * world_random_unit(native, fallback) as f32)
-                .round_ties_even()
-                .clamp(0.0, extent)
-        })
+        random_teleporter_destination(world_size, native, fallback)
     } else {
         [
             teleporter.destination[0].clamp(0.0, world_size[0]),
             teleporter.destination[1].clamp(0.0, world_size[1]),
         ]
     }
+}
+
+fn random_teleporter_destination(
+    world_size: [f32; 2],
+    native: &mut Option<crate::native_random::NativeRandom>,
+    fallback: &mut u64,
+) -> [f32; 2] {
+    // VB6 multiplies each field extent by a Single draw before converting to Long.
+    world_size.map(|extent| {
+        (extent * world_random_unit(native, fallback) as f32)
+            .round_ties_even()
+            .clamp(0.0, extent)
+    })
 }
 
 fn world_random_unit(

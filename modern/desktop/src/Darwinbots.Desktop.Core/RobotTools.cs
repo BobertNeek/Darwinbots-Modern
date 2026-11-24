@@ -2,6 +2,11 @@ using System.Globalization;
 
 namespace Darwinbots.Desktop.Core;
 
+public readonly record struct RobotDragPlacement(OrganismKey Key, float X, float Y);
+
+public sealed record HighlightedRobotDrag(OrganismKey Anchor, OrganismKey Grabbed,
+    IReadOnlyList<RobotDragPlacement> Placements);
+
 public sealed record PlayerBotBinding(int KeyCode, ushort MemoryAddress, int Value, bool Invert = false)
 {
     public void Validate()
