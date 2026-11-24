@@ -686,6 +686,35 @@ public sealed class TeleporterRenderedTests
     }
 
     [Fact]
+    public async Task DeleteAllOfflineTeleportersPreservesLegacyInternetMetadata()
+    {
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], new WorldSetupOptions(), new AuditEngineClientFactory(), new AuditStorageService());
+            window.Show();
+            try
+            {
+                var model = Assert.IsType<MainWindowViewModel>(window.DataContext);
+                await WaitFor(() => model.Status.Contains("WORLD READY", StringComparison.Ordinal));
+                var session = Assert.IsType<SimulationSession>(Session(window));
+                var local = new TeleporterSnapshot(7, [100f, 100f], 20f, [200f, 200f]);
+                var retained = new TeleporterSnapshot(8, [300f, 300f], 20f, [400f, 400f])
+                {
+                    Mode = "internet", Internet = true, Path = "retained",
+                };
+                await session.AddTeleporterAsync(local);
+                await session.AddTeleporterAsync(retained);
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                menu.FindCommandItem(LegacyCommandId.ObjectsDeleteAllTeleporters)!
+                    .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => model.Status == "DELETED 1 TELEPORTER(S)");
+                Assert.Equal(retained, Assert.Single(session.LatestSnapshot.Teleporters));
+            }
+            finally { window.Close(); }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
     public async Task DeleteAllTeleportersClearsSelectionBeforeTheIdIsReused()
     {
         var setup = new WorldSetupOptions { Backend = "Cpu", WorldWidth = 4_000, WorldHeight = 2_000, PopulationCapacity = 16 };
