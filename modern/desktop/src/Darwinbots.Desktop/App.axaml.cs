@@ -24,25 +24,8 @@ public sealed partial class App : Application
     public override void OnFrameworkInitializationCompleted()
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
-        {
-            var arguments = desktop.Args ?? [];
-            if (CreateSafeModeBackupWindow(arguments, AvaloniaDesktopStorageService.Instance) is { } viewer)
-            {
-                desktop.MainWindow = viewer;
-            }
-            else
-            {
-                var setup = new SetupWindow(AvaloniaDesktopStorageService.Instance, allowLastExitResume: arguments.Length == 0);
-                setup.WorldCreated += options =>
-                {
-                    var simulation = new MainWindow(arguments, options);
-                    desktop.MainWindow = simulation;
-                    simulation.Show();
-                    setup.Close();
-                };
-                desktop.MainWindow = setup;
-            }
-        }
+            desktop.MainWindow = CreateStartupWindow(desktop.Args ?? [], AvaloniaDesktopStorageService.Instance,
+                window => desktop.MainWindow = window);
         base.OnFrameworkInitializationCompleted();
     }
 
@@ -50,6 +33,68 @@ public sealed partial class App : Application
         arguments is [SafeModeBackupProcess.StartupSwitch]
             ? new SafeModeBackupWindow(storage) { WindowStartupLocation = WindowStartupLocation.CenterScreen }
             : null;
+
+    private static Window CreateStartupWindow(string[] arguments, IDesktopStorageService storage, Action<Window> setMainWindow)
+    {
+        if (CreateSafeModeBackupWindow(arguments, storage) is { } viewer) return viewer;
+
+        MainWindow OpenWorld(WorldSetupOptions options) => new(arguments, options, NativeEngineClientFactory.Instance, storage);
+        var (requestedSave, error) = ReadStartupSaveArgument(arguments);
+        if (requestedSave is not null)
+        {
+            var globals = SetupWindow.ReadProfileSettings(storage, out _);
+            if (FindStartupSave(requestedSave, globals.Main.MainDirectory) is { } path)
+                return OpenWorld(new WorldSetupOptions { LoadSavePath = path, GlobalSettings = globals });
+            error = $"Simulation file not found: {requestedSave}";
+        }
+
+        var setup = new SetupWindow(storage, allowLastExitResume: arguments.Length == 0);
+        if (error is not null) setup.ShowStartupLoadError(error);
+        setup.WorldCreated += options =>
+        {
+            var simulation = OpenWorld(options);
+            setMainWindow(simulation);
+            simulation.Show();
+            setup.Close();
+        };
+        return setup;
+    }
+
+    private static (string? RequestedPath, string? Error) ReadStartupSaveArgument(string[] arguments)
+    {
+        string? requested = null;
+        for (var index = 0; index < arguments.Length; index++)
+        {
+            var argument = arguments[index];
+            if (argument.Equals("--bot", StringComparison.OrdinalIgnoreCase) && index + 1 < arguments.Length
+                && !string.IsNullOrWhiteSpace(arguments[index + 1]))
+            {
+                index++;
+                continue;
+            }
+
+            var extension = Path.GetExtension(argument);
+            if (argument.StartsWith('-') || (!extension.Equals(".sim", StringComparison.OrdinalIgnoreCase)
+                && !extension.Equals(".db3s", StringComparison.OrdinalIgnoreCase)))
+                continue;
+
+            if (requested is not null) return (null, "Pass one simulation file to open.");
+            requested = argument;
+        }
+        return (requested, null);
+    }
+
+    private static string? FindStartupSave(string requested, string legacyDirectory)
+    {
+        if (File.Exists(requested)) return Path.GetFullPath(requested);
+
+        if (requested.IndexOfAny(['/', '\\', ':']) < 0 && !string.IsNullOrWhiteSpace(legacyDirectory))
+        {
+            var legacySave = Path.Combine(legacyDirectory, "Saves", requested);
+            if (File.Exists(legacySave)) return Path.GetFullPath(legacySave);
+        }
+        return null;
+    }
 
     private void ApplyUiPreferences()
     {
