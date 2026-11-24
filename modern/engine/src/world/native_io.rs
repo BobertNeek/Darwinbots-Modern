@@ -407,10 +407,14 @@ impl Engine {
                 .subspecies_counters
                 .push(tail.integer(&(p.clone() + "subspecies_counter"))?);
         }
+        let hide_baselines = tail.integer("hide_pred")? != 0;
         let mut old_slots = HashMap::new();
         let mut absolute_ids = HashMap::new();
         for (index, record) in file.robots.iter().enumerate() {
             let mut robot = engine.native_robot(record)?;
+            // The saved hidepred applies to the exact FName even when there
+            // is no external restart mode to schedule the next switch.
+            robot.flags.hidden = hide_baselines && robot.identity.species_file == "Base.txt";
             robot.native_record_index = Some(index);
             // LoadSimulation restores the tie array and VM memory cell 466.
             // The separate runtime .numties starts at zero until Update_Ties.
@@ -989,6 +993,75 @@ impl Engine {
 mod tests {
     use super::*;
     use crate::SaveFile;
+
+    #[test]
+    fn native_sim_load_restores_only_exact_baseline_visibility_without_a_restart_mode() {
+        let mut source = Engine::new_native(EngineConfig::testing()).unwrap();
+        for (name, x) in [
+            ("Base.txt", 100.0),
+            ("base.txt", 400.0),
+            ("Mutate.txt", 700.0),
+        ] {
+            let species = source.register_species(SpeciesDefinition {
+                name: name.into(),
+                ..Default::default()
+            });
+            source
+                .spawn_species_batch(
+                    LegacyDna::parse("start 111 901 store stop").unwrap(),
+                    species,
+                    [[x, 400.0]],
+                    3000,
+                )
+                .unwrap();
+        }
+        let save = source.export_native_sim().unwrap();
+        for hide in [0_i16, -1] {
+            let mut file = NativeRecordFile::decode(&save).unwrap();
+            let mut tail = NativeSimulationTail::decode(&file.tail).unwrap();
+            tail.set_value("hide_pred", NativeValue::Word(hide))
+                .unwrap();
+            tail.set_value("mode_cycles", NativeValue::Long(17))
+                .unwrap();
+            tail.set_value("handicap", NativeValue::Double((-1.5_f64).to_bits()))
+                .unwrap();
+            file.tail = tail.encode().unwrap();
+            let world = Engine::from_native_sim(&file.encode().unwrap()).unwrap();
+            let reopened = SaveFile::decode(&SaveFile::encode(&world).unwrap()).unwrap();
+
+            for mut loaded in [world, reopened] {
+                assert_eq!(loaded.local_mode.status, LocalModeStatus::Idle);
+                assert!(loaded.local_mode.evolution.is_none());
+                let saved = NativeRecordFile::decode(&loaded.export_native_sim().unwrap()).unwrap();
+                let saved_tail = NativeSimulationTail::decode(&saved.tail).unwrap();
+                for field in ["hide_pred", "mode_cycles", "handicap"] {
+                    assert_eq!(saved_tail.value(field).unwrap(), tail.value(field).unwrap());
+                }
+                let ids = loaded.slots.ids_in_slot_order();
+                assert_eq!(ids.len(), 3);
+                for &id in &ids {
+                    let robot = loaded.slots.get(id).unwrap();
+                    let hidden = hide != 0 && robot.identity.species_file == "Base.txt";
+                    assert_eq!(robot.flags.hidden, hidden);
+                    assert_eq!(
+                        loaded
+                            .snapshot()
+                            .render_instances
+                            .iter()
+                            .any(|instance| instance.slot == id.slot()),
+                        !hidden
+                    );
+                }
+                loaded.tick().unwrap();
+                for id in ids {
+                    let robot = loaded.slots.get(id).unwrap();
+                    let hidden = hide != 0 && robot.identity.species_file == "Base.txt";
+                    assert_eq!(robot.flags.hidden, hidden);
+                    assert_eq!(robot.program.memory.read(901), if hidden { 0 } else { 111 });
+                }
+            }
+        }
+    }
 
     const ORIGINAL: &[u8] = include_bytes!("../../tests/fixtures/db24832-original-user.sim");
     const MOVEMENT_START: &[u8] =
