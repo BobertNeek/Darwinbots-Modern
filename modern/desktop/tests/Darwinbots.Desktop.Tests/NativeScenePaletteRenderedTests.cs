@@ -55,12 +55,13 @@ public sealed class NativeScenePaletteRenderedTests
             var storage = new AvaloniaDesktopStorageService(profile.FullName);
             Assert.True(storage.LoadOldColorsPreference());
 
-            await storage.SaveOldColorsPreferenceAsync(false);
+            var settings = Assert.IsType<GlobalSettings>(storage.LoadGlobalSettings());
+            await storage.SaveGlobalSettingsAsync(settings with { Main = settings.Main with { OldColors = false } });
             Assert.False(storage.LoadOldColorsPreference());
-            var saved = JsonNode.Parse(await File.ReadAllTextAsync(profilePath))!.AsObject();
-            Assert.False(saved["main"]!["oldColors"]!.GetValue<bool>());
-            saved["main"]!.AsObject().Remove("oldColors");
-            Assert.True(JsonNode.DeepEquals(initial, saved));
+            var saved = Assert.IsType<GlobalSettings>(storage.LoadGlobalSettings());
+            Assert.False(saved.Main.OldColors);
+            Assert.True(saved.Main.KeepGraphsUpdatingOnClose);
+            Assert.Equal(legacy.FullName, saved.Main.MainDirectory);
             Assert.Equal(records, await File.ReadAllLinesAsync(legacyPath));
         }
         finally { profile.Delete(recursive: true); }
