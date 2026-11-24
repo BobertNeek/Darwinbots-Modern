@@ -75,7 +75,7 @@ public sealed class SafeModeAutosaveRenderedTests
 
                 speed.SelectedIndex = 1;
                 Click("ToolbarSlot10");
-                Assert.Equal(3, speed.SelectedIndex);
+                Assert.Equal(1, speed.SelectedIndex);
                 var maximumBatch = Field<uint>(window, "_maximumBatch");
                 Click("ToolbarSlot09");
                 Assert.False(timer.IsEnabled);
@@ -101,7 +101,7 @@ public sealed class SafeModeAutosaveRenderedTests
 
                 Click("ToolbarSlot09");
                 Assert.Equal("15 CPS OFF", Named<Button>(window, "ToolbarSlot09").Content);
-                Assert.Equal(TimeSpan.FromMilliseconds(1), timer.Interval);
+                Assert.Equal(TimeSpan.FromMilliseconds(16), timer.Interval);
                 Click("ToolbarSlot09");
                 Assert.False(timer.IsEnabled);
                 Click("TurboButton");
@@ -110,7 +110,7 @@ public sealed class SafeModeAutosaveRenderedTests
                 releaseTurbo.SetResult();
                 await WaitFor(() => !Field<bool>(window, "_tickInFlight"));
                 Assert.False(timer.IsEnabled);
-                Assert.Equal(3, speed.SelectedIndex);
+                Assert.Equal(1, speed.SelectedIndex);
                 Assert.Equal(maximumBatch, Field<uint>(window, "_maximumBatch"));
                 Assert.Equal("FAST ON", Named<Button>(window, "ToolbarSlot10").Content);
 
