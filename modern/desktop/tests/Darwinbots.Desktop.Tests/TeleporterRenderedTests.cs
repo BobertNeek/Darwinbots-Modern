@@ -690,7 +690,12 @@ public sealed class TeleporterRenderedTests
     {
         await DesktopTestApplication.Session.Dispatch(async () =>
         {
-            var window = new MainWindow([], new WorldSetupOptions(), new AuditEngineClientFactory(), new AuditStorageService());
+            var setup = new WorldSetupOptions
+            {
+                Backend = "Cpu",
+                Species = [new("Portal probe", "start\nstop", false, 0xff239ac0, 1, 1_000, 0, false, 0)],
+            };
+            var window = new MainWindow([], setup, new AuditEngineClientFactory(), new AuditStorageService());
             window.Show();
             try
             {
