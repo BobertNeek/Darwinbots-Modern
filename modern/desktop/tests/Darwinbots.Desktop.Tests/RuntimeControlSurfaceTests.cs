@@ -1977,6 +1977,7 @@ public sealed class RuntimeControlSurfaceTests
                 viewModel.Select(focus);
                 var viewport = window.FindControl<WorldViewport>("Viewport")!;
                 viewport.SetSnapshot(snapshot);
+                Field<HashSet<OrganismKey>>(window, "_playerBotHighlights").Add(unrelated);
                 viewport.SelectKeys([unrelated], focus);
                 timer.Interval = TimeSpan.FromMinutes(1);
                 if (wasRunning)
@@ -2005,7 +2006,7 @@ public sealed class RuntimeControlSurfaceTests
                 Assert.Equal(expectedLinks, Links());
                 Click("HighlightDescendants");
                 var marks = Field<HashSet<OrganismKey>>(viewport, "_selectedKeys");
-                Assert.True(marks.SetEquals([focus, child, unrelated]));
+                Assert.True(marks.SetEquals([child, unrelated]));
                 Assert.Empty(Links());
                 Click("ShowWholeLineage");
                 Assert.Equal(expectedLinks, Links());
@@ -2022,7 +2023,7 @@ public sealed class RuntimeControlSurfaceTests
 
                 viewport.SetSnapshot(snapshot with { Tick = 43, NativeCycle = 42 });
                 Assert.Empty(Links());
-                Assert.True(marks.SetEquals([focus, child, unrelated]));
+                Assert.True(marks.SetEquals([child, unrelated]));
 
                 void Click(string name) => Assert.Single(buttons, button => button.Name == name)
                     .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
