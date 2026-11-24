@@ -1989,7 +1989,7 @@ public sealed class RuntimeControlSurfaceTests
                 Assert.Contains((byte)0xe9, storage.SavedLivingSnapshot!);
                 var living = LegacyDnaText.Decode(storage.SavedLivingSnapshot!);
                 Assert.StartsWith(Db2GenomeRecordFile.Header + "\r\n", living);
-                Assert.Contains("start\nstop", living, StringComparison.Ordinal);
+                Assert.Contains("start\r\nstop", living, StringComparison.Ordinal);
 
                 menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.RobotShowInfo)!
                     .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
