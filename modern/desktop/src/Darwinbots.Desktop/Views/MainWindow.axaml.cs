@@ -114,7 +114,6 @@ public sealed partial class MainWindow : Window
     private bool _deadRecordingEnabled;
     private bool _excludeRepopulatingDead;
     private int _recordedCorpseCount;
-    private bool _automaticTagByName;
     private bool _playerBotEnabled;
     private IReadOnlyList<PlayerBotBinding> _playerBotBindings = [];
     private bool _rgbMemoryMonitorEnabled;
@@ -658,8 +657,8 @@ public sealed partial class MainWindow : Window
             () => new LegacyCommandState(_session is not null, _session?.LatestSnapshot.AsexualReproductionAllowed == false, _session is null ? "Start a simulation first." : null),
             async _ => await ToggleLegacyRestrictionAsync(false));
         handlers[LegacyCommandId.EditAutomaticallyTagByName] = Handler(
-            () => new LegacyCommandState(true, _automaticTagByName),
-            _ => Task.FromResult(ToggleAutomaticTagging()));
+            EngineState,
+            async _ => await TagRobotsByNameAsync());
         handlers[LegacyCommandId.EditEnableAutomaticForking] = Handler(
             () => new LegacyCommandState(_session is not null, _liveEnvironment.AutoSpeciation, _session is null ? "Start a simulation first." : null),
             async _ => await ToggleAutomaticForkingAsync());
@@ -1172,10 +1171,19 @@ public sealed partial class MainWindow : Window
             : $"ASEXUAL REPRODUCTION · {(asexualAllowed ? "ALLOWED" : "BLOCKED FOR NON-REPOPULATING SPECIES")}");
     }
 
-    private LegacyCommandResult ToggleAutomaticTagging()
+    private async Task<LegacyCommandResult> TagRobotsByNameAsync()
     {
-        _automaticTagByName = !_automaticTagByName;
-        return LegacyCommandResult.Success($"AUTOMATIC NAME TAGS · {(_automaticTagByName ? "ON" : "OFF")}");
+        if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        var name = new LegacyValueWindow("Automatically Tag by Name", "Founder name", "", "Enter the exact robot founder name.");
+        await name.ShowDialog(this);
+        if (!name.Accepted || name.RawValue.Length == 0) return LegacyCommandResult.Cancel();
+
+        var tag = new LegacyValueWindow("Automatically Tag by Name", "New tag", "", "Tags can contain up to 45 characters. Apply a blank tag to clear it.");
+        await tag.ShowDialog(this);
+        if (!tag.Accepted || _session != session) return LegacyCommandResult.Cancel();
+
+        var count = await session.TagOrganismsByNameAsync(name.RawValue, tag.RawValue);
+        return LegacyCommandResult.Success(count == 0 ? "NO ROBOTS MATCH THAT NAME" : $"TAGGED · {count:N0} ROBOT(S)");
     }
 
     private async Task<LegacyCommandResult> ToggleAutomaticForkingAsync()
@@ -1843,10 +1851,7 @@ public sealed partial class MainWindow : Window
         if (_session is null || _viewModel.SelectedOrganism is not { } organism)
             return LegacyCommandResult.Failure("SELECT A ROBOT FIRST");
         var file = await _session.ExportRobotFileAsync(organism.Slot, organism.Generation);
-        var species = organism.Species < _session.LatestSnapshot.Species.Count
-            ? _session.LatestSnapshot.Species[(int)organism.Species].Name
-            : $"Robot-{organism.Slot}-{organism.Generation}";
-        var suggestedName = _automaticTagByName ? $"{species}.txt" : $"Robot-{organism.Slot}-{organism.Generation}.txt";
+        var suggestedName = $"Robot-{organism.Slot}-{organism.Generation}.txt";
         return await _storage.SaveDnaAsync(this, suggestedName, file.Dna, file.MutationProfile)
             ? LegacyCommandResult.Success("ROBOT DNA SAVED")
             : LegacyCommandResult.Cancel();
