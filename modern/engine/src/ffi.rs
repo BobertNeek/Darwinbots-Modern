@@ -211,6 +211,10 @@ enum EngineCommand {
         minimum: [f32; 2],
         maximum: [f32; 2],
     },
+    AddTrashCompactor {
+        left: crate::Obstacle,
+        right: crate::Obstacle,
+    },
     UpdateObstacle {
         obstacle: crate::Obstacle,
     },
@@ -989,6 +993,9 @@ fn db_engine_command_batch_impl(
                 maximum,
             } => engine
                 .add_obstacle(crate::Obstacle::new(id, minimum, maximum))
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::AddTrashCompactor { left, right } => engine
+                .add_trash_compactor(left, right)
                 .map(|_| serde_json::Value::Null),
             EngineCommand::UpdateObstacle { obstacle } => engine
                 .update_obstacle(obstacle)

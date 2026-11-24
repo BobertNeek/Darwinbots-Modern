@@ -39,6 +39,11 @@ public interface IEngineClient : IDisposable
             request.Position);
     void SwitchBackend(string backend);
     void AddObstacle(ObstacleSnapshot obstacle);
+    void AddTrashCompactor(ObstacleSnapshot left, ObstacleSnapshot right)
+    {
+        AddObstacle(left);
+        AddObstacle(right);
+    }
     void UpdateObstacle(ObstacleSnapshot obstacle);
     void RemoveObstacle(uint id);
     void AddTeleporter(TeleporterSnapshot teleporter);
