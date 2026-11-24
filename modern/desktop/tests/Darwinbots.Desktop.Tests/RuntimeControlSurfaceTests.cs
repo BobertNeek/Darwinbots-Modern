@@ -1744,7 +1744,15 @@ public sealed class RuntimeControlSurfaceTests
                 await WaitFor(() => storageState.SavedOrganism is not null);
                 var exported = ReadNativeOrganismGroup(storageState.SavedOrganism!);
                 Assert.Equal(2, exported.Organisms.Count);
-                Assert.Equal(42.5f, Assert.Single(exported.Ties).RestLength);
+                // The original remaps pointers in file order when runtime slots are reused.
+                // Reordering the two saved cells leaves a directed row and a self-reference.
+                var firstExported = exported.Organisms[0];
+                var secondExported = exported.Organisms[1];
+                var first = new OrganismKey(firstExported.Slot, firstExported.Generation);
+                var second = new OrganismKey(secondExported.Slot, secondExported.Generation);
+                Assert.Collection(exported.Ties,
+                    tie => Assert.Equal(new TieSnapshot(first, second, 42.5f), tie),
+                    tie => Assert.Equal(new TieSnapshot(second, second, 42.5f), tie));
                 Assert.Equal(selected.Position, ReadNativeSelectedPosition(storageState.SavedOrganism!));
 
                 static (float X, float Y, int Energy, ulong Age, ulong BirthCycle, int Body)[] RelativeState(
