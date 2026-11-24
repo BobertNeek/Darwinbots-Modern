@@ -151,19 +151,32 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         return true;
     }
 
-    public async Task<SimulationSaveFormat?> SaveSimulationWithMutationOptionsAsync(
-        TopLevel owner, Func<SimulationSaveFormat, Task<byte[]>> createSave)
-    {
-        var file = await owner.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
-        {
-            Title = "Save Darwinbots simulation without mutations",
-            SuggestedFileName = "simulation.sim",
-            DefaultExtension = "sim",
-            FileTypeChoices =
+    public Task<SimulationSaveFormat?> SaveSimulationWithFormatAsync(
+        TopLevel owner, Func<SimulationSaveFormat, Task<byte[]>> createSave) =>
+        PickAndSaveSimulationAsync(owner, createSave, "Save Darwinbots simulation",
+            [LegacySimulationFileType(), SimulationFileType()]);
+
+    public Task<SimulationSaveFormat?> SaveSimulationWithMutationOptionsAsync(
+        TopLevel owner, Func<SimulationSaveFormat, Task<byte[]>> createSave) =>
+        PickAndSaveSimulationAsync(owner, createSave, "Save Darwinbots simulation without mutations",
             [
                 new("Darwinbots 2 simulation without mutation details") { Patterns = ["*.sim"] },
                 new("Darwinbots Modern save with mutations disabled") { Patterns = ["*.db3s"] },
-            ],
+            ]);
+
+    private static async Task<SimulationSaveFormat?> PickAndSaveSimulationAsync(
+        TopLevel owner,
+        Func<SimulationSaveFormat, Task<byte[]>> createSave,
+        string title,
+        IReadOnlyList<FilePickerFileType> fileTypes)
+    {
+        var file = await owner.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = title,
+            SuggestedFileName = "simulation.sim",
+            SuggestedFileType = fileTypes[0],
+            DefaultExtension = "sim",
+            FileTypeChoices = fileTypes,
         });
         if (file is null) return null;
         var format = Path.GetExtension(file.Name).ToLowerInvariant() switch
