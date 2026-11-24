@@ -86,6 +86,24 @@ public sealed record ActivationFrameSnapshot(ulong Tick, bool[] Activations)
     public int ActiveGeneCount => Activations.Count(active => active);
 }
 
+public sealed record DeathRecordSnapshot(
+    ulong Tick,
+    ulong Id,
+    ulong ParentId,
+    string Founder,
+    uint Generation,
+    ulong BirthCycle,
+    ulong Age,
+    ulong Mutations,
+    ulong NewMutations,
+    uint DnaLength,
+    ulong Offspring,
+    ulong Kills,
+    int Energy,
+    int Chloroplasts,
+    string Dna,
+    IReadOnlyList<string> MutationLog);
+
 public sealed record MemoryCellSnapshot(ushort Address, int Value);
 
 public sealed record SpeciesSnapshot(

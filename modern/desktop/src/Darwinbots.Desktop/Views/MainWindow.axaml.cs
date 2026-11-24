@@ -132,7 +132,6 @@ public sealed partial class MainWindow : Window
     private bool _hasBackgroundImage;
     private bool _deadRecordingEnabled;
     private bool _excludeRepopulatingDead;
-    private int _recordedCorpseCount;
     private bool _playerBotEnabled;
     private IReadOnlyList<PlayerBotBinding> _playerBotBindings = [];
     private bool _rgbMemoryMonitorEnabled;
@@ -1509,12 +1508,10 @@ public sealed partial class MainWindow : Window
             .Where(robot => dna.ContainsKey(new OrganismKey(robot.Slot, robot.Generation)))
             .Select(robot => (robot.UniqueId == 0 ? robot.Slot : robot.UniqueId, robot.MutationLog));
 
-    private void SynchronizeRecordingPreferences(bool resetCorpseCursor = false)
+    private void SynchronizeRecordingPreferences()
     {
         var recording = _liveEnvironment.Recording ?? new();
         SynchronizeSafemodePreference(recording.SafeModeBackup);
-        if (resetCorpseCursor || _deadRecordingEnabled != recording.DeadSnapshotEnabled)
-            _recordedCorpseCount = _session?.LatestSnapshot.Corpses.Count ?? 0;
         _deadRecordingEnabled = recording.DeadSnapshotEnabled;
         _excludeRepopulatingDead = recording.ExcludeRepopulatingRobots;
     }
@@ -1544,40 +1541,16 @@ public sealed partial class MainWindow : Window
         return LegacyCommandResult.Success($"REPOPULATING DEAD · {(_excludeRepopulatingDead ? "EXCLUDED" : "INCLUDED")}");
     }
 
-    private async Task RecordDeadSnapshotAsync(EngineSnapshot snapshot)
+    private async Task RecordSimulationDeathsAsync(IReadOnlyList<DeathRecordSnapshot> deaths)
     {
+        if (deaths.Count == 0) return;
         await DeadRecordingGate.WaitAsync();
         try
         {
-            if (!_deadRecordingEnabled)
-            {
-                _recordedCorpseCount = snapshot.Corpses.Count;
-                return;
-            }
-            if (snapshot.Corpses.Count < _recordedCorpseCount) _recordedCorpseCount = 0;
-            if (snapshot.Corpses.Count == _recordedCorpseCount) return;
-            var corpses = snapshot.Corpses.Skip(_recordedCorpseCount)
-                .Where(corpse => !_excludeRepopulatingDead || !corpse.Repopulating)
-                .Where(corpse => !string.IsNullOrWhiteSpace(corpse.Dna))
-                .ToArray();
-            if (corpses.Length == 0)
-            {
-                _recordedCorpseCount = snapshot.Corpses.Count;
-                return;
-            }
-            var uniqueIds = snapshot.Corpses.GroupBy(corpse => corpse.UniqueId)
-                .Where(group => group.Key != 0 && group.Count() == 1)
-                .Select(group => group.Key).ToHashSet();
-            var retained = snapshot.Organisms.Where(robot => robot.IsCorpse).ToLookup(robot => robot.UniqueId);
-            var histories = corpses
-                .Where(corpse => uniqueIds.Contains(corpse.UniqueId) && retained[corpse.UniqueId].Count() == 1)
-                .Select(corpse => (corpse.UniqueId, retained[corpse.UniqueId].Single().MutationLog))
-                .ToArray();
             var (appended, error) = await AppendDeadRecordsAsync(
-                (includeHeader, format) => LegacyRecordingSerializer.SerializeDead(corpses, snapshot.Species, includeHeader, format),
-                histories);
-            if (appended) _recordedCorpseCount = snapshot.Corpses.Count;
-            if (error is not null) _viewModel.Status = error;
+                (includeHeader, _) => Db2GenomeRecordFile.EncodeDead(deaths, includeHeader),
+                deaths.Select(death => (death.Id, death.MutationLog)).ToArray());
+            if (!appended) _viewModel.Status = error ?? "DEAD RECORDING UNAVAILABLE";
         }
         finally { DeadRecordingGate.Release(); }
     }
@@ -2233,7 +2206,7 @@ public sealed partial class MainWindow : Window
             _session.SnapshotPublished += snapshot =>
             {
                 var loading = _loadingSimulation;
-                Dispatcher.UIThread.Post(async () =>
+                Dispatcher.UIThread.Post(() =>
                 {
                     _playerBotEnabled = snapshot.PlayerBot.Enabled;
                     _playerBotBindings = snapshot.PlayerBot.Bindings;
@@ -2264,8 +2237,6 @@ public sealed partial class MainWindow : Window
                     BuoyancyWarning.IsVisible = !_globalSettings.Main.SuppressBuoyancy
                         && (_liveEnvironment.Gravity[1] == 0 || !_liveEnvironment.Vegetation.PondMode || _liveEnvironment.WrapY)
                         && snapshot.Organisms.Any(robot => robot.Memory.Any(cell => cell.Address == 315 && cell.Value > 0));
-                    if (loading) _recordedCorpseCount = snapshot.Corpses.Count;
-                    else await RecordDeadSnapshotAsync(snapshot);
                     RefreshLegacyMenuStates();
                     if (_zerobotProgression is not null && !_progressionInFlight
                         && _zerobotProgression.Observe(snapshot) is { } transition)
@@ -2352,7 +2323,7 @@ public sealed partial class MainWindow : Window
         try
         {
             _liveEnvironment = configuration.Environment;
-            SynchronizeRecordingPreferences(resetCorpseCursor: true);
+            SynchronizeRecordingPreferences();
             _lastAutomaticSaveTick = _session.LatestSnapshot.Tick;
             _activeCostMultiplier = configuration.GlobalCostMultiplier;
             _globalSettings = _globalSettings with
@@ -3344,7 +3315,13 @@ public sealed partial class MainWindow : Window
                     _lastAutomaticSaveTick = null;
                 var interval = _liveEnvironment.Recording?.AutosaveInterval ?? 0;
                 var batch = CycleAutosavePolicy.LimitBatch(before.Tick, count, _safemodeBackup, interval, before.LocalMode, before.NativeCycle);
-                await _session.StepAsync(batch);
+                if (_deadRecordingEnabled)
+                {
+                    var deaths = new List<DeathRecordSnapshot>();
+                    try { await _session.StepRecordingDeathsAsync(batch, deaths.AddRange); }
+                    finally { await RecordSimulationDeathsAsync(deaths); }
+                }
+                else await _session.StepAsync(batch);
                 count -= batch;
                 var after = _session.LatestSnapshot;
                 if (_lastAutomaticSaveTick != after.Tick

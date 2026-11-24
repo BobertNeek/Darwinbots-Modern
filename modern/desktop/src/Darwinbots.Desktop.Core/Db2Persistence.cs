@@ -160,7 +160,7 @@ public static class Db2GenomeRecordFile
             Append(builder, Record(
                 organism.UniqueId == 0 ? organism.Slot : organism.UniqueId,
                 organism.Parents?.FirstOrDefault()?.Slot ?? 0,
-                SpeciesName(snapshot, organism.Species),
+                organism.IsCorpse ? "Corpse" : SpeciesName(snapshot, organism.Species),
                 organism.Generation,
                 organism.BirthCycle,
                 organism.Age,
@@ -173,6 +173,20 @@ public static class Db2GenomeRecordFile
                 organism.Chloroplasts,
                 dna));
         }
+        return builder.ToString();
+    }
+
+    public static string EncodeDead(
+        IReadOnlyList<DeathRecordSnapshot> deaths,
+        bool includeHeader)
+    {
+        var builder = new StringBuilder();
+        if (includeHeader) builder.Append(Header).Append("\r\n");
+        foreach (var record in deaths)
+            Append(builder, Record(
+                record.Id, record.ParentId, record.Founder, record.Generation, record.BirthCycle,
+                record.Age, record.Mutations, record.NewMutations, record.DnaLength, record.Offspring,
+                record.Kills, record.Energy, record.Chloroplasts, record.Dna));
         return builder.ToString();
     }
 
@@ -246,7 +260,7 @@ public static class Db2GenomeRecordFile
 
     private static Db2GenomeRecord ParseRecord(IReadOnlyList<string> fields) => new(
         ParseUInt64(fields[0], "robot id"),
-        ParseUInt32(fields[1], "parent id"),
+        ParseUInt64(fields[1], "parent id"),
         fields[2],
         ParseUInt32(fields[3], "generation"),
         ParseUInt64(fields[4], "birth cycle"),
@@ -263,7 +277,7 @@ public static class Db2GenomeRecordFile
 
     private static Db2GenomeRecord Record(
         ulong id,
-        uint parentId,
+        ulong parentId,
         string founder,
         uint generation,
         ulong birthCycle,
@@ -383,7 +397,7 @@ public static class Db2GenomeRecordFile
 
 public sealed record Db2GenomeRecord(
     ulong Id,
-    uint ParentId,
+    ulong ParentId,
     string Founder,
     uint Generation,
     ulong BirthCycle,

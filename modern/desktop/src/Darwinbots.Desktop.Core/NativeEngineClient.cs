@@ -14,6 +14,10 @@ public sealed partial class NativeEngineClient : IEngineClient
     private readonly TimeProvider _clock;
     private bool _sampleRestartClockPerCycle;
     private bool _sampleClassicSkinClock;
+    private static readonly JsonSerializerOptions DeathRecordJson = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+    };
 
     public NativeEngineClient(WorldSetupOptions options, TimeProvider? timeProvider = null)
     {
@@ -102,7 +106,12 @@ public sealed partial class NativeEngineClient : IEngineClient
         _ => "UNKNOWN",
     };
 
-    public void Tick(uint count = 1)
+    public void Tick(uint count = 1) => Advance(count, null);
+
+    public void TickRecordingDeaths(uint count, Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted) =>
+        Advance(count, onCommitted);
+
+    private void Advance(uint count, Action<IReadOnlyList<DeathRecordSnapshot>>? onDeathsCommitted)
     {
         EnsureAlive();
         if (count == 0) return;
@@ -110,10 +119,20 @@ public sealed partial class NativeEngineClient : IEngineClient
         {
             // External league/staged restarts take a new Timer sample for each
             // original cycle. Each successful cycle commits before the next begins.
-            for (uint cycle = 0; cycle < count; cycle++) Tick(1);
+            for (uint cycle = 0; cycle < count; cycle++) Advance(1, onDeathsCommitted);
             return;
         }
-        ExecuteBatch(new { version = 1, commands = new object[] { NativeRestartSeedCommand(), new { type = "tick", count } } }, "advance simulation");
+        var restart = NativeRestartSeedCommand();
+        if (onDeathsCommitted is null)
+        {
+            ExecuteBatch(new { version = 1, commands = new object[] { restart, new { type = "tick", count } } }, "advance simulation");
+            return;
+        }
+        var result = ExecuteBatchForResult(
+            new { version = 1, commands = new object[] { restart, new { type = "tick", count, capture_deaths = true } } },
+            "advance simulation with death records");
+        var records = result.GetProperty("results")[1].GetProperty("death_records").Deserialize<DeathRecordSnapshot[]>(DeathRecordJson);
+        if (records is { Length: > 0 }) onDeathsCommitted(records);
     }
 
     public DnaImportReport ImportDna(string dna, float[]? position = null)
