@@ -36,6 +36,8 @@ public interface IEngineClient : IDisposable
     string ExportDna(uint slot, uint generation);
     string ExportSpeciesTemplateDna(uint species) =>
         throw new NotSupportedException("This engine client does not support startup species DNA export.");
+    IReadOnlyList<OrganismKey> ListLegacyOrganismGroup(OrganismKey seed) =>
+        throw new NotSupportedException("This engine client does not support organism group lookup.");
     byte[] ExportOrganismGroup(IReadOnlyList<OrganismKey> organisms) =>
         throw new NotSupportedException("This engine client does not support native organism export.");
     OrganismKey Reproduce(uint firstSlot, uint firstGeneration, uint? secondSlot, uint? secondGeneration, float[] position);

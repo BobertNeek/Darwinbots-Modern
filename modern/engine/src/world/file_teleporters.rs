@@ -272,31 +272,49 @@ impl Engine {
         }
         Ok(())
     }
-    // Multibots.ListCells follows ties from cells marked Multibot;
-    // a birth tie alone does not turn its parent into a group.
+    pub fn legacy_organism_group(&self, seed: OrganismId) -> Vec<OrganismId> {
+        self.list_organism_cells(seed, 50)
+    }
+
     pub(super) fn file_transfer_group(
         &self,
         seed: OrganismId,
     ) -> Result<Vec<OrganismId>, EngineError> {
+        let members = self.list_organism_cells(seed, 51);
+        match members.len() {
+            0 => Err(EngineError::StaleOrganismId),
+            51 => Err(EngineError::InvalidSave(
+                "native organism transfer exceeds 50 cells".into(),
+            )),
+            _ => Ok(members),
+        }
+    }
+
+    // ListCells expands only Multibot owners, including their soft ties. Keep the
+    // seed first and visit each owner's compact endpoints in their stored order.
+    fn list_organism_cells(&self, seed: OrganismId, limit: usize) -> Vec<OrganismId> {
+        if !self.slots.get(seed).is_ok_and(|robot| robot.flags.exists) {
+            return Vec::new();
+        }
         let mut members = vec![seed];
         let mut cursor = 0;
         while cursor < members.len() {
-            let robot = self.slots.get(members[cursor])?;
+            let robot = self.slots.get(members[cursor]).unwrap();
             if robot.counters.multibot {
-                for other in robot.ties.iter().flatten().filter_map(|tie| tie.other) {
-                    if self.slots.get(other).is_ok() && !members.contains(&other) {
-                        if members.len() == 50 {
-                            return Err(EngineError::InvalidSave(
-                                "native organism transfer exceeds 50 cells".into(),
-                            ));
-                        }
+                for other in robot.ties.iter().map_while(|tie| tie.as_ref()?.other) {
+                    if self.slots.get(other).is_ok_and(|robot| robot.flags.exists)
+                        && !members.contains(&other)
+                    {
                         members.push(other);
+                        if members.len() == limit {
+                            return members;
+                        }
                     }
                 }
             }
             cursor += 1;
         }
-        Ok(members)
+        members
     }
 }
 
@@ -312,6 +330,66 @@ mod tests {
     use super::*;
     use crate::native_binary::NativeRecordFile;
     use tempfile::tempdir;
+
+    #[test]
+    fn list_cells_uses_native_multibot_flags_and_endpoint_order_through_import() {
+        let mut source = Engine::new(EngineConfig::testing()).unwrap();
+        let dna = LegacyDna::parse("stop").unwrap();
+        let [root, lower, leaf, beyond] =
+            [100.0, 300.0, 500.0, 700.0].map(|x| source.spawn_at(dna.clone(), [x, 500.0]).unwrap());
+        source.ties.extend([
+            crate::tie::TieState::new(root, leaf, 400.0, 12, 12),
+            crate::tie::TieState::new(root, lower, 200.0, 17, 17),
+            crate::tie::TieState::new(leaf, beyond, 200.0, 34, 34),
+        ]);
+        source.slots.get_mut(root).unwrap().counters.multibot = true;
+        source.refresh_tie_projections();
+        assert_eq!(source.legacy_organism_group(root), [root, leaf, lower]);
+        assert_eq!(source.legacy_organism_group(leaf), [leaf]);
+        assert!(source.ties.iter().all(|tie| !tie.hardened));
+
+        let bytes = source
+            .export_native_organisms(&[root, lower, leaf, beyond])
+            .unwrap();
+        let mut target = Engine::new(EngineConfig::testing()).unwrap();
+        target.import_native_organisms(&bytes, None).unwrap();
+        let members = target.slots.ids_in_slot_order();
+        let by_source_order = [members[0], members[2], members[1]];
+        assert_eq!(target.legacy_organism_group(members[0]), by_source_order);
+        assert_eq!(target.legacy_organism_group(members[2]), [members[2]]);
+        assert!(target.ties.iter().all(|tie| !tie.hardened));
+
+        target.remove(members[0]).unwrap();
+        assert!(target.legacy_organism_group(members[0]).is_empty());
+    }
+
+    #[test]
+    fn list_cells_caps_menu_groups_at_fifty_and_keeps_oversize_transfer_rejected() {
+        let mut world = Engine::new(EngineConfig {
+            organism_capacity: 64,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let dna = LegacyDna::parse("stop").unwrap();
+        let members: Vec<_> = (0..52)
+            .map(|index| {
+                world
+                    .spawn_at(dna.clone(), [100.0 + index as f32, 500.0])
+                    .unwrap()
+            })
+            .collect();
+        for pair in members.windows(2) {
+            world.slots.get_mut(pair[0]).unwrap().counters.multibot = true;
+            world
+                .ties
+                .push(crate::tie::TieState::new(pair[0], pair[1], 1.0, 12, 12));
+        }
+        world.refresh_tie_projections();
+        assert_eq!(world.legacy_organism_group(members[0]), members[..50]);
+        assert!(world.file_transfer_group(members[0]).is_err());
+        world.remove_many(&members[..2]).unwrap();
+        assert_eq!(world.file_transfer_group(members[2]).unwrap(), members[2..]);
+    }
 
     #[test]
     fn legacy_internet_metadata_roundtrips_without_local_relocation_or_file_exchange() {

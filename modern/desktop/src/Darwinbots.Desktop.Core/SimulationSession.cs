@@ -344,6 +344,14 @@ public sealed class SimulationSession : IAsyncDisposable
         return result ?? throw new InvalidDataException("Engine returned no startup species DNA.");
     }
 
+    public async Task<IReadOnlyList<OrganismKey>> ListLegacyOrganismGroupAsync(OrganismKey seed)
+    {
+        IReadOnlyList<OrganismKey> members = [];
+        await Enqueue(engine => members = engine.ListLegacyOrganismGroup(seed), CancellationToken.None)
+            .ConfigureAwait(false);
+        return members;
+    }
+
     public async Task<byte[]> ExportOrganismGroupAsync(IReadOnlyList<OrganismKey> organisms, CancellationToken cancellationToken = default)
     {
         var captured = organisms.ToArray();

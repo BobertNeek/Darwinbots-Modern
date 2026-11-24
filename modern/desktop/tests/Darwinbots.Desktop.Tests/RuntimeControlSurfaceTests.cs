@@ -2378,6 +2378,15 @@ internal sealed class RecordingEngineClient : IEngineClient
         DnaExports.Enqueue((slot, generation));
         return "start\nstop";
     }
+    public IReadOnlyList<OrganismKey> ListLegacyOrganismGroup(OrganismKey seed)
+    {
+        var keys = _snapshot.Organisms.Select(robot => new OrganismKey(robot.Slot, robot.Generation)).ToHashSet();
+        if (!keys.Contains(seed)) return [];
+        return _snapshot.Ties.Where(tie => tie.First == seed || tie.Second == seed)
+            .Select(tie => tie.First == seed ? tie.Second : tie.First)
+            .Where(keys.Contains).Prepend(seed).Distinct().ToArray();
+    }
+
     public byte[] ExportOrganismGroup(IReadOnlyList<OrganismKey> organisms)
     {
         ExportedGroups.Enqueue(organisms.ToArray());
