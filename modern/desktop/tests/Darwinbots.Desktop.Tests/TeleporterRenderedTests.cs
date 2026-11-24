@@ -695,7 +695,7 @@ public sealed class TeleporterRenderedTests
                 Backend = "Cpu",
                 Species = [new("Portal probe", "start\nstop", false, 0xff239ac0, 1, 1_000, 0, false, 0)],
             };
-            var window = new MainWindow([], setup, new AuditEngineClientFactory(), new AuditStorageService());
+            var window = new MainWindow([], setup, new AuditEngineClientFactory(includeWorldObjects: false), new AuditStorageService());
             window.Show();
             try
             {
