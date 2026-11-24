@@ -129,6 +129,7 @@ fn configuration(t: &NativeSimulationTail) -> Result<EngineConfig, EngineError> 
     let n = |name| t.number(name).map(|v| v as f32);
     let b = |name| t.integer(name).map(|v| v != 0);
     let u = |name| nonnegative(t.integer(name)?, name);
+    let max_velocity = n("max_velocity")?;
     let raw = t.bytes("costs")?;
     let c = |i: usize| f64::from(single(raw, i * 4));
     let costs = DnaCosts {
@@ -203,7 +204,12 @@ fn configuration(t: &NativeSimulationTail) -> Result<EngineConfig, EngineError> 
         brownian_motion: n("brownian")?,
         gravity: [0.0, n("y_gravity")?],
         physics: PhysicsSettings {
-            max_velocity: n("max_velocity")?,
+            // HDRoutines.ReadSim resets out-of-range velocity limits when loading .sim.
+            max_velocity: if max_velocity > 0.0 && max_velocity <= 200.0 {
+                max_velocity
+            } else {
+                40.0
+            },
             movement_efficiency: n("movement")?,
             surface_gravity: n("z_gravity")?,
             static_friction: n("static_friction")?,
