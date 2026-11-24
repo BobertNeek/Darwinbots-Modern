@@ -747,7 +747,22 @@ impl Engine {
             flag(t, "shapes_vertical", drift.vertical)?;
             number(t, "shape_drift", f64::from(drift.rate))?;
         }
-        if let Some(first) = self.obstacles.first() {
+        if let Some(settings) = self.config.shape_creation {
+            let opacity = if settings.transparent { 0.0 } else { 1.0 };
+            if self.obstacles.iter().any(|o| {
+                o.opacity != opacity
+                    || o.vision_policy != settings.vision_policy()
+                    || o.shot_policy != settings.shot_policy()
+            }) {
+                return Err(invalid(
+                    "shape opacity or policies differ from native global options",
+                ));
+            }
+            flag(t, "shapes_black", settings.black)?;
+            flag(t, "shapes_transparent", settings.transparent)?;
+            flag(t, "shapes_see_through", settings.see_through)?;
+            flag(t, "shapes_absorb", settings.absorb_shots)?;
+        } else if let Some(first) = self.obstacles.first() {
             if self.obstacles.iter().any(|o| {
                 o.vision_policy != first.vision_policy || o.shot_policy != first.shot_policy
             }) {

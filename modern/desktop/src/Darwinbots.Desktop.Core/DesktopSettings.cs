@@ -37,6 +37,8 @@ public sealed record DesktopSettings
     public float SpeciationGeneticDistancePercent { get; init; } = 20f;
     public bool ToroidalWorld { get; init; } = true;
     public bool ShapesVisible { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Db2ShapeCreationOptions? ShapeCreation { get; init; }
     public bool FixedBotRadii { get; init; }
     public bool TiesEnabled { get; init; } = true;
     public bool RobotFixingAllowed { get; init; } = true;
@@ -78,6 +80,7 @@ public sealed record DesktopSettings
         SpeciationGeneticDistancePercent = setup.SpeciationGeneticDistancePercent,
         ToroidalWorld = setup.ToroidalWorld,
         ShapesVisible = setup.ShapesVisible, FixedBotRadii = setup.FixedBotRadii, TiesEnabled = setup.TiesEnabled,
+        ShapeCreation = setup.ShapeCreation,
         RobotFixingAllowed = setup.RobotFixingAllowed, AsexualReproductionAllowed = setup.AsexualReproductionAllowed,
         Obstacles = setup.Obstacles.ToArray(),
         WrapX = setup.WrapX,
@@ -118,6 +121,7 @@ public sealed record DesktopSettings
             SpeciationGeneticDistancePercent = SpeciationGeneticDistancePercent,
             ToroidalWorld = ToroidalWorld,
             ShapesVisible = ShapesVisible, FixedBotRadii = FixedBotRadii, TiesEnabled = TiesEnabled,
+            ShapeCreation = ShapeCreation,
             RobotFixingAllowed = RobotFixingAllowed, AsexualReproductionAllowed = AsexualReproductionAllowed,
             Obstacles = Obstacles.ToArray(),
             WrapX = WrapX,
