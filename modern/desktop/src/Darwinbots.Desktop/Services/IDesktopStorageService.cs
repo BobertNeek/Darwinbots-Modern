@@ -6,6 +6,12 @@ namespace Darwinbots.Desktop.Services;
 public sealed record DesktopTextFile(string Name, string Content, string? LocalPath = null,
     MutationProfileUpdate? MutationProfile = null);
 
+public enum SimulationSaveFormat
+{
+    Modern,
+    Legacy,
+}
+
 public interface IDesktopStorageService
 {
     Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner);
@@ -24,6 +30,12 @@ public interface IDesktopStorageService
     Task<bool> SaveSettingsAsync(TopLevel owner, DesktopSettings settings);
     Task<bool> SaveSimulationAsync(TopLevel owner, ReadOnlyMemory<byte> save);
     Task<bool> SaveLegacySimulationAsync(TopLevel owner, ReadOnlyMemory<byte> save) => Task.FromResult(false);
+    async Task<SimulationSaveFormat?> SaveSimulationWithMutationOptionsAsync(
+        TopLevel owner, Func<SimulationSaveFormat, Task<byte[]>> createSave)
+    {
+        var format = SimulationSaveFormat.Modern;
+        return await SaveSimulationAsync(owner, await createSave(format)) ? format : null;
+    }
     Task<bool> SaveDnaAsync(TopLevel owner, string suggestedFileName, string dna, MutationProfileUpdate? mutationProfile);
     Task<string?> PickPopulationSeedDirectoryAsync(TopLevel owner) => Task.FromResult<string?>(null);
     Task<bool> SaveOrganismAsync(TopLevel owner, string suggestedFileName, Func<Stream, Task> writeAsync);
