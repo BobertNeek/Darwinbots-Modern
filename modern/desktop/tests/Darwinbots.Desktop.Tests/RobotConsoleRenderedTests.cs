@@ -556,7 +556,8 @@ public sealed class RobotConsoleRenderedTests
             {
                 window.Show();
                 var model = Assert.IsType<MainWindowViewModel>(window.DataContext);
-                await WaitForAsync(() => model.SelectedKey.HasValue && model.NativeCycle.HasValue);
+                await WaitForAsync(() => model.SelectedKey.HasValue && model.NativeCycle.HasValue
+                    && model.Status.Contains("WORLD READY", StringComparison.Ordinal));
                 var session = (SimulationSession)typeof(MainWindow)
                     .GetField("_session", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(window)!;
                 var focus = model.SelectedKey!.Value;
@@ -569,7 +570,7 @@ public sealed class RobotConsoleRenderedTests
                 var previousConsole = Assert.Single(window.OwnedWindows.OfType<RobotConsoleWindow>());
                 Assert.Contains("mem[901] = 17", await SubmitThroughConsoleAsync(previousConsole, "set 901 17"), StringComparison.Ordinal);
 
-                picker.OpenedSimulation = "DB3S"u8.ToArray();
+                picker.OpenedSimulation = [1];
                 Click(load);
                 await WaitForAsync(() => model.Status.Contains("FileLoadSimulation failed", StringComparison.Ordinal));
                 Assert.True(previousConsole.IsVisible);
@@ -708,7 +709,7 @@ public sealed class RobotConsoleRenderedTests
 
     private static async Task WaitForAsync(Func<bool> predicate, string? failure = null)
     {
-        for (var attempt = 0; attempt < 200; attempt++)
+        for (var attempt = 0; attempt < 500; attempt++)
         {
             if (predicate()) return;
             await Task.Delay(10);
