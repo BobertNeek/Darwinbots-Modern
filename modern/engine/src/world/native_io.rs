@@ -141,6 +141,7 @@ fn configuration(t: &NativeSimulationTail) -> Result<EngineConfig, EngineError> 
     let max_velocity = n("max_velocity")?;
     let raw = t.bytes("costs")?;
     let c = |i: usize| f64::from(single(raw, i * 4));
+    let dynamic_sensitivity = c(55);
     let costs = DnaCosts {
         number: c(0),
         dereference: c(1),
@@ -170,7 +171,12 @@ fn configuration(t: &NativeSimulationTail) -> Result<EngineConfig, EngineError> 
         global_multiplier: c(54),
         dynamic_target_population: c(53).max(0.0) as usize,
         dynamic_cost_multiplier: c(56),
-        dynamic_sensitivity: c(55),
+        // HDRoutines.LoadSimulation supplies 500 when this Single is zero.
+        dynamic_sensitivity: if dynamic_sensitivity == 0.0 {
+            500.0
+        } else {
+            dynamic_sensitivity
+        },
         dynamic_all_robots: c(61) != 0.0,
         dynamic_lower_zero_threshold: c(52),
         dynamic_lower_range_percent: c(58),
@@ -1540,6 +1546,31 @@ mod tests {
             SaveFile::encode(&original).unwrap(),
             SaveFile::encode(&resumed).unwrap()
         );
+    }
+
+    #[test]
+    fn native_sim_load_applies_the_original_dynamic_sensitivity_fallback() {
+        for (configured, expected) in [(0.0, 500.0), (37.5, 37.5)] {
+            let mut live = Engine::from_native_sim(ORIGINAL).unwrap();
+            live.config.dna_costs.dynamic_sensitivity = configured;
+
+            let modern = SaveFile::encode(&live).unwrap();
+            let resumed = SaveFile::decode(&modern).unwrap();
+            assert_eq!(resumed.config.dna_costs.dynamic_sensitivity, configured);
+
+            let native = live.export_native_sim().unwrap();
+            let file = NativeRecordFile::decode(&native).unwrap();
+            let tail = NativeSimulationTail::decode(&file.tail).unwrap();
+            let costs = tail.bytes("costs").unwrap();
+            assert_eq!(single(costs, 55 * 4), configured as f32);
+
+            let imported = Engine::from_native_sim(&native).unwrap();
+            assert_eq!(imported.config.dna_costs.dynamic_sensitivity, expected);
+            assert_eq!(
+                imported.native_origin.as_ref().unwrap().encode().unwrap(),
+                native
+            );
+        }
     }
 
     #[test]
