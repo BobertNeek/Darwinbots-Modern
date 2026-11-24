@@ -140,6 +140,8 @@ public sealed partial class MainWindow : Window
     private bool _playerBotEnabled;
     private IReadOnlyList<PlayerBotBinding> _playerBotBindings = [];
     private readonly HashSet<OrganismKey> _playerBotHighlights = [];
+    private HighlightedRobotDrag? _pendingHighlightedDrag;
+    private bool _sendingHighlightedDrag;
     private bool _rgbMemoryMonitorEnabled;
     private RgbMemoryMonitorSettings? _rgbMemorySettings;
     private const string RgbMonitorToolKey = "rgb-memory-monitor";
@@ -258,6 +260,8 @@ public sealed partial class MainWindow : Window
         Viewport.CanAimPlayerBot = () => _playerBotEnabled && _insertion?.IsActive != true
             && _moveOrganism is null && _environmentPlacement == EnvironmentPlacement.None;
         Viewport.PlayerBotPointerChanged += position => _session?.SetPlayerBotPointer(position);
+        Viewport.HighlightedRobotKeys = () => _playerBotHighlights;
+        Viewport.HighlightedRobotDragMoved += async drag => await ApplyHighlightedDragAsync(drag);
         Viewport.PlayerBotHighlightRequested += async key =>
         {
             if (_playerBotHighlights.Add(key))
@@ -268,7 +272,7 @@ public sealed partial class MainWindow : Window
         };
         Viewport.OrganismKeySelected += async key =>
         {
-            if (!_playerBotEnabled || !_playerBotHighlights.Contains(key))
+            if (!_playerBotHighlights.Contains(key))
                 _playerBotHighlights.Clear();
             _viewModel.Select(key);
             Viewport.SelectKeys(_playerBotHighlights, key);
@@ -3578,6 +3582,32 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    private async Task ApplyHighlightedDragAsync(HighlightedRobotDrag drag)
+    {
+        if (_loadingSimulation || _session is not { } session) return;
+        _pendingHighlightedDrag = drag;
+        if (_sendingHighlightedDrag) return;
+        _sendingHighlightedDrag = true;
+        try
+        {
+            // Keep at most one queued worker operation and the latest waiting pointer sample.
+            while (_pendingHighlightedDrag is { } latest && !_loadingSimulation && _session == session)
+            {
+                _pendingHighlightedDrag = null;
+                await session.DragHighlightedRobotsAsync(latest);
+            }
+        }
+        catch (Exception error)
+        {
+            await HandleEngineErrorAsync(error, attemptRecovery: false);
+        }
+        finally
+        {
+            _pendingHighlightedDrag = null;
+            _sendingHighlightedDrag = false;
+        }
+    }
+
     private async Task LoadSimulationAsync(byte[] save)
     {
         _runTimer.Stop();
@@ -3587,6 +3617,8 @@ public sealed partial class MainWindow : Window
             if (_session is null || _savingLastExit) return;
             _loadingSimulation = true;
             InvalidateTeleporterDrag();
+            _pendingHighlightedDrag = null;
+            Viewport.CancelHighlightedDrag();
             await _session.LoadAsync(save);
             CloseNativeTeleporterEditor();
             _toolWindows.Close(NewTeleporterToolKey);

@@ -44,6 +44,12 @@ struct OrganismIdCommand {
 }
 
 #[derive(Deserialize)]
+struct RobotDragPlacementCommand {
+    id: OrganismIdCommand,
+    position: [f32; 2],
+}
+
+#[derive(Deserialize)]
 #[serde(rename_all = "snake_case")]
 enum ManualReproductionMutationMode {
     Preserve,
@@ -174,6 +180,11 @@ enum EngineCommand {
         dna: String,
         position: [f32; 2],
         initial_energy: i32,
+    },
+    DragHighlightedRobots {
+        anchor: OrganismIdCommand,
+        grabbed: OrganismIdCommand,
+        placements: Vec<RobotDragPlacementCommand>,
     },
     MoveOrganism {
         slot: u32,
@@ -1017,6 +1028,25 @@ fn db_engine_command_batch_impl(
                         })
                     })
             }),
+            EngineCommand::DragHighlightedRobots {
+                anchor,
+                grabbed,
+                placements,
+            } => engine
+                .drag_highlighted_robots(
+                    OrganismId::new(anchor.slot, anchor.generation),
+                    OrganismId::new(grabbed.slot, grabbed.generation),
+                    &placements
+                        .into_iter()
+                        .map(|placement| {
+                            (
+                                OrganismId::new(placement.id.slot, placement.id.generation),
+                                placement.position,
+                            )
+                        })
+                        .collect::<Vec<_>>(),
+                )
+                .map(|_| serde_json::Value::Null),
             EngineCommand::MoveOrganism {
                 slot,
                 generation,

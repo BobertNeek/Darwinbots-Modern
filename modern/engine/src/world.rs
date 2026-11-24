@@ -5323,6 +5323,41 @@ impl Engine {
         Ok(())
     }
 
+    pub fn drag_highlighted_robots(
+        &mut self,
+        anchor: OrganismId,
+        grabbed: OrganismId,
+        placements: &[(OrganismId, [f32; 2])],
+    ) -> Result<(), EngineError> {
+        let mut distinct = HashSet::new();
+        if placements.iter().any(|(id, position)| {
+            !distinct.insert(*id) || position.iter().any(|coordinate| !coordinate.is_finite())
+        }) {
+            return Err(EngineError::Invariant(
+                "Robot drag requires distinct IDs and finite coordinates".into(),
+            ));
+        }
+        let can_drag = |robot: &RobotState| robot.flags.exists && !robot.flags.hidden;
+        if [anchor, grabbed]
+            .iter()
+            .any(|&id| !self.slots.get(id).is_ok_and(can_drag))
+        {
+            return Ok(());
+        }
+        for &(id, position) in placements {
+            if let Ok(robot) = self.slots.get_mut(id)
+                && can_drag(robot)
+            {
+                // Form_MouseMove leaves bounds, ties and other forces to the ordinary cycle.
+                robot.kinematics.position = position;
+                robot.kinematics.velocity = [0.0; 2];
+                robot.kinematics.actual_velocity = [0.0; 2];
+            }
+        }
+        self.publish_snapshot();
+        Ok(())
+    }
+
     pub fn move_organism(&mut self, id: OrganismId, position: [f32; 2]) -> Result<(), EngineError> {
         self.valid_slot(id)?;
         let target = [

@@ -27,6 +27,8 @@ public interface IEngineClient : IDisposable
     void SetDeathPoffsEnabled(bool enabled) =>
         throw new NotSupportedException("This engine client does not support changing death-particle creation.");
     void Move(uint slot, uint generation, float[] position);
+    void DragHighlightedRobots(HighlightedRobotDrag drag) =>
+        throw new NotSupportedException("This engine client does not support dragging highlighted robots.");
     OrganismKey CloneOrganism(uint slot, uint generation, float[] position);
     void ReplaceDna(uint slot, uint generation, string dna);
     int TagOrganismsByName(string founderName, string tag) =>

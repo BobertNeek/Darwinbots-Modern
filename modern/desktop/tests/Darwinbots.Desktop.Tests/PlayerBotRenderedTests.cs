@@ -286,6 +286,90 @@ public sealed class PlayerBotRenderedTests
         }, CancellationToken.None);
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task DraggingAMarkedMemberMovesTheGroupBeforeRelease(bool playerBot)
+    {
+        var setup = new WorldSetupOptions
+        {
+            Backend = "Cpu", WorldWidth = 1000, WorldHeight = 1000, PopulationCapacity = 8,
+        };
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], setup, NativeEngineClientFactory.Instance, new AuditStorageService());
+            window.Show();
+            try
+            {
+                await WaitFor(() => TryField<SimulationSession>(window, "_session") is not null);
+                var session = Field<SimulationSession>(window, "_session");
+                var viewModel = (MainWindowViewModel)window.DataContext!;
+                var viewport = window.FindControl<WorldViewport>("Viewport")!;
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                const string idle = "start\nstop";
+                await session.ImportDnaAsync(playerBot ? idle : "cond *.numties 0 = start 41 .tie store stop", [250, 400]);
+                await session.ImportDnaAsync(idle, [500, 400]);
+                await session.ImportDnaAsync(idle, [820, 200]);
+                if (!playerBot)
+                {
+                    await session.StepAsync(24);
+                    Assert.Single(session.LatestSnapshot.Ties);
+                }
+                await WaitFor(() => viewModel.Population == 3);
+                var (anchor, grabbed, outsider) = (session.LatestSnapshot.Organisms[0],
+                    session.LatestSnapshot.Organisms[1], session.LatestSnapshot.Organisms[2]);
+                ClickRobot(window, viewport, setup, outsider, RawInputModifiers.None);
+                if (playerBot)
+                {
+                    menu.FindCommandItem(LegacyCommandId.EditEnablePlayerBot)!
+                        .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    await WaitFor(() => session.LatestSnapshot.PlayerBot.Enabled);
+                    ClickRobot(window, viewport, setup, anchor, RawInputModifiers.Shift);
+                    ClickRobot(window, viewport, setup, grabbed, RawInputModifiers.Shift);
+                }
+                ClickRobot(window, viewport, setup, anchor, RawInputModifiers.None);
+                if (!playerBot)
+                {
+                    menu.FindCommandItem(LegacyCommandId.RobotSelectEntireOrganism)!
+                        .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    await WaitFor(() => viewModel.Status == "ORGANISM SELECTED · 2 BOT(S)");
+                }
+
+                window.MouseDown(Screen(grabbed.Position[0], grabbed.Position[1]), MouseButton.Left, RawInputModifiers.None);
+                window.MouseMove(Screen(300, 650), RawInputModifiers.LeftMouseButton);
+                await WaitFor(() => At(anchor.Slot, 300, 650));
+                Assert.True(At(grabbed.Slot, 300 + grabbed.Position[0] - anchor.Position[0],
+                    650 + grabbed.Position[1] - anchor.Position[1]));
+                Assert.True(At(outsider.Slot, outsider.Position[0], outsider.Position[1]));
+                window.MouseMove(Screen(340, 680), RawInputModifiers.LeftMouseButton);
+                await WaitFor(() => At(anchor.Slot, 340, 680));
+                window.MouseUp(Screen(450, 700), MouseButton.Left, RawInputModifiers.None);
+                await session.RefreshSnapshotAsync();
+                Assert.True(At(anchor.Slot, 340, 680));
+
+                bool At(uint slot, float x, float y)
+                {
+                    var position = session.LatestSnapshot.Organisms.Single(robot => robot.Slot == slot).Position;
+                    return Math.Abs(position[0] - x) < 1 && Math.Abs(position[1] - y) < 1;
+                }
+
+                Point Screen(float x, float y)
+                {
+                    var scaleX = viewport.Bounds.Width / setup.WorldWidth;
+                    var scaleY = viewport.Bounds.Height / setup.WorldHeight;
+                    if (viewport.FixedRatio) scaleX = scaleY = Math.Min(scaleX, scaleY);
+                    return viewport.TranslatePoint(new Point(x * scaleX * viewport.Zoom + viewport.Pan.X,
+                        y * scaleY * viewport.Zoom + viewport.Pan.Y), window)!.Value;
+                }
+            }
+            finally
+            {
+                foreach (var ownedWindow in window.OwnedWindows.ToArray()) ownedWindow.Close();
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
     [Fact]
     public async Task RealPlayerBotKeyMapRoutesVisibleKeysToTheNextAuthoritativeCycle()
     {
