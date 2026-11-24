@@ -168,6 +168,7 @@ public sealed partial class MainWindow : Window
             };
             LocalModeKindSelector.SelectedIndex = (int)kind;
             _viewModel.LocalMode.SelectKind(kind);
+            UpdateLocalModeLimitMinimums(kind);
         }
         UiPreferencesController.Register(this);
         var numericCultureAppliedAfterExpansion = false;
@@ -2217,6 +2218,7 @@ public sealed partial class MainWindow : Window
     private async Task ConfigureZerobotModeAsync()
     {
         if (_session is null) return;
+        LocalModeKindSelector.SelectedIndex = (int)LocalModeKind.Zerobot;
         _viewModel.LocalMode.SelectKind(LocalModeKind.Zerobot);
         var config = _viewModel.LocalMode.BuildConfiguration() with
         {
@@ -2277,6 +2279,7 @@ public sealed partial class MainWindow : Window
                 _viewModel.LocalMode.Observe(_session.LatestSnapshot.LocalMode,
                     _session.LatestSnapshot.NativeCycle, _session.LatestSnapshot.Species);
                 LocalModeKindSelector.SelectedIndex = (int)localMode.Kind;
+                UpdateLocalModeLimitMinimums(localMode.Kind);
                 LocalModePreset.SelectedIndex = (int)localMode.Preset;
                 LocalModeWorkflow.SelectedIndex = (int)localMode.Workflow;
                 ModeEntrantOrder.Text = string.Join(", ", localMode.EntrantOrder);
@@ -2671,7 +2674,19 @@ public sealed partial class MainWindow : Window
     private void LocalModeKind_Changed(object? sender, SelectionChangedEventArgs e)
     {
         if (!_controlsReady) return;
-        _viewModel.LocalMode.SelectKind(LocalModeKindFromIndex(LocalModeKindSelector.SelectedIndex));
+        var kind = LocalModeKindFromIndex(LocalModeKindSelector.SelectedIndex);
+        _viewModel.LocalMode.SelectKind(kind);
+        UpdateLocalModeLimitMinimums(kind);
+    }
+
+    private void UpdateLocalModeLimitMinimums(LocalModeKind kind)
+    {
+        var minimum = kind is LocalModeKind.League or LocalModeKind.Contest ? 0m : 1m;
+        foreach (var limit in new[] { ModeMaximumRounds, ModeMaximumCycles, ModePopulationCap })
+        {
+            limit.Minimum = minimum;
+            if (limit.Value < minimum) limit.Value = minimum;
+        }
     }
 
     private void LocalModePreset_Changed(object? sender, SelectionChangedEventArgs e)
@@ -2871,10 +2886,12 @@ public sealed partial class MainWindow : Window
         _viewModel.LocalMode.SeedingOpponent = _viewModel.LocalMode.Workflow == LeagueWorkflow.Seeding
             ? (uint)Math.Clamp(ModeSeedingOpponent.Value ?? 0m, 0m, uint.MaxValue) : null;
         _viewModel.LocalMode.FinishWithLadder = ModeFinishWithLadder.IsChecked == true;
-        _viewModel.LocalMode.MinimumRounds = ReadUInt(ModeMinimumRounds.Value, 5);
-        _viewModel.LocalMode.MaximumRounds = ReadUInt(ModeMaximumRounds.Value, 1);
-        _viewModel.LocalMode.MaximumCycles = ReadULong(ModeMaximumCycles.Value, 15_000);
-        _viewModel.LocalMode.MaximumPopulation = (int)Math.Clamp(ModePopulationCap.Value ?? 700m, 1m, 1_000_000m);
+        _viewModel.LocalMode.MinimumRounds = ReadUInt(ModeMinimumRounds, 5);
+        _viewModel.LocalMode.MaximumRounds = ReadUInt(ModeMaximumRounds, 1);
+        _viewModel.LocalMode.MaximumCycles = (ulong)Math.Clamp(ModeMaximumCycles.Value ?? 15_000m,
+            ModeMaximumCycles.Minimum, ulong.MaxValue);
+        _viewModel.LocalMode.MaximumPopulation = (int)Math.Clamp(ModePopulationCap.Value ?? 700m,
+            ModePopulationCap.Minimum, ModePopulationCap.Maximum);
         _viewModel.LocalMode.EnergyHandicap = (int)Math.Clamp(ModeEnergyHandicap.Value ?? 0m, -100_000m, 100_000m);
         _viewModel.LocalMode.RestartOnExtinction = ModeRestartOnExtinction.IsChecked == true;
         _viewModel.LocalMode.ProhibitInformationShots = ModeProhibitInformation.IsChecked == true;
@@ -2902,11 +2919,8 @@ public sealed partial class MainWindow : Window
         _ => LeaguePreset.F1,
     };
 
-    private static uint ReadUInt(decimal? value, uint fallback) =>
-        (uint)Math.Clamp(value ?? fallback, 1m, uint.MaxValue);
-
-    private static ulong ReadULong(decimal? value, ulong fallback) =>
-        (ulong)Math.Clamp(value ?? fallback, 1m, ulong.MaxValue);
+    private static uint ReadUInt(NumericUpDown input, uint fallback) =>
+        (uint)Math.Clamp(input.Value ?? fallback, input.Minimum, uint.MaxValue);
 
     private async void LiveAdvanced_Click(object? sender, RoutedEventArgs e)
     {
