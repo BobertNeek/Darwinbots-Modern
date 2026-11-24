@@ -337,6 +337,9 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task SetSpeciesColorAsync(uint species, uint color, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.SetSpeciesColor(species, color), cancellationToken);
 
+    public Task SetOrganismColorAsync(uint slot, uint generation, uint color, CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.SetOrganismColor(slot, generation, color), cancellationToken);
+
     public Task MakeNewSpeciesAsync(uint slot, uint generation, string name, uint color, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.MakeNewSpecies(slot, generation, name, color), cancellationToken);
 

@@ -3183,6 +3183,16 @@ impl Engine {
         Ok(())
     }
 
+    pub(crate) fn set_organism_color(
+        &mut self,
+        id: OrganismId,
+        color: u32,
+    ) -> Result<(), EngineError> {
+        self.slots.get_mut(id)?.phenotype.color = color;
+        self.publish_snapshot();
+        Ok(())
+    }
+
     pub fn make_new_species(
         &mut self,
         id: OrganismId,

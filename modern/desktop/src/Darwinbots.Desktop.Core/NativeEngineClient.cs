@@ -708,6 +708,10 @@ public sealed partial class NativeEngineClient : IEngineClient
         NativeCommandSerializer.CreateSpeciesColorBatch(species, color),
         "change species color");
 
+    public void SetOrganismColor(uint slot, uint generation, uint color) => ExecuteBatch(
+        new { version = 1, commands = new[] { new { type = "set_organism_color", slot, generation, color } } },
+        "change robot color");
+
     public void MakeNewSpecies(uint slot, uint generation, string name, uint color)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);

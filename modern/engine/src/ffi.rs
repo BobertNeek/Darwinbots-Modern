@@ -274,6 +274,11 @@ enum EngineCommand {
         species: u32,
         color: u32,
     },
+    SetOrganismColor {
+        slot: u32,
+        generation: u32,
+        color: u32,
+    },
     MakeNewSpecies {
         slot: u32,
         generation: u32,
@@ -1080,6 +1085,13 @@ fn db_engine_command_batch_impl(
             }
             EngineCommand::SetSpeciesColor { species, color } => engine
                 .set_species_color(crate::SpeciesId(species), color)
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::SetOrganismColor {
+                slot,
+                generation,
+                color,
+            } => engine
+                .set_organism_color(OrganismId::new(slot, generation), color)
                 .map(|_| serde_json::Value::Null),
             EngineCommand::MakeNewSpecies {
                 slot,

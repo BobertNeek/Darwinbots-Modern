@@ -77,6 +77,8 @@ public interface IEngineClient : IDisposable
     void UpdateSpeciesSettings(IReadOnlyList<SpeciesImport> species) =>
         throw new NotSupportedException("Species settings are unavailable in this engine client.");
     void SetSpeciesColor(uint species, uint color);
+    void SetOrganismColor(uint slot, uint generation, uint color) =>
+        throw new NotSupportedException("Robot color editing is unavailable in this engine client.");
     void MakeNewSpecies(uint slot, uint generation, string name, uint color);
     void UpdateLegacyRestrictions(bool robotFixingAllowed, bool asexualReproductionAllowed);
     void ConfigurePlayerBot(PlayerBotConfig config);
