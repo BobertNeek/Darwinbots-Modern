@@ -307,6 +307,7 @@ public sealed partial class MainWindow : Window
         };
         Viewport.CanDragNativeTeleporter = CanDragNativeTeleporter;
         Viewport.NativeTeleporterDragMoved += (feature, center) => _ = ApplyNativeTeleporterDragAsync(feature, center);
+        Viewport.NativeTeleporterDoubleClicked += async () => await EditSelectedTeleporterAsync();
         Viewport.WorldFeatureSelected += feature =>
         {
             _selectedFeature = feature;
@@ -2668,7 +2669,10 @@ public sealed partial class MainWindow : Window
         _viewModel.Status = $"SHAPE {result.Id} UPDATED";
     }
 
-    private async void EditTeleporter_Click(object? sender, RoutedEventArgs e)
+    private async void EditTeleporter_Click(object? sender, RoutedEventArgs e) =>
+        await EditSelectedTeleporterAsync();
+
+    private async Task EditSelectedTeleporterAsync()
     {
         if (_session is null || _selectedFeature is not { Kind: WorldFeatureKind.Teleporter } feature
             || !ObjectEditorPolicy.CanEdit(ObjectEditorKind.Teleporter, SelectedObject())) return;

@@ -151,6 +151,58 @@ public sealed class TeleporterRenderedTests
     }
 
     [Fact]
+    public async Task NativeTeleporterDoubleClickOpensPropertiesAndGivesRobotHitsPriority()
+    {
+        var setup = new WorldSetupOptions { Backend = "Cpu", WorldWidth = 4_000, WorldHeight = 2_000, PopulationCapacity = 16 };
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var player = new MainWindow([], setup, NativeEngineClientFactory.Instance, new AuditStorageService())
+            {
+                WindowState = WindowState.Normal, Width = 1_100, Height = 820,
+            };
+            player.Show();
+            try
+            {
+                await WaitFor(() => Session(player)?.LatestSnapshot.NativeCycle is not null);
+                var session = Session(player)!;
+                await session.AddNativeTeleporterAsync(new NativeTeleporterOptions(
+                    NativeTeleporterKind.Intrasim, 300, "", true, new(true, true, true), 10, 10));
+                var viewport = player.FindControl<WorldViewport>("Viewport")!;
+                viewport.FixedRatio = false;
+                var portal = Assert.Single(session.LatestSnapshot.Teleporters);
+                var world = session.LatestSnapshot.WorldSize;
+                Point ToViewport(float[] position) =>
+                    new(position[0] / world[0] * viewport.Bounds.Width, position[1] / world[1] * viewport.Bounds.Height);
+                StabilizeForInput(player, viewport);
+
+                DoubleClickAt(player, viewport, ToViewport(portal.Center));
+                await WaitFor(() => player.OwnedWindows.OfType<TeleporterEditorWindow>().Any(window => window.IsVisible));
+                var editor = Assert.Single(player.OwnedWindows.OfType<TeleporterEditorWindow>());
+                Assert.Equal(0, editor.FindControl<ComboBox>("Mode")!.SelectedIndex);
+                Assert.Equal(portal.Radius, (float)editor.FindControl<NumericUpDown>("Radius")!.Value!.Value);
+                editor.FindControl<CheckBox>("TeleportCorpses")!.IsChecked = false;
+                Click(editor, editor.FindControl<Button>("ApplyButton")!);
+                await WaitFor(() => !editor.IsVisible && !Assert.Single(session.LatestSnapshot.Teleporters).TeleportCorpses);
+
+                await session.ImportDnaAsync("start\nstop", portal.Center);
+                var robot = Assert.Single(session.LatestSnapshot.Organisms);
+                var left = portal.Center[0] > world[0] / 2;
+                ClickAt(player, viewport, new Point(viewport.Bounds.Width * (left ? 0.15 : 0.85), viewport.Bounds.Height * 0.5));
+                DoubleClickAt(player, viewport, ToViewport(robot.Position));
+                await WaitFor(() => player.OwnedWindows.OfType<RobotDetailsWindow>().Any(window => window.IsVisible));
+                var model = Assert.IsType<MainWindowViewModel>(player.DataContext);
+                Assert.Equal(new OrganismKey(robot.Slot, robot.Generation), model.SelectedKey);
+                Assert.DoesNotContain(player.OwnedWindows.OfType<TeleporterEditorWindow>(), window => window.IsVisible);
+            }
+            finally
+            {
+                foreach (var owned in player.OwnedWindows.ToArray()) owned.Close();
+                player.Close();
+            }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
     public async Task NativeTeleporterDragsFromItsRectangleToThePointerBeforeRelease()
     {
         var setup = new WorldSetupOptions { Backend = "Cpu", WorldWidth = 4_000, WorldHeight = 2_000, PopulationCapacity = 16 };
@@ -532,6 +584,19 @@ public sealed class TeleporterRenderedTests
         Assert.True(translated.HasValue);
         window.MouseDown(translated.Value, MouseButton.Left, RawInputModifiers.None);
         window.MouseUp(translated.Value, MouseButton.Left, RawInputModifiers.None);
+        AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+    }
+
+    private static void DoubleClickAt(Window window, Control control, Point point)
+    {
+        StabilizeForInput(window, control);
+        var translated = control.TranslatePoint(point, window);
+        Assert.True(translated.HasValue);
+        for (var click = 0; click < 2; click++)
+        {
+            window.MouseDown(translated.Value, MouseButton.Left, RawInputModifiers.None);
+            window.MouseUp(translated.Value, MouseButton.Left, RawInputModifiers.None);
+        }
         AvaloniaHeadlessPlatform.ForceRenderTimerTick();
     }
 

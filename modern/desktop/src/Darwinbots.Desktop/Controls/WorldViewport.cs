@@ -53,6 +53,7 @@ public sealed class WorldViewport : Control
     public event Action<OrganismKey>? OrganismDoubleClicked;
     public event Action<float[]>? WorldClicked;
     public event Action<WorldFeatureSelection>? WorldFeatureSelected;
+    public event Action? NativeTeleporterDoubleClicked;
     public event Action<WorldFeatureSelection, float[]>? NativeTeleporterDragMoved;
     public Func<bool>? CanDragNativeTeleporter { get; set; }
     public event Action<uint, float[]>? OrganismDragCompleted;
@@ -501,8 +502,13 @@ public sealed class WorldViewport : Control
                 WorldFeatureSelected?.Invoke(feature);
                 if (nativeTeleporter is not null)
                 {
-                    _nativeTeleporterDrag = new(e.Pointer, nativeTeleporter, point.Position);
-                    e.Pointer.Capture(this);
+                    if (e.ClickCount == 2)
+                        NativeTeleporterDoubleClicked?.Invoke();
+                    else
+                    {
+                        _nativeTeleporterDrag = new(e.Pointer, nativeTeleporter, point.Position);
+                        e.Pointer.Capture(this);
+                    }
                 }
                 e.Handled = true;
                 return;
