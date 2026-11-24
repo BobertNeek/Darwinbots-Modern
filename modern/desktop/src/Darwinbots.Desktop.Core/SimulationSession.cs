@@ -407,6 +407,13 @@ public sealed class SimulationSession : IAsyncDisposable
         return save ?? throw new InvalidDataException("Engine returned no save data.");
     }
 
+    public async Task<string> ReadRobotTagReportAsync(CancellationToken cancellationToken = default)
+    {
+        string? report = null;
+        await Enqueue(engine => report = engine.ReadRobotTagReport(), cancellationToken).ConfigureAwait(false);
+        return report ?? throw new InvalidDataException("Engine returned no robot tag information.");
+    }
+
     public async Task<float?> ReadNativeGaussianSpareAsync(CancellationToken cancellationToken = default)
     {
         float? spare = null;

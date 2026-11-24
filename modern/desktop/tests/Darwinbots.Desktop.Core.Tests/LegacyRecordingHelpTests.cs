@@ -68,7 +68,6 @@ public sealed class LegacyRecordingHelpTests
         var expectedHelpCommands = new[]
         {
             LegacyCommandId.HelpDna,
-            LegacyCommandId.HelpRobotTagInformation,
             LegacyCommandId.HelpSurvivalInfo,
             LegacyCommandId.HelpAbout,
         };

@@ -1,6 +1,7 @@
 using System.Reflection;
 using Avalonia.Controls;
 using Avalonia.Headless;
+using Avalonia.Input.Platform;
 using Avalonia.Input;
 using Avalonia.Input.Raw;
 using Avalonia.Interactivity;
@@ -91,6 +92,39 @@ public sealed class HelpRecordingRenderedTests
             Assert.Equal("first history", File.ReadAllText(history));
         }
         finally { directory.Delete(recursive: true); }
+    }
+
+    [Fact]
+    public async Task RobotTagInformationMenuCopiesLiveNativeRows()
+    {
+        var setup = new WorldSetupOptions { Backend = "Cpu", PopulationCapacity = 64 };
+        await using var session = new SimulationSession(new NativeEngineClient(setup));
+        await session.ImportSpeciesAsync(new SpeciesImport("Founder.txt", "start stop\n'#tag: Founder tag", false, 0xff239ac0, 2, 1000, 0, false, 0));
+        await session.ImportSpeciesAsync(new SpeciesImport("Other.txt", "start stop", false, 0xff239ac0, 1, 1000, 0, false, 0));
+
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], setup, NativeEngineClientFactory.Instance, new AuditStorageService());
+            DesktopTestApplication.UseSession(window, session);
+            window.Show();
+            try
+            {
+                var clipboard = Assert.IsAssignableFrom<IClipboard>(window.Clipboard);
+                await clipboard.SetTextAsync("Previous clipboard contents");
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                var command = menu.FindCommandItem(LegacyCommandId.HelpRobotTagInformation)!;
+                command.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                var viewModel = Assert.IsType<MainWindowViewModel>(window.DataContext);
+                await WaitFor(() => viewModel.Status == "ROBOT TAG INFORMATION COPIED", "The tag report did not reach the clipboard.");
+                Assert.Equal(
+                    $"Tag:FileName:User\r\n~~~\r\n\r\n{"Founder tag".PadRight(45)}:Founder.txt:\r\n{new string(' ', 45)}:Other.txt:",
+                    await clipboard.TryGetTextAsync());
+                Assert.Empty(window.OwnedWindows);
+                Assert.Equal(0ul, session.LatestSnapshot.Tick);
+                Assert.Equal(3, session.LatestSnapshot.Population);
+            }
+            finally { window.Close(); }
+        }, CancellationToken.None);
     }
 
     [Fact]

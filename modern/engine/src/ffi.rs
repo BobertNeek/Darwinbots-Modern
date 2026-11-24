@@ -70,6 +70,7 @@ enum EngineCommand {
         sun_change: u8,
     },
     ReadNativeProcessCaches,
+    ReadRobotTagReport,
     SetNativeProcessCaches {
         caches: NativeProcessCaches,
     },
@@ -579,6 +580,7 @@ fn db_engine_command_batch_impl(
                 EngineCommand::ReadNativeGaussianSpare
                     | EngineCommand::ReadNativeSunChange
                     | EngineCommand::ReadNativeProcessCaches
+                    | EngineCommand::ReadRobotTagReport
                     | EngineCommand::ExportSpeciesTemplateDna { .. }
                     | EngineCommand::FindBestRobot { .. }
             )
@@ -607,6 +609,9 @@ fn db_engine_command_batch_impl(
                 EngineCommand::ReadNativeProcessCaches => engine
                     .read_native_process_caches()
                     .map(|caches| serde_json::json!(caches)),
+                EngineCommand::ReadRobotTagReport => {
+                    Ok(serde_json::json!(engine.robot_tag_report()))
+                }
                 EngineCommand::ExportSpeciesTemplateDna { species } => engine
                     .export_species_template_dna(crate::SpeciesId(*species))
                     .map(|dna| serde_json::json!({ "dna": dna })),
@@ -678,6 +683,7 @@ fn db_engine_command_batch_impl(
             EngineCommand::ReadNativeProcessCaches => engine
                 .read_native_process_caches()
                 .map(|caches| serde_json::json!(caches)),
+            EngineCommand::ReadRobotTagReport => Ok(serde_json::json!(engine.robot_tag_report())),
             EngineCommand::SetNativeProcessCaches { caches } => engine
                 .set_native_process_caches(caches)
                 .map(|_| serde_json::Value::Null),

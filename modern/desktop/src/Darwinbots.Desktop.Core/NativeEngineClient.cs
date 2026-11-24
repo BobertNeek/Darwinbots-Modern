@@ -907,6 +907,17 @@ public sealed partial class NativeEngineClient : IEngineClient
         }
     }
 
+    public string ReadRobotTagReport()
+    {
+        var result = ExecuteBatchForResult(new
+        {
+            version = 1,
+            commands = new[] { new { type = "read_robot_tag_report" } },
+        }, "read robot tag information");
+        return result.GetProperty("results")[0].GetString()
+            ?? throw new InvalidDataException("Native engine returned no robot tag information.");
+    }
+
     public float? ReadNativeGaussianSpare()
     {
         EnsureAlive();

@@ -3015,6 +3015,24 @@ impl Engine {
 
     /// Authoritative rules and available seed genomes for world editors.
     /// Reading this view does not execute DNA or mutate the simulation.
+    pub fn robot_tag_report(&self) -> String {
+        let mut report = String::from("Tag:FileName:User\r\n~~~\r\n");
+        let mut seen = HashSet::new();
+        for robot in self.slots.iter().filter_map(|slot| slot.organism.as_ref()) {
+            if !robot.flags.exists {
+                continue;
+            }
+            let tag = effective_robot_tag(robot);
+            let founder = native_census_filename(robot, &self.species);
+            let row = format!("{tag:<45.45}:{founder}:{}", robot.identity.owner);
+            if seen.insert(row.clone()) {
+                report.push_str("\r\n");
+                report.push_str(&row);
+            }
+        }
+        report
+    }
+
     pub fn configuration_view(&self) -> Result<serde_json::Value, EngineError> {
         let species = self
             .species
@@ -5232,9 +5250,7 @@ impl Engine {
             .metadata()
             .mutations
             .saturating_add(organism.program.mutation_metadata.total_mutations);
-        let tag = (!organism.identity.tag.is_empty())
-            .then_some(organism.identity.tag.as_str())
-            .or_else(|| (!dna.metadata().tag.is_empty()).then_some(dna.metadata().tag.as_str()));
+        let tag = effective_robot_tag(organism);
         let mut exported = dna.clone();
         if self
             .config
@@ -5262,7 +5278,7 @@ impl Engine {
                 );
             }
         }
-        Ok(exported.to_source_with_runtime_metadata(generation, mutations, tag))
+        Ok(exported.to_source_with_runtime_metadata(generation, mutations, Some(tag)))
     }
 
     /// Export the retained startup genome even if no living candidate remains.
@@ -13145,6 +13161,14 @@ impl Engine {
         engine.physics = physics;
         engine.publish_snapshot();
         Ok(engine)
+    }
+}
+
+fn effective_robot_tag(robot: &RobotState) -> &str {
+    if robot.identity.tag.is_empty() {
+        &robot.program.dna.metadata().tag
+    } else {
+        &robot.identity.tag
     }
 }
 
