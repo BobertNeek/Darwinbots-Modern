@@ -4847,7 +4847,7 @@ impl Engine {
                     })
                     .collect::<Vec<_>>();
                 for other in others {
-                    self.native_delete_pair(id, other);
+                    self.remove_native_tie_pair(id, other);
                 }
             }
             self.slots.remove(id)?;
@@ -5146,6 +5146,7 @@ impl Engine {
         }
         let birth_cycle = self.native_cycle_or_tick();
         let mut cloned_organism = self.slots.get(id)?.clone();
+        cloned_organism.native_tie_count_pending = false;
         cloned_organism.identity.parents = [Some(id), None];
         cloned_organism.identity.parent_absolute_id = cloned_organism.identity.absolute_id;
         cloned_organism.identity.absolute_id = self.allocate_absolute_identity();
@@ -8071,11 +8072,9 @@ impl Engine {
                 let Some(source) = self.slots[source_slot].organism.as_ref() else {
                     continue;
                 };
-                if self
-                    .native_phase
-                    .as_ref()
-                    .is_some_and(|phase| phase.actor.slot() as usize != source_slot)
-                    || source.flags.corpse
+                if self.native_phase.as_ref().is_some_and(|phase| {
+                    phase.actor.slot() as usize != source_slot || source.native_tie_count_pending
+                }) || source.flags.corpse
                     || !source.flags.can_execute_dna
                 {
                     continue;
@@ -8385,6 +8384,7 @@ impl Engine {
                 let id = OrganismId::new(slot as u32, self.slots[slot].generation);
                 let count = self.tie_indices_for(id).len();
                 let robot = self.slots.get_mut(id).unwrap();
+                robot.native_tie_count_pending = false;
                 robot.program.memory.write(MEM_NUMBER_OF_TIES, count as i32);
                 if count == 0 {
                     // Update_Ties does not clear multibot merely because the
@@ -11866,7 +11866,7 @@ impl Engine {
                             })
                             .collect::<Vec<_>>();
                         for partner in partners {
-                            self.native_delete_pair(id, partner);
+                            self.remove_native_tie_pair(id, partner);
                         }
                     }
                     self.slots.remove(id)?;

@@ -4,6 +4,14 @@ use crate::tie::{HARD_TIE_B, HARD_TIE_K};
 
 impl Engine {
     pub(super) fn native_tie_forces(&mut self, actor: OrganismId) {
+        // Both TieHooke and TieTorque require the actor's runtime tie count.
+        if self
+            .slots
+            .get(actor)
+            .is_ok_and(|robot| robot.native_tie_count_pending)
+        {
+            return;
+        }
         let mut ordinal = 0;
         loop {
             let indices = self.tie_indices_for(actor);
@@ -57,6 +65,8 @@ impl Engine {
             if end.last == 1 {
                 // TieHooke advances k even after DeleteTie compacts the array,
                 // so the next endpoint skips this robot's spring visit.
+                self.ties[index].native_ends = Some(ends);
+                self.ties[index].sync_native_primary();
                 self.native_delete_pair(actor, other);
                 continue;
             }
@@ -159,6 +169,116 @@ impl Engine {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{SaveFile, native_binary::NativeRecordFile};
+
+    fn native_tie_countdowns(world: &Engine) -> HashMap<(i32, i32), i16> {
+        let file = NativeRecordFile::decode(&world.export_native_sim().unwrap()).unwrap();
+        let absolute_by_slot: HashMap<_, _> = file
+            .robots
+            .iter()
+            .map(|robot| {
+                (
+                    robot.word("old_slot").unwrap(),
+                    robot.long("absolute_id").unwrap(),
+                )
+            })
+            .collect();
+        let mut countdowns = HashMap::new();
+        for robot in &file.robots {
+            let absolute_id = robot.long("absolute_id").unwrap();
+            for tie in robot.bytes("ties_core").unwrap().chunks_exact(38).skip(1) {
+                let other_slot = i16::from_le_bytes(tie[2..4].try_into().unwrap());
+                if let Some(&other_id) = absolute_by_slot.get(&other_slot) {
+                    let last = i16::from_le_bytes(tie[26..28].try_into().unwrap());
+                    countdowns.insert((absolute_id, other_id), last);
+                }
+            }
+        }
+        countdowns
+    }
+
+    #[test]
+    fn loaded_ties_wait_for_a_recount_that_also_visits_dna_disabled_robots() {
+        let mut fresh = Engine::new_native(EngineConfig::testing()).unwrap();
+        let dna = LegacyDna::parse("start stop").unwrap();
+        let first = fresh.spawn_at(dna.clone(), [300.0, 500.0]).unwrap();
+        let second = fresh.spawn_at(dna, [650.0, 500.0]).unwrap();
+        fresh.slots.get_mut(second).unwrap().flags.can_execute_dna = false;
+        assert!(fresh.native_make_tie(first, second, 500, 65, 11));
+        let mut loaded = Engine::from_native_sim(&fresh.export_native_sim().unwrap()).unwrap();
+        let mut resumed = SaveFile::decode(&SaveFile::encode(&loaded).unwrap()).unwrap();
+
+        assert_eq!(loaded.memory_at(first, MEM_NUMBER_OF_TIES).unwrap(), 1);
+        assert!(!loaded.slots.get(second).unwrap().flags.can_execute_dna);
+        fresh.tick().unwrap();
+        assert_eq!(
+            native_tie_countdowns(&fresh),
+            HashMap::from([((1, 2), 64), ((2, 1), 64)])
+        );
+
+        for world in [&mut loaded, &mut resumed] {
+            world.tick().unwrap();
+            assert_eq!(
+                native_tie_countdowns(world),
+                HashMap::from([((1, 2), 65), ((2, 1), 65)])
+            );
+            assert_eq!(world.memory_at(second, MEM_NUMBER_OF_TIES).unwrap(), 1);
+            world.tick().unwrap();
+            assert_eq!(native_tie_countdowns(world), native_tie_countdowns(&fresh));
+        }
+    }
+
+    #[test]
+    fn creation_initializes_its_two_counts_and_expiry_waits_for_its_cold_peer() {
+        let mut fresh = Engine::new_native(EngineConfig::testing()).unwrap();
+        let dna = LegacyDna::parse("start stop").unwrap();
+        let first = fresh.spawn_at(dna.clone(), [300.0, 500.0]).unwrap();
+        let second = fresh.spawn_at(dna.clone(), [650.0, 500.0]).unwrap();
+        let third = fresh.spawn_at(dna, [300.0, 800.0]).unwrap();
+        assert!(fresh.native_make_tie(first, second, 500, 2, 11));
+        let mut loaded = Engine::from_native_sim(&fresh.export_native_sim().unwrap()).unwrap();
+
+        loaded.native_delete_pair(first, second);
+        assert_eq!(loaded.ties.len(), 1);
+        assert!(loaded.native_make_tie(first, third, 500, 65, 22));
+        loaded.native_tie_forces(first);
+        loaded.native_tie_forces(second);
+        loaded.native_tie_forces(third);
+        assert_eq!(
+            native_tie_countdowns(&loaded),
+            HashMap::from([((1, 2), 1), ((2, 1), 2), ((1, 3), 64), ((3, 1), 64)])
+        );
+
+        loaded.tick().unwrap();
+        // The original endpoint still sees a zero-count peer in the first
+        // pre-pass. The mid-pass recount enables both visits on the next cycle.
+        assert!(native_tie_countdowns(&loaded).contains_key(&(1, 2)));
+        loaded.tick().unwrap();
+        assert!(!native_tie_countdowns(&loaded).contains_key(&(1, 2)));
+    }
+
+    #[test]
+    fn populated_sim_matches_original_24832_first_visit_tie_checkpoints() {
+        let input = include_bytes!("../../tests/fixtures/db24832-original-user.sim");
+        let mut loaded = Engine::from_native_sim(input).unwrap();
+        loaded.tick().unwrap();
+        let countdowns = native_tie_countdowns(&loaded);
+        // Captured from original Darwinbots 2.48.32 at cycle 282, the first
+        // cycle after loading this cycle-281 save. IDs are absolute, not slots.
+        for (first, second, expected) in [
+            (114, 262, 65),
+            (16, 210, 26),
+            (190, 53, 10),
+            (205, 64, 20),
+            (217, 75, 31),
+            (234, 85, 42),
+            (243, 73, 47),
+            (272, 92, 74),
+        ] {
+            assert_eq!(countdowns.get(&(first, second)), Some(&expected));
+            assert_eq!(countdowns.get(&(second, first)), Some(&expected));
+        }
+    }
 
     #[test]
     fn second_endpoint_spring_observes_geometry_after_first_endpoint_visit() {
