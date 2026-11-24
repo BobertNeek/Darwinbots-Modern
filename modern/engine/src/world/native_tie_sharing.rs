@@ -127,9 +127,9 @@ mod tests {
                 let mut receiver = receiver.clone();
                 let mut donor = donor.clone();
                 let effect = if give_energy {
-                    apply_tie_energy(&mut donor, &mut receiver, 1_000, &mut native)
+                    apply_tie_energy(&mut donor, &mut receiver, 1_000, true, &mut native)
                 } else {
-                    apply_tie_energy(&mut receiver, &mut donor, -1_000, &mut native)
+                    apply_tie_energy(&mut receiver, &mut donor, -1_000, true, &mut native)
                 };
                 assert_eq!(effect, Some("tie_resource_energy"));
                 // Robot 143 then spent 100 energy in storebody.

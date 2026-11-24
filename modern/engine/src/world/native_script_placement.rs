@@ -245,7 +245,7 @@ mod tests {
             ..SpeciesDefinition::default()
         });
         let alga = world
-            .spawn_native_script_robot(dna, species, alga_position)
+            .spawn_native_script_robot(dna, species, alga_position, None)
             .unwrap();
         assert_eq!(world.slots.get(alga).unwrap().materials.mass, 0.0);
 

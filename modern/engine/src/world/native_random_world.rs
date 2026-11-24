@@ -382,7 +382,7 @@ mod tests {
         );
 
         let later = world
-            .spawn_native_script_robot(dna, species, [600.0; 2])
+            .spawn_native_script_robot(dna, species, [600.0; 2], None)
             .unwrap();
         assert_eq!(
             world.slots.get(later).unwrap().identity.species_file,
@@ -421,7 +421,7 @@ mod tests {
         let first_species = SpeciesId::default();
         let startup_name = imported.species[0].name.clone();
         let placed = imported
-            .spawn_native_script_robot(dna.clone(), first_species, [600.0; 2])
+            .spawn_native_script_robot(dna.clone(), first_species, [600.0; 2], None)
             .unwrap();
         assert_eq!(
             imported.slots.get(first).unwrap().identity.species_file,

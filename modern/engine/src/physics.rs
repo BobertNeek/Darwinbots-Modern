@@ -9,8 +9,7 @@ mod movement;
 
 pub(crate) use collision::{
     moving_circle_fraction, native_dot, native_full_magnitude, native_magnitude, native_scalar,
-    resolve_collisions,
-    resolve_native_collisions, segment_aabb_fraction, segment_circle_fraction,
+    resolve_collisions, resolve_native_collisions, segment_aabb_fraction, segment_circle_fraction,
 };
 pub(crate) use environment::{
     apply_angular_damping, apply_resistance, apply_static_friction, apply_uncapped_resistance,
