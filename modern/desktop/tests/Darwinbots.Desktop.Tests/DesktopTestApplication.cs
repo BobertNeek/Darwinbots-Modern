@@ -13,6 +13,14 @@ namespace Darwinbots.Desktop.Tests;
 
 public static class DesktopTestApplication
 {
+    private static readonly string TestProfileDirectory = Directory.CreateTempSubdirectory("darwinbots-rendered-profile-").FullName;
+
+    static DesktopTestApplication()
+    {
+        Environment.SetEnvironmentVariable("DARWINBOTS_PROFILE_DIRECTORY", TestProfileDirectory);
+        Environment.SetEnvironmentVariable("DARWINBOTS_AUTOSAVE_DIRECTORY", Path.Combine(TestProfileDirectory, "Autosaves"));
+    }
+
     public static UiSession Session { get; } = new();
 
     internal static void UseSession(MainWindow window, SimulationSession session)
