@@ -69,6 +69,17 @@ public sealed partial class MainWindow : Window
         e.Handled = true;
     }
 
+    private void MainWindow_KeyUp(object? sender, KeyEventArgs e)
+    {
+        if (HistoricMenuBar.FindCommandItem(LegacyCommandId.FilePauseSimulation)?.InputGesture?.Matches(e) != true)
+            return;
+
+        // A held F12 should toggle once even when the platform repeats key-down events.
+        e.Handled = true;
+        if (_runTimer.IsEnabled) Pause_Click(sender, e);
+        else if (_session is not null) Run_Click(sender, e);
+    }
+
     private static readonly SemaphoreSlim DeadRecordingGate = new(1, 1);
     private readonly MainWindowViewModel _viewModel = new();
     private SimulationSession? _session;

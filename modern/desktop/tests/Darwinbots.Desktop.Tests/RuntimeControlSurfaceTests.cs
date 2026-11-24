@@ -100,7 +100,8 @@ public sealed class RuntimeControlSurfaceTests
                 foreach (var item in shortcuts)
                 {
                     var gesture = KeyGesture.Parse(item.Shortcut!);
-                    if (item.Command == Core.LegacyMenus.LegacyCommandId.HelpAbout)
+                    if (item.Command is Core.LegacyMenus.LegacyCommandId.HelpAbout
+                        or Core.LegacyMenus.LegacyCommandId.FilePauseSimulation)
                     {
                         Assert.DoesNotContain(window.KeyBindings, binding => Equals(binding.Gesture, gesture));
                         Assert.Equal(gesture, menu.FindCommandItem(item.Command.Value)!.InputGesture);
@@ -311,6 +312,52 @@ public sealed class RuntimeControlSurfaceTests
             Assert.Equal(2.5, nextWorld.GlobalSettings.Costs.DnaUpkeep);
             Assert.True(nextWorld.GlobalSettings.AdvancedMutation.SaveAsTemporaryGene);
             window.Close();
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task F12PausesAndResumesWhileTheFileCommandOnlyPauses()
+    {
+        await using var simulation = new SimulationSession(new RecordingEngineClient());
+
+        await DesktopTestApplication.Session.Dispatch(() =>
+        {
+            var window = RuntimeWindow(simulation);
+            try
+            {
+                window.Show();
+                Assert.True(window.FindControl<WorldViewport>("Viewport")!.Focus());
+                var timer = Field<DispatcherTimer>(window, "_runTimer");
+                var viewModel = Field<MainWindowViewModel>(window, "_viewModel");
+                var pause = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!
+                    .FindCommandItem(Core.LegacyMenus.LegacyCommandId.FilePauseSimulation)!;
+
+                Invoke(window, "Run_Click");
+                // Simulate repeated key-down events from holding the shortcut.
+                window.KeyPress(Key.F12, RawInputModifiers.None, PhysicalKey.F12, null);
+                window.KeyPress(Key.F12, RawInputModifiers.None, PhysicalKey.F12, null);
+                window.KeyRelease(Key.F12, RawInputModifiers.None, PhysicalKey.F12, null);
+                Assert.False(timer.IsEnabled);
+                Assert.Equal("PAUSED", viewModel.Status);
+
+                pause.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                Assert.False(timer.IsEnabled);
+                Assert.Equal("PAUSED", viewModel.Status);
+
+                window.KeyPress(Key.F12, RawInputModifiers.None, PhysicalKey.F12, null);
+                window.KeyRelease(Key.F12, RawInputModifiers.None, PhysicalKey.F12, null);
+                Assert.True(timer.IsEnabled);
+                Assert.Equal("RUNNING", viewModel.Status);
+
+                pause.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                Assert.False(timer.IsEnabled);
+                Assert.Equal("PAUSED", viewModel.Status);
+            }
+            finally
+            {
+                SetField(window, "_session", null);
+                window.Close();
+            }
         }, CancellationToken.None);
     }
 

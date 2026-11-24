@@ -8,7 +8,7 @@
         Title="Darwinbots Modern"
          Width="940" Height="650" MinWidth="720" MinHeight="520"
          WindowStartupLocation="CenterScreen" WindowState="Maximized"
-         KeyDown="MainWindow_KeyDown" SizeChanged="MainWindow_SizeChanged">
+         KeyDown="MainWindow_KeyDown" KeyUp="MainWindow_KeyUp" SizeChanged="MainWindow_SizeChanged">
   <Grid RowDefinitions="34,*" Background="{DynamicResource WindowBrush}">
     <controls:LegacyMenuBar x:Name="HistoricMenuBar" Grid.Row="0" />
   <Grid x:Name="MainSurfaceGrid" Grid.Row="1" RowDefinitions="Auto,0,*,170,62,40" ColumnDefinitions="250,*,280">
