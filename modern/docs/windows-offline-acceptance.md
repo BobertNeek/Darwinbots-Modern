@@ -174,7 +174,7 @@ Native Windows ran the original 2.48.32 executable with SHA-256 `7f580d9ce8f1095
 | Inactive tail, inserted | `aa4fb839ce95a4249ef4c3d462841053995940cfc0ed3fa70e64bdc5b1346732` |
 | Inactive tail, stepped | `8d458f668ce2dcf36ab07778edab95414ad049c539cea3a331302bae653a58a3` |
 
-The source and original output agree on all just-inserted pointers. The port still needs to reproduce the directed rows across import, redraw, commands, and cycle continuation. Saving the pair back to DBO from the original UI remains unobserved.
+The source and original output agree on all just-inserted pointers. The port regression covers the three import cases, DB3S and SIM round-trips, and dormant rows activated by native tie creation. The isolated Windows CPU run passed 709 engine unit tests at source 9d7a87334a8740fe46b80f55cef6d7cd662a87d1. The test log SHA-256 is 7e940d5547a85c11178f5a5b9e4985bdac56b254a6b8d8e2db60bd9fed096338. Direct redraw and DBO re-export comparisons in the original UI remain unobserved.
 
 ## Prepare the Robot Info mutation fixture
 
