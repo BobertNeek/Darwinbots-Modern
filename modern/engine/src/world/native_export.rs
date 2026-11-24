@@ -243,7 +243,15 @@ impl Engine {
         for (name, value) in [
             ("offspring", robot.counters.offspring as i64),
             ("generation", i64::from(robot.counters.generation)),
-            ("gene_count", i64::from(robot.program.dna.gene_count())),
+            (
+                "gene_count",
+                i64::from(
+                    robot
+                        .program
+                        .dna
+                        .gene_count_for_world(self.native_cycle.is_some()),
+                ),
+            ),
             ("dna_length", robot.program.dna.blocks().len() as i64),
             ("dna_length_marker", robot.program.dna.blocks().len() as i64),
             ("stored_dna_length", robot.program.dna.blocks().len() as i64),
