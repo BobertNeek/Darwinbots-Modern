@@ -107,6 +107,11 @@ pub(super) fn mutation_arrays(
     Ok(())
 }
 
+pub(super) enum NativeSlotNumbering {
+    Packed,
+    Runtime,
+}
+
 impl Engine {
     /// Export a specified robot group as a genuine native `.dbo` record stream.
     pub fn export_native_organisms(&self, members: &[OrganismId]) -> Result<Vec<u8>, EngineError> {
@@ -128,25 +133,52 @@ impl Engine {
         members: &[OrganismId],
         include_mutation_details: bool,
     ) -> Result<Vec<NativeRobotRecord>, EngineError> {
+        let slots = self.native_record_slots(members, NativeSlotNumbering::Packed)?;
+        self.native_robot_records_in_slots(members, &slots, include_mutation_details)
+    }
+
+    pub(super) fn native_record_slots(
+        &self,
+        members: &[OrganismId],
+        numbering: NativeSlotNumbering,
+    ) -> Result<HashMap<OrganismId, i16>, EngineError> {
         if members.len() > MAX_ROBOTS {
             return Err(invalid("simulation exceeds 32000 robot records"));
         }
-        let mut remap = HashMap::new();
+        // Keep packed export available if a sparse modern arena contains a
+        // live slot beyond the native signed Integer range.
+        let use_runtime_slots = matches!(numbering, NativeSlotNumbering::Runtime)
+            && members.iter().all(|id| id.slot() < i16::MAX as u32);
+        let mut slots = HashMap::with_capacity(members.len());
         for (i, &id) in members.iter().enumerate() {
             self.valid_slot(id)?;
-            if remap.insert(id, i as i16 + 1).is_some() {
+            let slot = if use_runtime_slots {
+                id.slot() as i16 + 1
+            } else {
+                i as i16 + 1
+            };
+            if slots.insert(id, slot).is_some() {
                 return Err(invalid("duplicate organism member"));
             }
         }
-        let mut records = members
+        Ok(slots)
+    }
+
+    pub(super) fn native_robot_records_in_slots(
+        &self,
+        members: &[OrganismId],
+        slots: &HashMap<OrganismId, i16>,
+        include_mutation_details: bool,
+    ) -> Result<Vec<NativeRobotRecord>, EngineError> {
+        members
             .iter()
-            .map(|&id| self.native_robot_record(id, include_mutation_details))
-            .collect::<Result<Vec<_>, _>>()?;
-        for (i, (&id, record)) in members.iter().zip(&mut records).enumerate() {
-            word(record, "old_slot", i as i64 + 1)?;
-            self.write_native_ties(id, record, &remap)?;
-        }
-        Ok(records)
+            .map(|&id| {
+                let mut record = self.native_robot_record(id, include_mutation_details)?;
+                word(&mut record, "old_slot", i64::from(slots[&id]))?;
+                self.write_native_ties(id, &mut record, slots)?;
+                Ok(record)
+            })
+            .collect()
     }
 
     fn native_robot_record(
