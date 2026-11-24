@@ -34,7 +34,7 @@ public sealed class EyeDesignerWindow : Window, IPersistentSnapshotToolWindow
         Background = Brush.Parse("#F4F0E6");
 
         _status.Foreground = Brush.Parse("#537B43");
-        _status.FontFamily = new FontFamily("Bahnschrift");
+        _status.FontFamily = DesktopFonts.Heading;
         _status.FontSize = 11;
         _status.Text = "EDIT THE NINE AUTHORITATIVE EYE ROWS";
 
@@ -88,7 +88,7 @@ public sealed class EyeDesignerWindow : Window, IPersistentSnapshotToolWindow
         var body = new Grid { ColumnDefinitions = new ColumnDefinitions("*,280"), ColumnSpacing = 12, Margin = new Thickness(16) };
         body.Children.Add(editor);
         var previewPanel = new StackPanel { Spacing = 8 };
-        previewPanel.Children.Add(new TextBlock { Text = "PREVIEW", FontWeight = FontWeight.Bold, FontFamily = new FontFamily("Bahnschrift"), LetterSpacing = 1.2 });
+        previewPanel.Children.Add(new TextBlock { Text = "PREVIEW", FontWeight = FontWeight.Bold, FontFamily = DesktopFonts.Heading, LetterSpacing = 1.2 });
         _preview.Height = 260;
         previewPanel.Children.Add(_preview);
         previewPanel.Children.Add(new TextBlock { Text = "Direction and width use DB2 memory units. Width zero keeps the standard eye width.", TextWrapping = TextWrapping.Wrap, Foreground = Brush.Parse("#69716D"), FontSize = 11 });
@@ -100,7 +100,7 @@ public sealed class EyeDesignerWindow : Window, IPersistentSnapshotToolWindow
         var close = Button("CLOSE", (_, _) => Close());
         var actions = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Spacing = 8, Children = { write, reset, close } };
         var root = new Grid { RowDefinitions = new RowDefinitions("58,*,52") };
-        root.Children.Add(new Border { Background = Brush.Parse("#FBF9F2"), BorderBrush = Brush.Parse("#C8C3B6"), BorderThickness = new Thickness(0, 0, 0, 1), Padding = new Thickness(20, 11), Child = new StackPanel { Spacing = 2, Children = { new TextBlock { Text = "EYE DESIGNER", FontFamily = new FontFamily("Bahnschrift"), FontSize = 21, FontWeight = FontWeight.Bold, LetterSpacing = 1.3 }, _status } } });
+        root.Children.Add(new Border { Background = Brush.Parse("#FBF9F2"), BorderBrush = Brush.Parse("#C8C3B6"), BorderThickness = new Thickness(0, 0, 0, 1), Padding = new Thickness(20, 11), Child = new StackPanel { Spacing = 2, Children = { new TextBlock { Text = "EYE DESIGNER", FontFamily = DesktopFonts.Heading, FontSize = 21, FontWeight = FontWeight.Bold, LetterSpacing = 1.3 }, _status } } });
         Grid.SetRow(body, 1);
         root.Children.Add(body);
         Grid.SetRow(actions, 2);

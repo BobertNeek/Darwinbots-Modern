@@ -31,7 +31,13 @@ public sealed class LegacyMenuBarTests
                 Assert.Equal($"Command{command}", commandItem.Name);
                 if (catalogItem.Shortcut is not null)
                 {
-                    Assert.Equal(KeyGesture.Parse(catalogItem.Shortcut), commandItem.HotKey);
+                    var gesture = KeyGesture.Parse(catalogItem.Shortcut);
+                    if (command == LegacyCommandId.HelpAbout)
+                    {
+                        Assert.Null(commandItem.HotKey);
+                        Assert.Equal(gesture, commandItem.InputGesture);
+                    }
+                    else Assert.Equal(gesture, commandItem.HotKey);
                 }
             }
         }, CancellationToken.None);

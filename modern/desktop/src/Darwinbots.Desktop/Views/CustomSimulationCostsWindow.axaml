@@ -1,16 +1,16 @@
-<Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+<Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:typography="using:Darwinbots.Desktop"
         x:Class="Darwinbots.Desktop.Views.CustomSimulationCostsWindow"
         Title="Custom Simulation Costs" Width="760" Height="820" MinWidth="620" MinHeight="620"
         WindowStartupLocation="CenterOwner" Background="#F4F0E6">
   <Window.Styles>
-    <Style Selector="TextBlock.section"><Setter Property="FontFamily" Value="Bahnschrift"/><Setter Property="FontSize" Value="13"/><Setter Property="FontWeight" Value="Bold"/><Setter Property="Foreground" Value="#1D2824"/><Setter Property="LetterSpacing" Value="1.5"/></Style>
+    <Style Selector="TextBlock.section"><Setter Property="FontFamily" Value="{x:Static typography:DesktopFonts.Heading}"/><Setter Property="FontSize" Value="13"/><Setter Property="FontWeight" Value="Bold"/><Setter Property="Foreground" Value="#1D2824"/><Setter Property="LetterSpacing" Value="1.5"/></Style>
     <Style Selector="Border.card"><Setter Property="Background" Value="#FFFCF5"/><Setter Property="BorderBrush" Value="#D4CFC1"/><Setter Property="BorderThickness" Value="1"/><Setter Property="CornerRadius" Value="3"/><Setter Property="Padding" Value="18"/></Style>
     <Style Selector="Button.primary"><Setter Property="Background" Value="#416E35"/><Setter Property="Foreground" Value="White"/><Setter Property="FontWeight" Value="Bold"/></Style>
     <Style Selector="TextBlock.muted"><Setter Property="Foreground" Value="#66706B"/><Setter Property="FontSize" Value="11"/></Style>
   </Window.Styles>
   <Grid RowDefinitions="76,*,66">
     <Border Background="#FBF9F2" BorderBrush="#C8C3B6" BorderThickness="0,0,0,1" Padding="24,14">
-      <StackPanel Spacing="2"><TextBlock Text="CUSTOM SIMULATION COSTS" FontFamily="Bahnschrift" FontSize="24" FontWeight="Bold" LetterSpacing="1.6"/><TextBlock Text="Edit the cost contract used by the next offline world" Classes="muted" FontSize="12"/></StackPanel>
+      <StackPanel Spacing="2"><TextBlock Text="CUSTOM SIMULATION COSTS" FontFamily="{x:Static typography:DesktopFonts.Heading}" FontSize="24" FontWeight="Bold" LetterSpacing="1.6"/><TextBlock Text="Edit the cost contract used by the next offline world" Classes="muted" FontSize="12"/></StackPanel>
     </Border>
     <ScrollViewer Grid.Row="1" Margin="16">
       <StackPanel Spacing="14">

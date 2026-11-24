@@ -1,5 +1,6 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:typography="using:Darwinbots.Desktop"
              x:Class="Darwinbots.Desktop.App"
              RequestedThemeVariant="Light">
   <Application.Resources>
@@ -17,10 +18,9 @@
     <Style Selector="Window">
       <Setter Property="Background" Value="{DynamicResource WindowBrush}" />
       <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
-      <Setter Property="FontFamily" Value="Aptos, Noto Sans, sans-serif" />
     </Style>
     <Style Selector="TextBlock.section">
-      <Setter Property="FontFamily" Value="Bahnschrift, DIN Alternate, sans-serif" />
+      <Setter Property="FontFamily" Value="{x:Static typography:DesktopFonts.Heading}" />
       <Setter Property="FontSize" Value="12" />
       <Setter Property="FontWeight" Value="SemiBold" />
       <Setter Property="LetterSpacing" Value="1.2" />

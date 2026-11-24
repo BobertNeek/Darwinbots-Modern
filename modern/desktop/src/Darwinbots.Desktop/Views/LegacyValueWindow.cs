@@ -23,9 +23,9 @@ public sealed class LegacyValueWindow : Window
         root.Children.Add(new Border
         {
             Background = Brush.Parse("#FBF9F2"), BorderBrush = Brush.Parse("#C8C3B6"), BorderThickness = new Thickness(0, 0, 0, 1), Padding = new Thickness(18, 12),
-            Child = new TextBlock { Text = title.ToUpperInvariant(), FontFamily = new FontFamily("Bahnschrift"), FontSize = 19, FontWeight = FontWeight.Bold, LetterSpacing = 1.2 },
+            Child = new TextBlock { Text = title.ToUpperInvariant(), FontFamily = DesktopFonts.Heading, FontSize = 19, FontWeight = FontWeight.Bold, LetterSpacing = 1.2 },
         });
-        _value = new TextBox { Text = initialValue, FontFamily = new FontFamily("Bahnschrift"), FontSize = 15 };
+        _value = new TextBox { Text = initialValue, FontFamily = DesktopFonts.Heading, FontSize = 15 };
         var body = new StackPanel { Margin = new Thickness(18), Spacing = 7, Children = { new TextBlock { Text = label, FontWeight = FontWeight.SemiBold }, _value, new TextBlock { Text = hint, Foreground = Brush.Parse("#66706B"), FontSize = 11, TextWrapping = TextWrapping.Wrap } } };
         Grid.SetRow(body, 1); root.Children.Add(body);
         var cancel = new Button { Content = "CANCEL" }; cancel.Click += (_, _) => Close();

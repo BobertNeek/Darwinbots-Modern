@@ -50,10 +50,14 @@ public static class SetupStorageService
     private static SpeciesImport ResolveSpecies(SpeciesImport species, string directory)
     {
         if (!string.IsNullOrWhiteSpace(species.Dna)) return species;
-        var name = Path.GetFileName(species.DnaPath ?? species.Name);
+        var savedPath = species.DnaPath ?? species.Name;
+        // Original .set files use Windows separators even when loaded on Unix.
+        var portablePath = savedPath.Replace('\\', Path.DirectorySeparatorChar);
+        var name = Path.GetFileName(portablePath);
         var candidates = new[]
         {
-            species.DnaPath ?? species.Name, Path.Combine(directory, species.DnaPath ?? species.Name),
+            savedPath, Path.Combine(directory, savedPath),
+            portablePath, Path.Combine(directory, portablePath),
             Path.Combine(directory, "..", "bots", name), Path.Combine(directory, "bots", name),
             Path.Combine(AppContext.BaseDirectory, "Bots", name), Path.Combine(AppContext.BaseDirectory, "Bots", "Historical", name),
         };

@@ -226,7 +226,7 @@ public sealed class WorldViewport : Control
                 "IMPORT A LEGACY BOT TO BEGIN",
                 System.Globalization.CultureInfo.InvariantCulture,
                 FlowDirection.LeftToRight,
-                new Typeface("Bahnschrift"),
+                new Typeface(DesktopFonts.Heading),
                 16,
                 new SolidColorBrush(Color.Parse("#69716D")));
             context.DrawText(message, new Point((Bounds.Width - message.Width) / 2, (Bounds.Height - message.Height) / 2));
@@ -858,7 +858,7 @@ public sealed class WorldViewport : Control
                     gauge.Text,
                     System.Globalization.CultureInfo.InvariantCulture,
                     FlowDirection.LeftToRight,
-                    new Typeface("Bahnschrift"),
+                    new Typeface(DesktopFonts.Heading),
                     7,
                     new SolidColorBrush(Color.Parse(gauge.Color)));
                 context.DrawText(text, new Point(origin.X + width + 4, rowOrigin.Y - 2));

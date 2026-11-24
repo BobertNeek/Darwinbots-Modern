@@ -9,11 +9,17 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
     public static AvaloniaDesktopStorageService Instance { get; } = new();
 
     private const string AutosaveDirectoryVariable = "DARWINBOTS_AUTOSAVE_DIRECTORY";
+    private readonly string? _profileDirectory;
 
     public bool IsFirstRun => !File.Exists(FirstRunMarkerPath());
 
     private AvaloniaDesktopStorageService()
     {
+    }
+
+    public AvaloniaDesktopStorageService(string profileDirectory)
+    {
+        _profileDirectory = Path.GetFullPath(profileDirectory);
     }
 
     public async Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner)
@@ -282,6 +288,33 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         await File.WriteAllTextAsync(FirstRunMarkerPath(), "completed");
     }
 
+    public GlobalSettings? LoadGlobalSettings()
+    {
+        try
+        {
+            return GlobalSettings.FromJson(File.ReadAllText(GlobalSettingsPath()));
+        }
+        catch (FileNotFoundException) { return null; }
+        catch (DirectoryNotFoundException) { return null; }
+    }
+
+    public async Task SaveGlobalSettingsAsync(GlobalSettings settings)
+    {
+        var json = settings.ToJson();
+        Directory.CreateDirectory(ProfileDirectory());
+        var path = GlobalSettingsPath();
+        var temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        try
+        {
+            await File.WriteAllTextAsync(temporary, json);
+            File.Move(temporary, path, overwrite: true);
+        }
+        finally
+        {
+            File.Delete(temporary);
+        }
+    }
+
     private static FilePickerOpenOptions SimulationOpenOptions(string title) => new()
     {
         Title = title,
@@ -312,21 +345,19 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
 
     private static string? LocalPath(IStorageItem item) => item.Path.IsFile ? item.Path.LocalPath : null;
 
-    private static string AutosaveDirectory() =>
-        Environment.GetEnvironmentVariable(AutosaveDirectoryVariable) is { Length: > 0 } configured
+    private string ProfileDirectory() => _profileDirectory ?? Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Darwinbots Modern");
+
+    private string AutosaveDirectory() =>
+        _profileDirectory is null && Environment.GetEnvironmentVariable(AutosaveDirectoryVariable) is { Length: > 0 } configured
             ? Path.GetFullPath(configured)
-            : Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "Darwinbots Modern",
-                "Autosaves");
+            : Path.Combine(ProfileDirectory(), "Autosaves");
 
-    private static string DeadSnapshotPath() => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "Darwinbots Modern",
-        "records",
-        "DeadRobots.snp");
+    private string DeadSnapshotPath() => Path.Combine(ProfileDirectory(), "records", "DeadRobots.snp");
 
-    private static string LastStartPath() => Path.Combine(AutosaveDirectory(), "last-start.json");
+    private string LastStartPath() => Path.Combine(AutosaveDirectory(), "last-start.json");
 
-    private static string FirstRunMarkerPath() => Path.Combine(AutosaveDirectory(), "first-run.complete");
+    private string FirstRunMarkerPath() => Path.Combine(AutosaveDirectory(), "first-run.complete");
+
+    private string GlobalSettingsPath() => Path.Combine(ProfileDirectory(), "global-settings.json");
 }

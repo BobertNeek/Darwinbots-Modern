@@ -67,7 +67,7 @@ public sealed class RobotColorEditorWindow : Window
             Child = new TextBlock
             {
                 Text = "CUSTOM COLOR",
-                FontFamily = new FontFamily("Bahnschrift"),
+                FontFamily = DesktopFonts.Heading,
                 FontSize = 19,
                 FontWeight = FontWeight.Bold,
                 LetterSpacing = 1.2,
@@ -165,7 +165,7 @@ public sealed class RobotColorEditorWindow : Window
         Name = name,
         Text = value.ToString(),
         HorizontalAlignment = HorizontalAlignment.Right,
-        FontFamily = new FontFamily("Cascadia Mono, Consolas"),
+        FontFamily = DesktopFonts.Editor,
     };
 
     private static Control ChannelRow(string label, Slider slider, TextBlock value)

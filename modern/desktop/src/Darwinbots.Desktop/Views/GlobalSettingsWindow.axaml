@@ -1,23 +1,23 @@
-<Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+<Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:typography="using:Darwinbots.Desktop"
         x:Class="Darwinbots.Desktop.Views.GlobalSettingsWindow"
         Title="Darwinbots Global Settings" Width="1080" Height="780" MinWidth="900" MinHeight="650"
         WindowStartupLocation="CenterOwner" Background="#F4F0E6">
   <Window.Styles>
-    <Style Selector="TextBlock.section"><Setter Property="FontFamily" Value="Bahnschrift"/><Setter Property="FontSize" Value="13"/><Setter Property="FontWeight" Value="Bold"/><Setter Property="Foreground" Value="#1D2824"/><Setter Property="LetterSpacing" Value="1.5"/></Style>
+    <Style Selector="TextBlock.section"><Setter Property="FontFamily" Value="{x:Static typography:DesktopFonts.Heading}"/><Setter Property="FontSize" Value="13"/><Setter Property="FontWeight" Value="Bold"/><Setter Property="Foreground" Value="#1D2824"/><Setter Property="LetterSpacing" Value="1.5"/></Style>
     <Style Selector="Border.card"><Setter Property="Background" Value="#FFFCF5"/><Setter Property="BorderBrush" Value="#D4CFC1"/><Setter Property="BorderThickness" Value="1"/><Setter Property="CornerRadius" Value="3"/><Setter Property="Padding" Value="18"/></Style>
-    <Style Selector="TabItem"><Setter Property="FontFamily" Value="Bahnschrift"/><Setter Property="FontSize" Value="13"/><Setter Property="Padding" Value="18,15"/><Setter Property="HorizontalContentAlignment" Value="Left"/></Style>
+    <Style Selector="TabItem"><Setter Property="FontFamily" Value="{x:Static typography:DesktopFonts.Heading}"/><Setter Property="FontSize" Value="13"/><Setter Property="Padding" Value="18,15"/><Setter Property="HorizontalContentAlignment" Value="Left"/></Style>
     <Style Selector="Button.primary"><Setter Property="Background" Value="#416E35"/><Setter Property="Foreground" Value="White"/><Setter Property="FontWeight" Value="Bold"/></Style>
     <Style Selector="TextBlock.muted"><Setter Property="Foreground" Value="#66706B"/><Setter Property="FontSize" Value="11"/></Style>
   </Window.Styles>
   <Grid RowDefinitions="76,*,66">
     <Border Background="#FBF9F2" BorderBrush="#C8C3B6" BorderThickness="0,0,0,1" Padding="24,14">
-      <StackPanel Spacing="2"><TextBlock Text="GLOBAL SETTINGS" FontFamily="Bahnschrift" FontSize="24" FontWeight="Bold" LetterSpacing="1.6"/><TextBlock Text="Configure the simulation contract, mutation pressure, and evolution rules" Classes="muted" FontSize="12"/></StackPanel>
+      <StackPanel Spacing="2"><TextBlock Text="GLOBAL SETTINGS" FontFamily="{x:Static typography:DesktopFonts.Heading}" FontSize="24" FontWeight="Bold" LetterSpacing="1.6"/><TextBlock Text="Configure the simulation contract, mutation pressure, and evolution rules" Classes="muted" FontSize="12"/></StackPanel>
     </Border>
     <TabControl x:Name="Tabs" Grid.Row="1" TabStripPlacement="Left" Margin="16" Background="Transparent">
       <TabItem x:Name="MainTab" Header="MAIN">
         <ScrollViewer><StackPanel Margin="20,0,8,24" Spacing="14">
           <Border Classes="card"><StackPanel Spacing="11"><TextBlock Classes="section" Text="DISPLAY + WORKFLOW"/>
-            <CheckBox x:Name="FixedRatio" Content="Fixed ratio display"/><CheckBox x:Name="OldColors" Content="Use legacy simulation colors"/><CheckBox x:Name="SuppressBuoyancy" Content="Suppress buoyancy warning"/><CheckBox x:Name="VideoOff" Content="Disable video capture"/><CheckBox x:Name="HideTray" Content="Hide system tray icon"/>
+            <CheckBox x:Name="FixedRatio" Content="Fixed ratio display"/><CheckBox x:Name="OldColors" Content="Use legacy simulation colors"/><CheckBox x:Name="SuppressBuoyancy" Content="Suppress buoyancy warning"/><CheckBox x:Name="VideoOff" Content="Start new worlds with graphics off"/><CheckBox x:Name="HideTray" Content="Hide system tray icon"/>
             <Grid ColumnDefinitions="*,150"><TextBlock Text="Cycles between graph refreshes"/><NumericUpDown Grid.Column="1" x:Name="GraphUpdates" Minimum="1" Maximum="1000"/></Grid>
             <Grid ColumnDefinitions="*,150"><TextBlock Text="Body cutoff"/><NumericUpDown Grid.Column="1" x:Name="BodyCutoff" Minimum="0" Maximum="32000"/></Grid>
           </StackPanel></Border>
