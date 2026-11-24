@@ -9,7 +9,7 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
 {
     public static AvaloniaDesktopStorageService Instance { get; } = new();
 
-    private const string AutosaveDirectoryVariable = "DARWINBOTS_AUTOSAVE_DIRECTORY";
+    internal const string AutosaveDirectoryVariable = "DARWINBOTS_AUTOSAVE_DIRECTORY";
     private readonly string? _profileDirectory;
 
     public bool IsFirstRun => !File.Exists(FirstRunMarkerPath());
@@ -490,7 +490,7 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
     private string ProfileDirectory() => _profileDirectory ?? Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Darwinbots Modern");
 
-    private string AutosaveDirectory() =>
+    internal string AutosaveDirectory() =>
         _profileDirectory is null && Environment.GetEnvironmentVariable(AutosaveDirectoryVariable) is { Length: > 0 } configured
             ? Path.GetFullPath(configured)
             : Path.Combine(ProfileDirectory(), "Autosaves");

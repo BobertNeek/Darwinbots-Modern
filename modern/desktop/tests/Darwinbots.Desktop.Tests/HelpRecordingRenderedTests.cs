@@ -190,6 +190,7 @@ public sealed class HelpRecordingRenderedTests
         {
             await DesktopTestApplication.Session.Dispatch(async () =>
             {
+                var backupLaunches = 0;
                 var window = new MainWindow(
                     [],
                     new WorldSetupOptions
@@ -199,7 +200,8 @@ public sealed class HelpRecordingRenderedTests
                         Species = [new SpeciesImport("Help Recording Species", "start\nstop", false, 0xff239ac0, 1, 1_000, 0, false, 1)],
                     },
                     new AuditEngineClientFactory(),
-                    new AuditStorageService { LatestAutosave = recoveryPath })
+                    new AuditStorageService { LatestAutosave = recoveryPath },
+                    launchSafeModeBackup: () => backupLaunches++)
                 {
                     WindowState = WindowState.Normal,
                     Width = 1_280,
@@ -233,8 +235,8 @@ public sealed class HelpRecordingRenderedTests
                     var safemode = menu.FindCommandItem(LegacyCommandId.RecordingSafemodeBackup)!;
                     Assert.Equal(MenuItemToggleType.None, safemode.ToggleType);
                     safemode.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
-                    await WaitFor(() => window.OwnedWindows.OfType<SafeModeBackupWindow>().Any(), "Safemode backup viewer did not open.");
-                    Assert.Single(window.OwnedWindows.OfType<SafeModeBackupWindow>()).Close();
+                    await WaitFor(() => backupLaunches == 1, "Safemode backup viewer did not launch.");
+                    Assert.Empty(window.OwnedWindows.OfType<SafeModeBackupWindow>());
 
                     var deadRecording = menu.FindCommandItem(LegacyCommandId.RecordingDeadEnable)!;
                     var deadFilter = menu.FindCommandItem(LegacyCommandId.RecordingDeadExcludeRepopulating)!;

@@ -778,6 +778,7 @@ public sealed class RenderedControlSurfaceAuditTests
         {
             await DesktopTestApplication.Session.Dispatch(async () =>
             {
+                var backupLaunches = 0;
                 var window = new MainWindow(
                     [],
                     new WorldSetupOptions
@@ -786,7 +787,8 @@ public sealed class RenderedControlSurfaceAuditTests
                         GlobalSettings = new GlobalSettings { Main = new GlobalMainSettings { SafeMode = true } },
                     },
                     factory,
-                    storage);
+                    storage,
+                    launchSafeModeBackup: () => backupLaunches++);
                 try
                 {
                     ShowForInteraction(window, 1_200, 820);
@@ -798,7 +800,8 @@ public sealed class RenderedControlSurfaceAuditTests
                     Assert.Equal(MenuItemToggleType.None, safemode.ToggleType);
                     safemode.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
                     await WaitFor(() => viewModel.Status == "SAFEMODE BACKUP OPEN");
-                    Assert.Single(window.OwnedWindows.OfType<SafeModeBackupWindow>()).Close();
+                    Assert.Equal(1, backupLaunches);
+                    Assert.Empty(window.OwnedWindows.OfType<SafeModeBackupWindow>());
                     Assert.True(Field<EnvironmentUpdate>(window, "_liveEnvironment").Recording!.SafeModeBackup);
 
                     var handleError = typeof(MainWindow).GetMethod("HandleEngineErrorAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
