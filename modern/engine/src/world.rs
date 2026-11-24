@@ -50,6 +50,10 @@ mod native_io;
 #[path = "world/native_reproduction.rs"]
 mod native_reproduction;
 
+#[path = "world/ordinary_restart.rs"]
+mod ordinary_restart;
+use ordinary_restart::OrdinaryRestart;
+
 #[path = "world/native_shots.rs"]
 mod native_shots;
 
@@ -556,6 +560,14 @@ pub struct Snapshot {
     pub native_sun_on: Option<bool>,
     #[serde(default = "default_true")]
     pub death_poffs_enabled: bool,
+    #[serde(default)]
+    pub ordinary_restart_available: bool,
+    #[serde(default)]
+    pub ordinary_restart_on_extinction: bool,
+    #[serde(default)]
+    pub ordinary_restart_pending: bool,
+    #[serde(default)]
+    pub ordinary_restart_count: u64,
     #[serde(default = "default_world_size")]
     pub world_size: [f32; 2],
     pub organisms: Vec<OrganismSnapshot>,
@@ -607,6 +619,10 @@ impl Default for Snapshot {
             native_cycle: None,
             native_sun_on: None,
             death_poffs_enabled: true,
+            ordinary_restart_available: false,
+            ordinary_restart_on_extinction: false,
+            ordinary_restart_pending: false,
+            ordinary_restart_count: 0,
             world_size: [0.0; 2],
             organisms: Vec::new(),
             corpses: Vec::new(),
@@ -639,6 +655,10 @@ impl PartialEq for Snapshot {
             && self.native_cycle == other.native_cycle
             && self.native_sun_on == other.native_sun_on
             && self.death_poffs_enabled == other.death_poffs_enabled
+            && self.ordinary_restart_available == other.ordinary_restart_available
+            && self.ordinary_restart_on_extinction == other.ordinary_restart_on_extinction
+            && self.ordinary_restart_pending == other.ordinary_restart_pending
+            && self.ordinary_restart_count == other.ordinary_restart_count
             && self.schema_version == other.schema_version
             && self.world_size == other.world_size
             && self.organisms == other.organisms
@@ -1995,6 +2015,10 @@ impl From<Db3sV2Snapshot> for Snapshot {
             native_cycle: None,
             native_sun_on: None,
             death_poffs_enabled: true,
+            ordinary_restart_available: false,
+            ordinary_restart_on_extinction: false,
+            ordinary_restart_pending: false,
+            ordinary_restart_count: 0,
             world_size: value.world_size,
             organisms: value.organisms.into_iter().map(Into::into).collect(),
             corpses: value.corpses.into_iter().map(Into::into).collect(),
@@ -2342,6 +2366,7 @@ struct EngineCycleCheckpoint {
     native_energy: native_energy::NativeEnergyRuntime,
     native_skin_timer_seconds: Option<[f32; 2]>,
     death_poffs_enabled: bool,
+    ordinary_restart: OrdinaryRestart,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -2386,6 +2411,8 @@ pub struct Engine {
     death_poffs_enabled: bool,
     #[serde(skip)]
     recorded_deaths: Option<DeathRecording>,
+    #[serde(default, skip_serializing_if = "OrdinaryRestart::is_default")]
+    ordinary_restart: OrdinaryRestart,
     config: EngineConfig,
     #[serde(flatten)]
     slots: RobotArena,
@@ -2691,6 +2718,7 @@ impl Engine {
             native_skin_timer_seconds: None,
             death_poffs_enabled: true,
             recorded_deaths: None,
+            ordinary_restart: OrdinaryRestart::default(),
         })
     }
 
@@ -2826,6 +2854,10 @@ impl Engine {
                 native_cycle: None,
                 native_sun_on: None,
                 death_poffs_enabled: true,
+                ordinary_restart_available: true,
+                ordinary_restart_on_extinction: false,
+                ordinary_restart_pending: false,
+                ordinary_restart_count: 0,
                 world_size,
                 organisms: Vec::new(),
                 corpses: Vec::new(),
@@ -2908,6 +2940,7 @@ impl Engine {
             native_skin_timer_seconds: None,
             death_poffs_enabled: true,
             recorded_deaths: None,
+            ordinary_restart: OrdinaryRestart::default(),
         };
         // Match restore publication without advancing a cycle or publishing a snapshot.
         engine.project_native_energy_stats();
@@ -3744,11 +3777,19 @@ impl Engine {
         let mut species = Vec::with_capacity(self.species.len());
         let mut species_templates = Vec::with_capacity(self.species_templates.len());
         let mut subspecies_counters = Vec::with_capacity(self.subspecies_counters.len());
+        let keep_startup_roster =
+            self.ordinary_restart.enabled && self.ordinary_restart_available();
         for (index, definition) in self.species.iter().enumerate() {
             let keep = index == 0
                 || populations[index] > 0
                 || definition.reseed
-                || definition.minimum_population > 0;
+                || definition.minimum_population > 0
+                || (keep_startup_roster
+                    && self
+                        .species_templates
+                        .get(index)
+                        .and_then(Option::as_ref)
+                        .is_some_and(|template| !template.retired));
             if keep {
                 remap[index] = Some(SpeciesId(species.len() as u32));
                 species.push(definition.clone());
@@ -4258,20 +4299,7 @@ impl Engine {
         {
             self.prepare_classic_skin_profiles()?;
         }
-        let ids: Vec<_> = self
-            .slots
-            .iter()
-            .enumerate()
-            .filter_map(|(slot, entry)| {
-                entry
-                    .organism
-                    .as_ref()
-                    .map(|_| OrganismId::new(slot as u32, entry.generation))
-            })
-            .collect();
-        for id in ids {
-            self.slots.remove(id)?;
-        }
+        self.clear_restart_actors()?;
         if self.local_mode.series.population_seeding_phase.is_some() {
             // Original starts a fresh slot array, while modern handles retain
             // generations. Allocate source-order actors into ascending slots.
@@ -4280,16 +4308,6 @@ impl Engine {
                 self.next_absolute_id = 1;
             }
         }
-        self.ties.clear();
-        self.native_tie_index = None;
-        self.native_buckets = native_collisions::NativeBuckets::default();
-        self.projectiles = ProjectilePool::default();
-        if self.native_random.is_some() {
-            self.projectiles.reset_native_slots(50);
-        }
-        self.pending_projectile_requests.clear();
-        self.pending_mutations.clear();
-        self.corpses.clear();
         let max_population = self
             .local_mode_config()
             .map_or(self.config.organism_capacity, |config| {
@@ -4454,6 +4472,23 @@ impl Engine {
                 spawned += 1;
             }
         }
+        Ok(())
+    }
+
+    fn clear_restart_actors(&mut self) -> Result<(), EngineError> {
+        for id in self.slots.ids_in_slot_order() {
+            self.slots.remove(id)?;
+        }
+        self.ties.clear();
+        self.native_tie_index = None;
+        self.native_buckets = native_collisions::NativeBuckets::default();
+        self.projectiles = ProjectilePool::default();
+        if self.native_random.is_some() {
+            self.projectiles.reset_native_slots(50);
+        }
+        self.pending_projectile_requests.clear();
+        self.pending_mutations.clear();
+        self.corpses.clear();
         Ok(())
     }
 
@@ -5650,6 +5685,9 @@ impl Engine {
         publish: bool,
         trace_enabled: bool,
     ) -> Result<Option<crate::CycleTrace>, EngineError> {
+        // A headless or batched caller may continue without the desktop's
+        // explicit post-recording restart command.
+        self.finish_pending_ordinary_restart(publish)?;
         if self
             .local_mode
             .evolution
@@ -5752,6 +5790,7 @@ impl Engine {
             native_energy: self.native_energy.clone(),
             native_skin_timer_seconds: self.native_skin_timer_seconds,
             death_poffs_enabled: self.death_poffs_enabled,
+            ordinary_restart: self.ordinary_restart.clone(),
         }
     }
 
@@ -5770,6 +5809,7 @@ impl Engine {
         self.native_energy = checkpoint.native_energy;
         self.native_skin_timer_seconds = checkpoint.native_skin_timer_seconds;
         self.death_poffs_enabled = checkpoint.death_poffs_enabled;
+        self.ordinary_restart = checkpoint.ordinary_restart;
         let checkpoint = checkpoint.checkpoint;
         self.config = checkpoint.config;
         self.slots = checkpoint.slots;
@@ -5942,9 +5982,12 @@ impl Engine {
         }
         self.trace_robot_phase(&mut trace, CyclePhase::CorpseDecay);
         self.decay_corpses_phase()?;
+        let check_ordinary_restart =
+            self.ordinary_restart.enabled && self.ordinary_restart_available();
+        let mut ordinary_extinct = false;
         if self.native_random.is_some() {
-            if let Some(census) = self.native_population_census.as_mut() {
-                census[0] = self
+            if check_ordinary_restart || self.native_population_census.is_some() {
+                let heterotrophs = self
                     .slots
                     .iter()
                     .filter_map(|slot| slot.organism.as_ref())
@@ -5955,6 +5998,10 @@ impl Engine {
                             && !robot.flags.hidden
                     })
                     .count();
+                if let Some(census) = self.native_population_census.as_mut() {
+                    census[0] = heterotrophs;
+                }
+                ordinary_extinct = check_ordinary_restart && heterotrophs == 0;
             }
             self.native_mid_robot_pipeline(&mut trace)?;
         } else {
@@ -6041,6 +6088,9 @@ impl Engine {
         self.native_tie_index = None;
         trace.phase(CyclePhase::Publication);
         self.stats.completed_cycles = self.stats.completed_cycles.saturating_add(1);
+        // A dying robot still counted in UpdateCounters. The original
+        // completes this cycle, including recording and Safe Mode, first.
+        self.ordinary_restart.pending = ordinary_extinct;
         self.finish_cycle_timing(publish, cycle_started);
         Ok(trace.finish())
     }
@@ -6109,6 +6159,7 @@ impl Engine {
             native_skin_timer_seconds: self.native_skin_timer_seconds,
             death_poffs_enabled: self.death_poffs_enabled,
             recorded_deaths: None,
+            ordinary_restart: self.ordinary_restart.clone(),
             config: self.config.clone(),
             slots: self.slots.clone(),
             tick: self.tick,
@@ -6644,6 +6695,11 @@ impl Engine {
     }
 
     pub fn validate_invariants(&self) -> Result<(), EngineError> {
+        if self.ordinary_restart.pending && !self.ordinary_restart.enabled {
+            return Err(EngineError::Invariant(
+                "Pending ordinary restart requires the option to be enabled.".into(),
+            ));
+        }
         self.projectiles.validate_native_slots()?;
         self.native_energy.validate()?;
         if !self.native_light_availability().is_finite()
@@ -13352,6 +13408,10 @@ impl Engine {
             native_cycle: self.native_cycle,
             native_sun_on: self.native_sun_on(),
             death_poffs_enabled: self.death_poffs_enabled,
+            ordinary_restart_available: self.ordinary_restart_available(),
+            ordinary_restart_on_extinction: self.ordinary_restart.enabled,
+            ordinary_restart_pending: self.ordinary_restart.pending,
+            ordinary_restart_count: self.ordinary_restart.count,
             world_size: [self.config.world_width, self.config.world_height],
             organisms,
             corpses: self.corpse_views(),

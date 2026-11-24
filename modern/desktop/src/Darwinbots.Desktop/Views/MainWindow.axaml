@@ -120,6 +120,10 @@
             </Expander>
             <Expander x:Name="LeagueExpander" Header="League / Local modes" IsExpanded="True" HorizontalContentAlignment="Stretch">
               <StackPanel Spacing="6" Margin="4,6,0,5">
+                <CheckBox x:Name="OrdinaryRestartToggle" IsEnabled="False" Click="OrdinaryRestart_Click" FontSize="10" AutomationProperties.Name="Restart ordinary world after extinction">
+                  <TextBlock Text="RESTART ORDINARY WORLD AFTER EXTINCTION" TextWrapping="Wrap" />
+                </CheckBox>
+                <TextBlock x:Name="OrdinaryRestartUnavailable" Text="Available in ordinary simulations with a startup roster." FontSize="10" TextWrapping="Wrap" />
                 <TextBlock Classes="section" Text="LEAGUE TAB" />
                 <StackPanel Spacing="5">
                   <ComboBox x:Name="LocalModeKindSelector" HorizontalAlignment="Stretch" SelectedIndex="0" SelectionChanged="LocalModeKind_Changed">

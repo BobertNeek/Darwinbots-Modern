@@ -94,6 +94,7 @@ public sealed partial class MainWindow : Window
     private GlobalSettings _globalSettings;
     private ulong? _lastGraphRefreshTick;
     private (LocalModeKind Kind, uint RestartCount)? _automaticEvolutionGraphBoundary;
+    private ulong _presentedOrdinaryRestartCount;
     private readonly IEngineClientFactory _engineFactory;
     private readonly IDesktopStorageService _storage;
     private readonly Action? _launchSafeModeBackup;
@@ -2233,9 +2234,14 @@ public sealed partial class MainWindow : Window
             _session.SnapshotPublished += snapshot =>
             {
                 var loading = _loadingSimulation;
+                if (!loading && snapshot.OrdinaryRestartPending) return;
                 Dispatcher.UIThread.Post(() =>
                 {
                     if (_windowClosed) return;
+                    if (!loading && snapshot.OrdinaryRestartCount > _presentedOrdinaryRestartCount)
+                        _runtimeClock.Restart();
+                    _presentedOrdinaryRestartCount = snapshot.OrdinaryRestartCount;
+                    SynchronizeOrdinaryRestartControl(snapshot);
                     _playerBotEnabled = snapshot.PlayerBot.Enabled;
                     _playerBotBindings = snapshot.PlayerBot.Bindings;
                     _viewModel.Update(snapshot, _runtimeClock.Elapsed, _activeCostMultiplier);
@@ -2937,6 +2943,32 @@ public sealed partial class MainWindow : Window
         catch (Exception error) { _viewModel.Status = $"LOCAL MODE RESTART FAILED · {error.Message}"; }
     }
 
+    private async void OrdinaryRestart_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_session is not { } session) return;
+        var enabled = OrdinaryRestartToggle.IsChecked == true;
+        await _advanceGate.WaitAsync();
+        try
+        {
+            if (!session.LatestSnapshot.OrdinaryRestartAvailable) return;
+            await session.SetOrdinaryRestartAsync(enabled);
+            _viewModel.Status = $"ORDINARY EXTINCTION RESTART · {(enabled ? "ON" : "OFF")}";
+        }
+        catch (Exception error) { _viewModel.Status = $"ORDINARY RESTART SETTING FAILED · {error.Message}"; }
+        finally
+        {
+            SynchronizeOrdinaryRestartControl(session.LatestSnapshot);
+            _advanceGate.Release();
+        }
+    }
+
+    private void SynchronizeOrdinaryRestartControl(EngineSnapshot snapshot)
+    {
+        OrdinaryRestartToggle.IsChecked = snapshot.OrdinaryRestartOnExtinction;
+        OrdinaryRestartToggle.IsEnabled = snapshot.OrdinaryRestartAvailable;
+        OrdinaryRestartUnavailable.IsVisible = !snapshot.OrdinaryRestartAvailable;
+    }
+
     private async void AdjudicateLocalMode_Click(object? sender, RoutedEventArgs e)
     {
         if (_session is null) return;
@@ -3343,26 +3375,35 @@ public sealed partial class MainWindow : Window
         await _advanceGate.WaitAsync();
         try
         {
-            if (_session is null || _savingLastExit) return;
+            if (_session is not { } session || count == 0 || _savingLastExit) return;
+            // A recovered pending checkpoint already contains the completed cycle.
+            if (session.LatestSnapshot.OrdinaryRestartPending)
+                await session.FinishOrdinaryRestartAsync();
             while (count > 0)
             {
-                var before = _session.LatestSnapshot;
+                var before = session.LatestSnapshot;
                 if (_lastAutomaticSaveTick is { } savedTick && before.Tick < savedTick)
                     _lastAutomaticSaveTick = null;
                 var interval = _liveEnvironment.Recording?.AutosaveInterval ?? 0;
-                var batch = CycleAutosavePolicy.LimitBatch(before.Tick, count, _safemodeBackup, interval, before.LocalMode, before.NativeCycle);
+                // With restart enabled, let the host retain the completed cycle
+                // before another engine tick can consume the pending restart.
+                var batch = before.OrdinaryRestartAvailable && before.OrdinaryRestartOnExtinction
+                    ? 1u
+                    : CycleAutosavePolicy.LimitBatch(before.Tick, count, _safemodeBackup, interval, before.LocalMode, before.NativeCycle);
                 if (_deadRecordingEnabled)
                 {
                     var deaths = new List<DeathRecordSnapshot>();
-                    try { await _session.StepRecordingDeathsAsync(batch, _globalSettings.Main.EffectiveFindBestWeight, deaths.AddRange); }
+                    try { await session.StepRecordingDeathsAsync(batch, _globalSettings.Main.EffectiveFindBestWeight, deaths.AddRange); }
                     finally { await RecordSimulationDeathsAsync(deaths); }
                 }
-                else await _session.StepAsync(batch);
+                else await session.StepAsync(batch);
                 count -= batch;
-                var after = _session.LatestSnapshot;
+                var after = session.LatestSnapshot;
                 if (_lastAutomaticSaveTick != after.Tick
                     && CycleAutosavePolicy.IsDue(after.Tick, _safemodeBackup, interval, after.LocalMode, after.NativeCycle))
                     await SaveAutomaticCheckpointAsync();
+                if (after.OrdinaryRestartPending)
+                    await session.FinishOrdinaryRestartAsync();
             }
         }
         finally { _advanceGate.Release(); }

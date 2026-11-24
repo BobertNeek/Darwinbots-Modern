@@ -232,6 +232,57 @@ public sealed class SafeModeAutosaveRenderedTests
     }
 
     [Fact]
+    public async Task OrdinaryExtinctionSavesTheCompletedWorldBeforeRestartAndResumesAPendingCheckpoint()
+    {
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var options = Setup(true) with { PopulationCapacity = 16, BrownianMotion = 0 };
+            var storage = new AuditStorageService();
+            var window = new MainWindow([], options, NativeEngineClientFactory.Instance, storage);
+            try
+            {
+                Show(window);
+                await Ready(window);
+                var session = Field<SimulationSession>(window, "_session");
+                Activate(Named<LegacyMenuBar>(window, "HistoricMenuBar"), LegacyCommandId.EditRestartAndLeagues);
+                var ordinary = Named<CheckBox>(window, "OrdinaryRestartToggle");
+                var competitive = Named<CheckBox>(window, "ModeRestartOnExtinction");
+                var competitiveSetting = competitive.IsChecked;
+                Assert.True(ordinary.IsEnabled);
+                Assert.False(ordinary.IsChecked);
+                ordinary.IsChecked = true;
+                ordinary.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => session.LatestSnapshot.OrdinaryRestartOnExtinction);
+                Assert.Equal(competitiveSetting, competitive.IsChecked);
+
+                var oldRobot = Assert.Single(session.LatestSnapshot.Organisms);
+                await session.RemoveAsync(oldRobot.Slot, oldRobot.Generation);
+                await InvokeTask(window, "LoadSimulationAsync", WithNativeCycle(await session.SaveAsync(), 1999));
+                await InvokeTask(window, "AdvanceSimulationAsync", 1u);
+
+                var checkpoint = Assert.Single(storage.AutosaveWrites);
+                Assert.Equal(1ul, session.LatestSnapshot.OrdinaryRestartCount);
+                Assert.False(session.LatestSnapshot.OrdinaryRestartPending);
+                Assert.Single(session.LatestSnapshot.Organisms);
+
+                await InvokeTask(window, "LoadSimulationAsync", checkpoint);
+                Assert.Equal(2000, session.LatestSnapshot.NativeCycle);
+                Assert.True(session.LatestSnapshot.OrdinaryRestartPending);
+                Assert.Equal(0ul, session.LatestSnapshot.OrdinaryRestartCount);
+                Assert.Empty(session.LatestSnapshot.Organisms);
+
+                await InvokeTask(window, "AdvanceSimulationAsync", 1u);
+                Assert.Equal(2001, session.LatestSnapshot.NativeCycle);
+                Assert.Equal(1ul, session.LatestSnapshot.OrdinaryRestartCount);
+                Assert.False(session.LatestSnapshot.OrdinaryRestartPending);
+                Assert.Single(session.LatestSnapshot.Organisms);
+                Assert.Single(storage.AutosaveWrites);
+            }
+            finally { window.Close(); }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
     public async Task SetupGlobalAndRecordingDialogsKeepExplicitDisabledPreferenceThroughWorldCreation()
     {
         await DesktopTestApplication.Session.Dispatch(async () =>

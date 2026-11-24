@@ -63,6 +63,10 @@ enum EngineCommand {
     CaptureLivingGenomeRecords {
         weight_percent: u16,
     },
+    SetOrdinaryRestart {
+        enabled: bool,
+    },
+    FinishOrdinaryRestart,
     SetNativeRestartSeed {
         seed: u64,
         #[serde(default)]
@@ -701,6 +705,12 @@ fn db_engine_command_batch_impl(
 
     for command in batch.commands {
         let result = match command {
+            EngineCommand::SetOrdinaryRestart { enabled } => engine
+                .set_ordinary_restart(enabled)
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::FinishOrdinaryRestart => engine
+                .finish_ordinary_restart()
+                .map(serde_json::Value::Bool),
             EngineCommand::SetNativeRestartSeed {
                 seed,
                 skin_timer_seconds,
