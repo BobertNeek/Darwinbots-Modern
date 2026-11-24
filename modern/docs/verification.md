@@ -23,6 +23,19 @@ Original Windows directed-tie checkpoints confirm separate import and first-cycl
 
 The Windows development build at source `cab0cb1c6bc985404c7a88e416d6bc379bd97248` opened the original SIM at cycle 281. In a disposable profile with the tray icon enabled, keyboard activation of Stealth Tray Mode hid the main window while the process stayed alive. The app host SHA-256 was `ee67baf3590d6aa4dcfd13eb67d657283c2d839fa25deec48ec1d76b4e65a000`. Notification-area icon visibility, live tray menu data, and restore remain open in the native walkthrough.
 
+The compatibility integration merged at `b68cd911646c979d4f9389c0ddeb022aaba5de5c` from `6bb2d9c8c2ed09a5b2bb9400de69df6842607b0d`. Its Git tree `e40df83cc05857dc7f051d780d3703686d4960fd` passed Windows, Linux and Intel macOS on the push run. Apple silicon passed on the pull-request run with the same tree. [Merge](https://github.com/BobertNeek/Darwinbots-Modern/pull/266) · [Push run](https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/45377220033) · [Pull-request run](https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/45377229003)
+
+The tools and runtime integration merged at `dad4115b304e0b021af861ee85563e20f268117b` from `e72b8153c3e810a3562a86124c3282ab02bf3e12`. All four jobs passed on the exact push run, including package smoke. [Merge](https://github.com/BobertNeek/Darwinbots-Modern/pull/267) · [CI and packages](https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/45377264169)
+
+| Platform | Compatibility ZIP artifact and SHA-256 | Tools and runtime ZIP artifact and SHA-256 |
+| --- | --- | --- |
+| Windows x64 | 14914091795 `442958b5872e070d8935ec290bf7a2604c775cb857172ad7429b2ade5763bc57` | 14914973247 `0b322fb0032a27e198bb2a017639a384ddf321b97d699b3a21705fbaa1273be5` |
+| Linux x64 | 14914655755 `31f31cd03f5ee52141e5da85cde3f7d8bdc8fce1f681e9be70d6c4245895576d` | 14913621610 `c6d3d015e6e9c6fe4acc3704d1c5c03b4e23ff8acf695daa9aa497b044b3e5b9` |
+| Intel macOS | 14915617013 `2e80548020cf36abc5a2e8455a8bd2fbac32c35db4e1d60e0fcdc07861309135` | 14916364057 `57522ae0988af396d7216bc95a18e60465034ca692199caf034e7d2a4e64d2a4` |
+| Apple silicon | 14916436764 `149335a1898eb67872c0d14db4a19303167d4b5d609df025aebab7de3175c01c` | 14913009088 `722fa787e508dcbe279adf0c191d6948944957dee52aeba1e5e30533e8960ab6` |
+
+The isolated native Windows build at `42b8a6abbf4ac2a170df89befc513b0b9d865225` opened the pinned original SIM at cycle 281. Ctrl+R opened Robot Info for `16:0` and displayed its literal founder filename. Descendants returned three. Open Console opened that same robot and `showdna` switched Robot Info to the native DNA text with its marker control. Reproduce reported `OFFSPRING BORN` with the cycle still at 281. The tested desktop DLL SHA-256 was `9993789d22c1b9f2bc6ff80dbace21a6f8d1bb1a322a2a3785912dfd3f8d4a8f` and the Rust engine DLL SHA-256 was `c359484e391a48e0e75a772a93967f2d2050294272233866a2192a2f5e0f2a5f`. Thirty-nine focused desktop tests passed on that build in a disposable profile.
+
 ## November 4 offline assessment
 
 Target: functional Darwinbots 2.48.32 offline behavior on native Windows, with Windows/Linux/Intel macOS/Apple silicon CI. Internet Mode is removed from menus, toolbar, setup, advanced/global settings and teleporter choices. Local and file teleporters remain supported. Historical VB6/helper sources remain reference material.
