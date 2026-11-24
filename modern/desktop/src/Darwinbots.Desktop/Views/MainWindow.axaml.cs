@@ -118,7 +118,7 @@ public sealed partial class MainWindow : Window
     private bool _playerBotEnabled;
     private IReadOnlyList<PlayerBotBinding> _playerBotBindings = [];
     private bool _rgbMemoryMonitorEnabled;
-    private RgbMemoryMonitorSettings _rgbMemorySettings = RgbMemoryMonitorSettings.Default;
+    private RgbMemoryMonitorSettings? _rgbMemorySettings;
     private const string RgbMonitorToolKey = "rgb-memory-monitor";
     private readonly PersistentToolWindowRegistry _toolWindows;
     private readonly SeededSpawnPlacement _randomShapePlacement;
@@ -709,10 +709,10 @@ public sealed partial class MainWindow : Window
             value => Viewport.ShowResourceGauges = value,
             "RESOURCE GAUGES");
         handlers[LegacyCommandId.ViewRgbMemoryMonitorSettings] = Handler(
-            SelectedRobotState,
+            () => LegacyCommandState.Available,
             async _ => await OpenRgbMonitorSettingsAsync());
         handlers[LegacyCommandId.ViewRgbMemoryMonitor] = Handler(
-            () => SelectedRobotState() with { Checked = _rgbMemoryMonitorEnabled },
+            () => LegacyCommandState.Available with { Checked = _rgbMemoryMonitorEnabled },
             _ => Task.FromResult(ToggleRgbMemoryMonitor()));
         handlers[LegacyCommandId.ViewImportBackground] = Handler(
             () => new LegacyCommandState(true, false),
@@ -1298,18 +1298,12 @@ public sealed partial class MainWindow : Window
 
     private async Task<LegacyCommandResult> OpenRgbMonitorSettingsAsync()
     {
-        if (_session is null || SelectedRobotKey() is not { } focus)
-            return LegacyCommandResult.Failure("NO ROBOT SELECTED");
         var dialog = new RgbMemoryMonitorWindow(
-            focus,
-            _rgbMemorySettings,
-            settings =>
-            {
-                _rgbMemorySettings = settings;
-                if (_rgbMemoryMonitorEnabled) Viewport.SetRgbMemoryMonitor(settings);
-            },
+            SelectedRobotKey(),
+            _rgbMemorySettings ?? RgbMemoryMonitorSettings.LegacyDefaults,
+            ApplyRgbMonitorSettings,
             closeOnApply: true);
-        dialog.SetSnapshot(_session.LatestSnapshot);
+        if (_session is { } session) dialog.SetSnapshot(session.LatestSnapshot);
         await dialog.ShowDialog(this);
         return dialog.Accepted
             ? LegacyCommandResult.Success("RGB SETTINGS APPLIED")
@@ -1320,39 +1314,34 @@ public sealed partial class MainWindow : Window
     {
         if (_rgbMemoryMonitorEnabled)
         {
-            CloseRgbMonitor();
+            _rgbMemoryMonitorEnabled = false;
+            Viewport.SetRgbMemoryMonitor(null);
+            _toolWindows.Close(RgbMonitorToolKey);
             return LegacyCommandResult.Success("RGB MEMORY MONITOR · OFF");
         }
-        if (SelectedRobotKey() is not { } focus) return LegacyCommandResult.Failure("NO ROBOT SELECTED");
-        Viewport.SetRgbMemoryMonitor(_rgbMemorySettings);
-        var window = _toolWindows.ShowOrActivate(RgbMonitorToolKey, () =>
-        {
-            var tool = new RgbMemoryMonitorWindow(
-                focus,
-                _rgbMemorySettings,
-                settings =>
-                {
-                    _rgbMemorySettings = settings;
-                    Viewport.SetRgbMemoryMonitor(settings);
-                });
-            tool.Closed += (_, _) =>
-            {
-                _rgbMemoryMonitorEnabled = false;
-                Viewport.SetRgbMemoryMonitor(null);
-                RefreshLegacyMenuStates();
-            };
-            return tool;
-        });
-        window.SetSnapshot(_session!.LatestSnapshot);
+        if (_rgbMemorySettings is not { } settings)
+            return LegacyCommandResult.Failure("CONFIGURE RGB MONITOR SETTINGS FIRST");
         _rgbMemoryMonitorEnabled = true;
+        Viewport.SetRgbMemoryMonitor(settings);
+        if (_session is { } session && SelectedRobotKey() is { } focus)
+        {
+            var window = _toolWindows.ShowOrActivate(RgbMonitorToolKey,
+                () => new RgbMemoryMonitorWindow(focus, settings, ApplyRgbMonitorSettings));
+            window.SetSnapshot(session.LatestSnapshot);
+        }
         return LegacyCommandResult.Success("RGB MEMORY MONITOR · ON");
     }
 
-    private void CloseRgbMonitor()
+    private void ApplyRgbMonitorSettings(RgbMemoryMonitorSettings settings)
     {
-        _rgbMemoryMonitorEnabled = false;
-        Viewport.SetRgbMemoryMonitor(null);
-        _toolWindows.Close(RgbMonitorToolKey);
+        _rgbMemorySettings = settings;
+        if (_rgbMemoryMonitorEnabled) Viewport.SetRgbMemoryMonitor(settings);
+        if (_session is { } session && OwnedWindows.OfType<RgbMemoryMonitorWindow>()
+            .FirstOrDefault(window => !window.CloseOnApply) is { } inspector)
+        {
+            inspector.SetSettings(settings);
+            inspector.SetSnapshot(session.LatestSnapshot);
+        }
     }
 
     private async Task<LegacyCommandResult> ImportBackgroundAsync()

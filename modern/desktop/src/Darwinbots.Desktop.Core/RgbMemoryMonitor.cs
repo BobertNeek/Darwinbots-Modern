@@ -23,6 +23,9 @@ public sealed record RgbMemoryMonitorSettings(
     public static RgbMemoryMonitorSettings Default { get; } =
         new(new(310, 0, 32_000), new(311, 0, 32_000), new(312, 0, 32_000));
 
+    public static RgbMemoryMonitorSettings LegacyDefaults { get; } =
+        new(new(1, 0, 32_000), new(1, 0, 32_000), new(1, 0, 32_000));
+
     public static IReadOnlyList<RgbMemoryMonitorPreset> Presets { get; } =
     [
         new("ENERGY / BODY / FDBODY", new(new(310, 0, 32_000), new(311, 0, 32_000), new(312, 0, 32_000))),
