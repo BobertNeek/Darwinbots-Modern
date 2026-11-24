@@ -6016,6 +6016,33 @@ impl Engine {
         Ok(child)
     }
 
+    /// Apply the native display writeback without advancing the simulation.
+    pub(crate) fn native_redraw(&mut self) {
+        if self.native_cycle.is_some() && self.native_random.is_some() {
+            self.write_native_redraw_positions();
+            self.publish_snapshot();
+        }
+    }
+
+    fn write_native_redraw_positions(&mut self) {
+        for robot in self
+            .slots
+            .iter_mut()
+            .filter_map(|slot| slot.organism.as_mut())
+            .filter(|robot| robot.flags.exists && !robot.flags.hidden)
+        {
+            let kinematics = &mut robot.kinematics;
+            for (axis, position) in kinematics.position.iter_mut().enumerate() {
+                // main.frm Redraw stores the temporary display position in
+                // Single and then adds the same offset back in a second store.
+                let offset = f64::from(kinematics.velocity[axis])
+                    - f64::from(kinematics.actual_velocity[axis]);
+                let display = (f64::from(*position) - offset) as f32;
+                *position = (f64::from(display) + offset) as f32;
+            }
+        }
+    }
+
     pub fn tick(&mut self) -> Result<(), EngineError> {
         self.tick_transactional(true, false, None).map(|_| ())
     }
