@@ -11,6 +11,7 @@ namespace Darwinbots.Desktop.Views;
 public sealed partial class SetupWindow : Window
 {
     private bool _controlsReady;
+    private bool _exitPromptOpen;
     private readonly bool _speciesEditor;
     public WorldSetupOptions? EditedOptions { get; private set; }
     public bool StartNewRequested { get; private set; }
@@ -503,7 +504,16 @@ public sealed partial class SetupWindow : Window
         }
     }
 
-    private void Exit_Click(object? sender, RoutedEventArgs e) => Close();
+    private async void Exit_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_exitPromptOpen) return;
+        _exitPromptOpen = true;
+        try
+        {
+            if (await new QuitConfirmationWindow().ShowDialog<bool>(this)) Close();
+        }
+        finally { _exitPromptOpen = false; }
+    }
 
     private async void About_Click(object? sender, RoutedEventArgs e)
     {
