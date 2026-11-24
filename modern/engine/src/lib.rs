@@ -98,7 +98,9 @@ pub(crate) use shot::{
     ProjectileEffect, ProjectileImpact, ProjectilePool, ProjectileSpawn, ProjectileTarget,
     projectile_effect,
 };
-pub use simulation_cycle::{CycleEvent, CyclePhase, CycleTrace, QueueChangeKind};
+pub use simulation_cycle::{
+    CycleEvent, CyclePhase, CycleTrace, NativeRedrawCadence, QueueChangeKind,
+};
 pub use spatial::SpatialIndex;
 pub use species::{SpeciesDefinition, SpeciesId, SpeciesSettings};
 pub use stats::SimulationStats;
@@ -116,4 +118,7 @@ pub(crate) use vegetation::{PlantLightInput, VegetationRuntime};
 pub use vision::{EyeSnapshot, VisionSnapshot, absolute_eye_width, eye_sight_distance, eye_value};
 pub use visual_phenotype::{SkinPoint, VisualPhenotype, default_skin, generated_skin};
 pub use vm::{ActivationFrame, DnaVm, VmContext, VmMemory, VmReport, VmTermination};
-pub use world::{Engine, LineageEntry, MemoryCellSnapshot, OrganismSnapshot, Snapshot};
+pub use world::{
+    Engine, GeneActivationMeterSnapshot, LineageEntry, MemoryCellSnapshot, NativeScenePalette,
+    OrganismSnapshot, Snapshot,
+};

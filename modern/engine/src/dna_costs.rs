@@ -28,6 +28,8 @@ pub struct DnaCosts {
     pub age_base: f64,
     pub age_start: f64,
     pub age_linear: f64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub age_linear_enabled: Option<bool>,
     pub age_logarithmic: f64,
     pub global_multiplier: f64,
     pub dynamic_cost_multiplier: f64,
@@ -72,6 +74,7 @@ impl Default for DnaCosts {
             age_base: 0.0,
             age_start: 0.0,
             age_linear: 0.0,
+            age_linear_enabled: None,
             age_logarithmic: 0.0,
             global_multiplier: 1.0,
             dynamic_cost_multiplier: 0.0,
@@ -143,9 +146,15 @@ impl DnaCosts {
         }
         if self.age_logarithmic == 1.0 {
             self.age_base * elapsed.ln()
-        } else {
+        } else if self.age_linear_enabled != Some(false) {
             self.age_base + elapsed * self.age_linear
+        } else {
+            self.age_base
         }
+    }
+
+    pub(crate) fn linear_age_cost_enabled(&self) -> bool {
+        self.age_linear_enabled.unwrap_or(self.age_linear != 0.0)
     }
 
     pub fn action_cost_for(

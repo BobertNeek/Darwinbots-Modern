@@ -49,6 +49,10 @@ public sealed class SetupControlSurfaceTests
                 Invoke(window, "SaveSettings_Click");
                 await WaitFor(() => storage.SavedSettings is not null);
                 Assert.DoesNotContain("Gaussian", storage.SavedSettings!.ToJson(), StringComparison.OrdinalIgnoreCase);
+                SetEnvironment(window, EnvironmentUpdate.Default with
+                {
+                    Vegetation = Db2VegetationOptions.Default with { StartChloroplasts = 7321, MaxEnergyPerTick = 70 },
+                });
                 Invoke(window, "OpenSave_Click");
                 await WaitFor(() => created.Count == 5);
                 Invoke(window, "Recover_Click");
@@ -58,6 +62,7 @@ public sealed class SetupControlSurfaceTests
                 Assert.All(created, value => Assert.Equal((byte)12, value.NativeSunChange));
                 Assert.Equal("chosen-original.sim", created[4].LoadSavePath);
                 Assert.False(created[4].IsAutosaveRecovery);
+                Assert.Equal(Db2VegetationOptions.Default with { StartChloroplasts = 7321 }, created[4].Vegetation);
                 Assert.Equal("chosen-modern.db3s", created[5].LoadSavePath);
                 Assert.True(created[5].IsAutosaveRecovery);
                 Invoke(fresh, "StartNew_Click");
@@ -144,14 +149,18 @@ public sealed class SetupControlSurfaceTests
     }
 
     [Fact]
-    public async Task NewWorldRestoresEverySetupDefaultAndAdvancedDialogRoundTripsAllValues()
+    public async Task NewWorldRestoresSimulationDefaultsAndKeepsStartingChloroplasts()
     {
         var session = DesktopTestApplication.Session;
         await session.Dispatch(() =>
         {
             var window = new SetupWindow(new AuditStorageService());
             window.Show();
-            SetEnvironment(window, EnvironmentUpdate.Default with { BrownianMotion = 9f, ToroidalWorld = false });
+            var vegetation = Db2VegetationOptions.Default with { StartChloroplasts = 7321 };
+            SetEnvironment(window, EnvironmentUpdate.Default with
+            {
+                BrownianMotion = 9f, ToroidalWorld = false, Vegetation = vegetation,
+            });
             window.FindControl<ComboBox>("Backend")!.SelectedIndex = 2;
             window.FindControl<NumericUpDown>("WorldWidth")!.Value = 99_000;
             window.FindControl<NumericUpDown>("WorldHeight")!.Value = 88_000;
@@ -161,7 +170,7 @@ public sealed class SetupControlSurfaceTests
 
             Invoke(window, "NewWorld_Click");
 
-            AssertEnvironmentEqual(EnvironmentUpdate.Default, GetEnvironment(window));
+            AssertEnvironmentEqual(EnvironmentUpdate.Default with { Vegetation = vegetation }, GetEnvironment(window));
             Assert.Equal(0, window.FindControl<ComboBox>("Backend")!.SelectedIndex);
             Assert.Equal(16_000, window.FindControl<NumericUpDown>("WorldWidth")!.Value);
             Assert.Equal(12_000, window.FindControl<NumericUpDown>("WorldHeight")!.Value);
@@ -182,6 +191,63 @@ public sealed class SetupControlSurfaceTests
             AssertEnvironmentEqual(custom, advanced.Update);
             window.Close();
         }, CancellationToken.None);
+    }
+
+    [Theory]
+    [InlineData(null, 16_000)]
+    [InlineData(0, 0)]
+    [InlineData(3150, 3150)]
+    public async Task PhotosyntheticZerobotsUseStartingChloroplastsUnlessProfileOverridesThem(int? configured, int expected)
+    {
+        var profile = Directory.CreateTempSubdirectory("darwinbots-photosynthetic-");
+        try
+        {
+            var storage = new AvaloniaDesktopStorageService(profile.FullName);
+            if (configured is { } amount)
+                await storage.SaveGlobalSettingsAsync(new GlobalSettings
+                {
+                    Main = new GlobalMainSettings { StartChloroplasts = amount },
+                });
+            await DesktopTestApplication.Session.Dispatch(async () =>
+            {
+                var window = new SetupWindow(storage);
+                var created = new List<WorldSetupOptions>();
+                window.WorldCreated += created.Add;
+                try
+                {
+                    window.Show();
+                    Select(window, window.FindControl<RadioButton>("ZerobotMode")!, "Zerobots");
+                    window.FindControl<ComboBox>("Sustenance")!.SelectedIndex = (int)ZerobotSustenance.PhotosyntheticZerobots;
+                    Invoke(window, "StartNew_Click");
+                    var photosynthetic = Assert.Single(created);
+                    Assert.True(Assert.Single(photosynthetic.Species).Vegetable);
+                    Assert.Equal(expected, photosynthetic.Vegetation.StartChloroplasts);
+
+                    Select(window, window.FindControl<RadioButton>("StarterMode")!, "StarterBotsAndVegetables");
+                    Invoke(window, "StartNew_Click");
+                    Assert.Equal(configured ?? 0, created[1].Vegetation.StartChloroplasts);
+
+                    if (configured is not null) return;
+                    Select(window, window.FindControl<RadioButton>("ZerobotMode")!, "Zerobots");
+                    Invoke(window, "Advanced_Click");
+                    await WaitFor(() => window.OwnedWindows.OfType<AdvancedSettingsWindow>().Any());
+                    var dialog = Assert.Single(window.OwnedWindows.OfType<AdvancedSettingsWindow>());
+                    var chloroplasts = dialog.FindControl<NumericUpDown>("StartChloroplasts")!;
+                    Assert.Equal(16_000m, chloroplasts.Value);
+                    chloroplasts.Value = 0;
+                    dialog.FindControl<Button>("ApplyButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    await WaitFor(() => window.FindControl<TextBlock>("SetupStatus")!.Text == "ADVANCED SETTINGS APPLIED");
+                    Invoke(window, "StartNew_Click");
+                    Assert.Equal(0, created[2].Vegetation.StartChloroplasts);
+                }
+                finally
+                {
+                    foreach (var dialog in window.OwnedWindows.ToArray()) dialog.Close();
+                    window.Close();
+                }
+            }, CancellationToken.None);
+        }
+        finally { profile.Delete(recursive: true); }
     }
 
     [Fact]
@@ -789,6 +855,46 @@ public sealed class SetupControlSurfaceTests
         throw new FileNotFoundException($"Original settings fixture '{name}' was not found.");
     }
 
+    [Fact]
+    public async Task SetupLoadsSavesAndStartsWithTheOrdinaryRestartPreference()
+    {
+        var settings = new DesktopSettings
+        {
+            OrdinaryRestartOnExtinction = true,
+            Species = [new("Restart Animal.txt", "start\nstop", false, 0xff239ac0, 1, 3000, 0, false, 0)],
+        };
+        var encoded = LegacyDnaText.Decode(Db2SettingsCodec.Encode(settings));
+        int marker = encoded.IndexOf("#DARWINBOTS_MODERN_SETTINGS_V1#", StringComparison.Ordinal);
+        var storage = new SettingsWorkflowStorage
+        {
+            SettingsToOpen = Db2SettingsCodec.Decode(LegacyDnaText.Encode(encoded[..marker])),
+        };
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new SetupWindow(storage);
+            WorldSetupOptions? created = null;
+            window.WorldCreated += options => created = options;
+            try
+            {
+                window.FindControl<Button>("LoadSettingsButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                var restart = window.FindControl<CheckBox>("OrdinaryRestartToggle")!;
+                await WaitFor(() => restart.IsChecked == true);
+                window.FindControl<Button>("SaveSettingsButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => storage.SavedSettings is not null);
+                Assert.True(storage.SavedSettings!.OrdinaryRestartOnExtinction);
+                Assert.Null(created);
+
+                window.FindControl<Button>("StartNewButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Assert.NotNull(created);
+                Assert.True(created.EnableOrdinaryRestartOnStart);
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
     private static void Select(SetupWindow window, RadioButton radio, string modeName)
     {
         radio.IsChecked = true;
@@ -832,22 +938,24 @@ internal sealed class SettingsWorkflowStorage : IDesktopStorageService
     public string? SimulationPathToOpen { get; init; }
     public string? LatestAutosave { get; init; }
 
-    public Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner) => Task.FromResult<IReadOnlyList<DesktopTextFile>>([]);
+    public Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner, string? mainDirectory = null, bool allowMultiple = true) => Task.FromResult<IReadOnlyList<DesktopTextFile>>([]);
     public Task<string?> PickSimulationPathAsync(TopLevel owner) => Task.FromResult(SimulationPathToOpen);
-    public Task<byte[]?> OpenSimulationAsync(TopLevel owner) => Task.FromResult<byte[]?>(null);
+    public Task<byte[]?> OpenSimulationAsync(TopLevel owner, string? mainDirectory = null) => Task.FromResult<byte[]?>(null);
     public Task<bool> SaveSimulationAsync(TopLevel owner, ReadOnlyMemory<byte> save) => Task.FromResult(true);
     public MutationProfileUpdate? SavedDnaMutationProfile { get; private set; }
-    public Task<bool> SaveDnaAsync(TopLevel owner, string suggestedFileName, string dna, MutationProfileUpdate? mutationProfile)
+    public Task<bool> SaveDnaAsync(TopLevel owner, string suggestedFileName, string dna, MutationProfileUpdate? mutationProfile,
+            string? mainDirectory = null)
     {
         SavedDnaMutationProfile = mutationProfile;
         return Task.FromResult(true);
     }
-    public Task<bool> SaveOrganismAsync(TopLevel owner, string suggestedFileName, Func<Stream, Task> writeAsync) => Task.FromResult(true);
+    public Task<bool> SaveOrganismAsync(TopLevel owner, string suggestedFileName, Func<Stream, Task> writeAsync,
+            string? mainDirectory = null) => Task.FromResult(true);
     public string? FindLatestAutosave() => LatestAutosave;
     public Task SaveAutosaveAsync(ReadOnlyMemory<byte> save) => Task.CompletedTask;
-    public Task<DesktopSettings?> OpenSettingsAsync(TopLevel owner) => Task.FromResult(SettingsToOpen);
+    public Task<DesktopSettings?> OpenSettingsAsync(TopLevel owner, string? mainDirectory = null) => Task.FromResult(SettingsToOpen);
 
-    public Task<bool> SaveSettingsAsync(TopLevel owner, DesktopSettings settings)
+    public Task<bool> SaveSettingsAsync(TopLevel owner, DesktopSettings settings, string? mainDirectory = null)
     {
         SavedSettings = settings;
         return Task.FromResult(true);

@@ -10,7 +10,9 @@ mod native_crossover;
 
 #[path = "dna/native_load.rs"]
 mod native_load;
-pub(crate) use native_load::{native_load_image, native_load_robot_dna};
+pub(crate) use native_load::{
+    native_load_image, native_load_robot_dna, native_robot_memory_address,
+};
 
 pub(crate) const LEGACY_OCCURRENCE_CENSUS_SLOTS: usize = 11;
 
@@ -686,6 +688,21 @@ impl LegacyDna {
 
     /// Render the raw robot DNA as Darwinbots 2 writes it inside a snapshot record.
     pub(crate) fn to_snapshot_source(&self) -> String {
+        self.to_detokenized_source(false, None)
+    }
+
+    pub(crate) fn to_robot_display_source(&self, marker_position: Option<u32>) -> String {
+        self.to_detokenized_source(
+            true,
+            marker_position.map(|position| position.min(MAX_DNA_BLOCKS as u32) as usize),
+        )
+    }
+
+    fn to_detokenized_source(
+        &self,
+        display_custom_vars: bool,
+        marker_position: Option<usize>,
+    ) -> String {
         let mut source = String::new();
         let mut gene = 0;
         let mut coding = false;
@@ -751,7 +768,18 @@ impl LegacyDna {
                     if block.class == TokenClass::Dereference {
                         source.push('*');
                     }
-                    if let Some(name) = crate::sysvars::legacy_display_sysvar_name(block.value) {
+                    let custom_name = if display_custom_vars && block.value != 0 {
+                        self.ordered_user_variables
+                            .iter()
+                            .rev()
+                            .find(|(_, address)| *address == block.value)
+                            .map(|(name, _)| name.as_str())
+                    } else {
+                        None
+                    };
+                    if let Some(name) = custom_name
+                        .or_else(|| crate::sysvars::legacy_display_sysvar_name(block.value))
+                    {
                         source.push('.');
                         source.push_str(name);
                     } else {
@@ -770,10 +798,40 @@ impl LegacyDna {
                 append_snapshot_gene_marker(&mut source, gene, "Ends", position);
                 source.push_str("\r\n");
             }
+            if marker_position == Some(position) {
+                source.push_str(" '[<POSITION MARKER]\r\n");
+            }
         }
         if coding {
             append_snapshot_gene_marker(&mut source, gene, "Ends", self.blocks.len() - 1);
             source.push_str("\r\n");
+        }
+        source
+    }
+
+    pub(crate) fn to_original_file_source(
+        &self,
+        generation: u32,
+        mutations: u64,
+        temporary_gene: Option<&str>,
+        tag: Option<&str>,
+    ) -> String {
+        // HDRoutines.salvarob hashes the header, optional epigene, and
+        // DetokenizeDNA body, then writes the hash above the independent tag.
+        let mutations = mutations.min(2_000_000_000);
+        let gene = temporary_gene.unwrap_or_default();
+        let body = self.to_snapshot_source();
+        let prefix =
+            format!("'#generation: {generation}\r\n'#mutations: {mutations}\r\n{gene}{body}");
+        let hash = legacy_hash(&prefix);
+        let mut source = format!(
+            "{}\r\n\r\n'#hash: {hash}\r\n",
+            prefix.trim_end_matches("\r\n")
+        );
+        if let Some(tag) = tag {
+            source.push_str("'#tag:");
+            source.push_str(tag);
+            source.push_str("\r\n\r\n");
         }
         source
     }

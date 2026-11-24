@@ -244,6 +244,7 @@ public sealed class HelpRecordingRenderedTests
                     var deadFilter = menu.FindCommandItem(LegacyCommandId.RecordingDeadExcludeRepopulating)!;
                     Assert.True(deadRecording.IsEnabled);
                     deadRecording.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    AcknowledgeDeadRecordingNotice(await WaitForDeadRecordingNotice(window));
                     await WaitFor(() => deadRecording.IsChecked == true, "Dead recording command did not turn on.");
                     deadFilter.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
                     await WaitFor(() => deadFilter.IsChecked == true, "Dead-recording filter command did not turn on.");
@@ -309,6 +310,68 @@ public sealed class HelpRecordingRenderedTests
     }
 
     [Fact]
+    public async Task DeadRecordingMenuWaitsForItsNoticeAndDiscardsAcknowledgementAfterLoad()
+    {
+        var profile = Directory.CreateTempSubdirectory("darwinbots-dead-recording-notice-");
+        try
+        {
+            await DesktopTestApplication.Session.Dispatch(async () =>
+            {
+                var factory = new AuditEngineClientFactory();
+                var storage = new AvaloniaDesktopStorageService(profile.FullName);
+                var window = new MainWindow([], new WorldSetupOptions
+                {
+                    Backend = "Cpu",
+                    Species = [new SpeciesImport("Recording Bot", "start\nstop", false, 0xff239ac0, 1, 1000, 0, false, 1)],
+                }, factory, storage);
+                try
+                {
+                    window.Show();
+                    var viewModel = Assert.IsType<MainWindowViewModel>(window.DataContext);
+                    await WaitFor(() => viewModel.Status.Contains("WORLD READY", StringComparison.Ordinal), "Recording world did not start.");
+                    var engine = factory.Clients.Single();
+                    var item = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!.FindCommandItem(LegacyCommandId.RecordingDeadEnable)!;
+                    item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    var notice = await WaitForDeadRecordingNotice(window);
+                    var text = Assert.Single(Assert.IsType<StackPanel>(notice.Content).Children.OfType<TextBlock>()).Text;
+                    var records = Path.Combine(profile.FullName, "records");
+                    Assert.Contains(Path.Combine(records, "DeadRobots.snp"), text, StringComparison.Ordinal);
+                    Assert.Contains(Path.Combine(records, "DeadRobots_Mutations.txt"), text, StringComparison.Ordinal);
+                    Assert.Contains("consumes disk space quickly", text, StringComparison.Ordinal);
+                    Assert.False(item.IsChecked);
+                    Assert.False(item.IsEnabled);
+                    Assert.Empty(engine.EnvironmentUpdates);
+                    item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    Assert.Same(notice, Assert.Single(window.OwnedWindows.OfType<LegacyConfirmationWindow>()));
+
+                    engine.ConfigurationForRead = new WorldConfiguration(EnvironmentUpdate.Default, 1, 25000, 500, []);
+                    await InvokeTask(window, "LoadSimulationAsync", new byte[] { 1, 2, 3 });
+                    AcknowledgeDeadRecordingNotice(notice);
+                    await WaitFor(() => item.IsEnabled, "The loaded world did not restore the recording command.");
+                    Assert.False(item.IsChecked);
+                    Assert.Empty(engine.EnvironmentUpdates);
+
+                    item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    AcknowledgeDeadRecordingNotice(await WaitForDeadRecordingNotice(window));
+                    await WaitFor(() => item.IsChecked && item.IsEnabled, "Acknowledgement did not enable recording.");
+                    Assert.True(Assert.Single(engine.EnvironmentUpdates).Recording!.DeadSnapshotEnabled);
+                    item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    await WaitFor(() => !item.IsChecked && item.IsEnabled, "Disabling recording did not finish immediately.");
+                    Assert.Equal(2, engine.EnvironmentUpdates.Count);
+                    Assert.False(engine.EnvironmentUpdates.Last().Recording!.DeadSnapshotEnabled);
+                    Assert.Empty(window.OwnedWindows.OfType<LegacyConfirmationWindow>());
+                }
+                finally
+                {
+                    foreach (var owned in window.OwnedWindows.ToArray()) owned.Close();
+                    window.Close();
+                }
+            }, CancellationToken.None);
+        }
+        finally { profile.Delete(recursive: true); }
+    }
+
+    [Fact]
     public async Task StartupLoadedAndLiveRecordingPreferencesDriveMenus()
     {
         await DesktopTestApplication.Session.Dispatch(async () =>
@@ -355,6 +418,7 @@ public sealed class HelpRecordingRenderedTests
                 await InvokeTask(window, "SynchronizeLoadedWorldAsync");
                 Assert.True(enabled.IsChecked);
                 Assert.False(exclude.IsChecked);
+                Assert.Empty(window.OwnedWindows.OfType<LegacyConfirmationWindow>());
                 enabled.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
                 await WaitFor(() => enabled.IsChecked == false, "Recording menu did not disable the loaded preference.");
                 exclude.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
@@ -500,6 +564,19 @@ public sealed class HelpRecordingRenderedTests
 
     private static Task InvokeTask(object target, string method, params object[] args) =>
         (Task)target.GetType().GetMethod(method, BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(target, args)!;
+
+    private static async Task<LegacyConfirmationWindow> WaitForDeadRecordingNotice(MainWindow window)
+    {
+        await WaitFor(() => window.OwnedWindows.OfType<LegacyConfirmationWindow>().Any(), "Dead recording notice did not open.");
+        return Assert.Single(window.OwnedWindows.OfType<LegacyConfirmationWindow>());
+    }
+
+    private static void AcknowledgeDeadRecordingNotice(LegacyConfirmationWindow notice)
+    {
+        var button = Assert.Single(notice.GetVisualDescendants().OfType<Button>());
+        Assert.Equal("OK", button.Content);
+        button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+    }
 
     private static async Task WaitFor(Func<bool> condition, string diagnostic)
     {

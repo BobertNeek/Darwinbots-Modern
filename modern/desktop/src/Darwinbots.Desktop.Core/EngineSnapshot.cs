@@ -2,6 +2,8 @@ namespace Darwinbots.Desktop.Core;
 
 public sealed record SkinPointSnapshot(float Radius, int Angle);
 
+public sealed record NativeSpeciesAppearance(uint Argb, SkinPointSnapshot[] Skin, uint UniformState);
+
 public sealed record EyeSnapshot(
     int Direction,
     int Width,
@@ -46,6 +48,7 @@ public sealed record OrganismSnapshot(
     int Poisoned = 0,
     OrganismKey?[]? Parents = null)
 {
+    public bool Exists { get; init; } = true;
     public bool IsCorpse { get; init; }
     public bool IsHidden { get; init; }
     public VisualPhenotypeSnapshot Phenotype { get; init; } = VisualPhenotypeSnapshot.Default;
@@ -67,6 +70,7 @@ public sealed record OrganismSnapshot(
     public ulong UniqueId { get; init; }
     public ulong? ParentAbsoluteId { get; init; }
     public uint? LineageGeneration { get; init; }
+    public string? FounderName { get; init; }
     public int VirusTimer { get; init; }
     public ulong NewMutations { get; init; }
     public ulong TotalMutations { get; init; }
@@ -110,6 +114,10 @@ public sealed record DeathRecordSnapshot(
 public sealed record GenomeRecordCapture(ulong Tick, IReadOnlyList<DeathRecordSnapshot> Records);
 
 public sealed record MemoryCellSnapshot(ushort Address, int Value);
+
+public sealed record NativePostDnaMemorySnapshot(
+    ulong RequestId, ulong Tick, OrganismKey Focus,
+    IReadOnlyList<MemoryCellSnapshot>? Memory, OrganismSnapshot? Facts);
 
 public sealed record SpeciesSnapshot(
     string Name,
@@ -354,6 +362,7 @@ public sealed partial record HistorySampleSnapshot
 }
 public sealed record SpeciesGraphSampleSnapshot(string Name, uint Color, IReadOnlyDictionary<string, double> Values);
 public sealed record GraphSamplingSettings(bool Selective = false, bool Generational = false, bool Slow = false);
+public sealed record NativeScenePaletteSnapshot(uint ChartArgb, uint ArenaArgb);
 
 public sealed record PhaseTimingsSnapshot(
     double Dna, double Intent, double Spatial, double Sensing, double Interactions,
@@ -372,6 +381,9 @@ public sealed record EngineSnapshot(
     public int? NativeCycle { get; init; }
     public bool? NativeSunOn { get; init; }
     public bool NativeF1Enabled { get; init; }
+    // Set by the desktop session for scheduled or explicit viewport frames.
+    public bool? ViewportFrame { get; init; }
+    public NativeScenePaletteSnapshot? NativeScenePalette { get; init; }
     public IReadOnlyList<RenderInstanceSnapshot> RenderInstances { get; init; } = [];
     public IReadOnlyList<SpeciesSnapshot> Species { get; init; } = [];
     public MutationSettingsSnapshot MutationSettings { get; init; } = MutationSettingsSnapshot.Default;
@@ -380,6 +392,8 @@ public sealed record EngineSnapshot(
     public bool RobotFixingAllowed { get; init; } = true;
     public bool AsexualReproductionAllowed { get; init; } = true;
     public PlayerBotSnapshot PlayerBot { get; init; } = PlayerBotSnapshot.Default;
+    public NativePostDnaMemorySnapshot? NativePostDnaMemory { get; init; }
+    public GeneActivationMeterSnapshot? GeneActivationMeter { get; init; }
     public RestrictionOptions RestrictionOptions { get; init; } = RestrictionOptions.Default;
     public SimulationStatsSnapshot Stats { get; init; } = SimulationStatsSnapshot.Empty;
     public float[] WorldSize { get; init; } = [16_000f, 12_000f];

@@ -7,15 +7,17 @@ namespace Darwinbots.Desktop.Views;
 public sealed partial class GlobalSettingsWindow : Window
 {
     private const int MinimumHideInterval = 150;
+    private readonly bool _defaultOldColors;
 
     public bool Accepted { get; private set; }
     public GlobalSettings Settings { get; private set; }
 
     public GlobalSettingsWindow() : this(new GlobalSettings()) { }
 
-    public GlobalSettingsWindow(GlobalSettings settings)
+    public GlobalSettingsWindow(GlobalSettings settings, bool nativeWorld = true)
     {
         Settings = settings ?? throw new ArgumentNullException(nameof(settings));
+        _defaultOldColors = nativeWorld;
         InitializeComponent();
         Populate(settings);
         CycleLength.LostFocus += (_, _) =>
@@ -30,15 +32,18 @@ public sealed partial class GlobalSettingsWindow : Window
     {
         var main = settings.Main;
         FixedRatio.IsChecked = main.FixedRatio;
-        OldColors.IsChecked = main.OldColors;
+        OldColors.IsChecked = main.OldColors ?? _defaultOldColors;
         SuppressBuoyancy.IsChecked = main.SuppressBuoyancy;
         VideoOff.IsChecked = main.VideoOff;
         HideTray.IsChecked = main.HideTray;
         GraphUpdates.Value = main.GraphUpdatesPerTick;
+        KeepGraphsUpdatingOnClose.IsChecked = main.KeepGraphsUpdatingOnClose == true;
         BodyCutoff.Value = main.BodyCutoff;
         GreedyEnforcement.IsChecked = main.GreedyEnforcement;
         NewSeed.IsChecked = main.NewSeed;
+        NewSeedOnLoad.IsChecked = main.EffectiveNewSeedOnLoad;
         SafeMode.IsChecked = main.SafeMode;
+        StartChloroplasts.Value = main.StartChloroplasts ?? Db2VegetationOptions.Default.StartChloroplasts;
         FindBestWeight.Value = main.EffectiveFindBestWeight;
         MainDirectory.Text = main.MainDirectory;
 
@@ -95,17 +100,17 @@ public sealed partial class GlobalSettingsWindow : Window
         AgeBase.Value = (decimal)costs.AgeBase;
         AgeStart.Value = (decimal)costs.AgeStart;
         AgeLinear.Value = (decimal)costs.AgeLinear;
+        AgeLinearEnabled.IsChecked = costs.EffectiveAgeLinearEnabled;
         AgeLogarithmic.Value = (decimal)costs.AgeLogarithmic;
         DynamicMultiplier.Value = (decimal)costs.DynamicMultiplier;
         DynamicAllRobots.IsChecked = costs.DynamicAllRobots;
         DynamicTargetPopulation.Value = costs.DynamicTargetPopulation;
-        DynamicPopulationRange.Value = costs.DynamicPopulationRange;
+        CustomSimulationCostsWindow.SetDisplayValue(DynamicUpperRangePercent, costs.EffectiveDynamicUpperRangePercent);
+        CustomSimulationCostsWindow.SetDisplayValue(DynamicLowerRangePercent, costs.EffectiveDynamicLowerRangePercent);
         DynamicSensitivity.Value = (decimal)costs.DynamicSensitivity;
         DynamicAllowNegative.IsChecked = costs.DynamicAllowNegative;
         DynamicLowerZeroThreshold.Value = (decimal)costs.DynamicLowerZeroThreshold;
-        DynamicUpperZeroThreshold.Value = (decimal)costs.DynamicUpperZeroThreshold;
         DynamicLowerReinstateThreshold.Value = (decimal)costs.DynamicLowerReinstateThreshold;
-        DynamicUpperReinstateThreshold.Value = (decimal)costs.DynamicUpperReinstateThreshold;
         LeagueOfflineOwned.IsChecked = settings.League.OwnedByOfflineModes;
         DisqualificationRule.SelectedIndex = settings.League.DisqualificationRule;
         RecognitionFudging.SelectedIndex = settings.League.RecognitionFudging;
@@ -130,16 +135,24 @@ public sealed partial class GlobalSettingsWindow : Window
         Main = Settings.Main with
         {
             FixedRatio = FixedRatio.IsChecked == true,
-            OldColors = OldColors.IsChecked == true,
+            OldColors = Settings.Main.OldColors is null && (OldColors.IsChecked == true) == _defaultOldColors
+                ? null : OldColors.IsChecked == true,
             SuppressBuoyancy = SuppressBuoyancy.IsChecked == true,
             VideoOff = VideoOff.IsChecked == true,
             GraphUpdatesPerTick = (int)(GraphUpdates.Value ?? 1),
+            KeepGraphsUpdatingOnClose = KeepGraphsUpdatingOnClose.IsChecked == true
+                ? true : Settings.Main.KeepGraphsUpdatingOnClose is not null ? false : null,
             HideTray = HideTray.IsChecked == true,
             BodyCutoff = (int)(BodyCutoff.Value ?? 0),
             GreedyEnforcement = GreedyEnforcement.IsChecked == true,
             NewSeed = NewSeed.IsChecked == true,
+            NewSeedOnLoad = NewSeedOnLoad.IsChecked == true && Settings.Main.NewSeedOnLoad is null
+                ? null : NewSeedOnLoad.IsChecked == true,
             MainDirectory = MainDirectory.Text ?? string.Empty,
             SafeMode = SafeMode.IsChecked == true,
+            StartChloroplasts = StartChloroplasts.Value is { } amount
+                && (Settings.Main.StartChloroplasts is not null || amount != Db2VegetationOptions.Default.StartChloroplasts)
+                    ? (int)amount : null,
             FindBestEnergyWeighting = (FindBestWeight.Value ?? 0) > 0,
             FindBestWeight = (int)(FindBestWeight.Value ?? 0),
         },
@@ -176,7 +189,7 @@ public sealed partial class GlobalSettingsWindow : Window
             EpigeneticOverloadThreshold = (ulong)(EpigeneticOverloadThreshold.Value ?? 17),
             SaveAsTemporaryGene = SaveAsTemporaryGene.IsChecked == true,
         },
-        Costs = new GlobalSimulationCostSettings
+        Costs = Settings.Costs with
         {
             GlobalMultiplier = (double)(GlobalCostMultiplier.Value ?? 1),
             DnaNumber = (double)(DnaNumber.Value ?? 0),
@@ -204,17 +217,20 @@ public sealed partial class GlobalSettingsWindow : Window
             AgeBase = (double)(AgeBase.Value ?? 0),
             AgeStart = (double)(AgeStart.Value ?? 0),
             AgeLinear = (double)(AgeLinear.Value ?? 0),
+            AgeLinearEnabled = CustomSimulationCostsWindow.ReadAgeLinearEnabled(AgeLinearEnabled,
+                Settings.Costs.AgeLinearEnabled, (double)(AgeLinear.Value ?? 0)),
             AgeLogarithmic = (double)(AgeLogarithmic.Value ?? 0),
             DynamicMultiplier = (double)(DynamicMultiplier.Value ?? 0),
             DynamicAllRobots = DynamicAllRobots.IsChecked == true,
             DynamicTargetPopulation = (int)(DynamicTargetPopulation.Value ?? 0),
-            DynamicPopulationRange = (int)(DynamicPopulationRange.Value ?? 0),
+            DynamicUpperRangePercent = CustomSimulationCostsWindow.ReadRangePercent(DynamicUpperRangePercent,
+                Settings.Costs.DynamicUpperRangePercent, Settings.Costs.EffectiveDynamicUpperRangePercent),
+            DynamicLowerRangePercent = CustomSimulationCostsWindow.ReadRangePercent(DynamicLowerRangePercent,
+                Settings.Costs.DynamicLowerRangePercent, Settings.Costs.EffectiveDynamicLowerRangePercent),
             DynamicSensitivity = (double)(DynamicSensitivity.Value ?? 1),
             DynamicAllowNegative = DynamicAllowNegative.IsChecked == true,
             DynamicLowerZeroThreshold = (double)(DynamicLowerZeroThreshold.Value ?? 0),
-            DynamicUpperZeroThreshold = (double)(DynamicUpperZeroThreshold.Value ?? 0),
             DynamicLowerReinstateThreshold = (double)(DynamicLowerReinstateThreshold.Value ?? 0),
-            DynamicUpperReinstateThreshold = (double)(DynamicUpperReinstateThreshold.Value ?? 0),
         },
         League = new GlobalLeagueSettings { OwnedByOfflineModes = true, DisqualificationRule = Math.Max(0, DisqualificationRule.SelectedIndex), RecognitionFudging = Math.Max(0, RecognitionFudging.SelectedIndex) },
         Evolution = Settings.Evolution with

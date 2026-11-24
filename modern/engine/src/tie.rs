@@ -38,6 +38,10 @@ pub(crate) struct NativeTieEnd {
 pub(crate) struct TieState {
     #[serde(default)]
     pub(crate) native_ends: Option<[NativeTieEnd; 2]>,
+    /// A lone original row belongs to `first`. Its back flag is independent
+    /// of whether the target has a row pointing to the owner.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) directed_native_back: Option<bool>,
     pub(crate) first: OrganismId,
     pub(crate) second: OrganismId,
     pub(crate) rest_length: f32,
@@ -77,6 +81,7 @@ impl TieState {
     ) -> Self {
         Self {
             native_ends: None,
+            directed_native_back: None,
             first,
             second,
             rest_length,
@@ -104,6 +109,7 @@ impl TieState {
     ) -> Self {
         Self {
             native_ends: None,
+            directed_native_back: None,
             first,
             second,
             rest_length,
@@ -124,6 +130,14 @@ impl TieState {
 
     pub(crate) fn contains(&self, id: OrganismId) -> bool {
         self.first == id || self.second == id
+    }
+
+    pub(crate) fn has_endpoint(&self, id: OrganismId) -> bool {
+        self.first == id || (self.directed_native_back.is_none() && self.second == id)
+    }
+
+    pub(crate) fn is_native_back(&self, id: OrganismId) -> bool {
+        self.directed_native_back.unwrap_or(self.second == id)
     }
 
     pub(crate) fn native_end_states(&self) -> [NativeTieEnd; 2] {

@@ -134,6 +134,89 @@ pub(super) fn shape_drift(t: &NativeSimulationTail) -> Result<ShapeDriftSettings
     })
 }
 
+pub(super) fn read_cost_preset(t: &NativeSimulationTail) -> Result<u8, EngineError> {
+    Ok(match t.integer("cost_radio")? {
+        value @ 0..=2 => value as u8,
+        _ => 2,
+    })
+}
+
+fn read_native_tie_end(core: &[u8], extension: &[u8]) -> crate::tie::NativeTieEnd {
+    crate::tie::NativeTieEnd {
+        rest_length: single(extension, 9),
+        length: Some(long(core, 16)),
+        saved_reciprocal: Some(word(core, 4)),
+        last: word(core, 26),
+        b: single(extension, 1),
+        k: single(extension, 5),
+        hardened: extension[0] == 3,
+        kind: extension[0],
+        shrink: long(core, 20),
+        angle: single(core, 6),
+        bend: single(core, 10),
+        angle_fixed: word(core, 14) != 0,
+        angle_initialized: true,
+    }
+}
+
+struct DboTieRow {
+    owner: OrganismId,
+    endpoint: TieEndpointState,
+    end: crate::tie::NativeTieEnd,
+    back: bool,
+}
+
+fn decode_tie_row(
+    owner: OrganismId,
+    target: OrganismId,
+    core: &[u8],
+    extension: &[u8],
+) -> Result<DboTieRow, EngineError> {
+    let end = read_native_tie_end(core, extension);
+    if [end.rest_length, end.b, end.k, end.angle, end.bend]
+        .iter()
+        .any(|value| !value.is_finite())
+    {
+        return Err(invalid("nonfinite original tie state"));
+    }
+    Ok(DboTieRow {
+        owner,
+        endpoint: TieEndpointState {
+            other: Some(target),
+            reciprocal_index: u8::try_from(word(core, 4)).unwrap_or(0),
+            port: word(core, 0),
+            current_angle: end.angle,
+            requested_angle: end.angle,
+            current_length: long(core, 16) as f32,
+            requested_length: end.rest_length,
+            countdown: end.last,
+            information: word(core, 34),
+            sharing_marker: word(core, 36),
+            energy_marker: word(core, 32),
+            ..TieEndpointState::default()
+        },
+        end,
+        back: word(core, 30) != 0,
+    })
+}
+
+fn dbo_tie(row: &DboTieRow, reciprocal: Option<&DboTieRow>) -> TieState {
+    let mut tie = TieState::new(
+        row.owner,
+        row.endpoint.other.unwrap(),
+        row.end.rest_length,
+        row.endpoint.port,
+        reciprocal.map_or(0, |other| other.endpoint.port),
+    );
+    tie.native_ends = Some([row.end, reciprocal.map_or(row.end, |other| other.end)]);
+    tie.directed_native_back = reciprocal.is_none().then_some(row.back);
+    tie.information = row.endpoint.information != 0;
+    tie.sharing_first = row.endpoint.sharing_marker != 0;
+    tie.sharing_second = reciprocal.is_some_and(|other| other.endpoint.sharing_marker != 0);
+    tie.sync_native_primary();
+    tie
+}
+
 fn configuration(t: &NativeSimulationTail) -> Result<EngineConfig, EngineError> {
     let n = |name| t.number(name).map(|v| v as f32);
     let b = |name| t.integer(name).map(|v| v != 0);
@@ -166,7 +249,8 @@ fn configuration(t: &NativeSimulationTail) -> Result<EngineConfig, EngineError> 
         body_upkeep: c(30),
         age_base: c(31),
         age_start: c(32),
-        age_linear: if c(60) == 1.0 { c(33) } else { 0.0 },
+        age_linear: c(33),
+        age_linear_enabled: Some(c(60) == 1.0),
         age_logarithmic: c(51),
         global_multiplier: c(54),
         dynamic_target_population: c(53).max(0.0) as usize,
@@ -211,12 +295,16 @@ fn configuration(t: &NativeSimulationTail) -> Result<EngineConfig, EngineError> 
         seed: t.integer("seed")? as u32 as u64,
         world_width: n("field_width")?,
         world_height: n("field_height")?,
+        native_field_size: u8::try_from(t.integer("field_size")?)
+            .ok()
+            .filter(|preset| crate::config::native_field_dimensions(*preset).is_some()),
         toroidal_world: b("toroidal")?,
         axis_topology: Some([b("wrap_x")?, b("wrap_y")?]),
         vegetable_population_cap: u("max_population")? as usize,
         fixed_bot_radii: b("fixed_radii")?,
         shapes_visible: b("shapes_visible")?,
         shape_drift: Some(shape_drift(t)?),
+        native_cost_preset: Some(read_cost_preset(t)?),
         brownian_motion: n("brownian")?,
         gravity: [0.0, n("y_gravity")?],
         physics: PhysicsSettings {
@@ -306,6 +394,30 @@ fn configuration(t: &NativeSimulationTail) -> Result<EngineConfig, EngineError> 
 impl Engine {
     /// Load a genuine 2.48.32 `.sim`, retaining all source records and metadata.
     pub fn from_native_sim(bytes: &[u8]) -> Result<Self, EngineError> {
+        // StartChlr belongs to Global.gset. Without a profile, VB6 leaves it at zero.
+        Self::from_native_sim_with_options(bytes, 0, 0)
+    }
+
+    /// Load a genuine 2.48.32 `.sim` using the original process's StartChlr setting.
+    pub fn from_native_sim_with_start_chloroplasts(
+        bytes: &[u8],
+        start_chloroplasts: i32,
+    ) -> Result<Self, EngineError> {
+        Self::from_native_sim_with_options(bytes, start_chloroplasts, 0)
+    }
+
+    pub(crate) fn from_native_sim_with_seed(
+        bytes: &[u8],
+        native_seed: i32,
+    ) -> Result<Self, EngineError> {
+        Self::from_native_sim_with_options(bytes, 0, native_seed)
+    }
+
+    fn from_native_sim_with_options(
+        bytes: &[u8],
+        start_chloroplasts: i32,
+        native_seed: i32,
+    ) -> Result<Self, EngineError> {
         let file = NativeRecordFile::decode(bytes)?;
         let tail = NativeSimulationTail::decode(&file.tail)?;
         // The lossless codec permits every float bit pattern. Runtime state does not.
@@ -324,7 +436,12 @@ impl Engine {
                 return Err(invalid(format!("nonfinite {}", field.name)));
             }
         }
-        let mut engine = Self::new(configuration(&tail)?)?;
+        let mut config = configuration(&tail)?;
+        config.vegetation.start_chloroplasts = start_chloroplasts;
+        if native_seed != 0 {
+            config.seed = u64::from(native_seed as u32);
+        }
+        let mut engine = Self::new(config)?;
         // SimOpts.F1 is part of the .sim stream. Global x_restartmode and
         // x_fudge live in separate .gset files and cannot be inferred here.
         engine.native_f1 = Some(tail.integer("f1")? != 0);
@@ -363,7 +480,8 @@ impl Engine {
         engine.species.clear();
         engine.species_templates.clear();
         engine.subspecies_counters.clear();
-        for i in 0..tail.integer("species_count")? {
+        let saved_species_count = tail.integer("species_count")? as usize;
+        for i in 0..saved_species_count {
             let p = format!("species[{i}].");
             let b = |name: &str| tail.integer(&(p.clone() + name)).map(|v| v != 0);
             let restrictions = RestrictionColumn {
@@ -438,21 +556,26 @@ impl Engine {
             }
             let species_index = state.identity.species.0 as usize;
             if engine.species_templates[species_index].is_none() {
-                let p = format!("species[{species_index}].");
+                let (initial_energy, initial_population) = if species_index < saved_species_count {
+                    let p = format!("species[{species_index}].");
+                    (
+                        tail.integer(&(p.clone() + "start_energy"))?,
+                        nonnegative(tail.integer(&(p + "quantity"))?, "quantity")? as usize,
+                    )
+                } else {
+                    (3000, engine.species[species_index].minimum_population)
+                };
                 engine.species_templates[species_index] = Some(SpeciesTemplate {
                     retired: false,
                     comment: String::new(),
                     source_text: None,
                     dna: state.program.dna.clone(),
-                    initial_energy: tail.integer(&(p.clone() + "start_energy"))?,
-                    initial_population: nonnegative(
-                        tail.integer(&(p.clone() + "quantity"))?,
-                        "quantity",
-                    )? as usize,
+                    initial_energy,
+                    initial_population,
                 });
             }
         }
-        engine.native_ties(&file, &old_slots)?;
+        engine.load_native_tie_rows(&file, &old_slots, false)?;
         engine.native_shots(&tail, &old_slots)?;
         engine.native_environment(&tail)?;
         engine.refresh_native_chloroplast_population();
@@ -478,14 +601,49 @@ impl Engine {
         self.publish_snapshot();
     }
 
-    pub(super) fn native_robot(&self, r: &NativeRobotRecord) -> Result<RobotState, EngineError> {
+    pub(super) fn native_record_species_definition(
+        &self,
+        r: &NativeRobotRecord,
+        name: String,
+    ) -> Result<SpeciesDefinition, EngineError> {
+        Ok(SpeciesDefinition {
+            name,
+            vegetable: boolean(r, "vegetable")?,
+            color: color(r.long("color")?),
+            skin: skin(r.bytes("skin")?),
+            custom_skin: true,
+            minimum_population: 5,
+            reseed: false,
+            mutation_profile: Some(self.default_mutation_profile.clone()),
+            restrictions: Some(RestrictionColumn {
+                disable_vision: boolean(r, "cant_see")?,
+                disable_dna: boolean(r, "disable_dna")?,
+                disable_movement: boolean(r, "disable_movement")?,
+                disable_reproduction: boolean(r, "cant_reproduce")?,
+                virus_immune: boolean(r, "virus_immune")?,
+                disable_mutations: !boolean(r, "mutations_enabled")?,
+                ..RestrictionColumn::default()
+            }),
+            ..SpeciesDefinition::default()
+        })
+    }
+
+    pub(super) fn native_robot(
+        &mut self,
+        r: &NativeRobotRecord,
+    ) -> Result<RobotState, EngineError> {
         let name = text(r.bytes("species_name")?);
-        let species = self
-            .species
-            .iter()
-            .position(|s| s.name == name)
-            .or_else(|| (name == "Corpse" || boolean(r, "corpse").unwrap_or(false)).then_some(0))
-            .ok_or_else(|| invalid(format!("robot species {name} is missing")))?;
+        let species = if let Some(index) = self.species.iter().position(|s| s.name == name) {
+            index
+        } else if name == "Corpse" || boolean(r, "corpse")? {
+            0
+        } else {
+            // Save Robot's DNA can change FName between UpdateCounters and
+            // SaveSimulation. Restore an unlisted founder as native AddSpecie does.
+            self.next_lineage_id = self.next_lineage_id.max(self.species.len() as u64 + 1);
+            let definition = self.native_record_species_definition(r, name.clone())?;
+            self.register_species_unpublished(definition).0 as usize
+        };
         let position = [r.single("position_x")?, r.single("position_y")?];
         let mut memory = VmMemory::default();
         for (address, value) in r.bytes("memory")?.chunks_exact(2).enumerate().skip(1) {
@@ -678,6 +836,179 @@ impl Engine {
         Ok(robot)
     }
 
+    pub(super) fn load_native_tie_rows(
+        &mut self,
+        file: &NativeRecordFile,
+        old_slots: &HashMap<i16, OrganismId>,
+        remap_dbo: bool,
+    ) -> Result<(), EngineError> {
+        let members = file
+            .robots
+            .iter()
+            .map(|record| {
+                let old = record.word("old_slot")?;
+                let id = old_slots[&old];
+                let number = if remap_dbo {
+                    i16::try_from(id.slot() + 1)
+                        .map_err(|_| invalid("DBO tie slot exceeds Integer range"))?
+                } else {
+                    old
+                };
+                Ok((old, number, id))
+            })
+            .collect::<Result<Vec<_>, EngineError>>()?;
+        let runtime_slots: HashMap<_, _> = members
+            .iter()
+            .map(|&(_, number, id)| (number, id))
+            .collect();
+        let mut rows = Vec::new();
+
+        for (record, &(_, _, owner)) in file.robots.iter().zip(&members) {
+            let core = record.bytes("ties_core")?;
+            let extension = record.bytes("ties_extension")?;
+            let mut pointers: [i16; 10] =
+                std::array::from_fn(|i| word(core, (i + 1) * 38 + 2) as i16);
+            // HDRoutines.RemapTies visits the group in file order and rewrites
+            // the positive prefix in place. A later old number can match a
+            // number written earlier in the loop.
+            if remap_dbo {
+                for &(old, new, _) in &members {
+                    for point in pointers.iter_mut().take_while(|point| **point > 0) {
+                        if *point == old {
+                            *point = new;
+                        }
+                    }
+                }
+            }
+            for point in pointers.iter_mut() {
+                if *point <= 0 {
+                    break;
+                }
+                if !runtime_slots.contains_key(point) {
+                    *point = 0;
+                }
+            }
+
+            for (i, pointer) in pointers
+                .into_iter()
+                .take_while(|point| *point > 0)
+                .enumerate()
+            {
+                let c = &core[(i + 1) * 38..(i + 2) * 38];
+                let e = &extension[(i + 1) * 13..(i + 2) * 13];
+                let row = decode_tie_row(owner, runtime_slots[&pointer], c, e)?;
+                self.slots.get_mut(owner)?.ties[i] = Some(row.endpoint);
+                rows.push(row);
+            }
+        }
+
+        // Collapse actual forward/back pairs just like freshly fired ties.
+        // Keep unmatched rows independent, even when they point to their owner.
+        let mut paired = vec![false; rows.len()];
+        for (index, row) in rows.iter().enumerate() {
+            if row.back || paired[index] {
+                continue;
+            }
+            let target = row.endpoint.other.unwrap();
+            let reciprocal = (target != row.owner)
+                .then(|| {
+                    rows.iter().enumerate().find(|(ordinal, other)| {
+                        !paired[*ordinal]
+                            && other.back
+                            && other.owner == target
+                            && other.endpoint.other == Some(row.owner)
+                    })
+                })
+                .flatten();
+            if let Some((ordinal, back)) = reciprocal {
+                paired[ordinal] = true;
+                paired[index] = true;
+                self.ties.push(dbo_tie(row, Some(back)));
+            }
+        }
+        for (row, paired) in rows.iter().zip(paired) {
+            if !paired {
+                self.ties.push(dbo_tie(row, None));
+            }
+        }
+        Ok(())
+    }
+
+    /// A new tie can fill the zero that hid later saved rows. VB6's next
+    /// prefix scan sees those literal pointers at their original positions.
+    pub(super) fn activate_dormant_native_ties(
+        &mut self,
+        owner: OrganismId,
+        occupied: usize,
+    ) -> bool {
+        if occupied >= MAX_TIES_PER_ROBOT {
+            return false;
+        }
+        let Ok(robot) = self.slots.get(owner) else {
+            return false;
+        };
+        let Some(mut record) = robot
+            .native_record_override
+            .as_deref()
+            .cloned()
+            .or_else(|| {
+                let index = robot.native_record_index?;
+                self.native_origin.as_ref()?.robots.get(index).cloned()
+            })
+        else {
+            return false;
+        };
+        let (Ok(core), Ok(extension)) = (record.bytes("ties_core"), record.bytes("ties_extension"))
+        else {
+            return false;
+        };
+        if !(1..=occupied).any(|row| word(core, row * 38 + 2) <= 0) {
+            return false;
+        }
+        let mut retained = core.to_vec();
+        let mut rows = Vec::new();
+        for i in occupied + 1..=MAX_TIES_PER_ROBOT {
+            let c = &core[i * 38..(i + 1) * 38];
+            let pointer = word(c, 2);
+            if pointer <= 0 {
+                break;
+            }
+            let slot = (pointer - 1) as usize;
+            let slots: &[RobotSlot] = &self.slots;
+            let Some(entry) = slots.get(slot) else {
+                break;
+            };
+            if entry
+                .organism
+                .as_ref()
+                .is_none_or(|robot| !robot.flags.exists)
+            {
+                break;
+            }
+            let target = OrganismId::new(slot as u32, entry.generation);
+            let e = &extension[i * 13..(i + 1) * 13];
+            let Ok(row) = decode_tie_row(owner, target, c, e) else {
+                break;
+            };
+            retained[i * 38 + 2..i * 38 + 4].fill(0);
+            rows.push((i - 1, row));
+        }
+        if rows.is_empty()
+            || record
+                .set_value("ties_core", NativeValue::Bytes(retained))
+                .is_err()
+        {
+            return false;
+        }
+        let robot = self.slots.get_mut(owner).unwrap();
+        for (index, row) in rows {
+            robot.ties[index] = Some(row.endpoint);
+            self.ties.push(dbo_tie(&row, None));
+        }
+        robot.native_record_override = Some(Box::new(record));
+        true
+    }
+
     pub(super) fn native_ties(
         &mut self,
         file: &NativeRecordFile,
@@ -747,24 +1078,9 @@ impl Engine {
                 } else {
                     0
                 };
-                let read_end = |core: &[u8], extension: &[u8]| crate::tie::NativeTieEnd {
-                    rest_length: single(extension, 9),
-                    length: Some(long(core, 16)),
-                    saved_reciprocal: Some(word(core, 4)),
-                    last: word(core, 26),
-                    b: single(extension, 1),
-                    k: single(extension, 5),
-                    hardened: extension[0] == 3,
-                    kind: extension[0],
-                    shrink: long(core, 20),
-                    angle: single(core, 6),
-                    bend: single(core, 10),
-                    angle_fixed: word(core, 14) != 0,
-                    angle_initialized: true,
-                };
-                let first_end = read_end(c, e);
+                let first_end = read_native_tie_end(c, e);
                 let second_end = if (1..=10).contains(&reciprocal) {
-                    read_end(
+                    read_native_tie_end(
                         &second_core[reciprocal * 38..(reciprocal + 1) * 38],
                         &second_extension[reciprocal * 13..(reciprocal + 1) * 13],
                     )
@@ -788,6 +1104,7 @@ impl Engine {
                 }
                 self.ties.push(TieState {
                     native_ends: Some([first_end, second_end]),
+                    directed_native_back: None,
                     first,
                     second,
                     rest_length: single(e, 9),
@@ -1451,6 +1768,7 @@ mod tests {
         assert_eq!(engine.projectiles.owners.len(), 146);
         assert_eq!(engine.config.world_width, 16_000.0);
         assert_eq!(engine.config.world_height, 12_000.0);
+        assert_eq!(engine.config.vegetation.start_chloroplasts, 0);
         let first = engine.slots[0].organism.as_ref().unwrap();
         assert_eq!(first.materials.energy.to_bits(), 0x4412_c0fd);
         assert_eq!(first.materials.body.to_bits(), 153.94617_f32.to_bits());

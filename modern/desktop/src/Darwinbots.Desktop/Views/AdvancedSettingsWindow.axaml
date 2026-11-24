@@ -11,7 +11,7 @@
   <Grid RowDefinitions="68,*,62">
     <Border Background="#FBF9F2" BorderBrush="#C8C3B6" BorderThickness="0,0,0,1" Padding="22,13">
       <Grid ColumnDefinitions="*,Auto">
-        <StackPanel Spacing="2"><TextBlock Text="LIVE SETTINGS" FontFamily="{x:Static typography:DesktopFonts.Heading}" FontSize="23" FontWeight="Bold" LetterSpacing="1.5"/><TextBlock Text="Tune the running ecosystem without interrupting evolution" Foreground="#66706B" FontSize="12"/></StackPanel>
+        <StackPanel Spacing="2"><TextBlock x:Name="SettingsHeading" Text="LIVE SETTINGS" FontFamily="{x:Static typography:DesktopFonts.Heading}" FontSize="23" FontWeight="Bold" LetterSpacing="1.5"/><TextBlock x:Name="SettingsSubheading" Text="Tune the running ecosystem without interrupting evolution" Foreground="#66706B" FontSize="12"/></StackPanel>
         <Border x:Name="DirtyBadge" Grid.Column="1" Background="#E7EEDC" BorderBrush="#AEBE9D" BorderThickness="1" CornerRadius="12" Padding="10,4" VerticalAlignment="Center" IsVisible="False"><TextBlock x:Name="DirtyIndicator" Text="●  STAGED CHANGES" Foreground="#416E35" FontFamily="{x:Static typography:DesktopFonts.Heading}" FontSize="11" FontWeight="Bold"/></Border>
       </Grid>
     </Border>
@@ -47,7 +47,18 @@
         </StackPanel></Border>
       </StackPanel></ScrollViewer></TabItem>
 
-      <TabItem Header="ENERGY"><ScrollViewer><StackPanel Margin="18,0,4,20" Spacing="14">
+      <TabItem Header="GENERAL"><ScrollViewer><StackPanel Margin="18,0,4,20" Spacing="14">
+        <Border x:Name="FieldSizePanel" Classes="card" IsVisible="False">
+          <StackPanel Spacing="10">
+            <TextBlock Classes="section" Text="FIELD SIZE"/>
+            <Grid ColumnDefinitions="*,150" ColumnSpacing="12">
+              <TextBlock Text="Preset" VerticalAlignment="Center"/>
+              <ComboBox x:Name="FieldSizePreset" Grid.Column="1" AutomationProperties.Name="Field size preset"/>
+            </Grid>
+            <TextBlock x:Name="FieldSizeDimensions" AutomationProperties.Name="Field dimensions"/>
+            <TextBlock x:Name="FieldSizeUnavailable" Foreground="#66706B" TextWrapping="Wrap" IsVisible="False"/>
+          </StackPanel>
+        </Border>
         <Border Classes="card"><StackPanel Spacing="10"><TextBlock Classes="section" Text="ENERGY ECONOMY"/>
           <Grid ColumnDefinitions="*,150"><TextBlock Text="Metabolism per tick"/><NumericUpDown Grid.Column="1" x:Name="Metabolism" Minimum="0" Maximum="100"/></Grid>
           <Grid ColumnDefinitions="*,150"><TextBlock Text="Vegetable compatibility bonus"/><NumericUpDown Grid.Column="1" x:Name="VegetableEnergy" Minimum="0" Maximum="1000"/></Grid>
@@ -145,6 +156,6 @@
        </StackPanel></ScrollViewer></TabItem>
     </TabControl>
 
-    <Border Grid.Row="2" Background="#E5E0D4" BorderBrush="#C8C3B6" BorderThickness="0,1,0,0" Padding="16,10"><Grid ColumnDefinitions="*,Auto"><TextBlock Text="Changes apply to the running simulation on the engine thread." VerticalAlignment="Center" Foreground="#66706B"/><StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8"><Button x:Name="CancelButton" Content="CANCEL" Click="Cancel_Click"/><Button x:Name="ApplyButton" Classes="primary" Content="APPLY CHANGES" Click="Apply_Click"/></StackPanel></Grid></Border>
+    <Border Grid.Row="2" Background="#E5E0D4" BorderBrush="#C8C3B6" BorderThickness="0,1,0,0" Padding="16,10"><Grid ColumnDefinitions="*,Auto"><TextBlock x:Name="SettingsApplyScope" Text="Changes apply to the running simulation on the engine thread." VerticalAlignment="Center" Foreground="#66706B"/><StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8"><Button x:Name="CancelButton" Content="CANCEL" Click="Cancel_Click"/><Button x:Name="ApplyButton" Classes="primary" Content="APPLY CHANGES" Click="Apply_Click"/></StackPanel></Grid></Border>
   </Grid>
 </Window>

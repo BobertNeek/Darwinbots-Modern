@@ -13,6 +13,8 @@ public sealed partial class SetupWindow : Window
     private bool _controlsReady;
     private bool _exitPromptOpen;
     private readonly bool _speciesEditor;
+    private readonly bool _nativeSpeciesImport;
+    private readonly Func<string, string, bool, Task<NativeSpeciesAppearance?>>? _stageNativeAppearance;
     public WorldSetupOptions? EditedOptions { get; private set; }
     public bool StartNewRequested { get; private set; }
     private readonly IDesktopStorageService _storage;
@@ -21,34 +23,47 @@ public sealed partial class SetupWindow : Window
     private readonly NativeProcessCachesSnapshot? _nativeProcessCaches;
     private readonly SimulationSettingsWorkflow _workflow;
     private EnvironmentUpdate _environment = EnvironmentUpdate.Default;
+    private bool _startingChloroplastsConfigured;
+    private bool _liveStartingChloroplastsConfigured;
     private GlobalSettings _profileSettings = new();
     private GlobalSettings _globalSettings = new();
     private MutationSettingsUpdate _mutationSettings = MutationSettingsUpdate.Default;
     private Db2ShapeCreationOptions? _shapeCreation;
     private Db2ShapeDriftOptions? _shapeDrift;
     private IReadOnlyList<ObstacleSnapshot> _obstacles = [];
+    private int? _nativeFieldSize;
     private IReadOnlyList<string>? _legacySettingsFields;
+    private bool _allowEmptyStartupRoster;
     private const string ZerobotDna = "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0";
     private const string FeederDna = "cond\r\nstart\r\n-2 .shoot store\r\n50 .shootval store\r\n314 rnd .aimdx store\r\nstop";
     private const string FeederReproducerDna = "cond\r\nstart\r\n-2 302 1 rnd rnd rnd rnd rnd rnd mult add .shoot store\r\n50 .shootval store\r\n314 rnd .aimdx store\r\nstop";
 
     public ObservableCollection<SetupSpeciesRow> Species { get; } = [];
     public event Action<WorldSetupOptions>? WorldCreated;
+    internal bool InitialKeepGraphsUpdatingOnClose { get; }
+    internal bool InitialNewSeedOnLoad { get; }
+    internal bool InitialOldColors { get; }
 
     public SetupWindow() : this(AvaloniaDesktopStorageService.Instance)
     {
     }
 
     public SetupWindow(IDesktopStorageService storage, float? nativeGaussianSpare = null, byte? nativeSunChange = null,
-        NativeProcessCachesSnapshot? nativeProcessCaches = null, WorldSetupOptions? speciesEditor = null, bool allowLastExitResume = true)
+        NativeProcessCachesSnapshot? nativeProcessCaches = null, WorldSetupOptions? speciesEditor = null, bool allowLastExitResume = true,
+        bool loadLastExitSettings = true, bool nativeSpeciesImport = true,
+        Func<string, string, bool, Task<NativeSpeciesAppearance?>>? stageNativeAppearance = null, int? startChloroplasts = null, bool? nativeOldColors = null)
     {
         _speciesEditor = speciesEditor is not null;
+        _nativeSpeciesImport = nativeSpeciesImport;
+        _stageNativeAppearance = stageNativeAppearance;
         _storage = storage ?? throw new ArgumentNullException(nameof(storage));
         _nativeGaussianSpare = nativeGaussianSpare;
         _nativeSunChange = nativeSunChange;
         _nativeProcessCaches = nativeProcessCaches;
         _workflow = new(new WorldSetupOptions());
         InitializeComponent();
+        WorldWidth.ValueChanged += (_, _) => { if (_controlsReady) _nativeFieldSize = null; };
+        WorldHeight.ValueChanged += (_, _) => { if (_controlsReady) _nativeFieldSize = null; };
         if (!_speciesEditor)
             CreateWorldButton.HotKey = new KeyGesture(Key.Enter, KeyModifiers.Control);
         DataContext = this;
@@ -58,9 +73,18 @@ public sealed partial class SetupWindow : Window
         {
             _profileSettings = ReadProfileSettings(_storage, out var error);
             if (error is not null) SetupStatus.Text = $"GLOBAL SETTINGS LOAD FAILED · {error}";
+            InitialNewSeedOnLoad = _profileSettings.Main.EffectiveNewSeedOnLoad;
             ApplyGlobalSettings(_profileSettings);
+            InitialKeepGraphsUpdatingOnClose = _profileSettings.Main.KeepGraphsUpdatingOnClose is true;
         }
+        if ((startChloroplasts ?? _profileSettings.Main.StartChloroplasts) is { } amount)
+        {
+            _environment = _environment with { Vegetation = _environment.Vegetation with { StartChloroplasts = amount } };
+            _startingChloroplastsConfigured = _liveStartingChloroplastsConfigured = true;
+        }
+        InitialOldColors = nativeOldColors ?? (speciesEditor?.GlobalSettings ?? _globalSettings).Main.EffectiveOldColors;
         _workflow.Reset(ReadSetupOptions());
+        if (!_speciesEditor && loadLastExitSettings) RestoreLastExitSettings();
         OnboardingPanel.IsVisible = !_speciesEditor && _storage.IsFirstRun;
         ResumeMenuItem.IsVisible = !_speciesEditor && allowLastExitResume && _storage.FindLastExitSimulation() is not null;
         if (speciesEditor is not null)
@@ -83,7 +107,15 @@ public sealed partial class SetupWindow : Window
     internal static GlobalSettings ReadProfileSettings(IDesktopStorageService storage, out string? error)
     {
         error = null;
-        try { return storage.LoadGlobalSettings() ?? new(); }
+        try
+        {
+            var settings = storage.LoadGlobalSettings() ?? new();
+            if (settings.Main.KeepGraphsUpdatingOnClose is null && storage.LoadGraphClosePreference() is { } keepUpdating)
+                settings = settings with { Main = settings.Main with { KeepGraphsUpdatingOnClose = keepUpdating } };
+            if (settings.Main.OldColors is null && storage.LoadOldColorsPreference() is { } oldColors)
+                settings = settings with { Main = settings.Main with { OldColors = oldColors } };
+            return settings;
+        }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException
             or JsonException or ArgumentException or InvalidDataException)
         {
@@ -93,6 +125,53 @@ public sealed partial class SetupWindow : Window
     }
 
     internal void ShowStartupLoadError(string error) => SetupStatus.Text = $"STARTUP LOAD FAILED · {error}";
+
+    private void RestoreLastExitSettings()
+    {
+        var defaults = _workflow.Live;
+        try
+        {
+            if (_storage.LoadLastExitSettings() is not { } settings) return;
+            if (settings.GlobalSettings is not { Main: not null, League: not null, Costs: not null, AdvancedMutation: not null }
+                || settings.Recording is null || settings.Species is null || settings.Species.Any(species => species is null)
+                || settings.Gravity is not { Length: 2 } || settings.Obstacles is null)
+                throw new InvalidDataException("Last-exit settings contain incomplete world data.");
+            var setup = settings.ToWorldSetup();
+            var saved = settings.GlobalSettings;
+            // The global profile may have changed independently since the last quit.
+            setup = setup with { GlobalSettings = _profileSettings with
+            {
+                Main = _profileSettings.Main with
+                {
+                    BodyCutoff = saved.Main.BodyCutoff,
+                    GreedyEnforcement = saved.Main.GreedyEnforcement,
+                    SafeMode = settings.Recording.SafeModeBackup,
+                    EpigeneticReset = saved.Main.EpigeneticReset,
+                    EpigeneticAmplification = saved.Main.EpigeneticAmplification,
+                    TemporaryGeneData = saved.Main.TemporaryGeneData,
+                },
+                Costs = saved.Costs,
+                AdvancedMutation = saved.AdvancedMutation,
+                League = _profileSettings.League with
+                {
+                    DisqualificationRule = saved.League.DisqualificationRule,
+                    RecognitionFudging = saved.League.RecognitionFudging,
+                },
+            }};
+            _allowEmptyStartupRoster = setup.Species.Count == 0;
+            ApplySetupOptions(setup);
+            _workflow.Reset(setup);
+            SetupStatus.Text = "LAST EXIT SETTINGS LOADED";
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or JsonException
+            or ArgumentException or InvalidDataException or NotSupportedException or OverflowException
+            or InvalidOperationException or FormatException)
+        {
+            _allowEmptyStartupRoster = false;
+            ApplySetupOptions(defaults);
+            SetupStatus.Text = $"LAST EXIT SETTINGS LOAD FAILED · {error.Message}";
+        }
+    }
 
     private void Mode_Checked(object? sender, RoutedEventArgs e)
     {
@@ -108,14 +187,18 @@ public sealed partial class SetupWindow : Window
         {
             if (mode == StartingMode.StarterBotsAndVegetables)
             {
-                Species.Add(new("Alga Minimalis", ReadBundled("Alga_Minimalis_Chloroplastus.txt"), true, 0xff4c963b, 300, 1_000, 0.5, true));
-                Species.Add(new("Animal Minimalis", ReadBundled("Animal_Minimalis.txt"), false, 0xff239ac0, 100, 1_000, 1.0, true));
+                Species.Add(new("Alga Minimalis", ReadBundled("Alga_Minimalis_Chloroplastus.txt"), true, 0xff4c963b, 300, 1_000, 0.5, true,
+                    nativeSkin: _nativeSpeciesImport));
+                Species.Add(new("Animal Minimalis", ReadBundled("Animal_Minimalis.txt"), false, 0xff239ac0, 100, 1_000, 1.0, true,
+                    nativeSkin: _nativeSpeciesImport));
             }
             else
             {
-                Species.Add(new("Zerobot", ZerobotDna, false, 0xff59636b, 100, 1_000, 10.0, false));
+                Species.Add(new("Zerobot", ZerobotDna, false, 0xff59636b, 100, 1_000, 10.0, false,
+                    nativeSkin: _nativeSpeciesImport));
                 if (mode == StartingMode.ZerobotsAndVegetables)
-                    Species.Add(new("Energy Feeder", FeederDna, true, 0xff4c963b, 60, 2_000, 0.5, true));
+                    Species.Add(new("Energy Feeder", FeederDna, true, 0xff4c963b, 60, 2_000, 0.5, true,
+                        nativeSkin: _nativeSpeciesImport));
             }
             SetupStatus.Text = string.Empty;
         }
@@ -124,13 +207,42 @@ public sealed partial class SetupWindow : Window
 
     private static string ReadBundled(string name) => File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Bots", name));
 
+    internal static Func<string, string, bool, Task<NativeSpeciesAppearance?>> CreateNativeAppearanceProvider(
+        uint? uniformState = null, TimeProvider? clock = null) => (filename, dna, oldColors) =>
+    {
+        var appearance = NativeEngineClient.StageNativeSetupAppearance(filename, dna, oldColors, uniformState, clock);
+        if (appearance is not null) uniformState = appearance.UniformState;
+        return Task.FromResult(appearance);
+    };
+
     private async void AddDna_Click(object? sender, RoutedEventArgs e)
     {
         try
         {
-            foreach (var file in await _storage.OpenDnaFilesAsync(this))
-                Species.Add(new(Path.GetFileNameWithoutExtension(file.Name), file.Content, false, 0xffd07a2d, 50, 1_000, 1.0, false,
-                    mutationProfile: file.MutationProfile, dnaPath: file.LocalPath));
+            var main = (_speciesEditor ? _globalSettings : _profileSettings).Main;
+            var mainDirectory = main.MainDirectory;
+            var (count, energy) = _nativeSpeciesImport ? (5, 3_000) : (50, 1_000);
+            var files = await _storage.OpenDnaFilesAsync(this, _nativeSpeciesImport ? mainDirectory : null,
+                allowMultiple: !_nativeSpeciesImport);
+            foreach (var file in files)
+            {
+                var name = _nativeSpeciesImport ? file.Name : Path.GetFileNameWithoutExtension(file.Name);
+                var appearance = _nativeSpeciesImport && _stageNativeAppearance is not null
+                    ? await _stageNativeAppearance(file.Name, file.Content, InitialOldColors)
+                    : null;
+                var color = appearance?.Argb ?? ((_nativeSpeciesImport, file.Name) switch
+                {
+                    (true, "Base.txt") => 0xff0000ff,
+                    (true, "Mutate.txt" or "Test.txt") => 0xffff0000,
+                    (true, "robotA.txt") => 0xffff8000,
+                    (true, "robotB.txt") => 0xff0080ff,
+                    _ => 0xffd07a2d,
+                });
+                Species.Add(new(name, file.Content, false, color, count, energy, 1.0, false,
+                    comment: _nativeSpeciesImport ? LegacyDnaText.ReadLeadingComment(file.Content) : null,
+                    skin: appearance?.Skin, mutationProfile: file.MutationProfile, dnaPath: file.LocalPath,
+                    nativeSkin: _nativeSpeciesImport));
+            }
         }
         catch (Exception error) { SetupStatus.Text = $"IMPORT FAILED · {error.Message}"; }
     }
@@ -175,6 +287,7 @@ public sealed partial class SetupWindow : Window
         if (!ValidateSpeciesRoster()) return;
         _workflow.UpdateWorkingCopy(_ => ReadSetupOptions());
         var options = _workflow.StartNew();
+        _liveStartingChloroplastsConfigured = true;
         if (_speciesEditor) { EditedOptions = options; StartNewRequested = true; Close(); }
         else PublishWorld(options);
     }
@@ -184,6 +297,7 @@ public sealed partial class SetupWindow : Window
         if (!ValidateSpeciesRoster()) return;
         _workflow.UpdateWorkingCopy(_ => ReadSetupOptions());
         var options = _workflow.Change();
+        _liveStartingChloroplastsConfigured = true;
         if (_speciesEditor) { EditedOptions = options; Close(); }
         else PublishWorld(options);
     }
@@ -193,15 +307,28 @@ public sealed partial class SetupWindow : Window
         if (_speciesEditor) { Close(); return; }
         _workflow.Cancel();
         ApplySetupOptions(_workflow.WorkingCopy);
+        _startingChloroplastsConfigured = _liveStartingChloroplastsConfigured;
         SetupStatus.Text = "WORKING COPY CANCELLED";
     }
 
     private void PublishWorld(WorldSetupOptions options) =>
-        WorldCreated?.Invoke(options with { NativeGaussianSpare = _nativeGaussianSpare, NativeSunChange = _nativeSunChange, NativeProcessCaches = _nativeProcessCaches });
+        WorldCreated?.Invoke(options with
+        {
+            GlobalSettings = WithGraphClosePreference(options.GlobalSettings),
+            NativeGaussianSpare = _nativeGaussianSpare,
+            NativeSunChange = _nativeSunChange,
+            NativeProcessCaches = _nativeProcessCaches,
+        });
+
+    private GlobalSettings WithGraphClosePreference(GlobalSettings settings) => settings with
+    {
+        Main = settings.Main with { KeepGraphsUpdatingOnClose = _globalSettings.Main.KeepGraphsUpdatingOnClose },
+    };
 
     private bool ValidateSpeciesRoster()
     {
-        if (Species.Count > 0 || (!_speciesEditor && _legacySettingsFields is not null
+        if (Species.Count > 0 || (!_speciesEditor
+            && (_allowEmptyStartupRoster || _legacySettingsFields is not null)
             && CurrentMode() == StartingMode.StarterBotsAndVegetables)) return true;
         SetupStatus.Text = "Add at least one species.";
         return false;
@@ -210,9 +337,10 @@ public sealed partial class SetupWindow : Window
     private WorldSetupOptions ReadSetupOptions(WorldSetupOptions? staged = null)
     {
         staged ??= _workflow.WorkingCopy;
+        var mode = CurrentMode();
         var sustenance = (ZerobotSustenance)Math.Max(0, Sustenance.SelectedIndex);
         var species = Species.Select((row, index) => row.ToImport(index)).ToList();
-        if (!_speciesEditor && species.Count > 0 && CurrentMode() != StartingMode.StarterBotsAndVegetables)
+        if (!_speciesEditor && species.Count > 0 && mode != StartingMode.StarterBotsAndVegetables)
         {
             if (sustenance == ZerobotSustenance.PhotosyntheticZerobots)
                 species[0] = species[0] with { Vegetable = true };
@@ -227,15 +355,19 @@ public sealed partial class SetupWindow : Window
         float fieldHeight = (float)(WorldHeight.Value ?? 12_000);
         return new WorldSetupOptions
         {
-            StartingMode = CurrentMode(),
+            StartingMode = mode,
             ZerobotSustenance = sustenance,
             AutomaticZerobotProgression = AutomaticProgression.IsChecked == true,
+            OrdinaryRestartOnExtinction = OrdinaryRestartToggle.IsChecked == true,
             Backend = ((ComboBoxItem)Backend.SelectedItem!).Content?.ToString() ?? "Auto",
             Seed = (ulong)(Seed.Value ?? 1),
             PopulationCapacity = (int)(PopulationCap.Value ?? 25_000),
             VegetablePopulationCap = (int)(VegetablePopulationCap.Value ?? 500),
             WorldWidth = fieldWidth,
             WorldHeight = fieldHeight,
+            NativeFieldSize = _nativeFieldSize,
+            NativeCostPreset = staged.NativeCostPreset ?? Db2CostPreset.Custom,
+            SimulationCosts = staged.SimulationCosts,
             MetabolismCost = _environment.MetabolismCost,
             VegetableEnergyPerTick = _environment.VegetableEnergyPerTick,
             SunlightEnergy = _environment.SunlightEnergy,
@@ -246,7 +378,7 @@ public sealed partial class SetupWindow : Window
             Shots = _environment.Shots,
             CorpseDecay = _environment.CorpseDecay ?? new Db2CorpseDecayOptions(),
             Waste = _environment.Waste ?? new Db2WasteOptions(),
-            Vegetation = _environment.Vegetation,
+            Vegetation = ReadSetupVegetation(mode, sustenance),
             Recording = _environment.Recording ?? new Db2RecordingOptions(),
             AutoSpeciation = _environment.AutoSpeciation,
             SpeciationGeneticDistancePercent = _environment.SpeciationGeneticDistancePercent,
@@ -268,6 +400,12 @@ public sealed partial class SetupWindow : Window
             LegacySettingsFields = _legacySettingsFields,
         };
     }
+
+    private Db2VegetationOptions ReadSetupVegetation(StartingMode mode, ZerobotSustenance sustenance) =>
+        !_speciesEditor && !_startingChloroplastsConfigured && _environment.Vegetation.StartChloroplasts == 0
+            && mode != StartingMode.StarterBotsAndVegetables && sustenance == ZerobotSustenance.PhotosyntheticZerobots
+            ? _environment.Vegetation with { StartChloroplasts = 16_000 }
+            : _environment.Vegetation;
 
     private async void SimulationSettingsTab_SelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
@@ -299,10 +437,28 @@ public sealed partial class SetupWindow : Window
                     .Concat(Species.Select(row => new SpeciesSnapshot(row.Name, row.Vegetable,
                         row.Color, row.MinimumPopulation, row.Reseed, (float)row.MutationRate))).ToArray(),
             };
-            var dialog = new AdvancedSettingsWindow(_environment, snapshot, selectedTab);
+            var initial = _environment.Vegetation.StartChloroplasts;
+            var presented = ReadSetupVegetation(CurrentMode(), (ZerobotSustenance)Math.Max(0, Sustenance.SelectedIndex));
+            var staged = _workflow.WorkingCopy;
+            var costs = staged.SimulationCosts ?? _globalSettings.Costs;
+            var dialog = new AdvancedSettingsWindow(_environment with { Vegetation = presented }, snapshot, selectedTab,
+                costs, currentCostPreset: staged.NativeCostPreset ?? Db2CostPreset.Custom);
             await dialog.ShowDialog(this);
             if (!dialog.Accepted) return;
+            if (dialog.CostPresetUpdate is not null || dialog.CostUpdate is not null)
+                _workflow.UpdateWorkingCopy(options => options with
+                {
+                    NativeCostPreset = dialog.CostPresetUpdate ?? options.NativeCostPreset ?? Db2CostPreset.Custom,
+                    SimulationCosts = dialog.CostUpdate ?? costs,
+                });
             _environment = dialog.Update;
+            if (_environment.Vegetation.StartChloroplasts != presented.StartChloroplasts)
+                _startingChloroplastsConfigured = true;
+            else if (initial != presented.StartChloroplasts)
+                _environment = _environment with
+                {
+                    Vegetation = _environment.Vegetation with { StartChloroplasts = initial },
+                };
             _globalSettings = _globalSettings with
             {
                 Main = _globalSettings.Main with { SafeMode = _environment.Recording?.SafeModeBackup ?? false },
@@ -362,7 +518,7 @@ public sealed partial class SetupWindow : Window
         try
         {
             var settings = ReadDesktopSettings();
-            SetupStatus.Text = await _storage.SaveSettingsAsync(this, settings)
+            SetupStatus.Text = await _storage.SaveSettingsAsync(this, settings, _profileSettings.Main.MainDirectory)
                 ? "SETTINGS SAVED"
                 : "SETTINGS SAVE CANCELLED";
         }
@@ -376,7 +532,7 @@ public sealed partial class SetupWindow : Window
     {
         try
         {
-            var settings = await _storage.OpenSettingsAsync(this);
+            var settings = await _storage.OpenSettingsAsync(this, _profileSettings.Main.MainDirectory);
             if (settings is null)
             {
                 SetupStatus.Text = "SETTINGS LOAD CANCELLED";
@@ -401,7 +557,14 @@ public sealed partial class SetupWindow : Window
     private void ApplyDesktopSettings(DesktopSettings settings)
     {
         var setup = settings.ToWorldSetup(_workflow.Live);
+        if (setup.SimulationCosts is not null || settings.LegacySettingsFields is not null)
+            setup = setup with
+            {
+                SimulationCosts = setup.EffectiveSimulationCosts,
+                GlobalSettings = setup.GlobalSettings with { Costs = _profileSettings.Costs },
+            };
         ApplySetupOptions(setup);
+        _startingChloroplastsConfigured = true;
         _workflow.LoadWorkingCopy(setup);
     }
 
@@ -416,6 +579,7 @@ public sealed partial class SetupWindow : Window
         };
         WorldWidth.Value = (decimal)setup.WorldWidth;
         WorldHeight.Value = (decimal)setup.WorldHeight;
+        _nativeFieldSize = setup.NativeFieldSize;
         PopulationCap.Value = setup.PopulationCapacity;
         VegetablePopulationCap.Value = setup.VegetablePopulationCap;
         Seed.Value = (decimal)setup.Seed;
@@ -428,8 +592,9 @@ public sealed partial class SetupWindow : Window
         };
         Sustenance.SelectedIndex = (int)setup.ZerobotSustenance;
         AutomaticProgression.IsChecked = setup.AutomaticZerobotProgression;
+        OrdinaryRestartToggle.IsChecked = setup.OrdinaryRestartOnExtinction;
         _environment = setup.ToEnvironmentUpdate();
-        _globalSettings = setup.GlobalSettings;
+        _globalSettings = _speciesEditor ? setup.GlobalSettings : WithGraphClosePreference(setup.GlobalSettings);
         _globalSettings = _globalSettings with
         {
             Main = _globalSettings.Main with { SafeMode = _environment.Recording?.SafeModeBackup ?? false },
@@ -442,7 +607,7 @@ public sealed partial class SetupWindow : Window
         StarterMode.IsChecked = setup.StartingMode == StartingMode.StarterBotsAndVegetables;
         ZerobotMode.IsChecked = setup.StartingMode == StartingMode.Zerobots;
         ZerobotVegetableMode.IsChecked = setup.StartingMode == StartingMode.ZerobotsAndVegetables;
-        if (setup.Species.Count == 0 && setup.LegacySettingsFields is null)
+        if (setup.Species.Count == 0 && setup.LegacySettingsFields is null && !_allowEmptyStartupRoster)
             LoadMode(setup.StartingMode);
         else
         {
@@ -452,19 +617,24 @@ public sealed partial class SetupWindow : Window
                 Species.Add(new(species.Name, species.Dna, species.Vegetable, species.Color,
                     species.InitialCount, species.InitialEnergy, species.MutationRate, species.Reseed,
                     species.MinimumPopulation, species.Comment, species.Placement, species.Skin, species.Restrictions,
-                    species.MutationProfile, species.DnaPath, species.SpeciesId));
+                    species.MutationProfile, species.DnaPath, species.SpeciesId, nativeSkin: _nativeSpeciesImport));
         }
         _controlsReady = true;
     }
 
     private void NewWorld_Click(object? sender, RoutedEventArgs e)
     {
-        _environment = EnvironmentUpdate.Default;
+        _allowEmptyStartupRoster = false;
+        _environment = EnvironmentUpdate.Default with
+        {
+            Vegetation = Db2VegetationOptions.Default with { StartChloroplasts = _environment.Vegetation.StartChloroplasts },
+        };
         _shapeCreation = null;
         _shapeDrift = null;
         _obstacles = [];
         _legacySettingsFields = null;
         ApplyGlobalSettings(_profileSettings);
+        _nativeFieldSize = null;
         Backend.SelectedIndex = 0;
         WorldWidth.Value = 16_000;
         WorldHeight.Value = 12_000;
@@ -474,9 +644,12 @@ public sealed partial class SetupWindow : Window
         Speed.SelectedIndex = 3;
         Sustenance.SelectedIndex = 3;
         AutomaticProgression.IsChecked = true;
+        OrdinaryRestartToggle.IsChecked = false;
+        _legacySettingsFields = null;
         StarterMode.IsChecked = true;
         Mode_Checked(StarterMode, e);
         _workflow.Reset(ReadSetupOptions(new WorldSetupOptions()));
+        _liveStartingChloroplastsConfigured = _startingChloroplastsConfigured;
         SetupStatus.Text = "New world defaults restored.";
     }
 
@@ -489,20 +662,26 @@ public sealed partial class SetupWindow : Window
     private async void OpenSave_Click(object? sender, RoutedEventArgs e)
     {
         if (await _storage.PickSimulationPathAsync(this) is { } path)
-            PublishWorld(new WorldSetupOptions { LoadSavePath = path, GlobalSettings = _profileSettings });
+            OpenSavedWorld(path);
     }
 
     private void Resume_Click(object? sender, RoutedEventArgs e)
     {
         if (!ResumeMenuItem.IsVisible) return;
         if (_storage.FindLastExitSimulation() is { } path)
-            PublishWorld(new WorldSetupOptions { LoadSavePath = path, GlobalSettings = _profileSettings });
+            OpenSavedWorld(path);
         else
         {
             ResumeMenuItem.IsVisible = false;
             SetupStatus.Text = "No last simulation is available.";
         }
     }
+
+    private void OpenSavedWorld(string path, bool recover = false) => PublishWorld(new WorldSetupOptions
+    {
+        LoadSavePath = path, IsAutosaveRecovery = recover, GlobalSettings = _profileSettings,
+        Vegetation = Db2VegetationOptions.Default with { StartChloroplasts = _environment.Vegetation.StartChloroplasts },
+    });
 
     private async void Exit_Click(object? sender, RoutedEventArgs e)
     {
@@ -586,6 +765,7 @@ public sealed partial class SetupWindow : Window
         var enabled = mode != StartingMode.StarterBotsAndVegetables;
         Sustenance.IsEnabled = enabled;
         AutomaticProgression.IsEnabled = enabled;
+        OrdinaryRestartToggle.IsEnabled = !enabled;
         SustenanceLabel.Text = "ZEROBOT SUSTENANCE";
         SustenanceHint.Text = enabled
             ? "Optional assistance while functional DNA evolves."
@@ -596,7 +776,7 @@ public sealed partial class SetupWindow : Window
     {
         var latest = _storage.FindLatestAutosave();
         if (latest is null) { SetupStatus.Text = "No autosave is available."; return; }
-        PublishWorld(new WorldSetupOptions { LoadSavePath = latest, IsAutosaveRecovery = true, GlobalSettings = _profileSettings });
+        OpenSavedWorld(latest, recover: true);
     }
 
     private async void OnboardingGotIt_Click(object? sender, RoutedEventArgs e)

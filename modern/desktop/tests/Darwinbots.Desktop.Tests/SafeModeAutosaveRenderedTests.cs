@@ -1,12 +1,16 @@
 using System.Diagnostics;
+using System.Collections.Concurrent;
 using System.Reflection;
 using Avalonia.Controls;
 using Avalonia.Headless;
+using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Darwinbots.Desktop.Controls;
 using Darwinbots.Desktop.Core;
 using Darwinbots.Desktop.Core.LegacyMenus;
+using Darwinbots.Desktop.Services;
 using Darwinbots.Desktop.ViewModels;
 using Darwinbots.Desktop.Views;
 using Xunit;
@@ -71,7 +75,7 @@ public sealed class SafeModeAutosaveRenderedTests
 
                 speed.SelectedIndex = 1;
                 Click("ToolbarSlot10");
-                Assert.Equal(3, speed.SelectedIndex);
+                Assert.Equal(1, speed.SelectedIndex);
                 var maximumBatch = Field<uint>(window, "_maximumBatch");
                 Click("ToolbarSlot09");
                 Assert.False(timer.IsEnabled);
@@ -97,7 +101,7 @@ public sealed class SafeModeAutosaveRenderedTests
 
                 Click("ToolbarSlot09");
                 Assert.Equal("15 CPS OFF", Named<Button>(window, "ToolbarSlot09").Content);
-                Assert.Equal(TimeSpan.FromMilliseconds(1), timer.Interval);
+                Assert.Equal(TimeSpan.FromMilliseconds(16), timer.Interval);
                 Click("ToolbarSlot09");
                 Assert.False(timer.IsEnabled);
                 Click("TurboButton");
@@ -106,7 +110,7 @@ public sealed class SafeModeAutosaveRenderedTests
                 releaseTurbo.SetResult();
                 await WaitFor(() => !Field<bool>(window, "_tickInFlight"));
                 Assert.False(timer.IsEnabled);
-                Assert.Equal(3, speed.SelectedIndex);
+                Assert.Equal(1, speed.SelectedIndex);
                 Assert.Equal(maximumBatch, Field<uint>(window, "_maximumBatch"));
                 Assert.Equal("FAST ON", Named<Button>(window, "ToolbarSlot10").Content);
 
@@ -123,6 +127,127 @@ public sealed class SafeModeAutosaveRenderedTests
                 releaseTurbo.TrySetResult();
                 window.Close();
             }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task CtrlPStagesAndAppliesOriginalFieldSizeExceptDuringF1OrSafeModeRecovery()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"db24832-field-size-recovery-{Guid.NewGuid():N}.db3s");
+        try
+        {
+            await DesktopTestApplication.Session.Dispatch(async () =>
+            {
+                var options = Setup(true) with
+                {
+                    NativeFieldSize = 2, WorldWidth = 19_000, WorldHeight = 13_000,
+                };
+                var storage = new AuditStorageService { LatestAutosave = path };
+                var window = new MainWindow([], options, NativeEngineClientFactory.Instance, storage);
+                try
+                {
+                    Show(window);
+                    await Ready(window);
+                    var session = Field<SimulationSession>(window, "_session");
+                    var viewport = Named<WorldViewport>(window, "Viewport");
+                    var menu = Named<LegacyMenuBar>(window, "HistoricMenuBar");
+
+                    async Task<AdvancedSettingsWindow> OpenGeneral()
+                    {
+                        window.KeyPress(Key.P, RawInputModifiers.Control, PhysicalKey.P, null);
+                        window.KeyRelease(Key.P, RawInputModifiers.Control, PhysicalKey.P, null);
+                        await WaitFor(() => window.OwnedWindows.OfType<AdvancedSettingsWindow>().Any());
+                        var dialog = Assert.Single(window.OwnedWindows.OfType<AdvancedSettingsWindow>());
+                        Assert.Equal(1, Named<TabControl>(dialog, "SettingsTabs").SelectedIndex);
+                        return dialog;
+                    }
+
+                    async Task Dismiss(AdvancedSettingsWindow dialog, string button)
+                    {
+                        Named<Button>(dialog, button).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                        await WaitFor(() => !Field<bool>(window, "_editingLiveSettings"));
+                    }
+
+                    viewport.ShowResourceGauges = true;
+                    viewport.ZoomIn();
+                    var dialog = await OpenGeneral();
+                    var preset = Named<ComboBox>(dialog, "FieldSizePreset");
+                    Assert.Equal(0, preset.SelectedIndex);
+                    Assert.Equal($"{19_000:N0} × {13_000:N0}", Named<TextBlock>(dialog, "FieldSizeDimensions").Text);
+                    Assert.Null(dialog.Update.FieldSize);
+                    preset.SelectedIndex = 13;
+                    Assert.Equal($"{192_000:N0} × {144_000:N0}", Named<TextBlock>(dialog, "FieldSizeDimensions").Text);
+                    Assert.Equal(new float[] { 19_000, 13_000 }, session.LatestSnapshot.WorldSize);
+                    await Dismiss(dialog, "CancelButton");
+                    Assert.Equal(new float[] { 19_000, 13_000 }, session.LatestSnapshot.WorldSize);
+                    Assert.True(viewport.Zoom > 1);
+
+                    dialog = await OpenGeneral();
+                    Named<ComboBox>(dialog, "FieldSizePreset").SelectedIndex = 1;
+                    await Dismiss(dialog, "ApplyButton");
+                    Assert.Equal(new float[] { 9_237, 6_928 }, session.LatestSnapshot.WorldSize);
+                    Assert.Equal(1, (await session.ReadConfigurationAsync())!.NativeFieldSize);
+                    Assert.StartsWith($"{9_237:N0} × {6_928:N0}", Named<TextBlock>(window, "WorldParametersText").Text);
+                    Assert.Equal(1d, viewport.Zoom);
+                    Assert.True(viewport.ShowResourceGauges);
+                    Assert.Null(Field<EnvironmentUpdate>(window, "_liveEnvironment").FieldSize);
+
+                    dialog = await OpenGeneral();
+                    Assert.Equal(1, Named<ComboBox>(dialog, "FieldSizePreset").SelectedIndex);
+                    Assert.Null(dialog.Update.FieldSize);
+                    await Dismiss(dialog, "CancelButton");
+
+                    await File.WriteAllBytesAsync(path, await session.SaveAsync());
+                    await session.ConfigureLocalModeAsync(LocalModeConfig.Default with { Kind = LocalModeKind.Contest });
+                    Assert.True(session.LatestSnapshot.NativeF1Enabled);
+                    dialog = await OpenGeneral();
+                    Assert.False(Named<ComboBox>(dialog, "FieldSizePreset").IsEnabled);
+                    Assert.Contains("F1 contest", Named<TextBlock>(dialog, "FieldSizeUnavailable").Text);
+                    await Dismiss(dialog, "CancelButton");
+
+                    Activate(menu, LegacyCommandId.RecordingRecoverLatestAutosave);
+                    await WaitFor(() => ViewModel(window).Status.StartsWith("RECOVERED", StringComparison.Ordinal));
+                    Assert.False(session.LatestSnapshot.NativeF1Enabled);
+                    dialog = await OpenGeneral();
+                    Assert.False(Named<ComboBox>(dialog, "FieldSizePreset").IsEnabled);
+                    Assert.Contains("Safe Mode recovery", Named<TextBlock>(dialog, "FieldSizeUnavailable").Text);
+                    await Dismiss(dialog, "CancelButton");
+                }
+                finally { window.Close(); }
+            }, CancellationToken.None);
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
+    public async Task SetupRetainsTheLargestOriginalFieldPresetThroughCreateAndSettingsExport()
+    {
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var storage = new AuditStorageService
+            {
+                SettingsToOpen = DesktopSettings.FromWorldSetup(Setup(false) with
+                {
+                    NativeFieldSize = 25, WorldWidth = 2_496_000, WorldHeight = 1_872_000,
+                }),
+            };
+            var window = new SetupWindow(storage);
+            try
+            {
+                WorldSetupOptions? created = null;
+                window.WorldCreated += value => created = value;
+                Show(window);
+                Named<Button>(window, "LoadSettingsButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => Named<TextBlock>(window, "SetupStatus").Text == "SETTINGS LOADED");
+                Assert.Equal(2_496_000m, Named<NumericUpDown>(window, "WorldWidth").Value);
+                Assert.Equal(1_872_000m, Named<NumericUpDown>(window, "WorldHeight").Value);
+                Named<Button>(window, "SaveSettingsButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => storage.SavedSettings is not null);
+                Assert.Equal(25, storage.SavedSettings!.NativeFieldSize);
+                Named<Button>(window, "StartNewButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Assert.Equal(25, Assert.IsType<WorldSetupOptions>(created).NativeFieldSize);
+            }
+            finally { window.Close(); }
         }, CancellationToken.None);
     }
 
@@ -167,6 +292,336 @@ public sealed class SafeModeAutosaveRenderedTests
             }, CancellationToken.None);
         }
         finally { if (File.Exists(path)) File.Delete(path); }
+    }
+
+    [Fact]
+    public async Task MissingRepopulationSourceRetriesBeforeSafeModeCheckpoint()
+    {
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var factory = new AuditEngineClientFactory(encodeTickInSave: true);
+            var picker = new TaskCompletionSource<DesktopTextFile?>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var storage = new AuditStorageService { ResolveNativeRepopulationSource = (_, _) => picker.Task };
+            var window = new MainWindow([], Setup(true), factory, storage);
+            try
+            {
+                Show(window);
+                await Ready(window);
+                var engine = Assert.Single(factory.Clients);
+                var session = Field<SimulationSession>(window, "_session");
+                var missing = RequireRepopulationSource(engine, 42);
+                const string existingDna = "start\nstop\n";
+                const string selectedDna = "start\n1 .up store\nstop\n";
+                var selectedPath = Path.Combine(Path.GetTempPath(), missing.Filename);
+                engine.BoundNativeRestartSourceDna.Add(17, existingDna);
+                await session.RefreshSnapshotAsync();
+                engine.Calls.Clear();
+
+                var advance = InvokeTask(window, "AdvanceSimulationAsync", 3u);
+                await WaitFor(() => storage.NativeRepopulationSourceRequests.Count == 1);
+                var request = Assert.Single(storage.NativeRepopulationSourceRequests);
+                Assert.Same(window, request.Owner);
+                Assert.Equal(missing, request.Source);
+                var attempt = Assert.Single(engine.NativeRepopulationTickAttempts);
+                Assert.Equal((1u, (int?)1999, true), (attempt.Count, attempt.FromCycle, attempt.Required));
+                Assert.Empty(attempt.CancelledLineages);
+                AssertUncommittedRepopulationTick(session, engine, storage);
+
+                picker.SetResult(new DesktopTextFile(missing.Filename, selectedDna, selectedPath));
+                await advance.WaitAsync(TimeSpan.FromSeconds(8));
+
+                var binding = Assert.Single(engine.NativeRestartBindings);
+                Assert.True(binding.PreserveExisting);
+                Assert.Equal(new NativeRestartBinding(missing.LineageId, selectedDna, Path.GetDirectoryName(selectedPath)),
+                    Assert.Single(binding.Sources));
+                Assert.Equal(existingDna, engine.BoundNativeRestartSourceDna[17]);
+                Assert.Equal(selectedDna, engine.BoundNativeRestartSourceDna[missing.LineageId]);
+                Assert.Empty(engine.CommittedCancelledRepopulationLineages);
+                Assert.Equal(new[] { "Tick:1", "Save", "Tick:2" }, TickAndSaveCalls(engine));
+                Assert.Equal(1ul, BitConverter.ToUInt64(Assert.Single(storage.AutosaveWrites)));
+                Assert.Equal(3ul, session.LatestSnapshot.Tick);
+                Assert.Equal(2002, session.LatestSnapshot.NativeCycle);
+            }
+            finally
+            {
+                picker.TrySetResult(null);
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CancelingOneRepopulationSourcePreservesTransportAndCommitsAfterReplacement(bool running)
+    {
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var factory = new AuditEngineClientFactory(encodeTickInSave: true);
+            var firstPicker = new TaskCompletionSource<DesktopTextFile?>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var secondPicker = new TaskCompletionSource<DesktopTextFile?>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var tickStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var releaseTick = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var timeout = TimeSpan.FromSeconds(8);
+            var storage = new AuditStorageService
+            {
+                ResolveNativeRepopulationSource = (_, source) => source.LineageId == 42 ? firstPicker.Task : secondPicker.Task,
+            };
+            var window = new MainWindow([], Setup(true) with { TicksPerUpdate = 1 }, factory, storage);
+            try
+            {
+                Show(window);
+                await Ready(window);
+                var engine = Assert.Single(factory.Clients);
+                var session = Field<SimulationSession>(window, "_session");
+                var timer = Field<DispatcherTimer>(window, "_runTimer");
+                var gate = Field<SemaphoreSlim>(window, "_advanceGate");
+                var missing = RequireRepopulationSource(engine, 42);
+                var replacement = RequireRepopulationSource(engine, 43);
+                await session.RefreshSnapshotAsync();
+                await WaitFor(() => ViewModel(window).NativeCycle == 1999);
+                engine.Calls.Clear();
+                engine.AdvanceNativeCycle = (count, previous) =>
+                {
+                    tickStarted.TrySetResult();
+                    releaseTick.Task.WaitAsync(timeout).GetAwaiter().GetResult();
+                    return previous + checked((int)count);
+                };
+
+                Named<Button>(window, running ? "RunButton" : "StepButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => storage.NativeRepopulationSourceRequests.Count == 1);
+                AssertUncommittedRepopulationTick(session, engine, storage);
+                Assert.Equal(running, timer.IsEnabled);
+                firstPicker.SetResult(null);
+
+                await WaitFor(() => storage.NativeRepopulationSourceRequests.Count == 2);
+                AssertUncommittedRepopulationTick(session, engine, storage);
+                Assert.Empty(engine.NativeRestartBindings);
+                var requests = storage.NativeRepopulationSourceRequests.ToArray();
+                Assert.All(requests, request => Assert.Same(window, request.Owner));
+                Assert.Equal(new[] { missing, replacement }, requests.Select(request => request.Source));
+
+                const string dna = "start\n1 .up store\nstop\n";
+                secondPicker.SetResult(new DesktopTextFile(replacement.Filename, dna));
+                await tickStarted.Task.WaitAsync(timeout);
+                Assert.Equal(running, timer.IsEnabled);
+                if (running) Named<Button>(window, "PauseButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                releaseTick.SetResult();
+                await WaitFor(() => gate.CurrentCount == 1 && ViewModel(window).NativeCycle == 2000);
+
+                var attempts = engine.NativeRepopulationTickAttempts.ToArray();
+                Assert.Equal(3, attempts.Length);
+                Assert.All(attempts, attempt =>
+                    Assert.Equal((1u, (int?)1999, true), (attempt.Count, attempt.FromCycle, attempt.Required)));
+                Assert.Empty(attempts[0].CancelledLineages);
+                Assert.Equal(missing.LineageId, Assert.Single(attempts[1].CancelledLineages));
+                Assert.Equal(missing.LineageId, Assert.Single(attempts[2].CancelledLineages));
+                Assert.Equal(missing.LineageId, Assert.Single(engine.CommittedCancelledRepopulationLineages));
+                var binding = Assert.Single(engine.NativeRestartBindings);
+                Assert.True(binding.PreserveExisting);
+                Assert.Equal(new NativeRestartBinding(replacement.LineageId, dna), Assert.Single(binding.Sources));
+                Assert.Equal(new[] { "Tick:1", "Save" }, TickAndSaveCalls(engine));
+                Assert.Equal(1ul, BitConverter.ToUInt64(Assert.Single(storage.AutosaveWrites)));
+                Assert.Equal(1ul, session.LatestSnapshot.Tick);
+                Assert.Equal(2000, session.LatestSnapshot.NativeCycle);
+                Assert.False(timer.IsEnabled);
+            }
+            finally
+            {
+                firstPicker.TrySetResult(null);
+                secondPicker.TrySetResult(null);
+                releaseTick.TrySetResult();
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
+    private static NativeRestartSource RequireRepopulationSource(AuditEngineClient engine, ulong lineageId)
+    {
+        var source = new NativeRestartSource(lineageId, $"missing-alga-{Guid.NewGuid():N}.txt", "Robots");
+        engine.NativeCycle = 1999;
+        engine.UnresolvedNativeRepopulationSources.Add(source);
+        return source;
+    }
+
+    private static IEnumerable<string> TickAndSaveCalls(AuditEngineClient engine) =>
+        engine.Calls.Where(call => call.StartsWith("Tick:", StringComparison.Ordinal) || call == "Save");
+
+    private static void AssertUncommittedRepopulationTick(
+        SimulationSession session, AuditEngineClient engine, AuditStorageService storage)
+    {
+        Assert.Equal(0ul, session.LatestSnapshot.Tick);
+        Assert.Equal(1999, session.LatestSnapshot.NativeCycle);
+        Assert.Empty(TickAndSaveCalls(engine));
+        Assert.Empty(engine.CommittedCancelledRepopulationLineages);
+        Assert.Empty(storage.AutosaveWrites);
+    }
+
+    [Fact]
+    public async Task StepAndF7RedrawOneNativeCycleAfterTheSafeModeCheckpoint()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"db24832-step-cycle-backup-{Guid.NewGuid():N}.db3s");
+        try
+        {
+            await DesktopTestApplication.Session.Dispatch(async () =>
+            {
+                var factory = new AuditEngineClientFactory(encodeTickInSave: true);
+                var storage = new AuditStorageService { LatestAutosave = path, PersistAutosaves = true };
+                var window = new MainWindow([], Setup(true), factory, storage);
+                var finishRedraw = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                try
+                {
+                    Show(window);
+                    await Ready(window);
+                    var session = Field<SimulationSession>(window, "_session");
+                    var engine = Assert.Single(factory.Clients);
+                    engine.NativeCycle = 1999;
+                    await session.RefreshSnapshotAsync();
+                    await WaitFor(() => ViewModel(window).NativeCycle == 1999);
+                    engine.Calls.Clear();
+
+                    var publishedCycles = new ConcurrentQueue<int?>();
+                    session.SnapshotPublished += snapshot => publishedCycles.Enqueue(snapshot.NativeCycle);
+                    var checkpointExistsAtRedraw = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                    engine.OnNativeRedraw = () =>
+                    {
+                        checkpointExistsAtRedraw.TrySetResult(File.Exists(path));
+                        finishRedraw.Task.WaitAsync(TimeSpan.FromSeconds(8)).GetAwaiter().GetResult();
+                    };
+                    Named<Button>(window, "StepButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    Assert.True(await checkpointExistsAtRedraw.Task.WaitAsync(TimeSpan.FromSeconds(8)));
+                    Assert.Equal(1ul, BitConverter.ToUInt64(await File.ReadAllBytesAsync(path)));
+                    Assert.Equal(1999, ViewModel(window).NativeCycle);
+                    Assert.Empty(publishedCycles);
+
+                    finishRedraw.SetResult();
+                    await WaitFor(() => ViewModel(window).NativeCycle == 2000);
+                    window.KeyPress(Key.F7, RawInputModifiers.None, PhysicalKey.F7, null);
+                    window.KeyRelease(Key.F7, RawInputModifiers.None, PhysicalKey.F7, null);
+                    await WaitFor(() => ViewModel(window).NativeCycle == 2001);
+
+                    Assert.Equal(new int?[] { 2000, 2001 }, publishedCycles);
+                    Assert.Equal(new[] { "Tick:1", "Save", "RedrawNative", "Tick:1", "RedrawNative" },
+                        engine.Calls.Where(call => call.StartsWith("Tick:", StringComparison.Ordinal) || call is "Save" or "RedrawNative"));
+                    Assert.Equal(new[] { false, false }, engine.NativeRedrawModes.ToArray());
+                    Assert.Single(storage.AutosaveWrites);
+                }
+                finally
+                {
+                    finishRedraw.TrySetResult();
+                    window.Close();
+                }
+            }, CancellationToken.None);
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ContinuousNativeRedrawFollowsTheSafeModeCheckpoint(bool recordDeaths)
+    {
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var factory = new AuditEngineClientFactory(encodeTickInSave: true);
+            var storage = new AuditStorageService();
+            var options = Setup(true) with
+            {
+                Recording = new Db2RecordingOptions(DeadSnapshotEnabled: recordDeaths, SafeModeBackup: true),
+            };
+            var window = new MainWindow([], options, factory, storage);
+            try
+            {
+                Show(window);
+                await Ready(window);
+                var engine = Assert.Single(factory.Clients);
+                var session = Field<SimulationSession>(window, "_session");
+                engine.NativeCycle = 1998;
+                await session.RefreshSnapshotAsync();
+                await WaitFor(() => ViewModel(window).NativeCycle == 1998);
+                engine.Calls.Clear();
+                var savesAtRedraw = 0;
+                engine.OnNativeRedraw = () => savesAtRedraw = storage.AutosaveWrites.Count;
+
+                await InvokeTask(window, "AdvanceSimulationAsync", 3u);
+
+                Assert.Equal(new (uint, int?, NativeRedrawCadence, bool)[]
+                {
+                    (1, 1998, NativeRedrawCadence.EveryCycle, recordDeaths),
+                    (1, 1999, NativeRedrawCadence.Off, recordDeaths),
+                    (1, 2000, NativeRedrawCadence.EveryCycle, recordDeaths),
+                }, engine.NativeTicks.ToArray());
+                Assert.Equal(new[] { "Tick:1", "Tick:1", "Save", "RedrawNative", "Tick:1" },
+                    engine.Calls.Where(call => call.StartsWith("Tick:", StringComparison.Ordinal) || call is "Save" or "RedrawNative"));
+                Assert.Equal(1, savesAtRedraw);
+                Assert.True(Assert.Single(engine.NativeRedrawModes));
+                Assert.Equal(2ul, BitConverter.ToUInt64(Assert.Single(storage.AutosaveWrites)));
+                Assert.Equal(2001, session.LatestSnapshot.NativeCycle);
+            }
+            finally { window.Close(); }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task NativeGraphicsAndFastCadenceLeavePausedStateAndSpeedSelectionAlone()
+    {
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var factory = new AuditEngineClientFactory();
+            var window = new MainWindow([], Setup(false), factory, new AuditStorageService());
+            try
+            {
+                Show(window);
+                await Ready(window);
+                var engine = Assert.Single(factory.Clients);
+                var session = Field<SimulationSession>(window, "_session");
+                var viewport = Named<WorldViewport>(window, "Viewport");
+                var timer = Field<DispatcherTimer>(window, "_runTimer");
+                var graphics = Named<Button>(window, "ToolbarSlot14");
+                var fast = Named<Button>(window, "ToolbarSlot10");
+                var speed = Named<ComboBox>(window, "RuntimeSpeed");
+                int? PaintedCycle() => Field<EngineSnapshot>(viewport, "_snapshot").NativeCycle;
+
+                engine.NativeCycle = 2001;
+                await session.RefreshSnapshotAsync();
+                await WaitFor(() => PaintedCycle() == 2001);
+                Assert.False(timer.IsEnabled);
+                graphics.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Assert.False(timer.IsEnabled);
+                Assert.True(viewport.IsVisible);
+                Assert.Equal("GRAPHICS OFF", graphics.Content);
+                Assert.Equal("TURBO", Named<Button>(window, "TurboButton").Content);
+
+                await InvokeTask(window, "AdvanceSimulationAsync", 2u);
+                await WaitFor(() => ViewModel(window).NativeCycle == 2003);
+                Assert.Equal(2001, PaintedCycle());
+                Assert.Equal(NativeRedrawCadence.Off, Assert.Single(engine.NativeTicks).Cadence);
+
+                Named<Button>(window, "StepButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => PaintedCycle() == 2004);
+                Assert.Single(engine.Calls, call => call == "RedrawNative");
+                Assert.False(timer.IsEnabled);
+
+                graphics.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Assert.Equal("GRAPHICS ON", graphics.Content);
+                speed.SelectedIndex = 1;
+                var runInterval = timer.Interval;
+                fast.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Assert.Equal("FAST ON", fast.Content);
+                Assert.Equal(1, speed.SelectedIndex);
+                Assert.Equal(runInterval, timer.Interval);
+                Assert.False(timer.IsEnabled);
+
+                engine.NativeTicks.Clear();
+                await InvokeTask(window, "AdvanceSimulationAsync", 8u);
+                await WaitFor(() => ViewModel(window).NativeCycle == 2012);
+                Assert.Equal(2010, PaintedCycle());
+                Assert.Equal(new[] { 6u, 2u }, engine.NativeTicks.Select(tick => tick.Count));
+                Assert.Equal(NativeRedrawCadence.EveryTenthCycle, engine.NativeTicks.First().Cadence);
+                Assert.Single(engine.Calls, call => call == "RedrawNative");
+            }
+            finally { window.Close(); }
+        }, CancellationToken.None);
     }
 
     [Fact]
@@ -280,6 +735,206 @@ public sealed class SafeModeAutosaveRenderedTests
             }
             finally { window.Close(); }
         }, CancellationToken.None);
+    }
+
+    [Fact]
+    public void OriginalSimulationSourcePathsFollowLegacyRootsAndLocalSaveFallbacks()
+    {
+        var profile = Directory.CreateTempSubdirectory("darwinbots-restart-source-paths-");
+        try
+        {
+            var sim = Path.Combine(profile.CreateSubdirectory("Saves").FullName, "fixture.sim");
+            var main = profile.CreateSubdirectory("main");
+            var robots = main.CreateSubdirectory("Robots");
+            var literal = profile.CreateSubdirectory("custom");
+            var relative = profile.CreateSubdirectory(Path.Combine("Saves", "relative"));
+            const string name = "fixture-specific-café.txt";
+            const string savedDna = "' literal café\r\nstart stop";
+            const string rootDna = "' configured\r\nstart stop";
+            const string relativeDna = "' saved relative directory\r\nstart stop";
+            const string siblingDna = "' explicit save directory\r\nstart stop";
+            var rootPath = Path.Combine(robots.FullName, name);
+            var stalePath = Path.Combine(profile.FullName, "unavailable");
+            File.WriteAllBytes(Path.Combine(literal.FullName, name), LegacyDnaText.Encode(savedDna));
+            File.WriteAllBytes(rootPath, LegacyDnaText.Encode(rootDna));
+            File.WriteAllBytes(Path.Combine(relative.FullName, name), LegacyDnaText.Encode(relativeDna));
+            File.WriteAllBytes(Path.Combine(Path.GetDirectoryName(sim)!, name), LegacyDnaText.Encode(siblingDna));
+
+            string? Resolve(string directory) => SetupStorageService.ResolveNativeRestartSource(
+                new NativeRestartSource(1, name, directory), sim, main.FullName);
+            Assert.Equal(savedDna, Resolve(literal.FullName));
+            Assert.Equal(rootDna, Resolve(@"&#\Robots"));
+            Assert.Equal(rootDna, Resolve(""));
+            Assert.Equal(relativeDna, Resolve("relative"));
+            Assert.Equal(rootDna, Resolve(stalePath));
+            Assert.Equal(rootDna, Resolve("relocated"));
+            Assert.Equal(rootDna, Resolve("https://example.invalid/robots"));
+            Assert.Equal(rootDna, Resolve(@"\\example.invalid\robots"));
+            File.WriteAllBytes(Path.Combine(literal.FullName, name), [0xef, 0xbb, 0xbf, 0xff]);
+            Assert.Equal(rootDna, Resolve(literal.FullName));
+
+            File.Delete(rootPath);
+            Assert.Equal(siblingDna, Resolve(stalePath));
+            Assert.Equal(siblingDna, Resolve(literal.FullName));
+            Assert.Equal(siblingDna, Resolve(@"\\example.invalid\robots"));
+            Assert.Null(SetupStorageService.ResolveNativeRestartSource(new(2, "../" + name, ""), sim, main.FullName));
+        }
+        finally { profile.Delete(recursive: true); }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ImportedOriginalSimulationRestartsThroughItsPackagedSourceRoster(bool usePlayerPicker)
+    {
+        const string relative = "modern/engine/tests/fixtures/db24832-original-user.sim";
+        var repository = new DirectoryInfo(AppContext.BaseDirectory);
+        while (repository is not null && !File.Exists(Path.Combine(repository.FullName, relative)))
+            repository = repository.Parent;
+        Assert.NotNull(repository);
+        var profile = Directory.CreateTempSubdirectory("darwinbots-restart-sim-");
+        try
+        {
+            var path = Path.Combine(profile.FullName, "archived.sim");
+            File.Copy(Path.Combine(repository.FullName, relative), path);
+            await DesktopTestApplication.Session.Dispatch(async () =>
+            {
+                var options = Setup(false);
+                if (!usePlayerPicker) options = options with { Species = [], LoadSavePath = path };
+                var storage = AvaloniaDesktopStorageService.Instance;
+                var window = new MainWindow([], options, NativeEngineClientFactory.Instance, storage);
+                try
+                {
+                    Show(window);
+                    if (usePlayerPicker)
+                    {
+                        await Ready(window);
+                        var selected = RestartStorageProxy.Create<IStorageFile>((method, _) => method.Name switch
+                        {
+                            "get_Path" => new Uri(path),
+                            nameof(IStorageFile.OpenReadAsync) => Task.FromResult<Stream>(File.OpenRead(path)),
+                            _ => throw new NotSupportedException(method.Name),
+                        });
+                        var picker = RestartStorageProxy.Create<IStorageProvider>((method, _) => method.Name switch
+                        {
+                            nameof(IStorageProvider.OpenFilePickerAsync) => Task.FromResult<IReadOnlyList<IStorageFile>>([selected]),
+                            _ => throw new NotSupportedException(method.Name),
+                        });
+                        typeof(TopLevel).GetField("_storageProvider", BindingFlags.Instance | BindingFlags.NonPublic)!
+                            .SetValue(window, picker);
+                        Activate(Named<LegacyMenuBar>(window, "HistoricMenuBar"), LegacyCommandId.FileLoadSimulation);
+                    }
+                    await WaitFor(() => ViewModel(window).Status == "LOADED");
+                    var session = Field<SimulationSession>(window, "_session");
+                    var imported = session.LatestSnapshot;
+                    Assert.Equal(281, imported.NativeCycle);
+                    Assert.Equal(196, imported.Population);
+                    Assert.True(imported.OrdinaryRestartAvailable);
+                    Assert.False(imported.OrdinaryRestartOnExtinction);
+                    Assert.Contains(imported.Species, species => species.Name == "Alga_Minimalis_Chloroplastus.txt");
+                    Assert.Contains(imported.Species, species => species.Name == "The One (1G)(Shen)-23.04.05.txt");
+
+                    Activate(Named<LegacyMenuBar>(window, "HistoricMenuBar"), LegacyCommandId.EditRestartAndLeagues);
+                    var restart = Named<CheckBox>(window, "OrdinaryRestartToggle");
+                    Assert.True(restart.IsEnabled);
+                    restart.IsChecked = true;
+                    restart.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    await WaitFor(() => session.LatestSnapshot.OrdinaryRestartOnExtinction);
+
+                    var checkpoint = await session.SaveAsync();
+                    File.Delete(path);
+                    await InvokeTask(window, "LoadSimulationAsync", checkpoint);
+                    var resumed = session.LatestSnapshot;
+                    Assert.Equal(196, resumed.Population);
+                    Assert.True(resumed.OrdinaryRestartOnExtinction);
+                    var original = resumed.Organisms.Select(robot => new OrganismKey(robot.Slot, robot.Generation)).ToArray();
+                    await session.RemoveManyAsync(original, suppressDeathPoffs: true);
+                    Assert.Empty(session.LatestSnapshot.Organisms);
+                    await InvokeTask(window, "AdvanceSimulationAsync", 1u);
+
+                    var restarted = session.LatestSnapshot;
+                    Assert.Equal(1ul, restarted.OrdinaryRestartCount);
+                    Assert.False(restarted.OrdinaryRestartPending);
+                    Assert.Equal(5, restarted.Organisms.Count(robot => !robot.Vegetable));
+                    Assert.Equal(5, restarted.Organisms.Count(robot => robot.Vegetable));
+                }
+                finally { window.Close(); }
+            }, CancellationToken.None);
+        }
+        finally { profile.Delete(recursive: true); }
+    }
+
+    [Fact]
+    public async Task OrdinaryExtinctionRestartsFromTheOriginalSetPreference()
+    {
+        var directory = Directory.CreateTempSubdirectory("darwinbots-restart-set-");
+        try
+        {
+            var setupOptions = Setup(false);
+            var species = Assert.Single(setupOptions.Species) with { DnaPath = Path.Combine(directory.FullName, "restart-bot.txt") };
+            await File.WriteAllBytesAsync(species.DnaPath!, LegacyDnaText.Encode(species.Dna));
+            var settings = DesktopSettings.FromWorldSetup(setupOptions with
+            {
+                OrdinaryRestartOnExtinction = true,
+                Species = [species],
+            });
+            var encoded = LegacyDnaText.Decode(Db2SettingsCodec.Encode(settings));
+            const string marker = "#DARWINBOTS_MODERN_SETTINGS_V1#";
+            var settingsPath = Path.Combine(directory.FullName, "restart.set");
+            var originalSet = LegacyDnaText.Encode(encoded[..encoded.IndexOf(marker, StringComparison.Ordinal)]);
+            await File.WriteAllBytesAsync(settingsPath, originalSet);
+            var storage = new SettingsWorkflowStorage
+            {
+                SettingsToOpen = SetupStorageService.DecodeSettings(settingsPath, await File.ReadAllBytesAsync(settingsPath)),
+            };
+
+            await DesktopTestApplication.Session.Dispatch(async () =>
+            {
+                var setup = new SetupWindow(storage);
+                WorldSetupOptions? created = null;
+                setup.WorldCreated += value => created = value;
+                try
+                {
+                    Show(setup);
+                    Named<Button>(setup, "LoadSettingsButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    await WaitFor(() => Named<TextBlock>(setup, "SetupStatus").Text == "SETTINGS LOADED");
+                    Assert.True(Named<CheckBox>(setup, "OrdinaryRestartToggle").IsChecked);
+                    Named<Button>(setup, "SaveSettingsButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    await WaitFor(() => storage.SavedSettings is not null);
+                    Assert.True(storage.SavedSettings!.OrdinaryRestartOnExtinction);
+                    Named<Button>(setup, "StartNewButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    Assert.NotNull(created);
+                    Assert.True(created.EnableOrdinaryRestartOnStart);
+                }
+                finally { setup.Close(); }
+
+                var window = new MainWindow([], created with { Backend = "Cpu" },
+                    NativeEngineClientFactory.Instance, new AuditStorageService());
+                try
+                {
+                    Show(window);
+                    await Ready(window);
+                    var session = Field<SimulationSession>(window, "_session");
+                    var before = session.LatestSnapshot;
+                    Assert.True(before.OrdinaryRestartOnExtinction);
+                    Assert.Equal(LocalModeStatus.Idle, before.LocalMode.Status);
+                    var oldRobot = Assert.Single(before.Organisms);
+                    await session.RemoveAsync(oldRobot.Slot, oldRobot.Generation);
+                    await InvokeTask(window, "AdvanceSimulationAsync", 1u);
+
+                    var after = session.LatestSnapshot;
+                    Assert.Equal(1ul, after.OrdinaryRestartCount);
+                    Assert.False(after.OrdinaryRestartPending);
+                    Assert.Equal(LocalModeStatus.Idle, after.LocalMode.Status);
+                    var replacement = Assert.Single(after.Organisms);
+                    Assert.NotEqual(oldRobot.UniqueId, replacement.UniqueId);
+                    Assert.Equal(oldRobot.Species, replacement.Species);
+                    Assert.Equal(1000, replacement.Energy);
+                }
+                finally { window.Close(); }
+            }, CancellationToken.None);
+        }
+        finally { directory.Delete(recursive: true); }
     }
 
     [Fact]
@@ -476,4 +1131,18 @@ public sealed class SafeModeAutosaveRenderedTests
         while (!condition() && DateTime.UtcNow < deadline) await Task.Delay(10);
         Assert.True(condition(), "Timed out waiting for the safe-mode player route.");
     }
+}
+
+public class RestartStorageProxy : DispatchProxy
+{
+    private Func<MethodInfo, object?[], object?> _invoke = null!;
+
+    public static T Create<T>(Func<MethodInfo, object?[], object?> invoke) where T : class
+    {
+        var proxy = DispatchProxy.Create<T, RestartStorageProxy>();
+        ((RestartStorageProxy)(object)proxy)._invoke = invoke;
+        return proxy;
+    }
+
+    protected override object? Invoke(MethodInfo? method, object?[]? args) => _invoke(method!, args ?? []);
 }

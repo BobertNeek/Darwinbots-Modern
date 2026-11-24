@@ -4,12 +4,15 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Darwinbots.Desktop.Core;
+using System.Text;
 
 namespace Darwinbots.Desktop.Views;
 
 public sealed class RobotConsoleWindow : Window
 {
     private readonly RobotConsoleController _controller;
+    private readonly OrganismKey _focus;
+    private readonly ulong _uniqueId;
     private readonly TextBox _transcript;
     private readonly TextBox _command;
     private bool _commandInFlight;
@@ -18,7 +21,11 @@ public sealed class RobotConsoleWindow : Window
         SimulationSession session,
         OrganismKey focus,
         Func<Task>? play = null,
-        Func<Task>? pause = null)
+        Func<Task>? pause = null,
+        Func<uint, CancellationToken, Task<(ulong Tick, ulong Advanced)>>? advance = null,
+        Action<bool>? showDna = null,
+        ulong uniqueId = 0,
+        Action? validateCommand = null)
     {
         Title = $"Darwinbots — Robot Console {focus.Slot}:{focus.Generation}";
         Width = 760;
@@ -27,7 +34,9 @@ public sealed class RobotConsoleWindow : Window
         MinHeight = 420;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         Background = Brush.Parse("#F4F0E6");
-        _controller = new RobotConsoleController(session, focus, play, pause);
+        _controller = new RobotConsoleController(session, focus, play, pause, advance, showDna, validateCommand);
+        _focus = focus;
+        _uniqueId = uniqueId;
 
         var root = new Grid { RowDefinitions = new RowDefinitions("66,*,Auto") };
         root.Children.Add(new Border
@@ -77,7 +86,7 @@ public sealed class RobotConsoleWindow : Window
         var step = Button("STEP", (_, _) => _ = RunCommandAsync("step"));
         var eyes = Button("EYES", (_, _) => _ = RunCommandAsync("eyes"));
         var debug = Button("DEBUG", (_, _) => _ = RunCommandAsync("debug"));
-        var dna = Button("DNA", (_, _) => _ = RunCommandAsync("showdna"));
+        var dna = Button("DNA", (_, _) => _ = RunCommandAsync("showdna", selectConsoleRobotForDna: true));
         var playButton = Button("PLAY", async (_, _) => await RunCommandAsync("play"));
         var pauseButton = Button("PAUSE", async (_, _) => await RunCommandAsync("pause"));
         var commandRow = new Grid
@@ -126,6 +135,48 @@ public sealed class RobotConsoleWindow : Window
         return button;
     }
 
+    internal OrganismKey WatchedRobot => _focus;
+
+    internal bool RecordNativeCycle(EngineSnapshot snapshot, ulong previousTick,
+        IReadOnlyList<NativeConsoleActivationFrame> terminalFrames)
+    {
+        var organism = snapshot.Organisms.FirstOrDefault(actor =>
+            actor.Slot == _focus.Slot && actor.Generation == _focus.Generation && actor.UniqueId == _uniqueId);
+        if (snapshot.Tick > previousTick)
+        {
+            // The DNA phase records the incremented internal tick. Earlier execrob
+            // commands and skipped DNA phases cannot supply this cycle's frame.
+            var activations = organism is not null
+                ? organism.ActivationHistory.LastOrDefault(frame => frame.Tick == snapshot.Tick)?.Activations
+                : terminalFrames.LastOrDefault(frame => frame.Focus == _focus && frame.UniqueId == _uniqueId
+                    && frame.Tick == snapshot.Tick)?.Activations;
+            if (activations is not null)
+            {
+                var output = new StringBuilder();
+                output.AppendLine().AppendLine("***ROBOT GENES EXECUTION***");
+                for (var gene = 1; gene < activations.Length; gene++)
+                    output.Append(gene).AppendLine(activations[gene] ? " executed" : " not executed");
+                AppendNativeTranscript(output.ToString());
+            }
+        }
+        if (organism is not null) return true;
+        AppendNativeTranscript("Robot has died.\n");
+        return false;
+    }
+
+    private void AppendNativeTranscript(string output)
+    {
+        var text = _transcript.Text + output;
+        const int transcriptLimit = 2_500;
+        if (text.Length > transcriptLimit)
+        {
+            var boundary = text.IndexOf('\n', text.Length - transcriptLimit);
+            if (boundary >= 0) text = text[(boundary + 1)..];
+        }
+        _transcript.Text = text;
+        _transcript.CaretIndex = text.Length;
+    }
+
     private void Command_KeyDown(object? sender, KeyEventArgs e)
     {
         if (e.Key != Key.Enter) return;
@@ -136,7 +187,7 @@ public sealed class RobotConsoleWindow : Window
     private void RunCommand_Click(object? sender, RoutedEventArgs e) =>
         _ = RunCommandAsync(_command.Text ?? string.Empty);
 
-    private async Task RunCommandAsync(string input)
+    private async Task RunCommandAsync(string input, bool selectConsoleRobotForDna = false)
     {
         if (_commandInFlight || string.IsNullOrWhiteSpace(input)) return;
         _commandInFlight = true;
@@ -144,8 +195,8 @@ public sealed class RobotConsoleWindow : Window
         {
             _transcript.Text += $"> {input.Trim()}\n";
             _command.Clear();
-            var result = await _controller.ExecuteAsync(input).ConfigureAwait(true);
-            _transcript.Text += result + "\n";
+            var result = await _controller.ExecuteAsync(input, selectConsoleRobotForDna: selectConsoleRobotForDna).ConfigureAwait(true);
+            if (result.Length > 0) _transcript.Text += result + "\n";
             _transcript.CaretIndex = _transcript.Text?.Length ?? 0;
         }
         catch (Exception error)

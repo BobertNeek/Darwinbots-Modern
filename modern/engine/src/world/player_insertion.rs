@@ -33,10 +33,7 @@ impl Engine {
             robot.program.memory.write(MEM_NRG, initial_energy);
         }
         if self.native_random.is_some() {
-            self.native_buckets.synchronize(
-                [self.config.world_width, self.config.world_height],
-                &self.slots,
-            );
+            self.synchronize_native_buckets();
         }
         // Keep the startup template's population, energy and genome unchanged.
         self.publish_snapshot();

@@ -461,6 +461,106 @@ public sealed class RenderedWorldToolsCausalTests
     }
 
     [Fact]
+    public async Task GeneActivationsFollowsSelectionAndLabelsTheFirstNativeGene()
+    {
+        var setup = new WorldSetupOptions
+        {
+            Backend = "Cpu",
+            Seed = 95,
+            PopulationCapacity = 16,
+            Species =
+            [
+                new SpeciesImport("First", "start 11 100 store stop\ncond 0 1 > start 12 101 store stop",
+                    false, 0xff3f8e34u, 1, 1_000, 0, false, 0f)
+                {
+                    Placement = new(SpeciesPlacementMode.Fixed, 500, 500),
+                },
+                new SpeciesImport("Second", "cond *100 0 > start 33 101 store stop\nstart 22 100 store stop",
+                    false, 0xff704394u, 1, 1_000, 0, false, 0f)
+                {
+                    Placement = new(SpeciesPlacementMode.Fixed, 900, 900),
+                },
+            ],
+        };
+
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], setup, NativeEngineClientFactory.Instance, new AuditStorageService());
+            try
+            {
+                window.Show();
+                var viewModel = Assert.IsType<MainWindowViewModel>(window.DataContext);
+                await WaitFor(() => viewModel.Population == 2, () => viewModel.Status);
+
+                var session = TryField<SimulationSession>(window, "_session")!;
+                await session.StepAsync();
+                var snapshot = session.LatestSnapshot;
+                var first = Assert.Single(snapshot.Organisms, robot => robot.ActivationBitmap.SequenceEqual([false, true, false]));
+                var second = Assert.Single(snapshot.Organisms, robot => robot.ActivationBitmap.SequenceEqual([false, false, true]));
+
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                var command = menu.FindCommandItem(LegacyCommandId.RobotViewGeneActivations)!;
+                var secondFocus = new OrganismKey(second.Slot, second.Generation);
+                viewModel.Select(secondFocus);
+                menu.FindCommandItem(LegacyCommandId.RobotShowInfo)!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => window.OwnedWindows.OfType<RobotDetailsWindow>().Any(), () => viewModel.Status);
+                var info = Assert.Single(window.OwnedWindows.OfType<RobotDetailsWindow>());
+                info.UpdateLayout();
+                var showActivations = Assert.Single(info.GetVisualDescendants().OfType<Button>(),
+                    button => button.Name == "NativeRobotInfoShowActivations");
+                viewModel.ClearSelection();
+                Assert.True(showActivations.IsVisible);
+                showActivations.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => window.OwnedWindows.OfType<GeneActivationsWindow>().Any(), () => viewModel.Status);
+
+                var viewer = Assert.Single(window.OwnedWindows.OfType<GeneActivationsWindow>());
+                string?[] Text() => viewer.GetVisualDescendants().OfType<TextBlock>().Select(block => block.Text).ToArray();
+                Assert.Contains("No robot focused", Text());
+                await WaitFor(() => session.LatestSnapshot.GeneActivationMeter is { Focus: null }, () => viewModel.Status);
+
+                var firstFocus = new OrganismKey(first.Slot, first.Generation);
+                viewModel.Select(firstFocus);
+                Assert.Contains("G1:ON  G2:off", Text());
+                Assert.Single(viewer.GetVisualDescendants().OfType<Control>(), control => control.Name == "ActivationBands");
+                await WaitFor(() => session.LatestSnapshot.GeneActivationMeter?.Focus == firstFocus, () => viewModel.Status);
+
+                viewModel.Select(secondFocus);
+                Assert.Contains("G1:off  G2:ON", Text());
+                await WaitFor(() => session.LatestSnapshot.GeneActivationMeter?.Focus == secondFocus, () => viewModel.Status);
+                Assert.Empty(session.LatestSnapshot.GeneActivationMeter!.Weighted);
+                command.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                Assert.Same(viewer, Assert.Single(window.OwnedWindows.OfType<GeneActivationsWindow>()));
+
+                await session.StepAsync();
+                await WaitFor(() => Text().Contains("G1:ON  G2:ON"), () => string.Join(", ", Text()));
+                var stepTick = session.LatestSnapshot.Tick;
+                Assert.Equal(new[] { 20, 20 }, session.LatestSnapshot.GeneActivationMeter!.Weighted);
+                await session.ExecuteRobotsAsync();
+                Assert.Equal(stepTick, session.LatestSnapshot.Tick);
+                Assert.Equal(new[] { 36, 36 }, session.LatestSnapshot.GeneActivationMeter!.Weighted);
+                await session.RefreshSnapshotAsync();
+                Assert.Equal(2ul, session.LatestSnapshot.GeneActivationMeter!.Executions);
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                using var frame = viewer.CaptureRenderedFrame();
+                Assert.NotNull(frame);
+
+                viewModel.ClearSelection();
+                Assert.Contains("No robot focused", Text());
+                Assert.DoesNotContain(Text(), line => line?.Contains("G1:", StringComparison.Ordinal) == true);
+                Assert.True(viewer.IsVisible);
+                await WaitFor(() => session.LatestSnapshot.GeneActivationMeter is { Focus: null }, () => viewModel.Status);
+                Assert.Equal(new[] { 36, 36 }, session.LatestSnapshot.GeneActivationMeter!.Weighted);
+                viewer.Close();
+                await WaitFor(() => session.LatestSnapshot.GeneActivationMeter is null, () => viewModel.Status);
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
     public async Task MainWindowRoutesWorldObjectsMutationAndGraphToolsWithOfflineRenderedReceipt()
     {
         var setup = new WorldSetupOptions
@@ -602,7 +702,10 @@ public sealed class RenderedWorldToolsCausalTests
                 await WaitFor(
                     () => graphWindow.OwnedWindows.OfType<GraphSeriesWindow>().Count() == 2,
                     () => "Graph Suite did not open two live graph windows.");
-                Assert.All(graphWindow.ViewModel.RunningGraphs, graph => Assert.NotEmpty(graph.Samples));
+                await WaitFor(
+                    () => graphWindow.ViewModel.RunningGraphs.Count == 2
+                        && graphWindow.ViewModel.RunningGraphs.All(graph => graph.Samples.Count > 0),
+                    () => "The live graph windows did not receive their opening samples.");
 
                 var export = graphWindow.ViewModel.ExportCsv();
                 Assert.Contains("Population", export, StringComparison.Ordinal);
@@ -612,7 +715,13 @@ public sealed class RenderedWorldToolsCausalTests
                 Assert.Contains("JOINED", graphWindow.ViewModel.Status, StringComparison.Ordinal);
 
                 graphView.FindControl<Button>("ResetGraphsButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                Assert.All(graphWindow.ViewModel.RunningGraphs, graph => Assert.Empty(graph.Samples));
+                var resetPrompt = Assert.Single(graphWindow.OwnedWindows.OfType<LegacyConfirmationWindow>());
+                resetPrompt.GetVisualDescendants().OfType<Button>().Single(button => Equals(button.Content, "OK"))
+                    .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(
+                    () => graphWindow.ViewModel.Status == "ALL GRAPHS RESET"
+                        && graphWindow.ViewModel.RunningGraphs.All(graph => graph.Samples.Count == 1),
+                    () => "Reset All did not seed one point for each active graph.");
 
                 AvaloniaHeadlessPlatform.ForceRenderTimerTick();
                 using var frame = window.CaptureRenderedFrame();

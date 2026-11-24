@@ -22,6 +22,7 @@ public sealed class WorldViewport : Control
     private Vector _panAtPress;
     private OrganismKey? _selectedKey;
     private readonly HashSet<OrganismKey> _selectedKeys = [];
+    private IReadOnlyList<PhylogenyLink> _phylogenyLinks = [];
     private WorldFeatureSelection? _selectedFeature;
     private NativeTeleporterDrag? _nativeTeleporterDrag;
     private OrganismKey? _followKey;
@@ -57,6 +58,7 @@ public sealed class WorldViewport : Control
     public event Action<OrganismKey, Point>? OrganismContextRequested;
     public event Action<OrganismKey>? OrganismDoubleClicked;
     public event Action<float[]>? WorldClicked;
+    public event Action? EmptyWorldDoubleClicked;
     public event Action<WorldFeatureSelection>? WorldFeatureSelected;
     public event Action? NativeTeleporterDoubleClicked;
     public event Action<WorldFeatureSelection, float[]>? NativeTeleporterDragMoved;
@@ -72,7 +74,12 @@ public sealed class WorldViewport : Control
 
     public bool RenderWaste { get => _renderWaste; set { _renderWaste = value; InvalidateVisual(); } }
     public bool FixedRatio { get => _fixedRatio; set { _fixedRatio = value; InvalidateVisual(); } }
-    public bool OldColors { get => _oldColors; set { _oldColors = value; InvalidateVisual(); } }
+    internal bool? NativeOldColors { get; set; }
+    public bool OldColors
+    {
+        get => _snapshot.NativeCycle.HasValue ? NativeOldColors ?? _oldColors : _oldColors;
+        set { _oldColors = value; InvalidateVisual(); }
+    }
     private double ScaleX => FixedRatio ? Math.Min(RawScaleX, RawScaleY) : RawScaleX;
     private double ScaleY => FixedRatio ? Math.Min(RawScaleX, RawScaleY) : RawScaleY;
     private double RawScaleX => Bounds.Width / Math.Max(1.0, _snapshot.WorldSize[0]);
@@ -122,6 +129,14 @@ public sealed class WorldViewport : Control
 
     public void ZoomOut() => SetZoomAt(_zoom / 1.2, new Point(Bounds.Width / 2, Bounds.Height / 2));
 
+    public void FitWorld()
+    {
+        _zoom = 1;
+        _pan = default;
+        _followKey = null;
+        InvalidateVisual();
+    }
+
     public void SetRgbMemoryMonitor(RgbMemoryMonitorSettings? settings)
     {
         settings?.Validate();
@@ -140,10 +155,21 @@ public sealed class WorldViewport : Control
 
     public void SelectKey(OrganismKey? key)
     {
-        _selectedKey = key is { } value && _snapshot.Organisms.Any(organism =>
-            organism.Slot == value.Slot && organism.Generation == value.Generation) ? key : null;
         _selectedKeys.Clear();
-        if (_selectedKey is { } selected) _selectedKeys.Add(selected);
+        SetRobotFocus(key);
+    }
+
+    internal void SetRobotFocus(OrganismKey? key)
+    {
+        _selectedKey = key is { } value && Contains(_snapshot, value) ? key : null;
+        InvalidateVisual();
+    }
+
+    private bool IsSelected(OrganismKey key) => _selectedKey == key || _selectedKeys.Contains(key);
+
+    internal void ShowPhylogeny(IReadOnlyList<PhylogenyLink> links)
+    {
+        _phylogenyLinks = links;
         InvalidateVisual();
     }
 
@@ -160,11 +186,9 @@ public sealed class WorldViewport : Control
 
     public void SelectKeys(IEnumerable<OrganismKey> keys, OrganismKey? primary)
     {
-        _selectedKey = primary;
         _selectedKeys.Clear();
         foreach (var key in keys) _selectedKeys.Add(key);
-        if (primary is { } selected) _selectedKeys.Add(selected);
-        InvalidateVisual();
+        SetRobotFocus(primary);
     }
 
     public void SelectFeature(WorldFeatureSelection? feature)
@@ -177,15 +201,13 @@ public sealed class WorldViewport : Control
 
     public void SetSnapshot(EngineSnapshot snapshot)
     {
+        if (snapshot.Tick != _snapshot.Tick) _phylogenyLinks = [];
         _snapshot = snapshot;
         _organismsByKey = snapshot.Organisms.ToDictionary(robot => KeyOf(robot));
         _visibleOrganisms = snapshot.Organisms.Any(robot => robot.IsHidden)
             ? snapshot.Organisms.Where(robot => !robot.IsHidden).ToArray() : snapshot.Organisms;
         if (_selectedKey is { } selected && !Contains(snapshot, selected))
-        {
             _selectedKey = null;
-            _selectedKeys.Clear();
-        }
         _selectedKeys.RemoveWhere(key => !Contains(snapshot, key));
         if (_followKey is { } followed && snapshot.Organisms.FirstOrDefault(value => KeyOf(value) == followed) is { } organism)
         {
@@ -230,7 +252,11 @@ public sealed class WorldViewport : Control
     {
         base.Render(context);
         var overlay = OverlayProjection;
-        context.FillRectangle(new SolidColorBrush(Color.Parse(OldColors ? "#000040" : "#F9F8F2")), Bounds);
+        const uint defaultArenaArgb = 0xfff9f8f2;
+        var arenaArgb = OldColors ? 0xff000040u : _snapshot.NativeCycle.HasValue
+            ? _snapshot.NativeScenePalette?.ArenaArgb ?? defaultArenaArgb
+            : defaultArenaArgb;
+        context.FillRectangle(new SolidColorBrush(Color.FromUInt32(arenaArgb)), Bounds);
         if (overlay.HasBackgroundImage && _backgroundImage is not null) context.DrawImage(_backgroundImage, Bounds);
         DrawGrid(context);
         if (FlickerMode && (_flickerFrame = !_flickerFrame)) return;
@@ -263,6 +289,27 @@ public sealed class WorldViewport : Control
         DrawResourceGauges(context, scaleX, scaleY, overlay);
         if (_rgbMemoryMonitor is { } monitor && monitorFrames is { Count: > 0 })
             DrawMonitorFrames(context, monitor, monitorFrames);
+        DrawPhylogeny(context, scaleX * _zoom, scaleY * _zoom);
+    }
+
+    private void DrawPhylogeny(DrawingContext context, double scaleX, double scaleY)
+    {
+        if (_phylogenyLinks.Count == 0) return;
+        var gray = new Pen(Brushes.Gray, 1);
+        var white = new Pen(Brushes.White, 1);
+        foreach (var link in _phylogenyLinks)
+        {
+            if (!_organismsByKey.TryGetValue(link.Parent, out var parent)
+                || !_organismsByKey.TryGetValue(link.Child, out var child)) continue;
+            var from = new Point(parent.Position[0] * scaleX + _pan.X, parent.Position[1] * scaleY + _pan.Y);
+            var to = new Point(child.Position[0] * scaleX + _pan.X, child.Position[1] * scaleY + _pan.Y);
+            var middle = new Point((from.X + to.X) / 2, (from.Y + to.Y) / 2);
+            var reverse = _snapshot.NativeCycle.HasValue
+                ? unchecked((int)parent.UniqueId) > unchecked((int)child.UniqueId)
+                : parent.UniqueId > child.UniqueId;
+            context.DrawLine(reverse ? white : gray, from, middle);
+            context.DrawLine(reverse ? gray : white, middle, to);
+        }
     }
 
     private void DrawOrganisms(DrawingContext context, double scaleX, double scaleY, List<MonitorFrame>? monitorFrames)
@@ -280,7 +327,7 @@ public sealed class WorldViewport : Control
                 && !(_snapshot.RenderInstances.Count > 20_000 && _zoom < 1)
                 && stride == 1;
             DrawOrganism(context, instance, scaleX, scaleY, details, monitorFrames);
-            selectedDrawn |= _selectedKeys.Contains(KeyOf(instance));
+            selectedDrawn |= IsSelected(KeyOf(instance));
         }
 
         if (!selectedDrawn && _selectedKey is { } selected
@@ -310,7 +357,7 @@ public sealed class WorldViewport : Control
         if (monitorFrames is not null && organism is not null && IsOnScreen(center, radius))
             monitorFrames.Add(new MonitorFrame(organism, center, radius));
         var color = Color.FromUInt32(instance.Color);
-        var selected = _selectedKeys.Contains(KeyOf(instance));
+        var selected = IsSelected(KeyOf(instance));
         var edgeColor = ContrastColor(color, strong: false);
         context.DrawEllipse(
             new SolidColorBrush(color),
@@ -436,7 +483,7 @@ public sealed class WorldViewport : Control
             if (monitorFrames is not null && IsOnScreen(center, radius))
                 monitorFrames.Add(new MonitorFrame(organism, center, radius));
             var color = Color.FromUInt32(organism.Phenotype.Color);
-            var selected = _selectedKeys.Contains(KeyOf(organism));
+            var selected = IsSelected(KeyOf(organism));
             context.DrawEllipse(
                 new SolidColorBrush(color),
                 new Pen(selected ? Brushes.Black : new SolidColorBrush(ContrastColor(color, false)), selected ? 2.2 : 0.8),
@@ -538,12 +585,14 @@ public sealed class WorldViewport : Control
                 e.Handled = true;
                 return;
             }
+            if (point.Properties.PointerUpdateKind != PointerUpdateKind.LeftButtonPressed) return;
             var scaleX = ScaleX;
             var scaleY = ScaleY;
             WorldClicked?.Invoke([
                 (float)Math.Clamp((point.Position.X - _pan.X) / (scaleX * _zoom), 0, _snapshot.WorldSize[0]),
                 (float)Math.Clamp((point.Position.Y - _pan.Y) / (scaleY * _zoom), 0, _snapshot.WorldSize[1]),
             ]);
+            if (e.ClickCount >= 2) EmptyWorldDoubleClicked?.Invoke();
             return;
         }
         // A group uses the focus and marks from before the hit changes selection.

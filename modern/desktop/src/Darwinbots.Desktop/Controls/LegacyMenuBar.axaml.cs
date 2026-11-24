@@ -77,10 +77,10 @@ public partial class LegacyMenuBar : UserControl
             if (model.Shortcut is not null)
             {
                 var gesture = KeyGesture.Parse(model.Shortcut);
+                item.InputGesture = gesture;
                 // The window handles About after text editing and F12 on key release.
-                if (command is LegacyCommandId.HelpAbout or LegacyCommandId.FilePauseSimulation)
-                    item.InputGesture = gesture;
-                else item.HotKey = gesture;
+                if (command is not (LegacyCommandId.HelpAbout or LegacyCommandId.FilePauseSimulation))
+                    item.HotKey = gesture;
             }
             item.ToggleType = model.CheckKind switch
             {

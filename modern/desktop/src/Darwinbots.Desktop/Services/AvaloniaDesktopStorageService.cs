@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json.Nodes;
 using Avalonia.Controls;
 using Avalonia.Platform.Storage;
 using Darwinbots.Desktop.Core;
@@ -11,6 +12,8 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
 
     internal const string ProfileDirectoryVariable = "DARWINBOTS_PROFILE_DIRECTORY";
     internal const string AutosaveDirectoryVariable = "DARWINBOTS_AUTOSAVE_DIRECTORY";
+    private const string GraphClosePreferenceKey = "keepGraphsUpdatingOnClose";
+    private const string OldColorsPreferenceKey = "oldColors";
     private readonly string? _profileDirectory;
 
     public bool IsFirstRun => !File.Exists(FirstRunMarkerPath());
@@ -24,32 +27,55 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         _profileDirectory = Path.GetFullPath(profileDirectory);
     }
 
-    public async Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner)
+    public async Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner, string? mainDirectory = null, bool allowMultiple = true)
     {
-        var files = await owner.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        var storage = owner.StorageProvider;
+        using var folder = mainDirectory is null ? null : await NativeRobotFolderAsync(storage, mainDirectory);
+        var files = await storage.OpenFilePickerAsync(new FilePickerOpenOptions
         {
             Title = "Import Darwinbots robot DNA",
-            AllowMultiple = true,
+            SuggestedStartLocation = folder,
+            AllowMultiple = allowMultiple,
             FileTypeFilter = [RobotFileType()],
         });
         var result = new List<DesktopTextFile>(files.Count);
         foreach (var file in files)
         {
-            await using var stream = await file.OpenReadAsync();
-            using var memory = new MemoryStream();
-            await stream.CopyToAsync(memory);
+            var dna = await ReadDnaAsync(file);
             var path = LocalPath(file);
             var profile = path is null ? null : await Db2RobotFileStorage.ReadMutationProfileAsync(path);
-            result.Add(new DesktopTextFile(file.Name, LegacyDnaText.Decode(memory.ToArray()), path, profile));
+            result.Add(new DesktopTextFile(file.Name, dna, path, profile));
         }
         return result;
     }
 
-    public async Task<byte[]?> OpenOrganismAsync(TopLevel owner)
+    public async Task<DesktopTextFile?> OpenNativeRepopulationSourceAsync(TopLevel owner, NativeRestartSource source)
     {
         var files = await owner.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
+            Title = $"Find original Darwinbots DNA for {source.Filename}",
+            AllowMultiple = false,
+            FileTypeFilter = [RobotFileType()],
+        });
+        if (files.FirstOrDefault() is not { } file) return null;
+        return new DesktopTextFile(file.Name, await ReadDnaAsync(file), file.Path.IsUnc ? null : LocalPath(file));
+    }
+
+    private static async Task<string> ReadDnaAsync(IStorageFile file)
+    {
+        await using var stream = await file.OpenReadAsync();
+        using var memory = new MemoryStream();
+        await stream.CopyToAsync(memory);
+        return LegacyDnaText.Decode(memory.ToArray());
+    }
+
+    public async Task<byte[]?> OpenOrganismAsync(TopLevel owner, string? mainDirectory = null)
+    {
+        using var folder = await NativeRobotFolderAsync(owner.StorageProvider, mainDirectory);
+        var files = await owner.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
             Title = "Import Darwinbots organism",
+            SuggestedStartLocation = folder,
             AllowMultiple = false,
             FileTypeFilter = [OrganismFileType()],
         });
@@ -91,11 +117,14 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         return true;
     }
 
-    public async Task<DesktopSettings?> OpenSettingsAsync(TopLevel owner)
+    public async Task<DesktopSettings?> OpenSettingsAsync(TopLevel owner, string? mainDirectory = null)
     {
-        var files = await owner.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        var storage = owner.StorageProvider;
+        using var folder = await NativeSettingsFolderAsync(storage, mainDirectory);
+        var files = await storage.OpenFilePickerAsync(new FilePickerOpenOptions
         {
             Title = "Load Darwinbots settings",
+            SuggestedStartLocation = folder,
             AllowMultiple = false,
             FileTypeFilter = [SettingsFileType()],
         });
@@ -106,6 +135,24 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         return SetupStorageService.DecodeSettings(LocalPath(file) ?? file.Name, memory.ToArray());
     }
 
+    public async Task<DesktopBackgroundPicture?> OpenBackgroundPictureAsync(TopLevel owner)
+    {
+        var files = await owner.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Import Darwinbots background picture",
+            AllowMultiple = false,
+            FileTypeFilter = [new FilePickerFileType("Images") { Patterns = ["*.png", "*.jpg", "*.jpeg", "*.bmp"] }],
+        });
+        if (files.FirstOrDefault() is not { } file) return null;
+        using (file)
+        {
+            await using var stream = await file.OpenReadAsync();
+            using var memory = new MemoryStream();
+            await stream.CopyToAsync(memory);
+            return new DesktopBackgroundPicture(file.Name, memory.ToArray(), LocalPath(file));
+        }
+    }
+
     public async Task<string?> PickSimulationPathAsync(TopLevel owner)
     {
         var files = await owner.StorageProvider.OpenFilePickerAsync(SimulationOpenOptions(
@@ -113,15 +160,20 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         return files.FirstOrDefault() is { } file ? LocalPath(file) : null;
     }
 
-    public async Task<byte[]?> OpenSimulationAsync(TopLevel owner)
+    public async Task<byte[]?> OpenSimulationAsync(TopLevel owner, string? mainDirectory = null) =>
+        (await OpenSimulationWithSourceAsync(owner, mainDirectory))?.Data;
+
+    public async Task<DesktopSimulationFile?> OpenSimulationWithSourceAsync(TopLevel owner, string? mainDirectory = null)
     {
-        var files = await owner.StorageProvider.OpenFilePickerAsync(SimulationOpenOptions(
-            "Load Darwinbots simulation", LegacySimulationFileType(), SimulationFileType()));
+        using var folder = await NativeSimulationFolderAsync(owner.StorageProvider, mainDirectory);
+        var options = SimulationOpenOptions("Load Darwinbots simulation", LegacySimulationFileType(), SimulationFileType());
+        options.SuggestedStartLocation = folder;
+        var files = await owner.StorageProvider.OpenFilePickerAsync(options);
         if (files.FirstOrDefault() is not { } file) return null;
         await using var stream = await file.OpenReadAsync();
         using var memory = new MemoryStream();
         await stream.CopyToAsync(memory);
-        return memory.ToArray();
+        return new(memory.ToArray(), LocalPath(file));
     }
 
     public async Task<bool> SaveSimulationAsync(TopLevel owner, ReadOnlyMemory<byte> save)
@@ -156,27 +208,30 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
     }
 
     public Task<SimulationSaveFormat?> SaveSimulationWithFormatAsync(
-        TopLevel owner, Func<SimulationSaveFormat, Task<byte[]>> createSave) =>
+        TopLevel owner, Func<SimulationSaveFormat, Task<byte[]>> createSave, string? mainDirectory = null) =>
         PickAndSaveSimulationAsync(owner, createSave, "Save Darwinbots simulation",
-            [LegacySimulationFileType(), SimulationFileType()]);
+            [LegacySimulationFileType(), SimulationFileType()], mainDirectory);
 
     public Task<SimulationSaveFormat?> SaveSimulationWithMutationOptionsAsync(
-        TopLevel owner, Func<SimulationSaveFormat, Task<byte[]>> createSave) =>
+        TopLevel owner, Func<SimulationSaveFormat, Task<byte[]>> createSave, string? mainDirectory = null) =>
         PickAndSaveSimulationAsync(owner, createSave, "Save Darwinbots simulation without mutations",
             [
                 new("Darwinbots 2 simulation without mutation details") { Patterns = ["*.sim"] },
                 new("Darwinbots Modern save with mutations disabled") { Patterns = ["*.db3s"] },
-            ]);
+            ], mainDirectory);
 
     private static async Task<SimulationSaveFormat?> PickAndSaveSimulationAsync(
         TopLevel owner,
         Func<SimulationSaveFormat, Task<byte[]>> createSave,
         string title,
-        IReadOnlyList<FilePickerFileType> fileTypes)
+        IReadOnlyList<FilePickerFileType> fileTypes,
+        string? mainDirectory)
     {
+        using var folder = await NativeSimulationFolderAsync(owner.StorageProvider, mainDirectory);
         var file = await owner.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
             Title = title,
+            SuggestedStartLocation = folder,
             SuggestedFileName = "simulation.sim",
             SuggestedFileType = fileTypes[0],
             DefaultExtension = "sim",
@@ -196,12 +251,27 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         return format;
     }
 
-    public async Task<bool> SaveSettingsAsync(TopLevel owner, DesktopSettings settings)
+    private static async Task<IStorageFolder?> NativeSimulationFolderAsync(IStorageProvider storage, string? mainDirectory)
+    {
+        var root = string.IsNullOrWhiteSpace(mainDirectory) ? AppContext.BaseDirectory : mainDirectory;
+        foreach (var name in new[] { "saves", "Saves" })
+        {
+            var path = Path.Combine(root, name);
+            if (Directory.Exists(path))
+                return await storage.TryGetFolderFromPathAsync(new Uri(Path.GetFullPath(path)));
+        }
+        return null;
+    }
+
+    public async Task<bool> SaveSettingsAsync(TopLevel owner, DesktopSettings settings, string? mainDirectory = null)
     {
         ArgumentNullException.ThrowIfNull(settings);
-        var file = await owner.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        var storage = owner.StorageProvider;
+        using var folder = await NativeSettingsFolderAsync(storage, mainDirectory);
+        var file = await storage.SaveFilePickerAsync(new FilePickerSaveOptions
         {
             Title = "Save Darwinbots settings",
+            SuggestedStartLocation = folder,
             SuggestedFileName = "darwinbots-settings.set",
             DefaultExtension = "set",
             FileTypeChoices = [SettingsFileType()],
@@ -214,17 +284,24 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         return true;
     }
 
-    public async Task<bool> SaveDnaAsync(TopLevel owner, string suggestedFileName, string dna, MutationProfileUpdate? mutationProfile)
+    public async Task<bool> SaveDnaAsync(TopLevel owner, string suggestedFileName, string dna, MutationProfileUpdate? mutationProfile,
+        string? mainDirectory = null) =>
+        await SaveDnaWithNameAsync(owner, suggestedFileName, dna, mutationProfile, mainDirectory) is not null;
+
+    public async Task<SavedRobotDna?> SaveDnaWithNameAsync(TopLevel owner, string suggestedFileName, string dna,
+        MutationProfileUpdate? mutationProfile, string? mainDirectory = null)
     {
-        var file = await owner.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        using var folder = mainDirectory is null ? null : await NativeRobotFolderAsync(owner.StorageProvider, mainDirectory);
+        using var file = await owner.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
             Title = "Export Darwinbots robot DNA",
+            SuggestedStartLocation = folder,
             SuggestedFileName = suggestedFileName,
             FileTypeChoices = [RobotFileType()],
         });
-        if (file is null) return false;
+        if (file is null) return null;
         await WriteDnaFileAsync(file, dna, mutationProfile);
-        return true;
+        return new(Path.GetFileName(LocalPath(file)) ?? file.Name);
     }
 
     public static async Task WriteDnaFileAsync(
@@ -270,11 +347,14 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
     public async Task<bool> SaveOrganismAsync(
         TopLevel owner,
         string suggestedFileName,
-        Func<Stream, Task> writeAsync)
+        Func<Stream, Task> writeAsync,
+        string? mainDirectory = null)
     {
+        using var folder = await NativeRobotFolderAsync(owner.StorageProvider, mainDirectory);
         var file = await owner.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
             Title = "Save entire organism",
+            SuggestedStartLocation = folder,
             SuggestedFileName = suggestedFileName,
             DefaultExtension = "dbo",
             FileTypeChoices = [OrganismSaveFileType()],
@@ -284,6 +364,18 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         stream.SetLength(0);
         await writeAsync(stream);
         return true;
+    }
+
+    private static async Task<IStorageFolder?> NativeRobotFolderAsync(IStorageProvider storage, string? mainDirectory)
+    {
+        var root = string.IsNullOrWhiteSpace(mainDirectory) ? AppContext.BaseDirectory : mainDirectory;
+        foreach (var name in new[] { "robots", "Robots" })
+        {
+            var path = Path.Combine(root, name);
+            if (Directory.Exists(path))
+                return await storage.TryGetFolderFromPathAsync(new Uri(Path.GetFullPath(path)));
+        }
+        return null;
     }
 
     public async Task<bool> SaveLivingSnapshotAsync(
@@ -317,7 +409,7 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
 
     public async Task<bool> AppendDeadSnapshotAsync(Func<Stream, Task> writeAsync, Func<Stream, Task>? writeMutationHistoryAsync)
     {
-        var path = DeadSnapshotPath();
+        var path = DeadSnapshotPath;
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         await using var history = writeMutationHistoryAsync is null ? null : OpenRecording(Db2GenomeRecordFile.MutationHistoryPath(path));
         await using var stream = OpenRecording(path);
@@ -413,14 +505,45 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         return file.Exists && file.Length > 0 ? file.FullName : null;
     }
 
-    public async Task SaveLastExitSimulationAsync(ReadOnlyMemory<byte> save)
+    public Task SaveLastExitSimulationAsync(ReadOnlyMemory<byte> save) =>
+        WriteLastExitFileAsync(LastExitSimulationPath(), save);
+
+    public string? FindRestartContinuation()
     {
-        var path = LastExitSimulationPath();
+        var file = new FileInfo(RestartContinuationPath());
+        return file.Exists ? file.FullName : null;
+    }
+
+    public Task SaveRestartContinuationAsync(ReadOnlyMemory<byte> save) =>
+        WriteLastExitFileAsync(RestartContinuationPath(), save);
+
+    public void ClearRestartContinuation()
+    {
+        try { File.Delete(RestartContinuationPath()); }
+        catch (DirectoryNotFoundException) { }
+    }
+
+    public bool SupportsLastExitSettings => true;
+
+    public bool HasLastExitSettings => File.Exists(LastExitSettingsPath());
+
+    public DesktopSettings? LoadLastExitSettings()
+    {
+        try { return DesktopSettings.FromJson(File.ReadAllText(LastExitSettingsPath())); }
+        catch (FileNotFoundException) { return null; }
+        catch (DirectoryNotFoundException) { return null; }
+    }
+
+    public Task SaveLastExitSettingsAsync(DesktopSettings settings) =>
+        WriteLastExitFileAsync(LastExitSettingsPath(), System.Text.Encoding.UTF8.GetBytes(settings.ToJson()));
+
+    private static async Task WriteLastExitFileAsync(string path, ReadOnlyMemory<byte> bytes)
+    {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         var temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
         try
         {
-            await File.WriteAllBytesAsync(temporary, save);
+            await File.WriteAllBytesAsync(temporary, bytes);
             File.Move(temporary, path, overwrite: true);
         }
         finally
@@ -452,14 +575,90 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         await File.WriteAllTextAsync(FirstRunMarkerPath(), "completed");
     }
 
+    public bool? LoadGraphClosePreference() => LoadGlobalBooleanPreference(GraphClosePreferenceKey, 50);
+
+    public bool? LoadOldColorsPreference() => LoadGlobalBooleanPreference(OldColorsPreferenceKey, 7);
+
+    private bool? LoadGlobalBooleanPreference(string key, int legacyRecord)
+    {
+        var main = ReadGlobalProfile()["main"] as JsonObject;
+        if (main?[key] is JsonValue preference && preference.TryGetValue<bool>(out var value))
+            return value;
+        var directory = main?["mainDirectory"] is JsonValue path && path.TryGetValue<string>(out var configured)
+            && !string.IsNullOrWhiteSpace(configured) ? configured : AppContext.BaseDirectory;
+        return SetupStorageService.ReadNativeGlobalBoolean(directory, legacyRecord);
+    }
+
+    public Task SaveGraphClosePreferenceAsync(bool? keepUpdating) =>
+        SaveGlobalBooleanPreferenceAsync(GraphClosePreferenceKey, keepUpdating);
+
+    private async Task SaveGlobalBooleanPreferenceAsync(string key, bool? value)
+    {
+        var profile = ReadGlobalProfile();
+        var main = profile["main"] as JsonObject;
+        if (main is null)
+        {
+            if (profile["main"] is not null) throw new InvalidDataException("Global settings main section must be an object.");
+            profile["main"] = main = new JsonObject();
+        }
+        if (value is { } enabled) main[key] = enabled;
+        else main.Remove(key);
+
+        var path = GlobalSettingsPath();
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        var temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        try
+        {
+            await File.WriteAllTextAsync(temporary, profile.ToJsonString());
+            File.Move(temporary, path, overwrite: true);
+        }
+        finally { File.Delete(temporary); }
+    }
+
+    private JsonObject ReadGlobalProfile()
+    {
+        try
+        {
+            return JsonNode.Parse(File.ReadAllText(GlobalSettingsPath())) as JsonObject
+                ?? throw new InvalidDataException("Global settings profile must be an object.");
+        }
+        catch (FileNotFoundException) { return new JsonObject(); }
+        catch (DirectoryNotFoundException) { return new JsonObject(); }
+    }
+
     public GlobalSettings? LoadGlobalSettings()
     {
         try
         {
-            return GlobalSettings.FromJson(File.ReadAllText(GlobalSettingsPath()));
+            var settings = GlobalSettings.FromJson(File.ReadAllText(GlobalSettingsPath()));
+            if (settings.Main.StartChloroplasts is null
+                && SetupStorageService.ReadNativeStartingChloroplasts(settings.Main.MainDirectory) is { } amount)
+                settings = settings with { Main = settings.Main with { StartChloroplasts = amount } };
+            var main = settings.Main;
+            if (main.NewSeedOnLoad is null && ReadLegacyNewSeedOnLoad(main.MainDirectory) is { } newSeedOnLoad)
+                settings = settings with { Main = main with { NewSeedOnLoad = newSeedOnLoad } };
+            return settings;
         }
         catch (FileNotFoundException) { return null; }
         catch (DirectoryNotFoundException) { return null; }
+    }
+
+    private static bool? ReadLegacyNewSeedOnLoad(string mainDirectory)
+    {
+        if (string.IsNullOrWhiteSpace(mainDirectory) || !Path.IsPathFullyQualified(mainDirectory)
+            || mainDirectory.StartsWith("//", StringComparison.Ordinal)
+            || mainDirectory.StartsWith(@"\\", StringComparison.Ordinal)) return null;
+        try
+        {
+            // frmGset writes a separate Boolean for Load Simulation after Start New.
+            return File.ReadLines(Path.Combine(mainDirectory, "Global.gset")).ElementAtOrDefault(4)?.Trim().ToUpperInvariant() switch
+            {
+                "#TRUE#" => true,
+                "#FALSE#" => false,
+                _ => null,
+            };
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { return null; }
     }
 
     public async Task SaveGlobalSettingsAsync(GlobalSettings settings)
@@ -477,6 +676,18 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         {
             File.Delete(temporary);
         }
+    }
+
+    private static async Task<IStorageFolder?> NativeSettingsFolderAsync(IStorageProvider storage, string? mainDirectory)
+    {
+        var root = string.IsNullOrWhiteSpace(mainDirectory) ? AppContext.BaseDirectory : mainDirectory;
+        foreach (var name in new[] { "settings", "Settings" })
+        {
+            var path = Path.Combine(root, name);
+            if (Directory.Exists(path))
+                return await storage.TryGetFolderFromPathAsync(new Uri(Path.GetFullPath(path)));
+        }
+        return null;
     }
 
     private static FilePickerOpenOptions SimulationOpenOptions(string title, params FilePickerFileType[] filters) => new()
@@ -512,6 +723,9 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
 
     private static string? LocalPath(IStorageItem item) => item.Path.IsFile ? item.Path.LocalPath : null;
 
+    internal string GraphDirectory(string mainDirectory) =>
+        string.IsNullOrWhiteSpace(mainDirectory) ? ProfileDirectory() : mainDirectory;
+
     private string ProfileDirectory() => _profileDirectory
         ?? (Environment.GetEnvironmentVariable(ProfileDirectoryVariable) is { Length: > 0 } configured
             ? Path.GetFullPath(configured)
@@ -522,11 +736,15 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
             ? Path.GetFullPath(configured)
             : Path.Combine(ProfileDirectory(), "Autosaves");
 
-    private string DeadSnapshotPath() => Path.Combine(ProfileDirectory(), "records", "DeadRobots.snp");
+    public string DeadSnapshotPath => Path.Combine(ProfileDirectory(), "records", "DeadRobots.snp");
 
     private string LastStartPath() => Path.Combine(AutosaveDirectory(), "last-start.json");
 
     private string LastExitSimulationPath() => Path.Combine(AutosaveDirectory(), "Resume", "last-exit.db3s");
+
+    private string RestartContinuationPath() => Path.Combine(AutosaveDirectory(), "Resume", "restart-mode.db3s");
+
+    private string LastExitSettingsPath() => Path.Combine(ProfileDirectory(), "last-exit-settings.json");
 
     private string FirstRunMarkerPath() => Path.Combine(AutosaveDirectory(), "first-run.complete");
 

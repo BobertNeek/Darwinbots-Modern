@@ -4,12 +4,14 @@ using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media.Imaging;
 using Avalonia.VisualTree;
 using Darwinbots.Desktop.Controls;
 using Darwinbots.Desktop.Core;
 using Darwinbots.Desktop.Core.LegacyMenus;
+using Darwinbots.Desktop.Services;
 using Darwinbots.Desktop.ViewModels;
 using Darwinbots.Desktop.Views;
 using Xunit;
@@ -45,14 +47,14 @@ public sealed class CustomSimulationCostsTests
                         "MovementCost", "RotationCost", "TieFormationCost", "ShotFormationCost", "VenomCost",
                         "PoisonCost", "SlimeCost", "ShellCost", "BodyUpkeep", "ChloroplastConstructionCost",
                         "VirusCost", "AgeBase", "AgeStart", "AgeLinear", "AgeLogarithmic", "DynamicMultiplier",
-                        "DynamicTargetPopulation", "DynamicPopulationRange", "DynamicSensitivity",
-                        "DynamicLowerZeroThreshold", "DynamicUpperZeroThreshold", "DynamicLowerReinstateThreshold",
-                        "DynamicUpperReinstateThreshold"
+                        "DynamicTargetPopulation", "DynamicUpperRangePercent", "DynamicLowerRangePercent", "DynamicSensitivity",
+                        "DynamicLowerZeroThreshold", "DynamicLowerReinstateThreshold"
                     };
 
                     Assert.All(numericNames, name => Assert.NotNull(cancelDialog.FindControl<NumericUpDown>(name)));
                     Assert.NotNull(cancelDialog.FindControl<CheckBox>("DynamicAllRobots"));
                     Assert.NotNull(cancelDialog.FindControl<CheckBox>("DynamicAllowNegative"));
+                    Assert.False(cancelDialog.FindControl<CheckBox>("AgeLinearEnabled")!.IsChecked);
 
                     var cancelButton = cancelDialog.FindControl<Button>("CancelButton")!;
                     var applyButton = cancelDialog.FindControl<Button>("ApplyButton")!;
@@ -103,11 +105,16 @@ public sealed class CustomSimulationCostsTests
                     cancelDialog.Close();
                 }
 
-                var applySettings = new GlobalSettings();
+                var applySettings = new GlobalSettings
+                {
+                    Costs = new GlobalSimulationCostSettings { DynamicPopulationRange = 15, DynamicUpperZeroThreshold = 7.5 },
+                };
                 var applyDialog = new CustomSimulationCostsWindow(applySettings);
                 applyDialog.Show(main);
                 try
                 {
+                    Assert.Equal(15m, applyDialog.FindControl<NumericUpDown>("DynamicUpperRangePercent")!.Value);
+                    Assert.Equal(7.5m, applyDialog.FindControl<NumericUpDown>("DynamicLowerRangePercent")!.Value);
                     applyDialog.FindControl<NumericUpDown>("DnaCopy")!.Value = 3.75m;
                     applyDialog.FindControl<NumericUpDown>("DynamicMultiplier")!.Value = 1.5m;
                     applyDialog.FindControl<Button>("ApplyButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
@@ -115,6 +122,10 @@ public sealed class CustomSimulationCostsTests
                     Assert.True(ReadAccepted(applyDialog));
                     Assert.Equal(3.75m, Convert.ToDecimal(applyDialog.Costs.DnaCopy));
                     Assert.Equal(1.5m, Convert.ToDecimal(applyDialog.Costs.DynamicMultiplier));
+                    Assert.Null(applyDialog.Costs.DynamicUpperRangePercent);
+                    Assert.Null(applyDialog.Costs.DynamicLowerRangePercent);
+                    Assert.Equal(15, applyDialog.Costs.DynamicPopulationRange);
+                    Assert.Equal(7.5, applyDialog.Costs.DynamicUpperZeroThreshold);
                 }
                 finally
                 {
@@ -151,6 +162,78 @@ public sealed class CustomSimulationCostsTests
 
             static bool Close(byte left, byte right) => Math.Abs(left - right) <= 24;
         }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CustomF1DefaultsStageTheOriginalChargesAndKeepOtherDraftValues(bool apply)
+    {
+        var initial = new GlobalSimulationCostSettings
+        {
+            GlobalMultiplier = 3,
+            DnaCopy = 9,
+            ChloroplastConstruction = 8,
+            AgeStart = 12,
+            AgeLinear = 0.25,
+            AgeLinearEnabled = true,
+            AgeLogarithmic = 1,
+            DynamicMultiplier = 1,
+            DynamicTargetPopulation = 777,
+            DynamicLowerRangePercent = 18.5,
+            DynamicLowerZeroThreshold = 5,
+            DynamicLowerReinstateThreshold = 10,
+            Virus = 3.5,
+        };
+        await DesktopTestApplication.Session.Dispatch(() =>
+        {
+            var dialog = new CustomSimulationCostsWindow(initial, stageForLiveSettings: true);
+            dialog.Show();
+            try
+            {
+                dialog.FindControl<NumericUpDown>("DynamicSensitivity")!.Value = 333m;
+                Click(dialog, "F1DefaultsButton");
+                Assert.Equal(initial, dialog.Costs);
+                Assert.False(dialog.Accepted);
+                Assert.False(dialog.FindControl<NumericUpDown>("DynamicMultiplier")!.IsEnabled);
+                Assert.False(dialog.FindControl<NumericUpDown>("DynamicTargetPopulation")!.IsEnabled);
+                Assert.Equal(0m, dialog.FindControl<NumericUpDown>("DnaCopy")!.Value);
+                Assert.Equal(333m, dialog.FindControl<NumericUpDown>("DynamicSensitivity")!.Value);
+
+                Click(dialog, apply ? "ApplyButton" : "CancelButton");
+                Assert.Equal(apply, dialog.Accepted);
+                if (!apply)
+                {
+                    Assert.Equal(initial, dialog.Costs);
+                    return;
+                }
+
+                var costs = dialog.Costs;
+                // CostsForm.Default_Click applies 0.2 to chloroplasts while
+                // OptionsForm's outer F1 radio keeps that charge zero.
+                Assert.Equal((double)0.2f, costs.ChloroplastConstruction);
+                Assert.Equal((double)0.004f, costs.DnaCondition);
+                Assert.Equal((double)0.05f, costs.Movement);
+                Assert.Equal((double)0.01f, costs.AgeBase);
+                Assert.Equal(0, costs.DnaCopy);
+                Assert.Equal(1, costs.GlobalMultiplier);
+                Assert.Equal(0, costs.AgeStart);
+                Assert.Equal(0, costs.AgeLogarithmic);
+                Assert.Equal(0, costs.DynamicLowerZeroThreshold);
+                Assert.Equal(0, costs.DynamicLowerReinstateThreshold);
+                Assert.Equal(initial.AgeLinear, costs.AgeLinear);
+                Assert.Equal(initial.AgeLinearEnabled, costs.AgeLinearEnabled);
+                Assert.Equal(initial.DynamicMultiplier, costs.DynamicMultiplier);
+                Assert.Equal(initial.DynamicTargetPopulation, costs.DynamicTargetPopulation);
+                Assert.Equal(initial.DynamicLowerRangePercent, costs.DynamicLowerRangePercent);
+                Assert.Equal(333, costs.DynamicSensitivity);
+                Assert.Equal(initial.Virus, costs.Virus);
+            }
+            finally
+            {
+                dialog.Close();
+            }
+        }, CancellationToken.None);
     }
 
     [Fact]
@@ -193,31 +276,87 @@ public sealed class CustomSimulationCostsTests
     [Fact]
     public async Task GlobalSettingsRouteCommitsCustomCostsIntoPendingSettings()
     {
+        var original = LegacyDnaText.Decode(Db2SettingsCodec.Encode(new DesktopSettings()))
+            .Split("#DARWINBOTS_MODERN_SETTINGS_V1#")[0].Split("\r\n");
+        // OptionsForm.SaveSett writes all cost slots in order. The cost
+        // table starts at index 100 in an original settings file without species.
+        Assert.Equal("-1", original[1]);
+        original[100 + 57] = "27.5";
+        original[100 + 58] = "11.25";
+        var imported = Db2SettingsCodec.Decode(LegacyDnaText.Encode(string.Join("\r\n", original))).GlobalSettings;
+
         await DesktopTestApplication.Session.Dispatch(async () =>
         {
-            var window = new GlobalSettingsWindow(new GlobalSettings());
+            var window = new GlobalSettingsWindow(imported);
             window.Show();
             try
             {
-                var button = window.FindControl<Button>("CustomSimulationCostsButton");
-                Assert.NotNull(button);
+                Assert.Equal(27.5m, window.FindControl<NumericUpDown>("DynamicUpperRangePercent")!.Value);
+                Assert.Equal(11.25m, window.FindControl<NumericUpDown>("DynamicLowerRangePercent")!.Value);
 
-                button!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Click(window, "CustomSimulationCostsButton");
                 await WaitFor(() => window.OwnedWindows.OfType<CustomSimulationCostsWindow>().Any());
                 var dialog = Assert.Single(window.OwnedWindows.OfType<CustomSimulationCostsWindow>());
+                Assert.Equal(27.5m, dialog.FindControl<NumericUpDown>("DynamicUpperRangePercent")!.Value);
+                Assert.Equal(11.25m, dialog.FindControl<NumericUpDown>("DynamicLowerRangePercent")!.Value);
                 dialog.FindControl<NumericUpDown>("DnaCopy")!.Value = 3.5m;
-                dialog.FindControl<Button>("ApplyButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                dialog.FindControl<NumericUpDown>("DynamicLowerRangePercent")!.Value = 19.75m;
+                Click(dialog, "ApplyButton");
 
                 await WaitFor(() => window.Settings.Costs.DnaCopy == 3.5);
+                Assert.Equal(19.75m, window.FindControl<NumericUpDown>("DynamicLowerRangePercent")!.Value);
+                window.FindControl<NumericUpDown>("DynamicUpperRangePercent")!.Value = 31.5m;
+                Click(window, "ApplyButton");
+
+                Assert.True(window.Accepted);
+                Assert.Equal(imported.Costs.DynamicPopulationRange, window.Settings.Costs.DynamicPopulationRange);
+                Assert.Equal(imported.Costs.DynamicUpperZeroThreshold, window.Settings.Costs.DynamicUpperZeroThreshold);
                 var payload = NativeCommandSerializer.SerializeEngineConfig(new WorldSetupOptions
                 {
                     GlobalSettings = window.Settings,
                 });
                 Assert.Contains("\"dna_copy\":3.5", payload, StringComparison.Ordinal);
+                Assert.Contains("\"dynamic_upper_range_percent\":31.5", payload, StringComparison.Ordinal);
+                Assert.Contains("\"dynamic_lower_range_percent\":19.75", payload, StringComparison.Ordinal);
             }
             finally
             {
                 foreach (var ownedWindow in window.OwnedWindows.ToArray()) ownedWindow.Close();
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task LiveCustomCostsExposeTheSignedMultiplierOnlyForNativeWorlds(bool native)
+    {
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var costs = new GlobalSimulationCostSettings { GlobalMultiplier = native ? -0.5 : 1 };
+            var snapshot = EngineSnapshot.Empty with { NativeCycle = native ? 281 : null };
+            var window = new AdvancedSettingsWindow(EnvironmentUpdate.Default, snapshot, selectedTab: 2, costs: costs);
+            window.Show();
+            try
+            {
+                Click(window, "LiveCustomSimulationCostsButton");
+                await WaitFor(() => window.OwnedWindows.OfType<CustomSimulationCostsWindow>().Any());
+                var dialog = Assert.Single(window.OwnedWindows.OfType<CustomSimulationCostsWindow>());
+                var costX = dialog.FindControl<NumericUpDown>("GlobalCostMultiplier")!;
+                Assert.Equal(native ? -100_000m : 0m, costX.Minimum);
+                Assert.Equal(native ? -0.5m : 1m, costX.Value);
+                Assert.False(dialog.FindControl<CheckBox>("DynamicAllowNegative")!.IsChecked);
+
+                costX.Value = native ? -0.625m : 0.625m;
+                Click(dialog, "ApplyButton");
+                await WaitFor(() => window.CostUpdate is not null);
+                Assert.Equal(native ? -0.625 : 0.625, window.CostUpdate!.GlobalMultiplier);
+                Assert.False(window.CostUpdate.DynamicAllowNegative);
+            }
+            finally
+            {
+                foreach (var owned in window.OwnedWindows.ToArray()) owned.Close();
                 window.Close();
             }
         }, CancellationToken.None);
@@ -230,6 +369,8 @@ public sealed class CustomSimulationCostsTests
         {
             DnaCondition = 1e30,
             DnaCopy = 2.75,
+            AgeLinear = 0.25,
+            AgeLinearEnabled = false,
             DynamicUpperRangePercent = 27.5,
             DynamicLowerRangePercent = 11.25,
         };
@@ -282,6 +423,30 @@ public sealed class CustomSimulationCostsTests
                     return Assert.IsType<WorldConfiguration>(await session.ReadConfigurationAsync());
                 }
 
+                const decimal changedUpper = 35.5m;
+                const decimal changedLower = 17.75m;
+                var changes = configuredCosts with
+                {
+                    DnaCopy = 3.5,
+                    AgeLinearEnabled = true,
+                    DynamicUpperRangePercent = (double)changedUpper,
+                    DynamicLowerRangePercent = (double)changedLower,
+                };
+                void AssertRanges(CustomSimulationCostsWindow dialog, decimal upper, decimal lower)
+                {
+                    Assert.Equal(upper, dialog.FindControl<NumericUpDown>("DynamicUpperRangePercent")!.Value);
+                    Assert.Equal(lower, dialog.FindControl<NumericUpDown>("DynamicLowerRangePercent")!.Value);
+                }
+
+                void StageChanges(CustomSimulationCostsWindow dialog)
+                {
+                    dialog.FindControl<NumericUpDown>("DnaCopy")!.Value = (decimal)changes.DnaCopy;
+                    dialog.FindControl<CheckBox>("AgeLinearEnabled")!.IsChecked = true;
+                    dialog.FindControl<NumericUpDown>("DynamicUpperRangePercent")!.Value = changedUpper;
+                    dialog.FindControl<NumericUpDown>("DynamicLowerRangePercent")!.Value = changedLower;
+                    Click(dialog, "ApplyButton");
+                }
+
                 var settings = await Open();
                 Assert.Equal(2, settings.FindControl<ComboBox>("CostPreset")!.SelectedIndex);
                 menu.FindCommandItem(LegacyCommandId.EditGeneralSettings)!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
@@ -290,15 +455,18 @@ public sealed class CustomSimulationCostsTests
                 var custom = await Edit(settings);
                 Assert.Equal(2.75m, custom.FindControl<NumericUpDown>("DnaCopy")!.Value);
                 Assert.Equal(100_000m, custom.FindControl<NumericUpDown>("DnaCondition")!.Value);
+                Assert.Equal(0.25m, custom.FindControl<NumericUpDown>("AgeLinear")!.Value);
+                Assert.False(custom.FindControl<CheckBox>("AgeLinearEnabled")!.IsChecked);
+                AssertRanges(custom, 27.5m, 11.25m);
                 custom.FindControl<NumericUpDown>("DnaCopy")!.Value = 5m;
+                custom.FindControl<NumericUpDown>("DynamicLowerRangePercent")!.Value = 50m;
                 Click(custom, "CancelButton");
                 await WaitForLive(() => !custom.IsVisible, () => "The cost editor did not cancel.");
                 Assert.Null(settings.CostUpdate);
                 custom = await Edit(settings);
-                custom.FindControl<NumericUpDown>("DnaCopy")!.Value = 3.5m;
-                Click(custom, "ApplyButton");
-                await WaitForLive(() => settings.CostUpdate?.DnaCopy == 3.5, () => "Custom costs were not staged.");
-                Assert.Equal(configuredCosts with { DnaCopy = 3.5 }, settings.CostUpdate);
+                AssertRanges(custom, 27.5m, 11.25m);
+                StageChanges(custom);
+                await WaitForLive(() => settings.CostUpdate == changes, () => "Custom costs were not staged.");
                 Assert.Equal(original, await session.SaveAsync());
                 Click(settings, "CancelButton");
                 await WaitForLive(() => viewModel.Status == "CANCELED", () => viewModel.Status);
@@ -308,21 +476,33 @@ public sealed class CustomSimulationCostsTests
                 settings = await Open(LegacyCommandId.EditGeneralSettings);
                 custom = await Edit(settings);
                 Assert.Equal(2.75m, custom.FindControl<NumericUpDown>("DnaCopy")!.Value);
-                custom.FindControl<NumericUpDown>("DnaCopy")!.Value = 3.5m;
-                Click(custom, "ApplyButton");
-                await WaitForLive(() => settings.CostUpdate?.DnaCopy == 3.5, () => "Custom costs were not staged.");
-                Assert.Equal(configuredCosts with { DnaCopy = 3.5 }, (await Apply(settings)).Costs);
+                AssertRanges(custom, 27.5m, 11.25m);
+                StageChanges(custom);
+                await WaitForLive(() => settings.CostUpdate == changes, () => "Custom costs were not staged.");
+                Assert.Equal(changes, (await Apply(settings)).Costs);
+
+                using var reloaded = new NativeEngineClient(setup);
+                reloaded.Load(await session.SaveLegacyAsync());
+                var savedCosts = reloaded.ReadConfiguration().Costs;
+                Assert.True(savedCosts.AgeLinearEnabled);
+                Assert.Equal(0.25, savedCosts.AgeLinear);
+                Assert.Equal(changes.DynamicUpperRangePercent, savedCosts.DynamicUpperRangePercent);
+                Assert.Equal(changes.DynamicLowerRangePercent, savedCosts.DynamicLowerRangePercent);
 
                 settings = await Open();
                 custom = await Edit(settings);
                 Assert.Equal(3.5m, custom.FindControl<NumericUpDown>("DnaCopy")!.Value);
+                AssertRanges(custom, changedUpper, changedLower);
+                Assert.True(custom.FindControl<CheckBox>("AgeLinearEnabled")!.IsChecked);
                 Click(custom, "CancelButton");
                 await WaitForLive(() => !custom.IsVisible, () => "The cost editor did not close.");
                 settings.FindControl<ComboBox>("CostPreset")!.SelectedIndex = 1;
                 settings.FindControl<NumericUpDown>("MaxVelocity")!.Value = 225m;
                 var result = await Apply(settings);
                 Assert.Equal(GlobalSimulationCostSettings.F1Default, result.Costs);
+                Assert.Equal(Db2CostPreset.F1, result.NativeCostPreset);
                 Assert.Equal((double)0.004f, result.Costs.DnaCondition);
+                Assert.Equal(0.0, result.Costs.ChloroplastConstruction);
                 Assert.Equal(225f, result.Environment.Physics.MaxVelocity);
                 Assert.Equal(tick, session.LatestSnapshot.Tick);
 
@@ -348,6 +528,174 @@ public sealed class CustomSimulationCostsTests
     }
 
     [Fact]
+    public async Task SetupPhysicsAndCostsStagesTheWorldPresetWithoutChangingTheApplicationProfile()
+    {
+        var profile = Directory.CreateTempSubdirectory("darwinbots-startup-costs-");
+        try
+        {
+            var storage = new AvaloniaDesktopStorageService(profile.FullName);
+            var defaults = new GlobalSettings { Costs = new GlobalSimulationCostSettings { DnaCopy = 2.75 } };
+            await storage.SaveGlobalSettingsAsync(defaults);
+            var profilePath = Path.Combine(profile.FullName, "global-settings.json");
+            var originalProfile = await File.ReadAllBytesAsync(profilePath);
+
+            await DesktopTestApplication.Session.Dispatch(async () =>
+            {
+                var window = new SetupWindow(storage);
+                WorldSetupOptions? captured = null;
+                window.WorldCreated += options => captured = options;
+                window.Show();
+                try
+                {
+                    window.FindControl<ComboBox>("Backend")!.SelectedIndex = 1;
+                    var sections = window.FindControl<TabControl>("SimulationSettingsTabs")!;
+
+                    async Task<AdvancedSettingsWindow> Open(Db2CostPreset expected)
+                    {
+                        sections.SelectedIndex = 2;
+                        await WaitFor(() => window.OwnedWindows.OfType<AdvancedSettingsWindow>().Any());
+                        var dialog = Assert.Single(window.OwnedWindows.OfType<AdvancedSettingsWindow>());
+                        Assert.Equal("Darwinbots Simulation Settings", dialog.Title);
+                        Assert.True(dialog.FindControl<Border>("SimulationCostsPanel")!.IsVisible);
+                        Assert.Equal((int)expected, dialog.FindControl<ComboBox>("CostPreset")!.SelectedIndex);
+                        Assert.Equal(expected == Db2CostPreset.Custom,
+                            dialog.FindControl<Button>("LiveCustomSimulationCostsButton")!.IsEnabled);
+                        return dialog;
+                    }
+
+                    async Task CloseCosts(AdvancedSettingsWindow dialog, string button)
+                    {
+                        Click(dialog, button);
+                        await WaitFor(() => !dialog.IsVisible && sections.SelectedIndex == 0);
+                    }
+
+                    var settings = await Open(Db2CostPreset.Custom);
+                    settings.FindControl<ComboBox>("CostPreset")!.SelectedIndex = (int)Db2CostPreset.F1;
+                    await CloseCosts(settings, "CancelButton");
+
+                    settings = await Open(Db2CostPreset.Custom);
+                    Click(settings, "LiveCustomSimulationCostsButton");
+                    await WaitFor(() => settings.OwnedWindows.OfType<CustomSimulationCostsWindow>().Any());
+                    var custom = Assert.Single(settings.OwnedWindows.OfType<CustomSimulationCostsWindow>());
+                    Assert.Equal(2.75m, custom.FindControl<NumericUpDown>("DnaCopy")!.Value);
+                    Click(custom, "CancelButton");
+                    await WaitFor(() => !custom.IsVisible);
+                    settings.FindControl<ComboBox>("CostPreset")!.SelectedIndex = (int)Db2CostPreset.F1;
+                    await CloseCosts(settings, "ApplyButton");
+
+                    settings = await Open(Db2CostPreset.F1);
+                    await CloseCosts(settings, "CancelButton");
+                    Click(window, "CreateWorldButton");
+                    var created = Assert.IsType<WorldSetupOptions>(captured);
+                    Assert.Equal(defaults.Costs, created.GlobalSettings.Costs);
+                    Assert.Equal(GlobalSimulationCostSettings.F1Default, created.SimulationCosts);
+                    using var engine = new NativeEngineClient(created);
+                    var configuration = engine.ReadConfiguration();
+                    Assert.Equal(Db2CostPreset.F1, configuration.NativeCostPreset);
+                    Assert.Equal(GlobalSimulationCostSettings.F1Default, configuration.Costs);
+
+                    var exported = Db2SettingsCodec.Encode(DesktopSettings.FromWorldSetup(created));
+                    var retained = Db2SettingsCodec.Decode(exported).ToWorldSetup();
+                    Assert.Equal(Db2CostPreset.F1, retained.NativeCostPreset);
+                    Assert.Equal(GlobalSimulationCostSettings.F1Default, retained.EffectiveSimulationCosts);
+                    var original = LegacyDnaText.Decode(exported).Split("#DARWINBOTS_MODERN_SETTINGS_V1#")[0];
+                    var fromOriginal = Db2SettingsCodec.Decode(LegacyDnaText.Encode(original)).ToWorldSetup();
+                    Assert.Equal(Db2CostPreset.F1, fromOriginal.NativeCostPreset);
+                    Assert.Equal(0.05f, fromOriginal.EffectiveSimulationCosts.Movement);
+                    Assert.Equal(0, fromOriginal.EffectiveSimulationCosts.DnaCopy);
+                    Assert.Equal(originalProfile, await File.ReadAllBytesAsync(profilePath));
+                }
+                finally
+                {
+                    foreach (var owned in window.OwnedWindows.ToArray()) owned.Close();
+                    window.Close();
+                }
+            }, CancellationToken.None);
+        }
+        finally { profile.Delete(recursive: true); }
+    }
+
+    [Fact]
+    public async Task F5StagesAndRestoresCustomPresetWhenItsCostsAreIdenticalToNoCosts()
+    {
+        var setup = new WorldSetupOptions
+        {
+            Backend = "Cpu",
+            PopulationCapacity = 64,
+            NativeCostPreset = Db2CostPreset.NoCosts,
+            GlobalSettings = new GlobalSettings { Costs = GlobalSimulationCostSettings.NoCosts },
+            Species = [new("Test", "start\nstop", false, 0xff3f8e34u, 1, 1_000, 0, false, 0f)],
+        };
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], setup, NativeEngineClientFactory.Instance, new AuditStorageService());
+            window.Show();
+            try
+            {
+                var viewModel = Assert.IsType<MainWindowViewModel>(window.DataContext);
+                await WaitForLive(() => viewModel.Status.StartsWith("WORLD READY", StringComparison.Ordinal), () => viewModel.Status);
+                var session = Field<SimulationSession>(window, "_session");
+                var original = await session.SaveAsync();
+
+                async Task<AdvancedSettingsWindow> Open(Db2CostPreset expected)
+                {
+                    window.KeyPress(Key.F5, RawInputModifiers.None, PhysicalKey.F5, null);
+                    window.KeyRelease(Key.F5, RawInputModifiers.None, PhysicalKey.F5, null);
+                    await WaitForLive(() => window.OwnedWindows.OfType<AdvancedSettingsWindow>().Any(), () => viewModel.Status);
+                    var dialog = Assert.Single(window.OwnedWindows.OfType<AdvancedSettingsWindow>());
+                    Assert.Equal(2, dialog.FindControl<TabControl>("SettingsTabs")!.SelectedIndex);
+                    Assert.Equal((int)expected, dialog.FindControl<ComboBox>("CostPreset")!.SelectedIndex);
+                    Assert.Equal(expected == Db2CostPreset.Custom, dialog.FindControl<Button>("LiveCustomSimulationCostsButton")!.IsEnabled);
+                    return dialog;
+                }
+
+                async Task Complete(AdvancedSettingsWindow dialog, bool apply)
+                {
+                    viewModel.Status = "WAITING FOR LIVE SETTINGS";
+                    Click(dialog, apply ? "ApplyButton" : "CancelButton");
+                    await WaitForLive(() => viewModel.Status == (apply ? "LIVE SETTINGS APPLIED" : "CANCELED"), () => viewModel.Status);
+                }
+
+                var settings = await Open(Db2CostPreset.NoCosts);
+                settings.FindControl<ComboBox>("CostPreset")!.SelectedIndex = (int)Db2CostPreset.Custom;
+                Assert.Null(settings.CostUpdate);
+                Assert.Equal(Db2CostPreset.Custom, settings.CostPresetUpdate);
+                Assert.True(settings.FindControl<Border>("DirtyBadge")!.IsVisible);
+                Assert.Equal(original, await session.SaveAsync());
+                await Complete(settings, apply: false);
+                Assert.Equal(original, await session.SaveAsync());
+
+                settings = await Open(Db2CostPreset.NoCosts);
+                settings.FindControl<ComboBox>("CostPreset")!.SelectedIndex = (int)Db2CostPreset.Custom;
+                await Complete(settings, apply: true);
+                var custom = Assert.IsType<WorldConfiguration>(await session.ReadConfigurationAsync());
+                Assert.Equal(Db2CostPreset.Custom, custom.NativeCostPreset);
+                Assert.Equal(GlobalSimulationCostSettings.NoCosts, custom.Costs);
+                var saved = await session.SaveAsync();
+
+                settings = await Open(Db2CostPreset.Custom);
+                settings.FindControl<ComboBox>("CostPreset")!.SelectedIndex = (int)Db2CostPreset.NoCosts;
+                Assert.Null(settings.CostUpdate);
+                await Complete(settings, apply: true);
+                Assert.Equal(Db2CostPreset.NoCosts, (await session.ReadConfigurationAsync())!.NativeCostPreset);
+                var restore = typeof(MainWindow).GetMethod("LoadSimulationAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
+                await Assert.IsAssignableFrom<Task>(restore.Invoke(window, [saved]));
+
+                settings = await Open(Db2CostPreset.Custom);
+                settings.FindControl<ComboBox>("CostPreset")!.SelectedIndex = (int)Db2CostPreset.F1;
+                Assert.Equal(GlobalSimulationCostSettings.F1Default, settings.CostUpdate);
+                await Complete(settings, apply: false);
+                Assert.Equal(Db2CostPreset.Custom, (await session.ReadConfigurationAsync())!.NativeCostPreset);
+            }
+            finally
+            {
+                foreach (var owned in window.OwnedWindows.ToArray()) owned.Close();
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
     public void InvalidCostCommandDoesNotCommitEarlierNativeLiveSettings()
     {
         using var engine = new NativeEngineClient(backend: "Cpu");
@@ -355,7 +703,8 @@ public sealed class CustomSimulationCostsTests
         Assert.Throws<InvalidOperationException>(() => engine.UpdateLiveSettings(
             EnvironmentUpdate.Default with { MetabolismCost = 5 },
             MutationSettingsUpdate.Default with { Enabled = false },
-            new GlobalSimulationCostSettings { GlobalMultiplier = -1 }));
+            new GlobalSimulationCostSettings { GlobalMultiplier = 2 },
+            (Db2CostPreset)255));
         Assert.Equal(before, engine.Save());
     }
 

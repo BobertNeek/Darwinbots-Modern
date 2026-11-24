@@ -1,5 +1,7 @@
 namespace Darwinbots.Desktop.Core;
 
+public sealed record NativeConsoleActivationFrame(OrganismKey Focus, ulong UniqueId, ulong Tick, bool[] Activations);
+
 public sealed record RobotConsoleCommand(string Name, IReadOnlyList<string> Arguments)
 {
     public static RobotConsoleCommand Parse(string input)
@@ -16,21 +18,32 @@ public sealed class RobotConsoleController
     private readonly OrganismKey _focus;
     private readonly Func<Task>? _play;
     private readonly Func<Task>? _pause;
+    private readonly Func<uint, CancellationToken, Task<(ulong Tick, ulong Advanced)>>? _advance;
+    private readonly Action<bool>? _showDna;
+    private readonly Action? _validateCommand;
 
     public RobotConsoleController(
         SimulationSession session,
         OrganismKey focus,
         Func<Task>? play = null,
-        Func<Task>? pause = null)
+        Func<Task>? pause = null,
+        Func<uint, CancellationToken, Task<(ulong Tick, ulong Advanced)>>? advance = null,
+        Action<bool>? showDna = null,
+        Action? validateCommand = null)
     {
         _session = session;
         _focus = focus;
         _play = play;
         _pause = pause;
+        _advance = advance;
+        _showDna = showDna;
+        _validateCommand = validateCommand;
     }
 
-    public async Task<string> ExecuteAsync(string input, CancellationToken cancellationToken = default)
+    public async Task<string> ExecuteAsync(string input, CancellationToken cancellationToken = default,
+        bool selectConsoleRobotForDna = false)
     {
+        _validateCommand?.Invoke();
         var command = RobotConsoleCommand.Parse(input);
         switch (command.Name)
         {
@@ -38,7 +51,25 @@ public sealed class RobotConsoleController
                 return "help | printmem [address or .sysvar] | set address-or-.sysvar value | energy value | cycle [count] | step | execrob | printeye | printtouch | printtaste | debug | showdna | play | pause";
             case "cycle":
             case "step":
-                var count = command.Name == "step" ? 1u : ParseCount(command.Arguments, 1);
+                uint count;
+                if (command.Name == "cycle" && _session.LatestSnapshot.NativeCycle.HasValue)
+                {
+                    // The original typed command reads its exact first two literal-space fields.
+                    var words = input.Split(' ', 3);
+                    if (words[0] != "cycle") return string.Empty;
+                    var nativeCount = Convert.ToInt16(Microsoft.VisualBasic.Conversion.Val(words.Length > 1 ? words[1] : ""));
+                    if (nativeCount <= 0) return string.Empty;
+                    count = (uint)nativeCount;
+                }
+                else
+                {
+                    count = command.Name == "step" ? 1u : ParseCount(command.Arguments, 1);
+                }
+                if (_advance is { } advance)
+                {
+                    var result = await advance(count, cancellationToken).ConfigureAwait(false);
+                    return $"cycle {result.Tick} (+{result.Advanced})";
+                }
                 await _session.StepAsync(count, cancellationToken).ConfigureAwait(false);
                 return $"cycle {_session.LatestSnapshot.Tick} (+{count})";
             case "play":
@@ -51,24 +82,36 @@ public sealed class RobotConsoleController
                 return "pause";
             case "set":
                 RequireArguments(command, 2);
-                var address = await _session.ResolveMemoryAddressAsync(command.Arguments[0], cancellationToken).ConfigureAwait(false);
                 var value = ParseInt(command.Arguments[1], "value");
-                await _session.SetOrganismMemoryAsync(_focus.Slot, _focus.Generation, address, value, cancellationToken)
+                var address = await _session.SetNamedOrganismMemoryAsync(_focus, command.Arguments[0], value, cancellationToken, _validateCommand)
                     .ConfigureAwait(false);
                 return $"mem[{address}] = {value}";
             case "energy":
+                if (_session.LatestSnapshot.NativeCycle.HasValue)
+                {
+                    // The original console preserves empty fields between literal spaces.
+                    var words = input.Split(' ', 3);
+                    if (words[0] != "energy") return string.Empty;
+                    var nativeEnergy = (float)Microsoft.VisualBasic.Conversion.Val(words.Length > 1 ? words[1] : "");
+                    if (!float.IsFinite(nativeEnergy))
+                        throw new FormatException("Energy is outside the original Single range.");
+                    await _session.SetNativeConsoleEnergyAsync(_focus, nativeEnergy, cancellationToken, _validateCommand)
+                        .ConfigureAwait(false);
+                    return string.Empty;
+                }
                 RequireArguments(command, 1);
                 var energy = ParseInt(command.Arguments[0], "energy");
-                await _session.SetOrganismEnergyAsync(_focus.Slot, _focus.Generation, energy, cancellationToken)
+                await _session.SetOrganismEnergyAsync(_focus.Slot, _focus.Generation, energy, cancellationToken, _validateCommand)
                     .ConfigureAwait(false);
                 return $"energy = {energy}";
             case "printmem":
             case "?":
-                if (command.Arguments.Count == 0) return PrintMemory(command.Arguments);
-                var resolved = await _session.ResolveMemoryAddressAsync(command.Arguments[0], cancellationToken).ConfigureAwait(false);
-                return PrintMemory([resolved.ToString()]);
+                if (command.Arguments.Count == 0) return PrintMemory();
+                var memory = await _session.ReadNamedOrganismMemoryAsync(_focus, command.Arguments[0], cancellationToken, _validateCommand)
+                    .ConfigureAwait(false);
+                return $"mem[{memory.Address}] = {memory.Value}";
             case "execrob":
-                await _session.ExecuteRobotsAsync(cancellationToken).ConfigureAwait(false);
+                await _session.ExecuteRobotsAsync(cancellationToken, _validateCommand).ConfigureAwait(false);
                 return $"DNA executed at cycle {_session.LatestSnapshot.Tick}";
             case "printeye":
             case "eyes":
@@ -80,6 +123,11 @@ public sealed class RobotConsoleController
             case "debug":
                 return PrintDebug();
             case "showdna":
+                if (_showDna is { } showDna)
+                {
+                    showDna(selectConsoleRobotForDna);
+                    return "ROBOT DNA OPEN";
+                }
                 return await _session.ExportDnaAsync(_focus.Slot, _focus.Generation, cancellationToken)
                     .ConfigureAwait(false);
             default:
@@ -87,17 +135,8 @@ public sealed class RobotConsoleController
         }
     }
 
-    private string PrintMemory(IReadOnlyList<string> arguments)
-    {
-        var organism = CurrentOrganism();
-        if (arguments.Count > 0)
-        {
-            var address = ParseAddress(arguments[0]);
-            var cell = organism.Memory.FirstOrDefault(cell => cell.Address == address);
-            return $"mem[{address}] = {cell?.Value ?? 0}";
-        }
-        return string.Join(Environment.NewLine, organism.Memory.Select(cell => $"mem[{cell.Address}] = {cell.Value}"));
-    }
+    private string PrintMemory() =>
+        string.Join(Environment.NewLine, CurrentOrganism().Memory.Select(cell => $"mem[{cell.Address}] = {cell.Value}"));
 
     private string PrintEyes()
     {
@@ -129,13 +168,6 @@ public sealed class RobotConsoleController
         var value = ParseInt(arguments[0], "cycle count");
         if (value is < 1 or > 1_000_000) throw new ArgumentOutOfRangeException(nameof(arguments));
         return (uint)value;
-    }
-
-    private static ushort ParseAddress(string value)
-    {
-        var address = ParseInt(value, "memory address");
-        if (address is < 1 or > 1000) throw new ArgumentOutOfRangeException(nameof(value));
-        return (ushort)address;
     }
 
     private static int ParseInt(string value, string name) =>

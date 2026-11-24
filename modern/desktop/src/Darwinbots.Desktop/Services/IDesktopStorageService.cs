@@ -12,48 +12,77 @@ public enum SimulationSaveFormat
     Legacy,
 }
 
+public sealed record DesktopSimulationFile(byte[] Data, string? LocalPath = null);
+
+public sealed record DesktopBackgroundPicture(string Name, byte[] Data, string? LocalPath = null);
+
+public sealed record SavedRobotDna(string? FileName);
+
 public interface IDesktopStorageService
 {
-    Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner);
+    Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner, string? mainDirectory = null, bool allowMultiple = true);
+    Task<DesktopTextFile?> OpenNativeRepopulationSourceAsync(TopLevel owner, NativeRestartSource source) =>
+        Task.FromResult<DesktopTextFile?>(null);
     Task<bool> SaveLivingSnapshotAsync(
         TopLevel owner,
         string suggestedFileName,
         byte[] snapshot,
         Func<Task<byte[]?>> chooseMutationHistoryAsync) => Task.FromResult(false);
+    string? DeadSnapshotPath => null;
     Task<bool> AppendDeadSnapshotAsync(
         Func<Stream, Task> writeAsync,
         Func<Stream, Task>? writeMutationHistoryAsync) => Task.FromResult(false);
-    Task<byte[]?> OpenOrganismAsync(TopLevel owner) => Task.FromResult<byte[]?>(null);
+    Task<byte[]?> OpenOrganismAsync(TopLevel owner, string? mainDirectory = null) => Task.FromResult<byte[]?>(null);
     Task<byte[]?> OpenRgbMonitorPresetAsync(TopLevel owner) => Task.FromResult<byte[]?>(null);
     Task<bool> SaveRgbMonitorPresetAsync(TopLevel owner, ReadOnlyMemory<byte> preset) => Task.FromResult(false);
-    Task<DesktopSettings?> OpenSettingsAsync(TopLevel owner);
+    Task<DesktopSettings?> OpenSettingsAsync(TopLevel owner, string? mainDirectory = null);
+    Task<DesktopBackgroundPicture?> OpenBackgroundPictureAsync(TopLevel owner) =>
+        Task.FromResult<DesktopBackgroundPicture?>(null);
     Task<string?> PickSimulationPathAsync(TopLevel owner);
-    Task<byte[]?> OpenSimulationAsync(TopLevel owner);
-    Task<bool> SaveSettingsAsync(TopLevel owner, DesktopSettings settings);
+    Task<byte[]?> OpenSimulationAsync(TopLevel owner, string? mainDirectory = null);
+    async Task<DesktopSimulationFile?> OpenSimulationWithSourceAsync(TopLevel owner, string? mainDirectory = null) =>
+        await OpenSimulationAsync(owner, mainDirectory) is { } data ? new(data) : null;
+    Task<bool> SaveSettingsAsync(TopLevel owner, DesktopSettings settings, string? mainDirectory = null);
     Task<bool> SaveSimulationAsync(TopLevel owner, ReadOnlyMemory<byte> save);
     Task<bool> SaveLegacySimulationAsync(TopLevel owner, ReadOnlyMemory<byte> save) => Task.FromResult(false);
     async Task<SimulationSaveFormat?> SaveSimulationWithFormatAsync(
-        TopLevel owner, Func<SimulationSaveFormat, Task<byte[]>> createSave)
+        TopLevel owner, Func<SimulationSaveFormat, Task<byte[]>> createSave, string? mainDirectory = null)
     {
         var format = SimulationSaveFormat.Modern;
         return await SaveSimulationAsync(owner, await createSave(format)) ? format : null;
     }
     Task<SimulationSaveFormat?> SaveSimulationWithMutationOptionsAsync(
-        TopLevel owner, Func<SimulationSaveFormat, Task<byte[]>> createSave) =>
-        SaveSimulationWithFormatAsync(owner, createSave);
-    Task<bool> SaveDnaAsync(TopLevel owner, string suggestedFileName, string dna, MutationProfileUpdate? mutationProfile);
+        TopLevel owner, Func<SimulationSaveFormat, Task<byte[]>> createSave, string? mainDirectory = null) =>
+        SaveSimulationWithFormatAsync(owner, createSave, mainDirectory);
+    Task<bool> SaveDnaAsync(TopLevel owner, string suggestedFileName, string dna, MutationProfileUpdate? mutationProfile,
+        string? mainDirectory = null);
+    async Task<SavedRobotDna?> SaveDnaWithNameAsync(TopLevel owner, string suggestedFileName, string dna,
+        MutationProfileUpdate? mutationProfile, string? mainDirectory = null) =>
+        await SaveDnaAsync(owner, suggestedFileName, dna, mutationProfile, mainDirectory) ? new(null) : null;
     Task<string?> PickPopulationSeedDirectoryAsync(TopLevel owner) => Task.FromResult<string?>(null);
-    Task<bool> SaveOrganismAsync(TopLevel owner, string suggestedFileName, Func<Stream, Task> writeAsync);
+    Task<bool> SaveOrganismAsync(TopLevel owner, string suggestedFileName, Func<Stream, Task> writeAsync,
+        string? mainDirectory = null);
     string? FindLatestAutosave();
     Task SaveAutosaveAsync(ReadOnlyMemory<byte> save);
     Task<string?> ArchiveLatestAutosaveAsync(DateTime localBoundary, CancellationToken cancellationToken) => Task.FromResult<string?>(null);
     bool SupportsLastExitSimulation => false;
     string? FindLastExitSimulation() => null;
     Task SaveLastExitSimulationAsync(ReadOnlyMemory<byte> save) => Task.CompletedTask;
+    string? FindRestartContinuation() => null;
+    Task SaveRestartContinuationAsync(ReadOnlyMemory<byte> save) =>
+        throw new NotSupportedException("This storage does not support restart mode continuation.");
+    void ClearRestartContinuation() { }
+    bool SupportsLastExitSettings => false;
+    bool HasLastExitSettings => false;
+    DesktopSettings? LoadLastExitSettings() => null;
+    Task SaveLastExitSettingsAsync(DesktopSettings settings) => Task.CompletedTask;
     bool IsFirstRun => false;
     Task MarkFirstRunCompleteAsync() => Task.CompletedTask;
     string? FindLastStart() => null;
     Task SaveLastStartAsync(ReadOnlyMemory<byte> settings) => Task.CompletedTask;
     GlobalSettings? LoadGlobalSettings() => null;
     Task SaveGlobalSettingsAsync(GlobalSettings settings) => Task.CompletedTask;
+    bool? LoadGraphClosePreference() => null;
+    Task SaveGraphClosePreferenceAsync(bool? keepUpdating) => Task.CompletedTask;
+    bool? LoadOldColorsPreference() => null;
 }

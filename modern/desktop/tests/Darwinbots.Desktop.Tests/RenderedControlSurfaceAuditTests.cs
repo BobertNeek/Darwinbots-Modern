@@ -13,6 +13,7 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Darwinbots.Desktop.Controls;
 using Darwinbots.Desktop.Core;
+using Darwinbots.Desktop.Core.LegacyMenus;
 using Darwinbots.Desktop.Services;
 using Darwinbots.Desktop.ViewModels;
 using Darwinbots.Desktop.Views;
@@ -370,6 +371,143 @@ public sealed class RenderedControlSurfaceAuditTests
     }
 
     [Fact]
+    public async Task BackgroundPictureReturnsWhenASimulationLoadsOrStartsInTheSameSession()
+    {
+        var png = Convert.FromBase64String(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=");
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var factory = new AuditEngineClientFactory();
+            var storage = new AuditStorageService { OpenedBackgroundPicture = new("arena.png", png), OpenedSimulation = [1] };
+            var windows = new List<Window>();
+            using var opened = Window.WindowOpenedEvent.AddClassHandler<Window>((window, _) => windows.Add(window));
+            var original = new MainWindow([], new WorldSetupOptions(), factory, storage);
+            try
+            {
+                ShowForInteraction(original, 1280, 900);
+                var originalView = Named<WorldViewport>(original, "Viewport");
+                var originalModel = (MainWindowViewModel)original.DataContext!;
+                await WaitFor(() => originalModel.Population == 1);
+
+                Activate(original, LegacyCommandId.ViewImportBackground);
+                await WaitFor(() => originalModel.Status == "BACKGROUND · arena.png");
+                Assert.True(originalView.OverlayProjection.HasBackgroundImage);
+                Activate(original, LegacyCommandId.ViewRemoveBackground);
+                await WaitFor(() => originalModel.Status == "BACKGROUND REMOVED");
+                Assert.False(originalView.HasBackgroundImage);
+
+                var client = factory.Clients.Single();
+                client.RejectLoads = true;
+                Activate(original, LegacyCommandId.FileLoadSimulation);
+                await WaitFor(() => originalModel.Status.Contains("Controlled audit load rejection.", StringComparison.Ordinal));
+                Assert.False(originalView.HasBackgroundImage);
+                client.RejectLoads = false;
+                Activate(original, LegacyCommandId.FileLoadSimulation);
+                await WaitFor(() => originalModel.Status == "LOADED");
+                Assert.True(originalView.OverlayProjection.HasBackgroundImage);
+
+                Named<Button>(original, "ResetButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => factory.Clients.Count == 2 && client.Calls.Contains("Dispose"));
+                var reset = windows.OfType<MainWindow>().Single(window => window != original);
+                var resetView = Named<WorldViewport>(reset, "Viewport");
+                Assert.False(originalView.HasBackgroundImage);
+                Assert.True(resetView.OverlayProjection.HasBackgroundImage);
+
+                var resetModel = (MainWindowViewModel)reset.DataContext!;
+                await WaitFor(() => resetModel.Population == 1);
+                Activate(reset, LegacyCommandId.ViewRemoveBackground);
+                await WaitFor(() => resetModel.Status == "BACKGROUND REMOVED");
+                Assert.False(resetView.HasBackgroundImage);
+                Activate(reset, LegacyCommandId.FileNewSimulation);
+                await WaitFor(() => windows.OfType<SetupWindow>().Any());
+                var setup = Assert.Single(windows.OfType<SetupWindow>());
+                Named<Button>(setup, "StartNewButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => factory.Clients.Count == 3);
+                var fresh = windows.OfType<MainWindow>().Single(window => window != original && window != reset);
+                Assert.True(Named<WorldViewport>(fresh, "Viewport").OverlayProjection.HasBackgroundImage);
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                using var frame = fresh.CaptureRenderedFrame();
+                Assert.NotNull(frame);
+            }
+            finally { await CloseNavigationWindowsAsync(windows); }
+        }, CancellationToken.None);
+
+        static void Activate(MainWindow window, LegacyCommandId command) =>
+            ActivateMenu(Named<LegacyMenuBar>(window, "HistoricMenuBar").FindCommandItem(command)!);
+    }
+
+    [Fact]
+    public async Task BackgroundPictureReloadsEditedLocalSourceAndFallsBackToTheLastDecodedImage()
+    {
+        var imported = Convert.FromBase64String(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=");
+        var editedForLoad = Convert.FromBase64String(
+            "iVBORw0KGgoAAAANSUhEUgAAAAMAAAACCAIAAAASFvFNAAAAEElEQVR4nGN4xp8EQQxwFgBTkAgL2YNlvQAAAABJRU5ErkJggg==");
+        var editedForNew = Convert.FromBase64String(
+            "iVBORw0KGgoAAAANSUhEUgAAAAQAAAADCAIAAAA7ljmRAAAAEElEQVR4nGMwnOELRww4OQD88w0Ji/qrWgAAAABJRU5ErkJggg==");
+        var path = Path.GetTempFileName();
+        try
+        {
+            await File.WriteAllBytesAsync(path, imported);
+            await DesktopTestApplication.Session.Dispatch(async () =>
+            {
+                var factory = new AuditEngineClientFactory();
+                var storage = new AuditStorageService
+                {
+                    OpenedBackgroundPicture = new("arena.png", imported, path),
+                    OpenedSimulation = [1],
+                };
+                var windows = new List<Window>();
+                using var opened = Window.WindowOpenedEvent.AddClassHandler<Window>((window, _) => windows.Add(window));
+                var original = new MainWindow([], new WorldSetupOptions(), factory, storage);
+                try
+                {
+                    ShowForInteraction(original, 1280, 900);
+                    var model = (MainWindowViewModel)original.DataContext!;
+                    var menu = Named<LegacyMenuBar>(original, "HistoricMenuBar");
+                    await WaitFor(() => model.Population == 1);
+
+                    ActivateMenu(menu.FindCommandItem(LegacyCommandId.ViewImportBackground)!);
+                    await WaitFor(() => model.Status == "BACKGROUND · arena.png");
+                    Assert.Equal(new PixelSize(1, 1), DisplayedSize(original));
+
+                    await File.WriteAllBytesAsync(path, editedForLoad);
+                    ActivateMenu(menu.FindCommandItem(LegacyCommandId.FileLoadSimulation)!);
+                    await WaitFor(() => model.Status == "LOADED");
+                    Assert.Equal(new PixelSize(3, 2), DisplayedSize(original));
+
+                    foreach (var corrupt in new[] { false, true })
+                    {
+                        ActivateMenu(menu.FindCommandItem(LegacyCommandId.ViewRemoveBackground)!);
+                        await WaitFor(() => model.Status == "BACKGROUND REMOVED");
+                        Assert.False(Named<WorldViewport>(original, "Viewport").HasBackgroundImage);
+                        if (corrupt) await File.WriteAllBytesAsync(path, [1, 2, 3]);
+                        else File.Delete(path);
+
+                        ActivateMenu(menu.FindCommandItem(LegacyCommandId.FileLoadSimulation)!);
+                        await WaitFor(() => model.Status == "LOADED");
+                        Assert.Equal(new PixelSize(3, 2), DisplayedSize(original));
+                    }
+
+                    ActivateMenu(menu.FindCommandItem(LegacyCommandId.FileNewSimulation)!);
+                    await WaitFor(() => windows.OfType<SetupWindow>().Any());
+                    var setup = Assert.Single(windows.OfType<SetupWindow>());
+                    await File.WriteAllBytesAsync(path, editedForNew);
+                    Named<Button>(setup, "StartNewButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    await WaitFor(() => factory.Clients.Count == 2);
+                    var fresh = windows.OfType<MainWindow>().Single(window => window != original);
+                    Assert.Equal(new PixelSize(4, 3), DisplayedSize(fresh));
+                }
+                finally { await CloseNavigationWindowsAsync(windows); }
+            }, CancellationToken.None);
+        }
+        finally { File.Delete(path); }
+
+        static PixelSize DisplayedSize(MainWindow window) =>
+            Field<Bitmap>(Named<WorldViewport>(window, "Viewport"), "_backgroundImage").PixelSize;
+    }
+
+    [Fact]
     public async Task ResetCapturesTheCurrentSpareOnceAndDoesNotReplayTheOriginalHandoffAfterItClears()
     {
         await DesktopTestApplication.Session.Dispatch(async () =>
@@ -689,7 +827,8 @@ public sealed class RenderedControlSurfaceAuditTests
             Click(window, reseed);
             Assert.Equal(!reseedBefore, firstRow.Reseed);
 
-            var rowNumbers = rowControls.OfType<NumericUpDown>().Where(control => ReferenceEquals(control.DataContext, firstRow)).ToArray();
+            var rowNumbers = rowControls.OfType<NumericUpDown>()
+                .Where(control => control.IsEffectivelyVisible && ReferenceEquals(control.DataContext, firstRow)).ToArray();
             Assert.Equal(2, rowNumbers.Length);
             AssertKeyboardIncrement(window, rowNumbers[0]);
             AssertKeyboardIncrement(window, rowNumbers[1]);
@@ -707,12 +846,13 @@ public sealed class RenderedControlSurfaceAuditTests
                     && control.Text?.Contains('%', StringComparison.Ordinal) == true);
             Assert.Contains('%', mutationLabel.Text!);
 
-            var remove = rowControls.OfType<Button>().Last(control => control.Tag is SetupSpeciesRow);
+            var remove = rowControls.OfType<Button>()
+                .Last(control => control.IsEffectivelyVisible && control.Tag is SetupSpeciesRow);
             Click(window, remove);
             Assert.Single(window.Species);
             Click(window, Named<Button>(window, "AddDnaButton"));
             Assert.Equal(2, window.Species.Count);
-            Assert.Equal("Audit_Bot", window.Species[^1].Name);
+            Assert.Equal("Audit_Bot.txt", window.Species[^1].Name);
 
             AssertKeyboardIncrement(window, Named<NumericUpDown>(window, "WorldWidth"));
             AssertKeyboardIncrement(window, Named<NumericUpDown>(window, "WorldHeight"));
@@ -2114,8 +2254,11 @@ public sealed class RenderedControlSurfaceAuditTests
 internal sealed class AuditStorageService : IDesktopStorageService
 {
     public IReadOnlyList<DesktopTextFile> DnaFiles { get; init; } = [];
+    public Func<TopLevel, NativeRestartSource, Task<DesktopTextFile?>>? ResolveNativeRepopulationSource { get; init; }
+    public ConcurrentQueue<(TopLevel Owner, NativeRestartSource Source)> NativeRepopulationSourceRequests { get; } = [];
     public string? PickedSimulationPath { get; init; }
     public byte[]? OpenedSimulation { get; set; }
+    public DesktopBackgroundPicture? OpenedBackgroundPicture { get; init; }
     public DesktopSettings? SettingsToOpen { get; init; }
     public byte[]? RgbMonitorPresetToOpen { get; set; }
     public byte[]? SavedRgbMonitorPreset { get; private set; }
@@ -2153,9 +2296,10 @@ internal sealed class AuditStorageService : IDesktopStorageService
         return Task.CompletedTask;
     }
 
-    public Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner) => Task.FromResult(DnaFiles);
-    public Task<DesktopSettings?> OpenSettingsAsync(TopLevel owner) => Task.FromResult(SettingsToOpen);
+    public Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner, string? mainDirectory = null, bool allowMultiple = true) => Task.FromResult(DnaFiles);
+    public Task<DesktopSettings?> OpenSettingsAsync(TopLevel owner, string? mainDirectory = null) => Task.FromResult(SettingsToOpen);
     public Task<byte[]?> OpenRgbMonitorPresetAsync(TopLevel owner) => Task.FromResult(RgbMonitorPresetToOpen);
+    public Task<DesktopBackgroundPicture?> OpenBackgroundPictureAsync(TopLevel owner) => Task.FromResult(OpenedBackgroundPicture);
 
     public Task<bool> SaveRgbMonitorPresetAsync(TopLevel owner, ReadOnlyMemory<byte> preset)
     {
@@ -2164,10 +2308,15 @@ internal sealed class AuditStorageService : IDesktopStorageService
         return Task.FromResult(true);
     }
 
+    public Task<DesktopTextFile?> OpenNativeRepopulationSourceAsync(TopLevel owner, NativeRestartSource source)
+    {
+        NativeRepopulationSourceRequests.Enqueue((owner, source));
+        return ResolveNativeRepopulationSource?.Invoke(owner, source) ?? Task.FromResult<DesktopTextFile?>(null);
+    }
     public Task<string?> PickSimulationPathAsync(TopLevel owner) => Task.FromResult(PickedSimulationPath);
-    public Task<byte[]?> OpenSimulationAsync(TopLevel owner) => Task.FromResult(OpenedSimulation);
+    public Task<byte[]?> OpenSimulationAsync(TopLevel owner, string? mainDirectory = null) => Task.FromResult(OpenedSimulation);
 
-    public Task<bool> SaveSettingsAsync(TopLevel owner, DesktopSettings settings)
+    public Task<bool> SaveSettingsAsync(TopLevel owner, DesktopSettings settings, string? mainDirectory = null)
     {
         SavedSettings = settings;
         return Task.FromResult(true);
@@ -2181,7 +2330,8 @@ internal sealed class AuditStorageService : IDesktopStorageService
 
     public MutationProfileUpdate? SavedDnaMutationProfile { get; private set; }
 
-    public Task<bool> SaveDnaAsync(TopLevel owner, string suggestedFileName, string dna, MutationProfileUpdate? mutationProfile)
+    public Task<bool> SaveDnaAsync(TopLevel owner, string suggestedFileName, string dna, MutationProfileUpdate? mutationProfile,
+            string? mainDirectory = null)
     {
         SavedDna = dna;
         SavedDnaMutationProfile = mutationProfile;
@@ -2212,7 +2362,8 @@ internal sealed class AuditStorageService : IDesktopStorageService
         return true;
     }
 
-    public async Task<bool> SaveOrganismAsync(TopLevel owner, string suggestedFileName, Func<Stream, Task> writeAsync)
+    public async Task<bool> SaveOrganismAsync(TopLevel owner, string suggestedFileName, Func<Stream, Task> writeAsync,
+            string? mainDirectory = null)
     {
         SavedOrganismSuggestedFileName = suggestedFileName;
         if (!AcceptOrganismSave) return false;
@@ -2293,6 +2444,12 @@ internal sealed class AuditEngineClient : IEngineClient
 
     public OrganismSnapshot Organism { get; }
     public ConcurrentQueue<string> Calls { get; } = [];
+    public List<NativeRestartSource> UnresolvedNativeRepopulationSources { get; } = [];
+    public Dictionary<ulong, string> BoundNativeRestartSourceDna { get; } = [];
+    public ConcurrentQueue<(IReadOnlyList<NativeRestartBinding> Sources, bool PreserveExisting)> NativeRestartBindings { get; } = [];
+    public ConcurrentQueue<(uint Count, int? FromCycle, bool Required, ulong[] CancelledLineages)> NativeRepopulationTickAttempts { get; } = [];
+    public HashSet<ulong> CommittedCancelledRepopulationLineages { get; } = [];
+    public ConcurrentQueue<(uint Count, int? FromCycle, NativeRedrawCadence Cadence, bool RecordsDeaths)> NativeTicks { get; } = [];
     public ConcurrentQueue<EnvironmentUpdate> EnvironmentUpdates { get; } = [];
     public ConcurrentQueue<MutationSettingsUpdate> MutationUpdates { get; } = [];
     public Dictionary<uint, string> SpeciesTemplateDna { get; } = [];
@@ -2303,7 +2460,9 @@ internal sealed class AuditEngineClient : IEngineClient
     public WorldConfiguration? ReadConfiguration() => ConfigurationForRead;
     public int? NativeCycle { get; set; }
     public Func<uint, int?, int?>? AdvanceNativeCycle { get; set; }
+    public Action? OnNativeRedraw { get; set; }
     public bool RejectLoads { get; set; }
+    public Action? BeforeResolveMemoryAddress { get; set; }
     public Func<int, RobotSelectionResult>? SelectBestOverride { get; set; }
     public LocalModeSnapshot? LocalModeForRead { get; set; }
     public float? NativeGaussianSpare { get; set; }
@@ -2341,6 +2500,56 @@ internal sealed class AuditEngineClient : IEngineClient
         if (AdvanceNativeCycle is { } advance) NativeCycle = advance(count, NativeCycle);
         else if (NativeCycle is { } cycle) NativeCycle = checked(cycle + checked((int)count));
         Calls.Enqueue($"Tick:{count}");
+    }
+
+    public void Tick(uint count, bool requireNativeRepopulationSource, IReadOnlyList<ulong> cancelledLineages,
+        NativeRedrawCadence? nativeRedraw = null)
+    {
+        NativeRepopulationTickAttempts.Enqueue((count, NativeCycle, requireNativeRepopulationSource, cancelledLineages.ToArray()));
+        if (requireNativeRepopulationSource && FindUnresolvedNativeRepopulationSource(cancelledLineages) is { } source)
+            throw new MissingNativeRepopulationSourceException($"Missing native repopulation source {source.Filename}.", source);
+        if (nativeRedraw is { } scheduled) Tick(count, scheduled);
+        else Tick(count);
+        CommittedCancelledRepopulationLineages.UnionWith(cancelledLineages);
+    }
+
+    public bool HasUnresolvedNativeRepopulationSources() =>
+        FindUnresolvedNativeRepopulationSource([]) is not null;
+
+    public int BindNativeRestartSources(IReadOnlyList<NativeRestartBinding> sources, bool preserveExisting)
+    {
+        NativeRestartBindings.Enqueue((sources.ToArray(), preserveExisting));
+        if (!preserveExisting) BoundNativeRestartSourceDna.Clear();
+        foreach (var source in sources) BoundNativeRestartSourceDna[source.LineageId] = source.Dna;
+        return sources.Count;
+    }
+
+    private NativeRestartSource? FindUnresolvedNativeRepopulationSource(IReadOnlyList<ulong> cancelledLineages) =>
+        UnresolvedNativeRepopulationSources.FirstOrDefault(source => !BoundNativeRestartSourceDna.ContainsKey(source.LineageId)
+            && !CommittedCancelledRepopulationLineages.Contains(source.LineageId)
+            && !cancelledLineages.Contains(source.LineageId));
+
+    public void Tick(uint count, NativeRedrawCadence nativeRedraw)
+    {
+        NativeTicks.Enqueue((count, NativeCycle, nativeRedraw, false));
+        Tick(count);
+    }
+    public void TickRecordingDeaths(uint count,
+        Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted, NativeRedrawCadence nativeRedraw)
+    {
+        NativeTicks.Enqueue((count, NativeCycle, nativeRedraw, true));
+        Tick(count);
+    }
+    public void RedrawNative()
+    {
+        Calls.Enqueue("RedrawNative");
+        OnNativeRedraw?.Invoke();
+    }
+    public ConcurrentQueue<bool> NativeRedrawModes { get; } = [];
+    public void RedrawNative(bool afterContinuousCycle)
+    {
+        NativeRedrawModes.Enqueue(afterContinuousCycle);
+        RedrawNative();
     }
     public DnaImportReport ImportDna(string dna, float[]? position = null) { Calls.Enqueue("ImportDna"); return DnaImportReport.Compatible; }
     public DnaImportReport ImportSpecies(SpeciesImport species) { Calls.Enqueue($"ImportSpecies:{species.Name}"); return DnaImportReport.Compatible; }
@@ -2394,6 +2603,12 @@ internal sealed class AuditEngineClient : IEngineClient
     public void ConfigurePlayerBot(PlayerBotConfig config) => Calls.Enqueue("ConfigurePlayerBot");
     public void SetPlayerBotKey(uint slot, uint generation, int keyCode, bool pressed) => Calls.Enqueue($"PlayerBotKey:{slot}:{generation}:{keyCode}:{pressed}");
     public void SetOrganismMemory(uint slot, uint generation, ushort address, int value) => Calls.Enqueue($"Memory:{slot}:{generation}:{address}:{value}");
+    public ushort ResolveMemoryAddress(string name)
+    {
+        BeforeResolveMemoryAddress?.Invoke();
+        return ushort.TryParse(name, out var address) && address is >= 1 and <= 1000
+            ? address : throw new FormatException($"Unknown memory address '{name}'.");
+    }
     public void UpdateRecognitionFudging(int mode) => Calls.Enqueue($"RecognitionFudging:{mode}");
     public void SetOrganismEnergy(uint slot, uint generation, int energy) => Calls.Enqueue($"Energy:{slot}:{generation}:{energy}");
     public OrganismKey? FindBestRobot(bool energyWeighting) { Calls.Enqueue("FindBestRobot"); return new(3, 2); }
@@ -2447,6 +2662,12 @@ internal sealed class AuditEngineClient : IEngineClient
         config.Restrictions);
     public void SetOrganismAim(uint slot, uint generation, int aim) => Calls.Enqueue($"Aim:{slot}:{generation}:{aim}");
     public byte[] Save() { Calls.Enqueue("Save"); return EncodeTickInSave ? BitConverter.GetBytes(_tick) : [1, 2, 3, 4]; }
+    public byte[] SaveLegacy()
+    {
+        Calls.Enqueue("SaveLegacy");
+        return EncodeTickInSave ? BitConverter.GetBytes(_tick)
+            : throw new NotSupportedException("This engine client does not support legacy simulation export.");
+    }
     public byte[] SaveWithoutMutations() { Calls.Enqueue("SaveWithoutMutations"); return [4, 3, 2, 1]; }
     public void Load(byte[] save)
     {

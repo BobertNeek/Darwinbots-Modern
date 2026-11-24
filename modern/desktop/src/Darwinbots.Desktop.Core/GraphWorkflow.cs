@@ -77,7 +77,10 @@ public sealed record GraphMetricSample(
     ulong Tick,
     IReadOnlyDictionary<GraphMetric, double> Values,
     IReadOnlyList<SpeciesGraphSampleSnapshot>? SpeciesGraphs = null,
-    IReadOnlyList<double>? DynamicCostSeries = null);
+    IReadOnlyList<double>? DynamicCostSeries = null)
+{
+    public bool NativeResetSweep { get; init; }
+}
 
 public sealed record GraphSample(ulong Tick, double Value);
 
@@ -125,7 +128,10 @@ public sealed class GraphSeriesViewModel : INotifyPropertyChanged
     private IReadOnlyList<GraphSample> _samples;
     private string _title;
     private string? _customExpression;
+    private uint _color;
+    private string? _speciesName;
     private bool _isSelected;
+    private bool _usesSampleOrder;
 
     public GraphSeriesViewModel(
         string id,
@@ -142,20 +148,21 @@ public sealed class GraphSeriesViewModel : INotifyPropertyChanged
         _title = title;
         _customExpression = customExpression;
         _samples = samples;
-        Color = color;
-        SpeciesName = speciesName;
+        _color = color;
+        _speciesName = speciesName;
         DynamicCostIndex = dynamicCostIndex;
     }
 
     public string Id { get; }
     public GraphMetric Metric { get; }
-    public uint Color { get; }
-    public string? SpeciesName { get; }
+    public uint Color { get => _color; private set => Set(ref _color, value); }
+    public string? SpeciesName { get => _speciesName; private set => Set(ref _speciesName, value); }
     public int? DynamicCostIndex { get; }
     public string Title { get => _title; private set => Set(ref _title, value); }
     public string? CustomExpression { get => _customExpression; private set => Set(ref _customExpression, value); }
     public IReadOnlyList<GraphSample> Samples { get => _samples; private set => Set(ref _samples, value); }
     public bool IsSelected { get => _isSelected; set => Set(ref _isSelected, value); }
+    public bool UsesSampleOrder { get => _usesSampleOrder; internal set => Set(ref _usesSampleOrder, value); }
     public double CurrentValue => Samples.Count == 0 ? 0 : Samples[^1].Value;
     public string CurrentValueText => CurrentValue.ToString("N1", CultureInfo.InvariantCulture);
 
@@ -176,6 +183,13 @@ public sealed class GraphSeriesViewModel : INotifyPropertyChanged
         CustomExpression = customExpression;
     }
 
+    internal void BindSpecies(string title, string? name, uint color)
+    {
+        Color = color;
+        SpeciesName = name;
+        Title = name is null ? title : $"{title} · {name}";
+    }
+
     private void Set<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
     {
         if (EqualityComparer<T>.Default.Equals(field, value)) return;
@@ -186,12 +200,23 @@ public sealed class GraphSeriesViewModel : INotifyPropertyChanged
 
 public sealed class GraphSuiteViewModel : INotifyPropertyChanged
 {
+    // grafico.NewPoints clears the current pivot in the original 1,001-slot ring.
+    private const int NativeVisiblePoints = 1_000;
     private IReadOnlyList<GraphMetricSample> _samples;
     private IReadOnlyList<SpeciesGraphSampleSnapshot> _currentSpecies = [];
+    private bool _usesNativeFeed;
+    private int _nextGraphId;
     private GraphChoice _selectedChoice = GraphCatalog.Metrics[0];
     private string _status = "SELECT A GRAPH";
     private string _comparisonText = "NO COMPARISON";
     private ulong? _historyCutoffTick;
+    private readonly Dictionary<GraphMetric, ulong> _metricCutoffTicks = [];
+    private readonly Dictionary<GraphMetric, List<GraphMetricSample>> _chartPoints = [];
+    private readonly Dictionary<GraphMetric, LegacyGraphAutoSave> _reusedNativeCharts = [];
+    private static readonly string[] DynamicCostLabels =
+        ["Cost Multiplier", "Population / Target", "Upper Range", "Lower Range", "Zero Level", "Reinstatement Level"];
+    private static readonly uint[] DynamicCostColors =
+        [0xff2d826f, 0xffd88724, 0xff4169aa, 0xffa64d79, 0xff888536, 0xff7956b5];
 
     public GraphSuiteViewModel(IReadOnlyList<GraphMetricSample>? samples = null)
     {
@@ -215,28 +240,78 @@ public sealed class GraphSuiteViewModel : INotifyPropertyChanged
         set => Set(ref _selectedChoice, value);
     }
 
+    public IReadOnlyList<GraphMetricSample> HistorySamples => _samples;
+    private IEnumerable<GraphSeriesViewModel> ProjectedGraphs => _usesNativeFeed
+        ? RunningGraphs.Where(graph => !graph.Id.StartsWith("legacy-", StringComparison.Ordinal))
+        : RunningGraphs;
     public string Status { get => _status; private set => Set(ref _status, value); }
     public string ComparisonText { get => _comparisonText; private set => Set(ref _comparisonText, value); }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
+    public event Action? GraphsReset;
+
+    public string LegacyHeader(GraphMetric metric) => CustomMetric(metric)?.Expression ?? "normal";
+
+    public GraphSamplingSettings SamplingSettingsFor(GraphMetric metric) => metric switch
+    {
+        GraphMetric.SelectiveGeneticDistance => new(Selective: true),
+        GraphMetric.GenerationalDistance => new(Generational: true),
+        GraphMetric.SlowGeneticDistance => new(Slow: true),
+        _ => CustomMetric(metric) is { } custom
+            ? GraphExpressionEvaluator.SamplingSettingsFor(custom.Expression)
+            : new(),
+    };
+
+    public IEnumerable<LegacyGraphPointValue> LegacyPoint(GraphMetric metric, GraphMetricSample sample)
+    {
+        var custom = CustomMetric(metric);
+        if (metric == GraphMetric.DynamicCostStats && sample.DynamicCostSeries is { Count: 6 } costs)
+        {
+            for (var index = 0; index < costs.Count; index++)
+                yield return new(DynamicCostLabels[index], DynamicCostColors[index], costs[index]);
+        }
+        else if (sample.SpeciesGraphs is { Count: > 0 } speciesGraphs)
+        {
+            foreach (var species in speciesGraphs)
+                yield return new(species.Name, species.Color, GraphMetricSampleProjector.ProjectValue(sample, metric, custom, species));
+        }
+        else
+        {
+            yield return new(GraphCatalog.For(metric).Label, 0xff62a844u,
+                GraphMetricSampleProjector.ProjectValue(sample, metric, custom));
+        }
+    }
+
     public void Update(EngineSnapshot snapshot)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
-        _samples = GraphMetricSampleProjector.FromSnapshot(snapshot);
-        _currentSpecies = snapshot.Species.Select((species, index) => (species, index))
+        _samples = _usesNativeFeed ? [] : GraphMetricSampleProjector.FromSnapshot(snapshot);
+        _currentSpecies = _usesNativeFeed ? [] : snapshot.Species.Select((species, index) => (species, index))
             .Where(value => snapshot.Organisms.Any(robot => robot.Species == value.index))
             .Select(value => new SpeciesGraphSampleSnapshot(value.species.Name, value.species.Color, new Dictionary<string, double>()))
             .ToArray();
-        foreach (var graph in RunningGraphs)
-            graph.Update(ProjectGraph(graph));
+        if (!_usesNativeFeed)
+            foreach (var graph in RunningGraphs) graph.Update(ProjectGraph(graph));
     }
 
     public void SetSamples(IReadOnlyList<GraphMetricSample> samples)
     {
         _samples = samples ?? throw new ArgumentNullException(nameof(samples));
-        foreach (var graph in RunningGraphs)
+        foreach (var graph in ProjectedGraphs)
             graph.Update(ProjectGraph(graph));
+    }
+
+    public void SetNativeFeed(bool enabled)
+    {
+        if (_usesNativeFeed == enabled) return;
+        ClearPreviousGraphWorld();
+        _usesNativeFeed = enabled;
+        foreach (var graph in ProjectedGraphs)
+        {
+            graph.UsesSampleOrder = enabled;
+            if (enabled) graph.Reset();
+        }
     }
 
     public void ConfigureCustomMetric(int slot, string name, string expression)
@@ -266,23 +341,22 @@ public sealed class GraphSuiteViewModel : INotifyPropertyChanged
         var graphs = new List<GraphSeriesViewModel>();
         var latest = _samples.LastOrDefault();
         var speciesGraphs = latest?.SpeciesGraphs?.Count > 0 ? latest.SpeciesGraphs : _currentSpecies;
-        if (metric == GraphMetric.DynamicCostStats && latest?.DynamicCostSeries?.Count == 6)
+        if (metric == GraphMetric.DynamicCostStats && (_usesNativeFeed || latest?.DynamicCostSeries?.Count == 6))
         {
-            string[] labels = ["Cost Multiplier", "Population / Target", "Upper Range", "Lower Range", "Zero Level", "Reinstatement Level"];
-            uint[] colors = [0xff2d826f, 0xffd88724, 0xff4169aa, 0xffa64d79, 0xff888536, 0xff7956b5];
-            for (var index = 0; index < labels.Length; index++)
-                graphs.Add(new GraphSeriesViewModel($"graph-{RunningGraphs.Count + graphs.Count + 1}", metric, labels[index], [], color: colors[index], dynamicCostIndex: index));
+            for (var index = 0; index < DynamicCostLabels.Length; index++)
+                graphs.Add(new GraphSeriesViewModel(NextGraphId(), metric,
+                    DynamicCostLabels[index], [], color: DynamicCostColors[index], dynamicCostIndex: index));
         }
         else if (metric != GraphMetric.DynamicCostStats && speciesGraphs.Count > 0)
         {
             foreach (var species in speciesGraphs)
-                graphs.Add(new GraphSeriesViewModel($"graph-{RunningGraphs.Count + graphs.Count + 1}", metric,
-                    $"{title} · {species.Name}", [], custom?.Expression, species.Color, species.Name));
+                graphs.Add(CreateSpeciesSeries(metric, title, custom, species.Name, species.Color));
         }
         else
-            graphs.Add(new GraphSeriesViewModel($"graph-{RunningGraphs.Count + 1}", metric, title, [], custom?.Expression));
+            graphs.Add(new GraphSeriesViewModel(NextGraphId(), metric, title, [], custom?.Expression));
         foreach (var opened in graphs)
         {
+            opened.UsesSampleOrder = _usesNativeFeed;
             opened.Update(ProjectGraph(opened));
             RunningGraphs.Add(opened);
         }
@@ -291,12 +365,141 @@ public sealed class GraphSuiteViewModel : INotifyPropertyChanged
         return graph;
     }
 
+    private string NextGraphId() => $"graph-{++_nextGraphId}";
+
+    private GraphSeriesViewModel CreateSpeciesSeries(GraphMetric metric, string title, CustomMetricSlotViewModel? custom,
+        string name, uint color) =>
+        new(NextGraphId(), metric, $"{title} · {name}", [], custom?.Expression, color, name)
+        { UsesSampleOrder = _usesNativeFeed };
+
     public void ResetAllGraphs()
     {
         _historyCutoffTick = _samples.LastOrDefault()?.Tick;
+        _metricCutoffTicks.Clear();
+        _chartPoints.Clear();
+        _reusedNativeCharts.Clear();
         foreach (var graph in RunningGraphs) graph.Reset();
         ComparisonText = "NO COMPARISON";
         Status = "ALL GRAPHS RESET";
+        GraphsReset?.Invoke();
+    }
+
+    public void ResetGraph(GraphMetric metric) => ResetGraph(metric, preserveImported: false);
+
+    public void ResetGraph(GraphMetric metric, bool preserveImported)
+    {
+        _chartPoints.Remove(metric);
+        _reusedNativeCharts.Remove(metric);
+        if (_samples.LastOrDefault() is { } latest) _metricCutoffTicks[metric] = latest.Tick;
+        var graphs = preserveImported ? ProjectedGraphs : RunningGraphs;
+        foreach (var graph in graphs.Where(graph => graph.Metric == metric)) graph.Reset();
+    }
+
+    public void CloseGraph(GraphMetric metric)
+    {
+        _chartPoints.Remove(metric);
+        _reusedNativeCharts.Remove(metric);
+        _metricCutoffTicks.Remove(metric);
+    }
+
+    public void ClearPreviousGraphWorld()
+    {
+        _historyCutoffTick = null;
+        _metricCutoffTicks.Clear();
+        _chartPoints.Clear();
+        _reusedNativeCharts.Clear();
+        if (_usesNativeFeed)
+        {
+            foreach (var graph in ProjectedGraphs) graph.Reset();
+        }
+    }
+
+    public void AppendImmediatePoint(GraphMetric metric, GraphMetricSample sample) => AppendChartPoints(metric, [sample]);
+
+    public void AppendChartPoints(GraphMetric metric, IReadOnlyList<GraphMetricSample> samples) =>
+        AppendChartPoints(metric, samples, null);
+
+    public void AppendChartPoints(GraphMetric metric, IReadOnlyList<GraphMetricSample> samples, LegacyGraphAutoSave? recorder)
+    {
+        if (samples.Count == 0) return;
+        if (!_chartPoints.TryGetValue(metric, out var points))
+        {
+            points = [];
+            _chartPoints.Add(metric, points);
+        }
+        var limit = _usesNativeFeed ? NativeVisiblePoints : 1_001;
+        var retainedCount = Math.Min(samples.Count, limit);
+        var expiredCount = points.Count + retainedCount - limit;
+        if (expiredCount > 0) points.RemoveRange(0, expiredCount);
+        points.AddRange(samples.Skip(samples.Count - retainedCount));
+        if (_usesNativeFeed && metric != GraphMetric.DynamicCostStats)
+        {
+            if (recorder is { HasReusedColumn: true })
+            {
+                _reusedNativeCharts[metric] = recorder;
+                ReconcileReusedNativeColumns(metric, recorder);
+            }
+            else if (recorder is not null && samples.Any(sample => sample.NativeResetSweep))
+                ReconcileReusedNativeColumns(metric, recorder);
+            else AddNativeSpeciesSeries(metric, samples);
+        }
+        foreach (var graph in ProjectedGraphs.Where(graph => graph.Metric == metric))
+            graph.Update(ProjectGraph(graph));
+    }
+
+    private void AddNativeSpeciesSeries(GraphMetric metric, IReadOnlyList<GraphMetricSample> samples)
+    {
+        var graphs = RunningGraphs.Where(graph => graph.UsesSampleOrder && graph.Metric == metric).ToList();
+        if (graphs.Count == 0) return;
+        var names = graphs.Select(graph => graph.SpeciesName).OfType<string>().ToHashSet(StringComparer.Ordinal);
+        var unbound = graphs.FirstOrDefault(graph => graph.SpeciesName is null);
+        var custom = CustomMetric(metric);
+        var title = custom?.Name ?? GraphCatalog.For(metric).Label;
+        foreach (var sample in samples)
+        foreach (var species in sample.SpeciesGraphs ?? [])
+        {
+            if (names.Contains(species.Name)) continue;
+            var value = (float)GraphMetricSampleProjector.ProjectValue(sample, metric, custom, species);
+            if (value == 0 || !float.IsFinite(value)) continue;
+            // VB6 grafico.SetValues adds a series on its first nonzero feed.
+            names.Add(species.Name);
+            if (unbound is not null)
+            {
+                unbound.BindSpecies(title, species.Name, species.Color);
+                unbound = null;
+            }
+            else if (graphs.Count < LegacyGraphAutoSave.MaximumColumns)
+            {
+                var graph = CreateSpeciesSeries(metric, title, custom, species.Name, species.Color);
+                graphs.Add(graph);
+                RunningGraphs.Add(graph);
+            }
+            else
+            {
+                // grafico.AddSeries reuses the last slot when all 65 are occupied.
+                var last = graphs[^1];
+                names.Remove(last.SpeciesName!);
+                last.BindSpecies(title, species.Name, species.Color);
+            }
+        }
+    }
+
+    private void ReconcileReusedNativeColumns(GraphMetric metric, LegacyGraphAutoSave recorder)
+    {
+        var graphs = RunningGraphs.Where(graph => graph.UsesSampleOrder && graph.Metric == metric).ToArray();
+        if (graphs.Length == 0) return;
+        var columns = recorder.LiveColumns().ToArray();
+        var custom = CustomMetric(metric);
+        var title = custom?.Name ?? GraphCatalog.For(metric).Label;
+        for (var index = 0; index < columns.Length; index++)
+        {
+            var (name, color) = columns[index];
+            if (index < graphs.Length) graphs[index].BindSpecies(title, name, color);
+            else RunningGraphs.Add(CreateSpeciesSeries(metric, title, custom, name, color));
+        }
+        // Keep the open window's first view model as its anchor, even when the legend is empty.
+        if (columns.Length == 0) graphs[0].BindSpecies(title, null, 0xff62a844u);
+        foreach (var graph in graphs.Skip(Math.Max(1, columns.Length))) RunningGraphs.Remove(graph);
     }
 
     public string ListAllRunningGraphs()
@@ -333,8 +536,8 @@ public sealed class GraphSuiteViewModel : INotifyPropertyChanged
 
         var left = graphs[0];
         var right = graphs[1];
-        var leftValues = left.Samples.ToDictionary(value => value.Tick, value => value.Value);
-        var rightValues = right.Samples.ToDictionary(value => value.Tick, value => value.Value);
+        var leftValues = left.Samples.GroupBy(value => value.Tick).ToDictionary(group => group.Key, group => group.Last().Value);
+        var rightValues = right.Samples.GroupBy(value => value.Tick).ToDictionary(group => group.Key, group => group.Last().Value);
         var differences = leftValues.Keys.Intersect(rightValues.Keys).Order()
             .Select(tick => new GraphDifference(
                 tick,
@@ -368,9 +571,22 @@ public sealed class GraphSuiteViewModel : INotifyPropertyChanged
 
     private IReadOnlyList<GraphSample> ProjectGraph(GraphMetric metric, CustomMetricSlotViewModel? custom, string? speciesName = null, int? dynamicCostIndex = null)
     {
-        var samples = _historyCutoffTick is { } cutoff
-            ? _samples.Where(sample => sample.Tick > cutoff).ToArray()
-            : _samples;
+        _chartPoints.TryGetValue(metric, out var points);
+        if (_usesNativeFeed)
+        {
+            if (speciesName is null && dynamicCostIndex is null) return [];
+            if (points is not null && _reusedNativeCharts.TryGetValue(metric, out var recorder))
+                return speciesName is null ? [] : recorder.ReadLiveSamples(speciesName, points);
+            return points is null ? [] : GraphMetricSampleProjector.Project(points, metric, custom, speciesName,
+                dynamicCostIndex, keepEmptySpeciesSamples: true);
+        }
+
+        var cutoff = _historyCutoffTick;
+        if (_metricCutoffTicks.TryGetValue(metric, out var metricCutoff))
+            cutoff = Math.Max(cutoff ?? 0, metricCutoff);
+        var samples = cutoff is { } tick ? _samples.Where(sample => sample.Tick > tick).ToArray() : _samples;
+        if (points is not null)
+            samples = samples.Concat(points).OrderBy(sample => sample.Tick).ToArray();
         return GraphMetricSampleProjector.Project(samples, metric, custom, speciesName, dynamicCostIndex);
     }
 
@@ -378,7 +594,7 @@ public sealed class GraphSuiteViewModel : INotifyPropertyChanged
     {
         if (sender is not CustomMetricSlotViewModel custom) return;
         var metric = CustomMetric(custom.Slot);
-        foreach (var graph in RunningGraphs.Where(value => value.Metric == metric))
+        foreach (var graph in ProjectedGraphs.Where(value => value.Metric == metric))
         {
             graph.UpdateDefinition(custom.Name, custom.Expression);
             graph.Update(ProjectGraph(graph));
@@ -428,24 +644,32 @@ public static class GraphMetricSampleProjector
         GraphMetric metric,
         CustomMetricSlotViewModel? custom,
         string? speciesName = null,
-        int? dynamicCostIndex = null)
+        int? dynamicCostIndex = null,
+        bool keepEmptySpeciesSamples = false)
     {
-        return samples.Where(sample => speciesName is null || sample.SpeciesGraphs?.Count > 0).Select(sample =>
+        return samples.Where(sample => keepEmptySpeciesSamples || speciesName is null || sample.SpeciesGraphs?.Count > 0).Select(sample =>
         {
             if (dynamicCostIndex is { } index)
                 return new GraphSample(sample.Tick, sample.DynamicCostSeries?.ElementAtOrDefault(index) ?? 0);
             if (speciesName is not null)
             {
                 var species = sample.SpeciesGraphs?.FirstOrDefault(value => value.Name == speciesName);
+                if (keepEmptySpeciesSamples && species is null) return new GraphSample(sample.Tick, 0);
                 sample = sample with { Values = SpeciesValues(species) };
             }
-            return new GraphSample(
-            sample.Tick,
-            custom is null
-                ? sample.Values.GetValueOrDefault(metric)
-                : GraphExpressionEvaluator.Evaluate(custom.Expression, sample));
+            return new GraphSample(sample.Tick, ProjectValue(sample, metric, custom));
         }).ToArray();
     }
+
+    internal static double ProjectValue(GraphMetricSample sample, GraphMetric metric, CustomMetricSlotViewModel? custom,
+        SpeciesGraphSampleSnapshot? species = null)
+    {
+        if (species is not null) sample = sample with { Values = SpeciesValues(species) };
+        if (sample.NativeResetSweep && (custom is not null || metric is GraphMetric.AverageChloroplasts
+            or GraphMetric.SelectiveGeneticDistance or GraphMetric.SlowGeneticDistance)) return 0;
+        return custom is null ? sample.Values.GetValueOrDefault(metric) : GraphExpressionEvaluator.Evaluate(custom.Expression, sample);
+    }
+
     private static IReadOnlyDictionary<GraphMetric, double> SpeciesValues(SpeciesGraphSampleSnapshot? species)
     {
         var names = new Dictionary<GraphMetric, string>
@@ -504,17 +728,43 @@ internal static class GraphExpressionEvaluator
     {
         try
         {
-            var tokens = expression.ToLowerInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            if (tokens.Any(token => NativeNames.ContainsKey(token) || token is "add" or "sub" or "mult" or "div" or "pow"))
-                return EvaluateNativeQuery(tokens, sample);
-            var parser = new Parser(expression, sample);
-            var value = parser.ParseExpression();
-            return parser.AtEnd ? value : 0;
+            return Evaluate(expression, metric => sample.Values.GetValueOrDefault(metric));
         }
         catch (FormatException)
         {
             return 0;
         }
+    }
+
+    public static GraphSamplingSettings SamplingSettingsFor(string expression)
+    {
+        bool selective = false, generational = false, slow = false;
+        try
+        {
+            Evaluate(expression, metric =>
+            {
+                selective |= metric == GraphMetric.SelectiveGeneticDistance;
+                generational |= metric == GraphMetric.GenerationalDistance;
+                slow |= metric == GraphMetric.SlowGeneticDistance;
+                return 0;
+            });
+        }
+        catch (FormatException)
+        {
+            return new();
+        }
+        return new(selective, generational, slow);
+    }
+
+    private static double Evaluate(string expression, Func<GraphMetric, double> readMetric)
+    {
+        var tokens = expression.ToLowerInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (tokens.Any(token => NativeNames.ContainsKey(token) || token is "add" or "sub" or "mult" or "div" or "pow"))
+            return EvaluateNativeQuery(tokens, readMetric);
+        var parser = new Parser(expression, readMetric);
+        var value = parser.ParseExpression();
+        if (!parser.AtEnd) throw new FormatException();
+        return value;
     }
 
     private static readonly IReadOnlyDictionary<string, GraphMetric> NativeNames = new Dictionary<string, GraphMetric>
@@ -527,7 +777,7 @@ internal static class GraphExpressionEvaluator
         ["simpgenetic"] = GraphMetric.SelectiveGeneticDistance,
     };
 
-    private static double EvaluateNativeQuery(string[] tokens, GraphMetricSample sample)
+    private static double EvaluateNativeQuery(string[] tokens, Func<GraphMetric, double> readMetric)
     {
         var stack = new List<double>();
         double Pop()
@@ -546,7 +796,7 @@ internal static class GraphExpressionEvaluator
         foreach (var token in tokens)
         {
             if (double.TryParse(token, NumberStyles.Float, CultureInfo.InvariantCulture, out var number)) Push(number);
-            else if (NativeNames.TryGetValue(token, out var metric)) Push(sample.Values.GetValueOrDefault(metric));
+            else if (NativeNames.TryGetValue(token, out var metric)) Push(readMetric(metric));
             else if (token is "add" or "sub" or "mult" or "div" or "pow")
             {
                 var right = Pop();
@@ -573,13 +823,13 @@ internal static class GraphExpressionEvaluator
     private sealed class Parser
     {
         private readonly string _text;
-        private readonly GraphMetricSample _sample;
+        private readonly Func<GraphMetric, double> _readMetric;
         private int _position;
 
-        public Parser(string text, GraphMetricSample sample)
+        public Parser(string text, Func<GraphMetric, double> readMetric)
         {
             _text = text;
-            _sample = sample;
+            _readMetric = readMetric;
         }
 
         public bool AtEnd
@@ -639,7 +889,7 @@ internal static class GraphExpressionEvaluator
             while (_position < _text.Length && (char.IsLetterOrDigit(_text[_position]) || _text[_position] == '_')) _position++;
             if (identifierStart == _position) throw new FormatException();
             var identifier = _text[identifierStart.._position].ToLowerInvariant();
-            return Resolve(identifier, _sample);
+            return _readMetric(Resolve(identifier));
         }
 
         private bool Match(char value)
@@ -654,28 +904,24 @@ internal static class GraphExpressionEvaluator
             while (_position < _text.Length && char.IsWhiteSpace(_text[_position])) _position++;
         }
 
-        private static double Resolve(string identifier, GraphMetricSample sample)
+        private static GraphMetric Resolve(string identifier) => identifier switch
         {
-            var metric = identifier switch
-            {
-                "population" => GraphMetric.Population,
-                "average_mutations" or "mutations" => GraphMetric.AverageMutations,
-                "average_mutations_dna_len" => GraphMetric.AverageMutationsPerDnaLength,
-                "average_age" or "age" => GraphMetric.AverageAge,
-                "average_descendents" or "descendents" => GraphMetric.AverageDescendents,
-                "average_energy" or "energy" => GraphMetric.AverageEnergy,
-                "average_dna_length" => GraphMetric.AverageDnaLength,
-                "average_dna_conditions" => GraphMetric.AverageDnaConditions,
-                "total_energy" => GraphMetric.TotalEnergy,
-                "dynamic_cost_stats" => GraphMetric.DynamicCostStats,
-                "species_diversity" => GraphMetric.SpeciesDiversity,
-                "average_chloroplasts" or "chloroplasts" => GraphMetric.AverageChloroplasts,
-                "selective_genetic_distance" => GraphMetric.SelectiveGeneticDistance,
-                "generational_distance" => GraphMetric.GenerationalDistance,
-                "slow_genetic_distance" => GraphMetric.SlowGeneticDistance,
-                _ => throw new FormatException(),
-            };
-            return sample.Values.GetValueOrDefault(metric);
-        }
+            "population" => GraphMetric.Population,
+            "average_mutations" or "mutations" => GraphMetric.AverageMutations,
+            "average_mutations_dna_len" => GraphMetric.AverageMutationsPerDnaLength,
+            "average_age" or "age" => GraphMetric.AverageAge,
+            "average_descendents" or "descendents" => GraphMetric.AverageDescendents,
+            "average_energy" or "energy" => GraphMetric.AverageEnergy,
+            "average_dna_length" => GraphMetric.AverageDnaLength,
+            "average_dna_conditions" => GraphMetric.AverageDnaConditions,
+            "total_energy" => GraphMetric.TotalEnergy,
+            "dynamic_cost_stats" => GraphMetric.DynamicCostStats,
+            "species_diversity" => GraphMetric.SpeciesDiversity,
+            "average_chloroplasts" or "chloroplasts" => GraphMetric.AverageChloroplasts,
+            "selective_genetic_distance" => GraphMetric.SelectiveGeneticDistance,
+            "generational_distance" => GraphMetric.GenerationalDistance,
+            "slow_genetic_distance" => GraphMetric.SlowGeneticDistance,
+            _ => throw new FormatException(),
+        };
     }
 }

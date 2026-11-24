@@ -14,6 +14,12 @@ pub enum EngineError {
     Gpu(String),
     #[error("save data is invalid: {0}")]
     InvalidSave(String),
+    #[error("native repopulation needs the original DNA file {filename:?} from {directory:?}")]
+    MissingNativeRepopulationSource {
+        lineage_id: u64,
+        filename: String,
+        directory: String,
+    },
     #[error("simulation invariant failed: {0}")]
     Invariant(String),
     #[error("serialization failed: {0}")]

@@ -1,6 +1,8 @@
+using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
+using Avalonia.VisualTree;
 using Darwinbots.Desktop.Core;
 
 namespace Darwinbots.Desktop.Controls;
@@ -16,8 +18,42 @@ public sealed class GraphSeriesChart : Control
 
     public void SetSeries(IReadOnlyList<GraphSeriesViewModel> series)
     {
-        _series = series;
+        if (!_series.SequenceEqual(series))
+        {
+            var attached = this.IsAttachedToVisualTree();
+            if (attached) UnsubscribeSeries();
+            _series = series;
+            if (attached) SubscribeSeries();
+        }
         InvalidateVisual();
+    }
+
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        SubscribeSeries();
+        base.OnAttachedToVisualTree(e);
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        UnsubscribeSeries();
+        base.OnDetachedFromVisualTree(e);
+    }
+
+    private void SubscribeSeries()
+    {
+        foreach (var graph in _series) graph.PropertyChanged += Series_PropertyChanged;
+    }
+
+    private void UnsubscribeSeries()
+    {
+        foreach (var graph in _series) graph.PropertyChanged -= Series_PropertyChanged;
+    }
+
+    private void Series_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(GraphSeriesViewModel.Samples) or nameof(GraphSeriesViewModel.UsesSampleOrder)
+            or nameof(GraphSeriesViewModel.Title)) InvalidateVisual();
     }
 
     public override void Render(DrawingContext context)
@@ -31,10 +67,11 @@ public sealed class GraphSeriesChart : Control
             context.DrawLine(gridPen, new Point(0, y), new Point(area.Width, y));
         }
 
-        var series = _series.Where(value => value.Samples.Count >= 2).ToArray();
+        var series = _series.Where(value => value.Samples.Count > 0).ToArray();
         if (series.Length == 0)
         {
-            DrawLabel(context, "OPEN A GRAPH TO COLLECT SAMPLES", area);
+            if (_series.Count == 0)
+                DrawLabel(context, "OPEN A GRAPH TO COLLECT SAMPLES", area);
             return;
         }
         var values = series.SelectMany(value => value.Samples).Where(value => double.IsFinite(value.Value)).ToArray();
@@ -42,20 +79,31 @@ public sealed class GraphSeriesChart : Control
         var minimum = Math.Min(0, values.Min(value => value.Value));
         var maximum = values.Max(value => value.Value);
         if (maximum <= minimum) maximum = minimum + 1;
-        var firstTick = values.Min(value => value.Tick);
-        var lastTick = values.Max(value => value.Tick);
+        var timedTicks = series.Where(graph => !graph.UsesSampleOrder).SelectMany(graph => graph.Samples)
+            .Where(sample => double.IsFinite(sample.Value)).Select(sample => sample.Tick).DefaultIfEmpty();
+        var firstTick = timedTicks.Min();
+        var tickSpan = Math.Max(1, (double)timedTicks.Max() - firstTick);
+        var orderedSampleCount = series.Where(graph => graph.UsesSampleOrder).Select(graph => graph.Samples.Count)
+            .DefaultIfEmpty(1).Max();
+        var sampleSpan = Math.Max(1, orderedSampleCount - 1);
         foreach (var graph in series)
         {
-            var pen = new Pen(new SolidColorBrush(Color.FromUInt32(graph.Color)), 2.2);
-            Point PointAt(GraphSample sample) => new(
-                ((double)sample.Tick - firstTick) * area.Width / Math.Max(1, (double)lastTick - firstTick),
-                area.Height - ((sample.Value - minimum) / (maximum - minimum) * Math.Max(1, area.Height - 24)) - 4);
+            var brush = new SolidColorBrush(Color.FromUInt32(graph.Color));
+            var pen = new Pen(brush, 2.2);
             Point? previous = null;
-            foreach (var sample in graph.Samples)
+            for (var index = 0; index < graph.Samples.Count; index++)
             {
+                var sample = graph.Samples[index];
                 if (!double.IsFinite(sample.Value)) { previous = null; continue; }
-                var current = PointAt(sample);
+                // A native chart feed occupies the next position even when Update Now repeats a cycle.
+                var x = graph.UsesSampleOrder
+                    ? (orderedSampleCount - graph.Samples.Count + index) * area.Width / sampleSpan
+                    : ((double)sample.Tick - firstTick) * area.Width / tickSpan;
+                var y = area.Height - ((sample.Value - minimum) / (maximum - minimum) * Math.Max(1, area.Height - 24)) - 4;
+                var current = new Point(x, y);
                 if (previous is { } point) context.DrawLine(pen, point, current);
+                else if (graph.Samples.Count == 1)
+                    context.DrawEllipse(brush, null, new Point(Math.Max(2.5, current.X), current.Y), 2.5, 2.5);
                 previous = current;
             }
         }

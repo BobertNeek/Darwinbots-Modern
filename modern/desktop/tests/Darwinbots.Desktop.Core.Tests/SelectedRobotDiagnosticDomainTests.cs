@@ -58,4 +58,36 @@ public sealed class SelectedRobotDiagnosticDomainTests
         Assert.Equal(0, Assert.Single(lineage.Nodes, node => node.IsFocused).Depth);
         Assert.Equal(-1, Assert.Single(lineage.Nodes, node => node.Key == new OrganismKey(2, 1)).Depth);
     }
+
+    [Fact]
+    public void NativePhylogenyUsesAbsolutePrimaryParentsAndFindsTheEldestExistingParent()
+    {
+        var earlierParent = new OrganismKey(1, 0);
+        var parent = new OrganismKey(2, 1);
+        var focus = new OrganismKey(3, 2);
+        var sibling = new OrganismKey(4, 1);
+        var child = new OrganismKey(5, 0);
+        var grandchild = new OrganismKey(6, 0);
+        var secondParentOnly = new OrganismKey(7, 0);
+        var founder = new OrganismKey(8, 0);
+        var snapshot = new EngineSnapshot(42, 8, "CPU", [
+            Robot(earlierParent, 10, 0), Robot(parent, 10, 0), Robot(focus, 20, 10, earlierParent),
+            Robot(sibling, 25, 10), Robot(child, 30, 20, sibling), Robot(grandchild, 40, 30, child),
+            Robot(secondParentOnly, 50, 25, sibling, focus), Robot(founder, 60, 0, focus),
+        ]) { NativeCycle = 41 };
+
+        Assert.Equal(new PhylogenyLink(focus, child), Assert.Single(PhylogenyModel.DescendantLinks(snapshot, focus, 1)));
+        Assert.Equal(new PhylogenyLink[] { new(focus, child), new(child, grandchild) },
+            PhylogenyModel.DescendantLinks(snapshot, focus, 2));
+        Assert.Equal(new PhylogenyLink[] { new(parent, focus), new(parent, sibling), new(focus, child),
+            new(sibling, secondParentOnly), new(child, grandchild) }, PhylogenyModel.WholeLineage(snapshot, focus));
+        Assert.Empty(PhylogenyModel.DescendantLinks(snapshot, focus with { Generation = 9 }, 1));
+
+        var portable = snapshot with { NativeCycle = null };
+        Assert.Equal(new PhylogenyLink(focus, founder), Assert.Single(PhylogenyModel.DescendantLinks(portable, focus, 1)));
+
+        static OrganismSnapshot Robot(OrganismKey key, ulong id, ulong parentId, OrganismKey? primary = null,
+            OrganismKey? secondary = null) => new(key.Slot, key.Generation, [0, 0], [0, 0], 100, 1,
+            Parents: [primary, secondary]) { UniqueId = id, ParentAbsoluteId = parentId };
+    }
 }

@@ -34,16 +34,7 @@ impl Engine {
         };
         let spare_entries = script_mutation_spare_entries(origin, definition)?;
 
-        let random = self.native_random.as_mut().unwrap();
-        // Module1.preparerob consumes two discarded positions, one discrete
-        // heading and three discarded colors before aggiungirob overwrites them.
-        random.unit();
-        random.unit();
-        let preparation_word = (random.unit() * 629.0).floor() as i32;
-        let preparation_heading = (f64::from(preparation_word) / 100.0) as f32;
-        for _ in 0..3 {
-            random.unit();
-        }
+        let preparation_heading = self.prepare_native_script_robot();
         let id = self.spawn_species_at_unpublished(dna, species, position)?;
         let random = self.native_random.as_mut().unwrap();
         let heading = random.unit() * std::f32::consts::PI * 2.0;
@@ -82,6 +73,47 @@ impl Engine {
         // until CalcMass reaches it. Earlier robots can already collide with it.
         robot.materials.mass = 0.0;
         Ok(id)
+    }
+
+    pub(super) fn cancel_native_script_robot(
+        &mut self,
+        species: SpeciesId,
+        position: [f32; 2],
+    ) -> Result<(), EngineError> {
+        // RobScriptLoad calls posto and preparerob before showing the picker.
+        // Cancellation keeps the slot allocation and ID advance but no actor.
+        self.prepare_native_script_robot();
+        let dna = LegacyDna::parse("stop")?;
+        // posto takes the lowest free slot. This arena pops its free list, so
+        // move only the provisional slot to the end before using the allocator.
+        let first_free = self
+            .slots
+            .free_slots
+            .iter()
+            .copied()
+            .enumerate()
+            .min_by_key(|&(_, slot)| slot)
+            .map(|(index, _)| index);
+        if let Some(index) = first_free {
+            let slot = self.slots.free_slots.remove(index);
+            self.slots.free_slots.push(slot);
+        }
+        let provisional = self.spawn_species_at_unpublished(dna, species, position)?;
+        self.slots.remove(provisional)?;
+        Ok(())
+    }
+
+    fn prepare_native_script_robot(&mut self) -> f32 {
+        let random = self.native_random.as_mut().unwrap();
+        // Module1.preparerob consumes two discarded positions, one discrete
+        // heading and three discarded colors before aggiungirob overwrites them.
+        random.unit();
+        random.unit();
+        let preparation_word = (random.unit() * 629.0).floor() as i32;
+        for _ in 0..3 {
+            random.unit();
+        }
+        (f64::from(preparation_word) / 100.0) as f32
     }
 }
 
@@ -317,7 +349,7 @@ mod tests {
         world.config.vegetation.repopulation_amount = 1;
         world.config.vegetation.repopulation_cooldown = 1;
         world.vegetation_runtime.set_native_repopulation_counter(0);
-        world.vegetation_repopulation_phase().unwrap();
+        world.vegetation_repopulation_phase(None).unwrap();
         let added = world
             .slots
             .ids_in_slot_order()
@@ -354,7 +386,7 @@ mod tests {
         })
         .unwrap();
         assert_eq!(world.native_random.as_ref().unwrap().state(), 0x0008d82a);
-        world.vegetation_repopulation_phase().unwrap();
+        world.vegetation_repopulation_phase(None).unwrap();
         assert_eq!(world.population(), 0);
         assert_eq!(world.stats.reseeds, 0);
         assert_eq!(world.native_random.as_ref().unwrap().state(), 0x0034a60e);

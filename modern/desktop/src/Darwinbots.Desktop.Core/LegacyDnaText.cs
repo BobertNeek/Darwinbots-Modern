@@ -30,6 +30,15 @@ public static class LegacyDnaText
         }
     }
 
+    public static string ReadLeadingComment(string source)
+    {
+        using var lines = new StringReader(source);
+        var comment = new StringBuilder();
+        while (lines.ReadLine() is { Length: > 0 } line && line[0] is '\'' or '/')
+            comment.Append(line.AsSpan(1)).Append("\r\n");
+        return comment.ToString();
+    }
+
     public static byte[] Encode(string source)
     {
         ArgumentNullException.ThrowIfNull(source);

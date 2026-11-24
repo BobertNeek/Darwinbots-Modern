@@ -143,25 +143,26 @@ public sealed class DnaExportRenderedTests
         public MutationProfileUpdate? LastMutationProfile { get; private set; }
         public Exception? SaveError { get; set; }
 
-        public Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner) =>
+        public Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner, string? mainDirectory = null, bool allowMultiple = true) =>
             Task.FromResult<IReadOnlyList<DesktopTextFile>>([]);
 
-        public Task<DesktopSettings?> OpenSettingsAsync(TopLevel owner) =>
+        public Task<DesktopSettings?> OpenSettingsAsync(TopLevel owner, string? mainDirectory = null) =>
             Task.FromResult<DesktopSettings?>(null);
 
         public Task<string?> PickSimulationPathAsync(TopLevel owner) =>
             Task.FromResult<string?>(null);
 
-        public Task<byte[]?> OpenSimulationAsync(TopLevel owner) =>
+        public Task<byte[]?> OpenSimulationAsync(TopLevel owner, string? mainDirectory = null) =>
             Task.FromResult<byte[]?>(null);
 
-        public Task<bool> SaveSettingsAsync(TopLevel owner, DesktopSettings settings) =>
+        public Task<bool> SaveSettingsAsync(TopLevel owner, DesktopSettings settings, string? mainDirectory = null) =>
             Task.FromResult(false);
 
         public Task<bool> SaveSimulationAsync(TopLevel owner, ReadOnlyMemory<byte> save) =>
             Task.FromResult(false);
 
-        public Task<bool> SaveDnaAsync(TopLevel owner, string suggestedFileName, string dna, MutationProfileUpdate? mutationProfile)
+        public Task<bool> SaveDnaAsync(TopLevel owner, string suggestedFileName, string dna, MutationProfileUpdate? mutationProfile,
+            string? mainDirectory = null)
         {
             DnaSaveRequests++;
             LastOwnerType = owner.GetType();
@@ -176,7 +177,8 @@ public sealed class DnaExportRenderedTests
         public Task<bool> SaveOrganismAsync(
             TopLevel owner,
             string suggestedFileName,
-            Func<Stream, Task> writeAsync) => Task.FromResult(false);
+            Func<Stream, Task> writeAsync,
+            string? mainDirectory = null) => Task.FromResult(false);
 
         public string? FindLatestAutosave() => null;
 

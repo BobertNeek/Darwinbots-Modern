@@ -5,6 +5,10 @@ namespace Darwinbots.Desktop.Core;
 // Offsets follow OptionsForm.SaveSett (DB2 2.48.32), including variable species tails.
 internal static class LegacySettingsAdapter
 {
+    internal const int ContestModeOffset = 45;
+    internal const int OrdinaryRestartOffset = 46;
+    private const int CostPresetOffsetInTail = 4;
+
     internal static List<string> Encode(DesktopSettings settings)
     {
         // Original SaveSett has one shared shapesAbsorbShots Boolean.
@@ -92,10 +96,16 @@ internal static class LegacySettingsAdapter
             Flag(r + 4, species.Restrictions.VirusImmune);
         }
         Text(global, ""); Number(global + 1, count); Number(global + 3, settings.WorldWidth); Number(global + 4, settings.WorldHeight);
+        if (settings.NativeFieldSize is { } size)
+        {
+            if (!Db2FieldSize.IsValid(size))
+                throw new InvalidDataException("Original field size must be between 1 and 25.");
+            Number(global + 2, size);
+        }
         Number(global + 5, settings.VegetablePopulationCap); Flag(global + 9, settings.ToroidalWorld);
         var vegetation = settings.Vegetation;
         var physics = settings.Physics;
-        var cost = settings.GlobalSettings.Costs;
+        var cost = settings.SimulationCosts ?? settings.GlobalSettings.Costs;
         Number(global + 10, vegetation.MaxEnergyPerTick); Number(global + 11, vegetation.MinimumChloroplastEquivalents);
         Number(global + 13, cost.DnaStore); Number(global + 14, cost.ShotFormation);
         Number(global + 15, settings.Shots.FeedingProportion);
@@ -112,6 +122,9 @@ internal static class LegacySettingsAdapter
         Number(global + 41, vegetation.CycleLength);
         Number(global + 42, settings.CorpseDecay.Mode switch { Db2CorpseDecayMode.WasteShot => 2, Db2CorpseDecayMode.EnergyShot => 3, _ => 1 });
         Number(global + 43, settings.CorpseDecay.Period); Number(global + 44, cost.Movement);
+        // Maintain original contest eligibility even if the species count changed.
+        if (ReadRetainedFlag(settings.LegacySettingsFields, ContestModeOffset)) Flag(global + ContestModeOffset, true);
+        Flag(global + OrdinaryRestartOffset, settings.OrdinaryRestartOnExtinction);
         for (int i = 0; i < 9 && settings.LegacySettingsFields is null; i++)
         {
             Text(global + 47 + 4 * i, ""); Text(global + 48 + 4 * i, "");
@@ -131,8 +144,8 @@ internal static class LegacySettingsAdapter
             (23,cost.ShotFormation), (24,cost.DnaUpkeep), (25,cost.DnaCopy), (26,cost.Venom), (27,cost.Poison),
             (28,cost.Slime), (29,cost.Shell), (30,cost.BodyUpkeep), (31,cost.AgeBase), (32,cost.AgeStart), (33,cost.AgeLinear),
             (51,cost.AgeLogarithmic), (52,cost.DynamicLowerZeroThreshold), (53,cost.DynamicTargetPopulation), (54,cost.GlobalMultiplier), (55,cost.DynamicSensitivity),
-            (57,cost.DynamicUpperRangePercent ?? cost.DynamicPopulationRange), (58,cost.DynamicLowerRangePercent ?? cost.DynamicUpperZeroThreshold),
-            (59,cost.DynamicLowerReinstateThreshold), (60,cost.DynamicUpperReinstateThreshold) };
+            (57,cost.EffectiveDynamicUpperRangePercent), (58,cost.EffectiveDynamicLowerRangePercent),
+            (59,cost.DynamicLowerReinstateThreshold), (60,cost.EffectiveAgeLinearEnabled ? 1 : 0) };
         foreach (var (index, value) in indexedCosts) Number(costs + index, value);
         // SaveSett writes Single costs. CostsForm uses VB True (-1) for dynamic costs
         // and the positive CheckBox.Value for Include Plants and Allow Negative CostX.
@@ -143,7 +156,9 @@ internal static class LegacySettingsAdapter
         // OptionsForm.CustomWaste maps modern disabled zero to native -1.
         Number(tail + 1, settings.Waste.AlzheimerThreshold == 0 ? -1 : settings.Waste.AlzheimerThreshold);
         Number(tail + 2, settings.Recording.SamplingInterval);
-        Number(tail + 3, 2); Number(tail + 4, 2); Number(tail + 5, physics.Elasticity); Number(tail + 6, physics.MaxVelocity);
+        Number(tail + 3, 2);
+        Number(tail + CostPresetOffsetInTail, (int)(settings.NativeCostPreset ?? Db2CostPreset.Custom));
+        Number(tail + 5, physics.Elasticity); Number(tail + 6, physics.MaxVelocity);
         Flag(tail + 7, settings.Shots.EnergyShotsDoNotDecay); Number(tail + 8, vegetation.SunUpThreshold); Flag(tail + 9, vegetation.SunUpEnabled);
         Number(tail + 10, vegetation.SunDownThreshold); Flag(tail + 11, vegetation.SunDownEnabled); Number(tail + 15, vegetation.SunThresholdMode);
         Flag(tail + 17 + 5 * count, settings.Shots.WasteShotsDoNotDecay);
@@ -181,6 +196,37 @@ internal static class LegacySettingsAdapter
         Flag(footer + 9 + 3 * count, !settings.RobotFixingAllowed);
         Number(footer + 10 + 3 * count, vegetation.Tides); Number(footer + 11 + 3 * count, vegetation.TidesOffset);
         return fields;
+    }
+
+    internal static int? ReadRetainedFieldSize(IReadOnlyList<string>? fields)
+    {
+        if (fields is not { Count: > 1 }
+            || !int.TryParse(fields[1]?.Trim('"'), NumberStyles.Integer, CultureInfo.InvariantCulture, out var speciesMinusOne)
+            || speciesMinusOne is < -1 or > 999) return null;
+        return ReadFieldSize(fields, 2 + (speciesMinusOne + 1) * 40);
+    }
+
+    private static int? ReadFieldSize(IReadOnlyList<string> fields, int global)
+    {
+        int index = global + 2;
+        return index < fields.Count && int.TryParse(fields[index]?.Trim('"'), NumberStyles.Integer, CultureInfo.InvariantCulture, out var size)
+            && Db2FieldSize.IsValid(size) ? size : null;
+    }
+
+    internal static Db2CostPreset? ReadRetainedCostPreset(IReadOnlyList<string>? fields)
+    {
+        if (fields is not { Count: > 1 }
+            || !int.TryParse(fields[1]?.Trim('"'), NumberStyles.Integer, CultureInfo.InvariantCulture, out var speciesMinusOne)
+            || speciesMinusOne is < -1 or > 999) return null;
+        // The tail follows 171 fixed fields and 96 fields per species.
+        return ReadCostPreset(fields, 171 + 96 * (speciesMinusOne + 1));
+    }
+
+    private static Db2CostPreset? ReadCostPreset(IReadOnlyList<string> fields, int tail)
+    {
+        int index = tail + CostPresetOffsetInTail;
+        return index < fields.Count && int.TryParse(fields[index]?.Trim('"'), NumberStyles.Integer, CultureInfo.InvariantCulture, out var preset)
+            && Enum.IsDefined((Db2CostPreset)preset) ? (Db2CostPreset)preset : null;
     }
 
     private static uint ToVbColor(uint color) => ((color & 0xff) << 16) | (color & 0xff00) | ((color >> 16) & 0xff);
@@ -223,6 +269,20 @@ internal static class LegacySettingsAdapter
             return new(horizontal, vertical, (short)rate);
         if (strict) throw new InvalidDataException("Legacy settings shape drift requires a signed 16-bit rate and valid axis flags.");
         return null;
+    }
+
+    internal static bool ReadRetainedFlag(IReadOnlyList<string>? fields, int globalOffset)
+    {
+        if (fields is not { Count: > 1 }
+            || !int.TryParse(fields[1]?.Trim('"'), NumberStyles.Integer, CultureInfo.InvariantCulture, out int lastSpecies)
+            || lastSpecies is < -1 or > 999)
+            return false;
+        int index = 2 + 40 * (lastSpecies + 1) + globalOffset;
+        if (index >= fields.Count) return false;
+        string raw = fields[index]?.Trim().Trim('"') ?? "";
+        if (bool.TryParse(raw.Trim('#'), out bool flag)) return flag;
+        return double.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out double value)
+            && double.IsFinite(value) && value != 0;
     }
 
     internal static DesktopSettings Decode(string[] lines, int count, int global)
@@ -337,13 +397,13 @@ internal static class LegacySettingsAdapter
             TieFormation = Cost(22), ShotFormation = Cost(23), DnaUpkeep = Cost(24), DnaCopy = Cost(25),
             Venom = Cost(26), Poison = Cost(27), Slime = Cost(28), Shell = Cost(29),
             BodyUpkeep = Cost(30), AgeBase = Cost(31), AgeStart = Cost(32), AgeLinear = Cost(33),
-            AgeLogarithmic = Cost(51), GlobalMultiplier = Number(costs + 54, 1),
+            AgeLinearEnabled = Cost(60) == 1, AgeLogarithmic = Cost(51), GlobalMultiplier = Number(costs + 54, 1),
             DynamicTargetPopulation = Integer(costs + 53), DynamicSensitivity = Number(costs + 55, 1),
             DynamicMultiplier = Flag(costs + 56) ? 1 : 0, DynamicPopulationRange = Integer(costs + 57),
             DynamicAllRobots = Flag(costs + 61, true), DynamicAllowNegative = Flag(costs + 62),
             DynamicLowerZeroThreshold = Cost(52), DynamicUpperZeroThreshold = Cost(58),
             DynamicUpperRangePercent = Cost(57), DynamicLowerRangePercent = Cost(58),
-            DynamicLowerReinstateThreshold = Cost(59), DynamicUpperReinstateThreshold = Cost(60),
+            DynamicLowerReinstateThreshold = Cost(59),
         };
         // ReadSettFromFile supplies 50 when the native Single is zero.
         if (costSettings.DynamicSensitivity == 0)
@@ -368,7 +428,10 @@ internal static class LegacySettingsAdapter
         return new DesktopSettings
         {
             OrganismCapacity = 32000, WorldWidth = worldWidth, WorldHeight = worldHeight,
+            NativeFieldSize = ReadFieldSize(lines, global),
+            NativeCostPreset = ReadCostPreset(lines, tail) ?? Db2CostPreset.Custom,
             Seed = NativeSeed(global + 89), LegacySettingsFields = lines.TakeWhile(line => !line.StartsWith("#DARWINBOTS_MODERN_SETTINGS", StringComparison.Ordinal)).ToArray(),
+            OrdinaryRestartOnExtinction = Flag(global + OrdinaryRestartOffset),
             MutationSettings = MutationSettingsUpdate.Default with { GlobalMultiplier = Float(27, 1) },
             VegetablePopulationCap = Math.Max(0, Integer(global + 5)), SunlightEnergy = vegetation.MaxEnergyPerTick,
             Gravity = [0, Float(18)], BrownianMotion = Float(20), Species = species,

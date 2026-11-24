@@ -17,9 +17,14 @@ public sealed record DesktopSettings
     public int OrganismCapacity { get; init; } = 25_000;
     public float WorldWidth { get; init; } = 16_000f;
     public float WorldHeight { get; init; } = 12_000f;
+    public int? NativeFieldSize { get; init; }
+    public Db2CostPreset? NativeCostPreset { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public GlobalSimulationCostSettings? SimulationCosts { get; init; }
     public StartingMode StartingMode { get; init; } = StartingMode.StarterBotsAndVegetables;
     public ZerobotSustenance ZerobotSustenance { get; init; } = ZerobotSustenance.DisabledMetabolism;
     public bool AutomaticZerobotProgression { get; init; } = true;
+    public bool OrdinaryRestartOnExtinction { get; init; }
     public int VegetablePopulationCap { get; init; } = 500;
     public int MetabolismCost { get; init; }
     public int VegetableEnergyPerTick { get; init; }
@@ -62,9 +67,13 @@ public sealed record DesktopSettings
         OrganismCapacity = setup.PopulationCapacity,
         WorldWidth = setup.WorldWidth,
         WorldHeight = setup.WorldHeight,
+        NativeFieldSize = setup.NativeFieldSize,
+        NativeCostPreset = setup.NativeCostPreset,
+        SimulationCosts = setup.SimulationCosts,
         StartingMode = setup.StartingMode,
         ZerobotSustenance = setup.ZerobotSustenance,
         AutomaticZerobotProgression = setup.AutomaticZerobotProgression,
+        OrdinaryRestartOnExtinction = setup.OrdinaryRestartOnExtinction,
         VegetablePopulationCap = setup.VegetablePopulationCap,
         MetabolismCost = setup.MetabolismCost,
         VegetableEnergyPerTick = setup.VegetableEnergyPerTick,
@@ -92,6 +101,76 @@ public sealed record DesktopSettings
         GlobalSettings = setup.GlobalSettings,
     };
 
+    public static DesktopSettings FromLiveWorld(
+        WorldSetupOptions startup, WorldConfiguration configuration, EngineSnapshot snapshot)
+    {
+        var environment = configuration.Environment;
+        var settings = startup.GlobalSettings;
+        return FromWorldSetup(startup with
+        {
+            Backend = snapshot.Backend is "CPU" or "GPU" ? snapshot.Backend : startup.Backend,
+            Seed = configuration.Seed ?? startup.Seed,
+            NativeFieldSize = configuration.NativeFieldSize,
+            NativeCostPreset = configuration.NativeCostPreset,
+            SimulationCosts = configuration.Costs,
+            PopulationCapacity = configuration.PopulationCapacity,
+            VegetablePopulationCap = configuration.VegetablePopulationCap,
+            WorldWidth = snapshot.WorldSize[0],
+            WorldHeight = snapshot.WorldSize[1],
+            MetabolismCost = environment.MetabolismCost,
+            VegetableEnergyPerTick = environment.VegetableEnergyPerTick,
+            SunlightEnergy = environment.SunlightEnergy,
+            Gravity = environment.Gravity,
+            Drag = environment.Drag,
+            BrownianMotion = environment.BrownianMotion,
+            Physics = environment.Physics,
+            Shots = environment.Shots,
+            CorpseDecay = environment.CorpseDecay ?? new(),
+            Waste = environment.Waste ?? new(),
+            Vegetation = environment.Vegetation,
+            Recording = environment.Recording ?? new(),
+            AutoSpeciation = environment.AutoSpeciation,
+            SpeciationGeneticDistancePercent = environment.SpeciationGeneticDistancePercent,
+            ToroidalWorld = environment.ToroidalWorld,
+            WrapX = environment.WrapX,
+            WrapY = environment.WrapY,
+            ShapesVisible = environment.ShapesVisible ?? startup.ShapesVisible,
+            FixedBotRadii = configuration.FixedBotRadii ?? startup.FixedBotRadii,
+            TiesEnabled = snapshot.TiesEnabled,
+            RobotFixingAllowed = snapshot.RobotFixingAllowed,
+            AsexualReproductionAllowed = snapshot.AsexualReproductionAllowed,
+            ShapeDrift = configuration.ShapeDrift ?? startup.ShapeDrift,
+            Obstacles = snapshot.Obstacles,
+            Species = (configuration.StartupSpecies ?? configuration.Species)
+                .Select(species => species with { SpeciesId = null })
+                .ToArray(),
+            MutationSettings = new(snapshot.MutationSettings.Enabled, snapshot.MutationSettings.GlobalMultiplier, [])
+            {
+                Profile = snapshot.MutationSettings.Profile,
+            },
+            GlobalSettings = settings with
+            {
+                Main = settings.Main with
+                {
+                    BodyCutoff = configuration.BodyCutoff,
+                    GreedyEnforcement = configuration.GreedyReproduction,
+                    SafeMode = environment.Recording?.SafeModeBackup ?? false,
+                    // Configuration already contains the main epigenetic factors.
+                    EpigeneticReset = false,
+                    EpigeneticAmplification = 1.0,
+                    TemporaryGeneData = false,
+                },
+                Costs = configuration.Costs,
+                AdvancedMutation = configuration.AdvancedMutation,
+                League = settings.League with
+                {
+                    DisqualificationRule = configuration.DisqualificationRule,
+                    RecognitionFudging = configuration.RecognitionFudging,
+                },
+            },
+        });
+    }
+
     public WorldSetupOptions ToWorldSetup(WorldSetupOptions? fallback = null)
     {
         fallback ??= new WorldSetupOptions();
@@ -100,6 +179,7 @@ public sealed record DesktopSettings
             StartingMode = StartingMode,
             ZerobotSustenance = ZerobotSustenance,
             AutomaticZerobotProgression = AutomaticZerobotProgression,
+            OrdinaryRestartOnExtinction = OrdinaryRestartOnExtinction,
             Backend = Backend,
             Seed = Seed ?? fallback.Seed,
             LegacySettingsFields = LegacySettingsFields,
@@ -108,6 +188,9 @@ public sealed record DesktopSettings
             VegetablePopulationCap = VegetablePopulationCap,
             WorldWidth = WorldWidth,
             WorldHeight = WorldHeight,
+            NativeFieldSize = NativeFieldSize,
+            NativeCostPreset = NativeCostPreset,
+            SimulationCosts = SimulationCosts,
             MetabolismCost = MetabolismCost,
             VegetableEnergyPerTick = VegetableEnergyPerTick,
             SunlightEnergy = SunlightEnergy,
@@ -157,6 +240,13 @@ public sealed record DesktopSettings
         settings.Validate();
         if (settings.ShapeDrift is null && !root.TryGetProperty("shapeDrift", out _))
             settings = settings with { ShapeDrift = LegacySettingsAdapter.ReadRetainedShapeDrift(settings.LegacySettingsFields) };
+        if (!root.TryGetProperty("nativeFieldSize", out _))
+            settings = settings with { NativeFieldSize = LegacySettingsAdapter.ReadRetainedFieldSize(settings.LegacySettingsFields) };
+        if (!root.TryGetProperty("ordinaryRestartOnExtinction", out _)
+            && LegacySettingsAdapter.ReadRetainedFlag(settings.LegacySettingsFields, LegacySettingsAdapter.OrdinaryRestartOffset))
+            settings = settings with { OrdinaryRestartOnExtinction = true };
+        if (!root.TryGetProperty("nativeCostPreset", out _))
+            settings = settings with { NativeCostPreset = LegacySettingsAdapter.ReadRetainedCostPreset(settings.LegacySettingsFields) };
         return settings;
     }
 
@@ -178,6 +268,10 @@ public sealed record DesktopSettings
             throw new InvalidDataException("Tick and snapshot intervals must be positive.");
         if (OrganismCapacity <= 0 || WorldWidth <= 0 || WorldHeight <= 0)
             throw new InvalidDataException("Capacity and world dimensions must be positive.");
+        if (NativeFieldSize is { } size && !Db2FieldSize.IsValid(size))
+            throw new InvalidDataException("Original field size must be between 1 and 25.");
+        if (NativeCostPreset is { } preset && !Enum.IsDefined(preset))
+            throw new InvalidDataException("Original cost preset must be No Costs, F1, or Custom.");
     }
 
     private static string ReadString(JsonElement root, string name, string fallback) =>

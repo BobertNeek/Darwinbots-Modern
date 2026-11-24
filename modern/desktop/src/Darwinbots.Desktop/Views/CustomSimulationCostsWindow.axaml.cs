@@ -9,15 +9,22 @@ public sealed partial class CustomSimulationCostsWindow : Window
     public bool Accepted { get; private set; }
     public GlobalSimulationCostSettings Costs { get; private set; }
 
+    private GlobalSimulationCostSettings _draftCosts;
+
     public CustomSimulationCostsWindow() : this(new GlobalSettings()) { }
 
     public CustomSimulationCostsWindow(GlobalSettings settings)
         : this(settings?.Costs ?? throw new ArgumentNullException(nameof(settings)), stageForLiveSettings: false) { }
 
     public CustomSimulationCostsWindow(GlobalSimulationCostSettings costs, bool stageForLiveSettings)
+        : this(costs, stageForLiveSettings, nativeCosts: false) { }
+
+    internal CustomSimulationCostsWindow(GlobalSimulationCostSettings costs, bool stageForLiveSettings, bool nativeCosts)
     {
         Costs = costs ?? throw new ArgumentNullException(nameof(costs));
+        _draftCosts = Costs;
         InitializeComponent();
+        if (nativeCosts) GlobalCostMultiplier.Minimum = -GlobalCostMultiplier.Maximum;
         Populate(Costs);
         if (stageForLiveSettings)
         {
@@ -56,74 +63,124 @@ public sealed partial class CustomSimulationCostsWindow : Window
         SetDisplayValue(AgeBase, costs.AgeBase);
         SetDisplayValue(AgeStart, costs.AgeStart);
         SetDisplayValue(AgeLinear, costs.AgeLinear);
+        AgeLinearEnabled.IsChecked = costs.EffectiveAgeLinearEnabled;
         SetDisplayValue(AgeLogarithmic, costs.AgeLogarithmic);
         SetDisplayValue(DynamicMultiplier, costs.DynamicMultiplier);
         DynamicAllRobots.IsChecked = costs.DynamicAllRobots;
         SetDisplayValue(DynamicTargetPopulation, costs.DynamicTargetPopulation);
-        SetDisplayValue(DynamicPopulationRange, costs.DynamicPopulationRange);
+        SetDisplayValue(DynamicUpperRangePercent, costs.EffectiveDynamicUpperRangePercent);
+        SetDisplayValue(DynamicLowerRangePercent, costs.EffectiveDynamicLowerRangePercent);
         SetDisplayValue(DynamicSensitivity, costs.DynamicSensitivity);
         DynamicAllowNegative.IsChecked = costs.DynamicAllowNegative;
         SetDisplayValue(DynamicLowerZeroThreshold, costs.DynamicLowerZeroThreshold);
-        SetDisplayValue(DynamicUpperZeroThreshold, costs.DynamicUpperZeroThreshold);
         SetDisplayValue(DynamicLowerReinstateThreshold, costs.DynamicLowerReinstateThreshold);
-        SetDisplayValue(DynamicUpperReinstateThreshold, costs.DynamicUpperReinstateThreshold);
     }
 
     private GlobalSimulationCostSettings ReadCosts()
     {
-        var populationRange = (int)Read(DynamicPopulationRange, Costs.DynamicPopulationRange);
-        return Costs with
+        var costs = _draftCosts;
+        var ageLinear = Read(AgeLinear, costs.AgeLinear);
+        return costs with
         {
-            GlobalMultiplier = Read(GlobalCostMultiplier, Costs.GlobalMultiplier),
-            DnaNumber = Read(DnaNumber, Costs.DnaNumber),
-            DnaDereference = Read(DnaDereference, Costs.DnaDereference),
-            DnaBasic = Read(DnaBasic, Costs.DnaBasic),
-            DnaAdvanced = Read(DnaAdvanced, Costs.DnaAdvanced),
-            DnaBitwise = Read(DnaBitwise, Costs.DnaBitwise),
-            DnaCondition = Read(DnaCondition, Costs.DnaCondition),
-            DnaLogic = Read(DnaLogic, Costs.DnaLogic),
-            DnaStore = Read(DnaStore, Costs.DnaStore),
-            DnaFlow = Read(DnaFlow, Costs.DnaFlow),
-            DnaUpkeep = Read(DnaUpkeep, Costs.DnaUpkeep),
-            DnaCopy = Read(DnaCopy, Costs.DnaCopy),
-            Movement = Read(MovementCost, Costs.Movement),
-            Rotation = Read(RotationCost, Costs.Rotation),
-            TieFormation = Read(TieFormationCost, Costs.TieFormation),
-            ShotFormation = Read(ShotFormationCost, Costs.ShotFormation),
-            Venom = Read(VenomCost, Costs.Venom),
-            Poison = Read(PoisonCost, Costs.Poison),
-            Slime = Read(SlimeCost, Costs.Slime),
-            Shell = Read(ShellCost, Costs.Shell),
-            BodyUpkeep = Read(BodyUpkeep, Costs.BodyUpkeep),
-            ChloroplastConstruction = Read(ChloroplastConstructionCost, Costs.ChloroplastConstruction),
-            Virus = Read(VirusCost, Costs.Virus),
-            AgeBase = Read(AgeBase, Costs.AgeBase),
-            AgeStart = Read(AgeStart, Costs.AgeStart),
-            AgeLinear = Read(AgeLinear, Costs.AgeLinear),
-            AgeLogarithmic = Read(AgeLogarithmic, Costs.AgeLogarithmic),
-            DynamicMultiplier = Read(DynamicMultiplier, Costs.DynamicMultiplier),
+            GlobalMultiplier = Read(GlobalCostMultiplier, costs.GlobalMultiplier),
+            DnaNumber = Read(DnaNumber, costs.DnaNumber),
+            DnaDereference = Read(DnaDereference, costs.DnaDereference),
+            DnaBasic = Read(DnaBasic, costs.DnaBasic),
+            DnaAdvanced = Read(DnaAdvanced, costs.DnaAdvanced),
+            DnaBitwise = Read(DnaBitwise, costs.DnaBitwise),
+            DnaCondition = Read(DnaCondition, costs.DnaCondition),
+            DnaLogic = Read(DnaLogic, costs.DnaLogic),
+            DnaStore = Read(DnaStore, costs.DnaStore),
+            DnaFlow = Read(DnaFlow, costs.DnaFlow),
+            DnaUpkeep = Read(DnaUpkeep, costs.DnaUpkeep),
+            DnaCopy = Read(DnaCopy, costs.DnaCopy),
+            Movement = Read(MovementCost, costs.Movement),
+            Rotation = Read(RotationCost, costs.Rotation),
+            TieFormation = Read(TieFormationCost, costs.TieFormation),
+            ShotFormation = Read(ShotFormationCost, costs.ShotFormation),
+            Venom = Read(VenomCost, costs.Venom),
+            Poison = Read(PoisonCost, costs.Poison),
+            Slime = Read(SlimeCost, costs.Slime),
+            Shell = Read(ShellCost, costs.Shell),
+            BodyUpkeep = Read(BodyUpkeep, costs.BodyUpkeep),
+            ChloroplastConstruction = Read(ChloroplastConstructionCost, costs.ChloroplastConstruction),
+            Virus = Read(VirusCost, costs.Virus),
+            AgeBase = Read(AgeBase, costs.AgeBase),
+            AgeStart = Read(AgeStart, costs.AgeStart),
+            AgeLinear = ageLinear,
+            AgeLinearEnabled = ReadAgeLinearEnabled(AgeLinearEnabled, costs.AgeLinearEnabled, ageLinear),
+            AgeLogarithmic = Read(AgeLogarithmic, costs.AgeLogarithmic),
+            DynamicMultiplier = Read(DynamicMultiplier, costs.DynamicMultiplier),
             DynamicAllRobots = DynamicAllRobots.IsChecked == true,
-            DynamicTargetPopulation = (int)Read(DynamicTargetPopulation, Costs.DynamicTargetPopulation),
-            DynamicPopulationRange = populationRange,
-            DynamicUpperRangePercent = populationRange != Costs.DynamicPopulationRange
-                ? populationRange : Costs.DynamicUpperRangePercent,
-            DynamicSensitivity = Read(DynamicSensitivity, Costs.DynamicSensitivity),
+            DynamicTargetPopulation = (int)Read(DynamicTargetPopulation, costs.DynamicTargetPopulation),
+            DynamicUpperRangePercent = ReadRangePercent(DynamicUpperRangePercent,
+                costs.DynamicUpperRangePercent, costs.EffectiveDynamicUpperRangePercent),
+            DynamicLowerRangePercent = ReadRangePercent(DynamicLowerRangePercent,
+                costs.DynamicLowerRangePercent, costs.EffectiveDynamicLowerRangePercent),
+            DynamicSensitivity = Read(DynamicSensitivity, costs.DynamicSensitivity),
             DynamicAllowNegative = DynamicAllowNegative.IsChecked == true,
-            DynamicLowerZeroThreshold = Read(DynamicLowerZeroThreshold, Costs.DynamicLowerZeroThreshold),
-            DynamicUpperZeroThreshold = Read(DynamicUpperZeroThreshold, Costs.DynamicUpperZeroThreshold),
-            DynamicLowerReinstateThreshold = Read(DynamicLowerReinstateThreshold, Costs.DynamicLowerReinstateThreshold),
-            DynamicUpperReinstateThreshold = Read(DynamicUpperReinstateThreshold, Costs.DynamicUpperReinstateThreshold),
+            DynamicLowerZeroThreshold = Read(DynamicLowerZeroThreshold, costs.DynamicLowerZeroThreshold),
+            DynamicLowerReinstateThreshold = Read(DynamicLowerReinstateThreshold, costs.DynamicLowerReinstateThreshold),
         };
     }
 
     private static decimal DisplayValue(NumericUpDown control, double value) =>
         (decimal)Math.Clamp(value, (double)control.Minimum, (double)control.Maximum);
 
-    private static void SetDisplayValue(NumericUpDown control, double value) =>
+    internal static void SetDisplayValue(NumericUpDown control, double value) =>
         control.Value = DisplayValue(control, value);
 
     private static double Read(NumericUpDown control, double previous) =>
         control.Value is { } value && value != DisplayValue(control, previous) ? (double)value : previous;
+
+    internal static double? ReadRangePercent(NumericUpDown control, double? explicitValue, double effectiveValue) =>
+        control.Value is { } value && value != DisplayValue(control, effectiveValue) ? (double)value : explicitValue;
+
+    internal static bool? ReadAgeLinearEnabled(CheckBox control, bool? explicitValue, double coefficient)
+    {
+        var enabled = control.IsChecked == true;
+        return explicitValue is null && enabled == (coefficient != 0) ? null : enabled;
+    }
+
+    private void F1Defaults_Click(object? sender, RoutedEventArgs e)
+    {
+        // The original Custom dialog's Default button sets a different
+        // chloroplast charge and only resets fields that CostsForm writes.
+        var f1 = GlobalSimulationCostSettings.F1Default;
+        _draftCosts = ReadCosts() with
+        {
+            GlobalMultiplier = f1.GlobalMultiplier,
+            DnaNumber = f1.DnaNumber,
+            DnaDereference = f1.DnaDereference,
+            DnaBasic = f1.DnaBasic,
+            DnaAdvanced = f1.DnaAdvanced,
+            DnaBitwise = f1.DnaBitwise,
+            DnaCondition = f1.DnaCondition,
+            DnaLogic = f1.DnaLogic,
+            DnaStore = f1.DnaStore,
+            DnaFlow = f1.DnaFlow,
+            DnaUpkeep = f1.DnaUpkeep,
+            DnaCopy = f1.DnaCopy,
+            Movement = f1.Movement,
+            Rotation = f1.Rotation,
+            TieFormation = f1.TieFormation,
+            ShotFormation = f1.ShotFormation,
+            Venom = f1.Venom,
+            Poison = f1.Poison,
+            Slime = f1.Slime,
+            Shell = f1.Shell,
+            BodyUpkeep = f1.BodyUpkeep,
+            ChloroplastConstruction = 0.2f,
+            AgeBase = f1.AgeBase,
+            AgeStart = f1.AgeStart,
+            AgeLogarithmic = f1.AgeLogarithmic,
+            DynamicLowerZeroThreshold = f1.DynamicLowerZeroThreshold,
+            DynamicLowerReinstateThreshold = f1.DynamicLowerReinstateThreshold,
+        };
+        Populate(_draftCosts);
+        DynamicMultiplier.IsEnabled = false;
+        DynamicTargetPopulation.IsEnabled = false;
+    }
 
     private void Apply_Click(object? sender, RoutedEventArgs e)
     {

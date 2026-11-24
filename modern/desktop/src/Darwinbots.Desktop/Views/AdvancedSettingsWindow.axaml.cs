@@ -14,11 +14,23 @@ public sealed partial class AdvancedSettingsWindow : Window
     private MutationProfileUpdate _mutationProfile = MutationProfileUpdate.Default;
     private readonly HashSet<NumericUpDown> _editedMutationRates = [];
     private readonly GlobalSimulationCostSettings? _initialCosts;
+    private readonly bool _nativeCosts;
+    private readonly Db2CostPreset? _initialCostPreset;
     private GlobalSimulationCostSettings? _stagedCosts;
+    private Db2CostPreset? _stagedCostPreset;
+
+    private bool _otherLiveSettingsEdited;
+    private int _initialFieldSizeIndex;
+    private (float Width, float Height) _liveDimensions;
 
     public bool Accepted { get; private set; }
-    public bool LiveSettingsEdited { get; private set; }
+    public bool LiveSettingsEdited => _otherLiveSettingsEdited || StagedFieldSize is not null;
+    private int? StagedFieldSize => FieldSizePanel.IsVisible && FieldSizePreset.IsEnabled
+        && FieldSizePreset.SelectedIndex != _initialFieldSizeIndex && Db2FieldSize.IsValid(FieldSizePreset.SelectedIndex)
+        ? FieldSizePreset.SelectedIndex : null;
     public GlobalSimulationCostSettings? CostUpdate => _stagedCosts != _initialCosts ? _stagedCosts : null;
+    public Db2CostPreset? CostPresetUpdate => _stagedCostPreset != _initialCostPreset || CostUpdate is not null
+        ? _stagedCostPreset : null;
     public MutationSettingsUpdate MutationUpdate => new(
         MutationsEnabled.IsChecked == true,
         (float)(GlobalMutationRate.Value ?? 1m),
@@ -31,7 +43,7 @@ public sealed partial class AdvancedSettingsWindow : Window
         new Db2PhysicsOptions((float)(MaxVelocity.Value ?? 180), (float)(MovementEfficiency.Value ?? 0.66m), (float)(SurfaceGravity.Value ?? 2), (float)(StaticFriction.Value ?? 0.6m), (float)(KineticFriction.Value ?? 0.4m), (double)(Density.Value ?? 0), (double)(Viscosity.Value ?? 0), (float)(Elasticity.Value ?? 0m), PlanetEaters.IsChecked == true, (float)(PlanetEatersG.Value ?? 0m), ZeroMomentum.IsChecked == true),
         new Db2ShotOptions((float)(ShotSpeed.Value ?? 40), (float)(ShotRangeMultiplier.Value ?? 1), (float)(ShotDecay.Value ?? 40), EnergyShotsNoDecay.IsChecked == true, WasteShotsNoDecay.IsChecked == true,
             FeedingProportional.IsChecked == true, (int)(FeedingFixedPower.Value ?? 200), (float)(FeedingProportion.Value ?? 1)),
-        new Db2VegetationOptions((int)(StartChloroplasts.Value ?? 16_000), (int)(MaxPlantEnergy.Value ?? 40), (int)(MinimumChloroplastEquivalents.Value ?? 10), (int)(RepopulationAmount.Value ?? 10), (ulong)(RepopulationCooldown.Value ?? 25), (float)(FeedingToBody.Value ?? 0.5m), Daytime.IsChecked == true, DayNightEnabled.IsChecked == true, (ulong)(CycleLength.Value ?? 10_000), PondMode.IsChecked == true, (float)(PondLightIntensity.Value ?? 100m), (float)(PondGradient.Value ?? 1m), (uint)(TidePeriod.Value ?? 0), (int)(TideOffset.Value ?? 0), WeatherEnabled.IsChecked == true, SunUpEnabled.IsChecked == true, (int)(SunUpThreshold.Value ?? 500_000), SunDownEnabled.IsChecked == true, (int)(SunDownThreshold.Value ?? 1_000_000), SunThresholdMode.SelectedIndex),
+        new Db2VegetationOptions((int)(StartChloroplasts.Value ?? Db2VegetationOptions.Default.StartChloroplasts), (int)(MaxPlantEnergy.Value ?? 40), (int)(MinimumChloroplastEquivalents.Value ?? 10), (int)(RepopulationAmount.Value ?? 10), (ulong)(RepopulationCooldown.Value ?? 25), (float)(FeedingToBody.Value ?? 0.5m), Daytime.IsChecked == true, DayNightEnabled.IsChecked == true, (ulong)(CycleLength.Value ?? 10_000), PondMode.IsChecked == true, (float)(PondLightIntensity.Value ?? 100m), (float)(PondGradient.Value ?? 1m), (uint)(TidePeriod.Value ?? 0), (int)(TideOffset.Value ?? 0), WeatherEnabled.IsChecked == true, SunUpEnabled.IsChecked == true, (int)(SunUpThreshold.Value ?? 500_000), SunDownEnabled.IsChecked == true, (int)(SunDownThreshold.Value ?? 1_000_000), SunThresholdMode.SelectedIndex),
         AutoSpeciation.IsChecked == true,
         (float)(SpeciationDistance.Value ?? 20),
         ToroidalWorld.IsChecked == true,
@@ -51,23 +63,40 @@ public sealed partial class AdvancedSettingsWindow : Window
             DeadSnapshotEnabled.IsChecked == true,
             ExcludeRepopulatingRobots.IsChecked == true,
             (ulong)(AutosaveInterval.Value ?? 0),
-            (int)(SamplingInterval.Value ?? 200)));
+            (int)(SamplingInterval.Value ?? 200)))
+    {
+        FieldSize = StagedFieldSize,
+    };
 
     public AdvancedSettingsWindow() : this(EnvironmentUpdate.Default, EngineSnapshot.Empty) { }
     public AdvancedSettingsWindow(EnvironmentUpdate update, EngineSnapshot? snapshot = null, int selectedTab = 0,
-        GlobalSimulationCostSettings? costs = null)
+        GlobalSimulationCostSettings? costs = null, Db2CostPreset? currentCostPreset = null,
+        bool showFieldSize = false, int? currentFieldSize = null, string? fieldSizeUnavailable = null)
     {
         _initialCosts = _stagedCosts = costs;
+        _nativeCosts = snapshot?.NativeCycle is not null;
         InitializeComponent();
+        Opened += (_, _) =>
+        {
+            if (Owner is not SetupWindow) return;
+            Title = "Darwinbots Simulation Settings";
+            SettingsHeading.Text = "SIMULATION SETTINGS";
+            SettingsSubheading.IsVisible = false;
+            SettingsApplyScope.Text = "Changes apply when you create the simulation.";
+        };
         SettingsTabs.SelectedIndex = Math.Clamp(selectedTab, 0, 3);
         if (costs is not null)
         {
             SimulationCostsPanel.IsVisible = true;
-            CostPreset.SelectedIndex = costs == GlobalSimulationCostSettings.NoCosts ? 0
-                : costs == GlobalSimulationCostSettings.F1Default ? 1 : 2;
-            LiveCustomSimulationCostsButton.IsEnabled = CostPreset.SelectedIndex == 2;
+            _initialCostPreset = _stagedCostPreset = currentCostPreset
+                ?? (costs == GlobalSimulationCostSettings.NoCosts ? Db2CostPreset.NoCosts
+                    : costs == GlobalSimulationCostSettings.F1Default ? Db2CostPreset.F1 : Db2CostPreset.Custom);
+            CostPreset.SelectedIndex = (int)_initialCostPreset.Value;
+            LiveCustomSimulationCostsButton.IsEnabled = _stagedCostPreset == Db2CostPreset.Custom;
             CostPreset.SelectionChanged += (_, _) => SelectCostPreset();
         }
+        if (showFieldSize && snapshot is not null)
+            InitializeFieldSize(snapshot.WorldSize, currentFieldSize, fieldSizeUnavailable);
         ToroidalWorld.IsCheckedChanged += (_, _) =>
         {
             if (_initializing || _updatingTopology || ToroidalWorld.IsChecked is null) return;
@@ -97,6 +126,37 @@ public sealed partial class AdvancedSettingsWindow : Window
         PopulateMutations(snapshot ?? EngineSnapshot.Empty);
         WireDirtyTracking();
         _initializing = false;
+    }
+
+    private void InitializeFieldSize(float[] dimensions, int? currentPreset, string? unavailable)
+    {
+        _liveDimensions = (dimensions[0], dimensions[1]);
+        if (currentPreset is { } size && Db2FieldSize.IsValid(size))
+        {
+            var mapped = Db2FieldSize.Dimensions(size);
+            if (_liveDimensions == (mapped.Width, mapped.Height)) _initialFieldSizeIndex = size;
+        }
+        FieldSizePanel.IsVisible = true;
+        FieldSizePreset.ItemsSource = new[] { "Current dimensions" }
+            .Concat(Enumerable.Range(Db2FieldSize.Minimum, Db2FieldSize.Maximum).Select(size => $"Size {size}"))
+            .ToArray();
+        FieldSizePreset.SelectedIndex = _initialFieldSizeIndex;
+        FieldSizePreset.IsEnabled = unavailable is null;
+        FieldSizeUnavailable.Text = unavailable;
+        FieldSizeUnavailable.IsVisible = unavailable is not null;
+        UpdateFieldSizePreview();
+        FieldSizePreset.SelectionChanged += (_, _) =>
+        {
+            UpdateFieldSizePreview();
+            DirtyBadge.IsVisible = LiveSettingsEdited;
+        };
+    }
+
+    private void UpdateFieldSizePreview()
+    {
+        var dimensions = _liveDimensions;
+        if (StagedFieldSize is { } size) dimensions = Db2FieldSize.Dimensions(size);
+        FieldSizeDimensions.Text = $"{dimensions.Width:N0} × {dimensions.Height:N0}";
     }
 
     private void PopulateEnvironment(EnvironmentUpdate update)
@@ -245,36 +305,41 @@ public sealed partial class AdvancedSettingsWindow : Window
         foreach (var numeric in this.GetLogicalDescendants().OfType<NumericUpDown>()) numeric.ValueChanged += (_, _) => MarkDirty();
         foreach (var checkBox in this.GetLogicalDescendants().OfType<CheckBox>()) checkBox.IsCheckedChanged += (_, _) => MarkDirty();
         foreach (var slider in this.GetLogicalDescendants().OfType<Slider>()) slider.PropertyChanged += (_, e) => { if (e.Property == Slider.ValueProperty) MarkDirty(); };
-        foreach (var box in this.GetLogicalDescendants().OfType<ComboBox>().Where(box => box != CostPreset))
+        foreach (var box in this.GetLogicalDescendants().OfType<ComboBox>().Where(box => box != CostPreset && box != FieldSizePreset))
             box.SelectionChanged += (_, _) => MarkDirty();
     }
 
     private void SelectCostPreset()
     {
-        _stagedCosts = CostPreset.SelectedIndex switch
+        if (CostPreset.SelectedIndex is < 0 or > (int)Db2CostPreset.Custom) return;
+        _stagedCostPreset = (Db2CostPreset)CostPreset.SelectedIndex;
+        _stagedCosts = _stagedCostPreset switch
         {
-            0 => GlobalSimulationCostSettings.NoCosts,
-            1 => GlobalSimulationCostSettings.F1Default,
+            Db2CostPreset.NoCosts => GlobalSimulationCostSettings.NoCosts,
+            Db2CostPreset.F1 => GlobalSimulationCostSettings.F1Default,
             _ => _stagedCosts,
         };
-        LiveCustomSimulationCostsButton.IsEnabled = CostPreset.SelectedIndex == 2;
-        DirtyBadge.IsVisible = LiveSettingsEdited || CostUpdate is not null;
+        LiveCustomSimulationCostsButton.IsEnabled = _stagedCostPreset == Db2CostPreset.Custom;
+        RefreshDirtyBadge();
     }
 
     private async void LiveCustomSimulationCosts_Click(object? sender, RoutedEventArgs e)
     {
         if (_stagedCosts is not { } current) return;
-        var dialog = new CustomSimulationCostsWindow(current, stageForLiveSettings: true);
+        var dialog = new CustomSimulationCostsWindow(current, stageForLiveSettings: true,
+            nativeCosts: _nativeCosts || Owner is SetupWindow);
         await dialog.ShowDialog(this);
         if (!dialog.Accepted) return;
         _stagedCosts = dialog.Costs;
-        DirtyBadge.IsVisible = LiveSettingsEdited || CostUpdate is not null;
+        RefreshDirtyBadge();
     }
+
+    private void RefreshDirtyBadge() => DirtyBadge.IsVisible = LiveSettingsEdited || CostPresetUpdate is not null;
 
     private void MarkDirty()
     {
         if (_initializing) return;
-        LiveSettingsEdited = true;
+        _otherLiveSettingsEdited = true;
         DirtyBadge.IsVisible = true;
     }
     private void Apply_Click(object? sender, RoutedEventArgs e) { Accepted = true; Close(); }

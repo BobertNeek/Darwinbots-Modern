@@ -6,6 +6,27 @@ namespace Darwinbots.Desktop.Core.Tests;
 
 public sealed class Db2EnvironmentSettingsTests
 {
+    [Theory]
+    [InlineData(1, 9_237, 6_928)]
+    [InlineData(2, 16_000, 12_000)]
+    [InlineData(12, 96_000, 72_000)]
+    [InlineData(13, 192_000, 144_000)]
+    [InlineData(25, 2_496_000, 1_872_000)]
+    public void OriginalFieldSizePresetsHaveTheOriginalDimensions(int preset, int width, int height)
+    {
+        Assert.Equal((width, height), Db2FieldSize.Dimensions(preset));
+    }
+
+    [Fact]
+    public void EnvironmentCommandsPayloadOmitsUntouchedFieldSize()
+    {
+        using var untouched = JsonDocument.Parse(NativeCommandSerializer.SerializeEnvironment(EnvironmentUpdate.Default));
+        Assert.False(untouched.RootElement.GetProperty("commands")[0].TryGetProperty("field_size", out _));
+        using var resize = JsonDocument.Parse(NativeCommandSerializer.SerializeEnvironment(
+            EnvironmentUpdate.Default with { FieldSize = 25 }));
+        Assert.Equal(25, resize.RootElement.GetProperty("commands")[0].GetProperty("field_size").GetInt32());
+    }
+
     [Fact]
     public void ShapeVisibilitySurvivesSettingsAndEnvironmentCommandsIndependentlyOfOpacity()
     {
@@ -53,7 +74,7 @@ public sealed class Db2EnvironmentSettingsTests
         Assert.Contains("\"max_velocity\":60", json);
         Assert.Contains("\"movement_efficiency\":0.66", json);
         Assert.Contains("\"speed\":40", json);
-        Assert.Contains("\"start_chloroplasts\":16000", json);
+        Assert.Contains("\"start_chloroplasts\":0", json);
     }
 
     [Fact]
@@ -152,7 +173,7 @@ public sealed class Db2EnvironmentSettingsTests
         Assert.Equal(0.5f, update.BrownianMotion);
         Assert.Equal(new Db2PhysicsOptions(60f, 0.66f, 0f, 0f, 0f, 0d, 0d, 0f), update.Physics);
         Assert.Equal(new Db2ShotOptions(40f, 1f, 40f, false, false), update.Shots);
-        Assert.Equal(new Db2VegetationOptions(16_000, 100, 50, 10, 10, 0.75f, true, false, 10_000, Gradient: 1.02f), update.Vegetation);
+        Assert.Equal(new Db2VegetationOptions(0, 100, 50, 10, 10, 0.75f, true, false, 10_000, Gradient: 1.02f), update.Vegetation);
         Assert.False(update.AutoSpeciation);
         Assert.Equal(20f, update.SpeciationGeneticDistancePercent);
 

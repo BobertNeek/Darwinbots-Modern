@@ -15,6 +15,62 @@ public sealed class RobotToolsTests
         Assert.Equal(["50", "-12"], command.Arguments);
     }
 
+    [Theory]
+    [InlineData("cycle", 0)]
+    [InlineData("cycle  3", 0)]
+    [InlineData(" cycle 3", 0)]
+    [InlineData("CYCLE 3", 0)]
+    [InlineData("cycle -1", 0)]
+    [InlineData("cycle 2tail", 2)]
+    [InlineData("cycle 2.5", 2)]
+    [InlineData("cycle 3.5", 4)]
+    [InlineData("cycle 32767", 32767)]
+    [InlineData("cycle 32767.5", null)]
+    [InlineData("step", 1)]
+    public async Task NativeRobotConsoleCycleUsesOriginalCommandFieldsAndIntegerConversion(string input, int? count)
+    {
+        await using var session = new SimulationSession(new FakeEngineClient { NativeCycle = -1 });
+        await session.RefreshSnapshotAsync();
+        var advances = new List<uint>();
+        var controller = new RobotConsoleController(session, new OrganismKey(0, 0), advance: async (cycles, cancellationToken) =>
+        {
+            advances.Add(cycles);
+            await session.StepAsync(cycles, cancellationToken);
+            return (session.LatestSnapshot.Tick, cycles);
+        });
+
+        if (count is null)
+        {
+            await Assert.ThrowsAsync<OverflowException>(() => controller.ExecuteAsync(input));
+            Assert.Empty(advances);
+            Assert.Equal(0UL, session.LatestSnapshot.Tick);
+            return;
+        }
+
+        var result = await controller.ExecuteAsync(input);
+        Assert.Equal((ulong)count.Value, session.LatestSnapshot.Tick);
+        if (count == 0)
+        {
+            Assert.Empty(advances);
+            Assert.Equal(string.Empty, result);
+        }
+        else
+        {
+            Assert.Equal((uint)count.Value, Assert.Single(advances));
+            Assert.Equal($"cycle {count} (+{count})", result);
+        }
+    }
+
+    [Fact]
+    public async Task PortableRobotConsoleKeepsDefaultCycleAndWhitespaceParsing()
+    {
+        await using var session = new SimulationSession(new FakeEngineClient());
+        var controller = new RobotConsoleController(session, new OrganismKey(0, 0));
+
+        Assert.Equal("cycle 1 (+1)", await controller.ExecuteAsync("cycle"));
+        Assert.Equal("cycle 4 (+3)", await controller.ExecuteAsync(" CYCLE  3"));
+    }
+
     [Fact]
     public void PlayerBotKeyMapRoundTripsFourLineBindings()
     {

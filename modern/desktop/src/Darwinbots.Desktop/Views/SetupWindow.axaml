@@ -53,13 +53,13 @@
             <StackPanel HorizontalAlignment="Center" Spacing="12"><TextBlock Text="◉" FontSize="30" HorizontalAlignment="Center"/><TextBlock Text="ZEROBOTS" FontWeight="Bold"/></StackPanel>
           </RadioButton>
           <RadioButton x:Name="ZerobotVegetableMode" Grid.Column="2" GroupName="Mode" Click="Mode_Checked" HorizontalContentAlignment="Center" Padding="18" MinHeight="112">
-            <StackPanel HorizontalAlignment="Center" Spacing="12"><TextBlock Text="◉ + ♧" FontSize="30" HorizontalAlignment="Center" Foreground="#126173"/><TextBlock Text="ZEROBOTS + VEGETABLES" FontWeight="Bold"/></StackPanel>
+            <StackPanel HorizontalAlignment="Center" Spacing="12"><TextBlock Text="◉ + ♧" FontSize="30" HorizontalAlignment="Center" Foreground="#126173"/><TextBlock Text="ZEROBOTS + VEGETABLES" FontWeight="Bold" TextWrapping="Wrap" TextAlignment="Center"/></StackPanel>
           </RadioButton>
         </Grid>
 
         <TextBlock Classes="section" Text="SPECIES" FontSize="15" Margin="0,8,0,0"/>
         <TextBlock Text="DB2 mutations use the detailed rates in each species editor. Legacy % is retained for older modern worlds." TextWrapping="Wrap" Foreground="#66706B"/>
-        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+        <ScrollViewer x:Name="SpeciesRosterScroll" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
         <Border Classes="panel" MinWidth="1060">
           <Grid RowDefinitions="38,*">
             <Grid ColumnDefinitions="2*,90,135,145,135,80,105,44" Background="#EEEAE0" Margin="1">
@@ -68,7 +68,7 @@
             <ItemsControl x:Name="SpeciesList" Grid.Row="1" ItemsSource="{Binding Species}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                  <Grid ColumnDefinitions="2*,90,135,145,135,80,105,44" Margin="6,5">
+                  <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="2*,90,135,145,135,80,105,44" Margin="6,5">
                     <TextBox Text="{Binding Name}"/>
                     <CheckBox Grid.Column="1" IsChecked="{Binding Vegetable}" Content="VEG" VerticalAlignment="Center"/>
                     <NumericUpDown Grid.Column="2" Value="{Binding InitialCount}" Minimum="0" Maximum="100000"/>
@@ -78,8 +78,24 @@
                       <TextBlock Grid.Column="1" Text="{Binding MutationRate, StringFormat='{}{0:0.0}%'}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                     </Grid>
                     <CheckBox Grid.Column="5" IsChecked="{Binding Reseed}" HorizontalAlignment="Center"/>
-                    <Expander Grid.Column="6" Header="EDIT" IsExpanded="False" HorizontalAlignment="Stretch">
-                      <StackPanel Spacing="5" MinWidth="290">
+                    <Expander x:Name="SpeciesEditorToggle" Grid.Column="6" Header="EDIT" HorizontalAlignment="Stretch">
+                      <Expander.Styles>
+                        <Style Selector="Expander:expanded /template/ Border#ExpanderContent">
+                          <Setter Property="MinHeight" Value="0"/>
+                          <Setter Property="Height" Value="0"/>
+                        </Style>
+                      </Expander.Styles>
+                    </Expander>
+                    <Button Grid.Column="7" Content="×" Tag="{Binding}" Click="RemoveSpecies_Click"/>
+                    <Border x:Name="SpeciesDetails" Grid.Row="1" Grid.ColumnSpan="8" Margin="0,6,0,0"
+                            Background="#EEEAE0" Padding="12" HorizontalAlignment="Left"
+                            IsVisible="{Binding #SpeciesEditorToggle.IsExpanded}"
+                            Tag="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType=ScrollViewer}}"
+                            Width="{Binding #SpeciesDetails.Tag.Viewport.Width}">
+                      <Border.RenderTransform>
+                        <TranslateTransform X="{Binding #SpeciesDetails.Tag.Offset.X}"/>
+                      </Border.RenderTransform>
+                      <StackPanel Spacing="5">
                         <TextBlock Text="STARTUP POLICY" Classes="section"/>
                         <Button Content="DB2 mutation rates…" Click="SpeciesMutationRates_Click" Tag="{Binding}"/>
                         <Grid ColumnDefinitions="*,100"><TextBlock Text="Minimum population" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" Value="{Binding MinimumPopulation}" Minimum="0" Maximum="100000"/></Grid>
@@ -88,10 +104,34 @@
                         <Grid ColumnDefinitions="*,100"><TextBlock Text="Fixed Y" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" Value="{Binding PlacementY}" Minimum="-1000000" Maximum="1000000"/></Grid>
                         <TextBlock Text="SKIN POINTS" Classes="section" Margin="0,4,0,0"/>
                         <TextBlock Text="{Binding SkinPreview}" Foreground="#66706B" FontSize="11"/>
-                        <Grid ColumnDefinitions="*,58,58"><TextBlock Text="Point 0" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" Value="{Binding SkinRadius0}" Minimum="0.15" Maximum="0.82" Increment="0.01"/><NumericUpDown Grid.Column="2" Value="{Binding SkinAngle0}" Minimum="0" Maximum="1256"/></Grid>
-                        <Grid ColumnDefinitions="*,58,58"><TextBlock Text="Point 1" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" Value="{Binding SkinRadius1}" Minimum="0.15" Maximum="0.82" Increment="0.01"/><NumericUpDown Grid.Column="2" Value="{Binding SkinAngle1}" Minimum="0" Maximum="1256"/></Grid>
-                        <Grid ColumnDefinitions="*,58,58"><TextBlock Text="Point 2" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" Value="{Binding SkinRadius2}" Minimum="0.15" Maximum="0.82" Increment="0.01"/><NumericUpDown Grid.Column="2" Value="{Binding SkinAngle2}" Minimum="0" Maximum="1256"/></Grid>
-                        <Grid ColumnDefinitions="*,58,58"><TextBlock Text="Point 3" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" Value="{Binding SkinRadius3}" Minimum="0.15" Maximum="0.82" Increment="0.01"/><NumericUpDown Grid.Column="2" Value="{Binding SkinAngle3}" Minimum="0" Maximum="1256"/></Grid>
+                        <Grid ColumnDefinitions="*,110,110" ColumnSpacing="4">
+                          <TextBlock Text="Point 0" VerticalAlignment="Center"/>
+                          <NumericUpDown Grid.Column="1" Classes="skin-coordinate" Value="{Binding SkinRadius0}"
+                                         Minimum="{Binding SkinRadiusMinimum}" Maximum="{Binding SkinRadiusMaximum}" Increment="0.01"/>
+                          <NumericUpDown Grid.Column="2" Classes="skin-coordinate" Value="{Binding SkinAngle0}"
+                                         Minimum="{Binding SkinAngleMinimum}" Maximum="{Binding SkinAngleMaximum}"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="*,110,110" ColumnSpacing="4">
+                          <TextBlock Text="Point 1" VerticalAlignment="Center"/>
+                          <NumericUpDown Grid.Column="1" Classes="skin-coordinate" Value="{Binding SkinRadius1}"
+                                         Minimum="{Binding SkinRadiusMinimum}" Maximum="{Binding SkinRadiusMaximum}" Increment="0.01"/>
+                          <NumericUpDown Grid.Column="2" Classes="skin-coordinate" Value="{Binding SkinAngle1}"
+                                         Minimum="{Binding SkinAngleMinimum}" Maximum="{Binding SkinAngleMaximum}"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="*,110,110" ColumnSpacing="4">
+                          <TextBlock Text="Point 2" VerticalAlignment="Center"/>
+                          <NumericUpDown Grid.Column="1" Classes="skin-coordinate" Value="{Binding SkinRadius2}"
+                                         Minimum="{Binding SkinRadiusMinimum}" Maximum="{Binding SkinRadiusMaximum}" Increment="0.01"/>
+                          <NumericUpDown Grid.Column="2" Classes="skin-coordinate" Value="{Binding SkinAngle2}"
+                                         Minimum="{Binding SkinAngleMinimum}" Maximum="{Binding SkinAngleMaximum}"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="*,110,110" ColumnSpacing="4">
+                          <TextBlock Text="Point 3" VerticalAlignment="Center"/>
+                          <NumericUpDown Grid.Column="1" Classes="skin-coordinate" Value="{Binding SkinRadius3}"
+                                         Minimum="{Binding SkinRadiusMinimum}" Maximum="{Binding SkinRadiusMaximum}" Increment="0.01"/>
+                          <NumericUpDown Grid.Column="2" Classes="skin-coordinate" Value="{Binding SkinAngle3}"
+                                         Minimum="{Binding SkinAngleMinimum}" Maximum="{Binding SkinAngleMaximum}"/>
+                        </Grid>
                         <TextBlock Text="RESTRICTIONS" Classes="section" Margin="0,4,0,0"/>
                         <WrapPanel Orientation="Horizontal" ItemHeight="25">
                           <CheckBox Content="NO VISION" IsChecked="{Binding DisableVision}"/>
@@ -107,8 +147,7 @@
                         </WrapPanel>
                         <TextBox Text="{Binding Comment}" Watermark="Species comment"/>
                       </StackPanel>
-                    </Expander>
-                    <Button Grid.Column="7" Content="×" Tag="{Binding}" Click="RemoveSpecies_Click"/>
+                    </Border>
                   </Grid>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
@@ -130,7 +169,7 @@
         <TextBlock Classes="section" Text="WORLD SETTINGS" FontSize="15" Margin="0,0,0,8"/>
         <TextBlock Text="BACKEND" FontWeight="Bold"/><ComboBox x:Name="Backend" SelectedIndex="0"><ComboBoxItem Content="Auto"/><ComboBoxItem Content="Cpu"/><ComboBoxItem Content="Gpu"/></ComboBox>
         <TextBlock Text="WORLD SIZE" FontWeight="Bold" Margin="0,10,0,0"/>
-        <StackPanel Spacing="4"><TextBlock Text="Width" FontSize="10"/><NumericUpDown x:Name="WorldWidth" Value="16000" Minimum="1000" Maximum="1000000"/><TextBlock Text="Height" FontSize="10"/><NumericUpDown x:Name="WorldHeight" Value="12000" Minimum="1000" Maximum="1000000"/></StackPanel>
+        <StackPanel Spacing="4"><TextBlock Text="Width" FontSize="10"/><NumericUpDown x:Name="WorldWidth" Value="16000" Minimum="1000" Maximum="2496000"/><TextBlock Text="Height" FontSize="10"/><NumericUpDown x:Name="WorldHeight" Value="12000" Minimum="1000" Maximum="1872000"/></StackPanel>
         <TextBlock Text="RANDOM SEED" FontWeight="Bold" Margin="0,10,0,0"/><NumericUpDown x:Name="Seed" Value="1" Minimum="1" Maximum="9223372036854775807" FontSize="12"/><Button x:Name="ChangeSeedButton" Content="CHANGE" Click="ChangeSeed_Click"/>
         <TextBlock Text="POPULATION CAP" FontWeight="Bold" Margin="0,10,0,0"/><NumericUpDown x:Name="PopulationCap" Value="25000" Minimum="100" Maximum="1000000" Increment="1000"/>
         <TextBlock Text="VEGETABLE CAP" FontWeight="Bold" Margin="0,10,0,0"/><NumericUpDown x:Name="VegetablePopulationCap" Value="500" Minimum="0" Maximum="1000000" Increment="50"/>
@@ -140,6 +179,7 @@
         <ComboBox x:Name="Sustenance" SelectedIndex="3"><ComboBoxItem Content="FEEDER + REPRODUCER"/><ComboBoxItem Content="ENERGY-ONLY FEEDER"/><ComboBoxItem Content="PHOTOSYNTHETIC ZEROBOTS"/><ComboBoxItem Content="DISABLED METABOLISM"/><ComboBoxItem Content="NO ASSISTANCE"/></ComboBox>
         <TextBlock x:Name="SustenanceHint" TextWrapping="Wrap" Foreground="#6F716D" FontSize="12"/>
         <CheckBox x:Name="AutomaticProgression" IsChecked="True" Content="AUTOMATIC ZEROBOT PROGRESSION" Margin="0,8,0,0"/>
+        <CheckBox x:Name="OrdinaryRestartToggle" Content="RESTART ON EXTINCTION" />
         <Button x:Name="AdvancedSettingsButton" Content="⚙  ADVANCED SETTINGS" Margin="0,18,0,0" Click="Advanced_Click"/>
         <Button x:Name="GlobalSettingsButton" Content="☷  GLOBAL SETTINGS" Click="GlobalSettings_Click"/>
         <StackPanel Orientation="Horizontal" Spacing="8"><Button x:Name="LoadSettingsButton" Content="LOAD SETTINGS" Click="LoadSettings_Click"/><Button x:Name="SaveSettingsButton" Content="SAVE SETTINGS" Click="SaveSettings_Click"/></StackPanel>

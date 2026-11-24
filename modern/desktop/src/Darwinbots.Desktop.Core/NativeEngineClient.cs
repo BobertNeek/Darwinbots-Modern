@@ -14,7 +14,7 @@ public sealed partial class NativeEngineClient : IEngineClient
     private readonly TimeProvider _clock;
     private bool _sampleRestartClockPerCycle;
     private bool _sampleClassicSkinClock;
-    private static readonly JsonSerializerOptions DeathRecordJson = new()
+    private static readonly JsonSerializerOptions NativeRecordingJson = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
     };
@@ -108,34 +108,131 @@ public sealed partial class NativeEngineClient : IEngineClient
 
     public void Tick(uint count = 1) => Advance(count, 100, null);
 
+    public void Tick(uint count, bool requireNativeRepopulationSource, IReadOnlyList<ulong> cancelledLineages,
+        NativeRedrawCadence? nativeRedraw = null) =>
+        Advance(count, 100, null, requireNativeRepopulationSource, cancelledLineages, nativeRedraw: nativeRedraw ?? NativeRedrawCadence.Off);
+
+    public void Tick(uint count, NativeRedrawCadence nativeRedraw) => Advance(count, 100, null, nativeRedraw: nativeRedraw);
+
+    public void RedrawNative() => RedrawNative(afterContinuousCycle: false);
+
+    public void RedrawNative(bool afterContinuousCycle) =>
+        ExecuteBatch(new { version = 1, commands = new[] { new { type = "native_redraw", after_continuous_cycle = afterContinuousCycle } } },
+            "redraw native simulation");
+
     public void TickRecordingDeaths(uint count, Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted) =>
         TickRecordingDeaths(count, 100, onCommitted);
 
-    public void TickRecordingDeaths(uint count, int weightPercent, Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted) =>
-        Advance(count, weightPercent, onCommitted);
+    public void TickRecordingDeaths(uint count, Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted,
+        NativeRedrawCadence nativeRedraw) => Advance(count, 100, onCommitted, nativeRedraw: nativeRedraw);
 
-    private void Advance(uint count, int weightPercent, Action<IReadOnlyList<DeathRecordSnapshot>>? onDeathsCommitted)
+    public void TickRecordingDeaths(uint count, int weightPercent, Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted,
+        NativeRedrawCadence? nativeRedraw = null) =>
+        Advance(count, weightPercent, onCommitted, nativeRedraw: nativeRedraw ?? NativeRedrawCadence.Off);
+
+    public void TickRecordingDeaths(uint count, int weightPercent, IReadOnlyList<ulong> cancelledLineages,
+        Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted, NativeRedrawCadence? nativeRedraw = null) =>
+        Advance(count, weightPercent, onCommitted, requireNativeRepopulationSource: true, cancelledLineages, nativeRedraw: nativeRedraw ?? NativeRedrawCadence.Off);
+
+    public void TickRecordingGraphs(uint count, Action<IReadOnlyList<NativeGraphRecordingSample>> onCommitted,
+        bool requireNativeRepopulationSource, IReadOnlyList<ulong> cancelledLineages,
+        int weightPercent = 100, Action<IReadOnlyList<DeathRecordSnapshot>>? onDeathsCommitted = null,
+        NativeRedrawCadence? nativeRedraw = null)
+    {
+        ArgumentNullException.ThrowIfNull(onCommitted);
+        Advance(count, weightPercent, onDeathsCommitted, requireNativeRepopulationSource, cancelledLineages, onCommitted, nativeRedraw ?? NativeRedrawCadence.Off);
+    }
+
+    public NativeGraphRecordingSample? ReadNativeGraphSample() => ReadNativeGraphSample("read_native_graph_sample");
+
+    public NativeGraphRecordingSample? ReadNativeGraphResetSample() => ReadNativeGraphSample("read_native_graph_reset_sample");
+
+    private NativeGraphRecordingSample? ReadNativeGraphSample(string command)
     {
         EnsureAlive();
-        if (count == 0) return;
+        var result = ExecuteBatchForResult(
+            new { version = 1, commands = new[] { new { type = command } } },
+            "sample original graphs").GetProperty("results")[0];
+        return result.Deserialize<NativeGraphRecordingSample>(NativeRecordingJson);
+    }
+
+    public NativeGraphRecordingSample? FeedNativeGraphSample(GraphSamplingSettings settings, bool dueOnly = false)
+    {
+        EnsureAlive();
+        var command = new
+        {
+            type = "feed_native_graph_sample",
+            selective = settings.Selective,
+            generational = settings.Generational,
+            slow = settings.Slow,
+            due_only = dueOnly,
+        };
+        var result = ExecuteBatchForResult(new { version = 1, commands = new[] { command } },
+            "feed original graphs").GetProperty("results")[0];
+        return result.Deserialize<NativeGraphRecordingSample>(NativeRecordingJson);
+    }
+
+    public IReadOnlyList<NativeConsoleActivationFrame> TickWatchingNativeConsoles(IReadOnlyList<OrganismKey> focuses,
+        bool requireNativeRepopulationSource, IReadOnlyList<ulong> cancelledLineages,
+        int weightPercent = 100, Action<IReadOnlyList<DeathRecordSnapshot>>? onDeathsCommitted = null,
+        Action<IReadOnlyList<NativeGraphRecordingSample>>? onGraphSamplesCommitted = null,
+        NativeRedrawCadence? nativeRedraw = null) =>
+        Advance(1, weightPercent, onDeathsCommitted, requireNativeRepopulationSource, cancelledLineages,
+            onGraphSamplesCommitted, nativeRedraw ?? NativeRedrawCadence.Off, focuses);
+
+    private IReadOnlyList<NativeConsoleActivationFrame> Advance(uint count, int weightPercent, Action<IReadOnlyList<DeathRecordSnapshot>>? onDeathsCommitted,
+        bool requireNativeRepopulationSource = false, IReadOnlyList<ulong>? cancelledLineages = null,
+        Action<IReadOnlyList<NativeGraphRecordingSample>>? onGraphSamplesCommitted = null,
+        NativeRedrawCadence nativeRedraw = NativeRedrawCadence.Off,
+        IReadOnlyList<OrganismKey>? consoleFocuses = null)
+    {
+        EnsureAlive();
+        if (count == 0) return [];
+        if (requireNativeRepopulationSource && count != 1)
+            throw new ArgumentOutOfRangeException(nameof(count), "Missing native sources must be resolved one cycle at a time.");
         if (_sampleRestartClockPerCycle && count is > 1 and <= 1_000_000)
         {
             // External league/staged restarts take a new Timer sample for each
             // original cycle. Each successful cycle commits before the next begins.
-            for (uint cycle = 0; cycle < count; cycle++) Advance(1, weightPercent, onDeathsCommitted);
-            return;
+            for (uint cycle = 0; cycle < count; cycle++)
+                Advance(1, weightPercent, onDeathsCommitted, requireNativeRepopulationSource, cancelledLineages, onGraphSamplesCommitted, nativeRedraw);
+            return [];
         }
-        var restart = NativeRestartSeedCommand();
-        if (onDeathsCommitted is null)
+        var cadence = nativeRedraw switch
         {
-            ExecuteBatch(new { version = 1, commands = new object[] { restart, new { type = "tick", count } } }, "advance simulation");
-            return;
+            NativeRedrawCadence.Off => "off",
+            NativeRedrawCadence.EveryCycle => "every_cycle",
+            NativeRedrawCadence.EveryTenthCycle => "every_tenth_cycle",
+            _ => throw new ArgumentOutOfRangeException(nameof(nativeRedraw)),
+        };
+        var command = new
+        {
+            type = "tick",
+            count,
+            capture_deaths = onDeathsCommitted is not null,
+            native_redraw = cadence,
+            recording_weight = weightPercent,
+            require_native_repopulation_source = requireNativeRepopulationSource,
+            cancelled_native_repopulation_lineages = cancelledLineages ?? [],
+            capture_graph_samples = onGraphSamplesCommitted is not null,
+            console_focuses = consoleFocuses?.Select(focus => new { slot = focus.Slot, generation = focus.Generation }).ToArray() ?? [],
+        };
+        var batch = new { version = 1, commands = new object[] { NativeRestartSeedCommand(), command } };
+        if (onDeathsCommitted is null && onGraphSamplesCommitted is null && consoleFocuses is not { Count: > 0 })
+        {
+            ExecuteBatch(batch, "advance simulation");
+            return [];
         }
-        var result = ExecuteBatchForResult(
-            new { version = 1, commands = new object[] { restart, new { type = "tick", count, capture_deaths = true, recording_weight = weightPercent } } },
-            "advance simulation with death records");
-        var records = result.GetProperty("results")[1].GetProperty("death_records").Deserialize<DeathRecordSnapshot[]>(DeathRecordJson);
-        if (records is { Length: > 0 }) onDeathsCommitted(records);
+        var result = ExecuteBatchForResult(batch, "advance simulation with recording").GetProperty("results")[1];
+        if (onDeathsCommitted is not null &&
+            result.GetProperty("death_records").Deserialize<DeathRecordSnapshot[]>(NativeRecordingJson) is { Length: > 0 } records)
+            onDeathsCommitted(records);
+        if (onGraphSamplesCommitted is not null &&
+            result.GetProperty("graph_samples").Deserialize<NativeGraphRecordingSample[]>(NativeRecordingJson) is { Length: > 0 } samples)
+            onGraphSamplesCommitted(samples);
+        return consoleFocuses is { Count: > 0 } && result.TryGetProperty("console_activations", out var activations)
+            ? activations.Deserialize<NativeConsoleActivationFrame[]>(NativeRecordingJson) ?? []
+            : [];
     }
 
     public GenomeRecordCapture CaptureLivingSnp(int weightPercent)
@@ -170,7 +267,7 @@ public sealed partial class NativeEngineClient : IEngineClient
     }
 
     private static DeathRecordSnapshot[] ReadGenomeRecords(JsonElement result) =>
-        result.GetProperty("results")[0].Deserialize<DeathRecordSnapshot[]>(DeathRecordJson)
+        result.GetProperty("results")[0].Deserialize<DeathRecordSnapshot[]>(NativeRecordingJson)
         ?? throw new InvalidDataException("The native genome record result is missing.");
 
     public DnaImportReport ImportDna(string dna, float[]? position = null)
@@ -381,11 +478,53 @@ public sealed partial class NativeEngineClient : IEngineClient
         return result.GetProperty("results")[0].GetProperty("count").GetInt32();
     }
 
-    public string ExportDna(uint slot, uint generation)
+    public string ReadRobotTag(OrganismKey focus)
     {
-        var result = ExecuteBatchForResult(new { version = 1, commands = new[] { new { type = "export_dna", slot, generation } } }, "export DNA");
+        var result = ExecuteBatchForResult(new
+        {
+            version = 1,
+            commands = new[] { new { type = "read_robot_tag", slot = focus.Slot, generation = focus.Generation } },
+        }, "read robot description");
+        return result.GetProperty("results")[0].GetString()
+            ?? throw new InvalidDataException("Native engine returned no robot description.");
+    }
+
+    public string SetRobotTag(OrganismKey focus, string tag)
+    {
+        ArgumentNullException.ThrowIfNull(tag);
+        var result = ExecuteBatchForResult(new
+        {
+            version = 1,
+            commands = new[] { new { type = "set_robot_tag", slot = focus.Slot, generation = focus.Generation, tag } },
+        }, "set robot description");
+        return result.GetProperty("results")[0].GetString()
+            ?? throw new InvalidDataException("Native engine returned no robot description.");
+    }
+
+    public string ExportDna(uint slot, uint generation) => ExportDna(slot, generation, originalFileFormat: false);
+
+    public string ExportOriginalDnaFile(uint slot, uint generation) => ExportDna(slot, generation, originalFileFormat: true);
+
+    private string ExportDna(uint slot, uint generation, bool originalFileFormat)
+    {
+        var result = ExecuteBatchForResult(new
+        {
+            version = 1,
+            commands = new[] { new { type = "export_dna", slot, generation, original_file_format = originalFileFormat } },
+        }, "export DNA");
         return result.GetProperty("results")[0].GetProperty("dna").GetString()
             ?? throw new InvalidDataException("Native engine returned empty DNA.");
+    }
+
+    public string ReadRobotDna(uint slot, uint generation, uint? markerPosition = null)
+    {
+        var result = ExecuteBatchForResult(new
+        {
+            version = 1,
+            commands = new[] { new { type = "read_robot_dna", slot, generation, marker_position = markerPosition } },
+        }, "read Robot Info DNA");
+        return result.GetProperty("results")[0].GetProperty("dna").GetString()
+            ?? throw new InvalidDataException("Native engine returned no Robot Info DNA.");
     }
 
     public string ExportSpeciesTemplateDna(uint species)
@@ -439,6 +578,16 @@ public sealed partial class NativeEngineClient : IEngineClient
         request.Validate();
         var result = ExecuteBatchForResult(NativeCommandSerializer.CreateManualReproductionBatch(request), "manually reproduce organism");
         return ReadKey(result.GetProperty("results")[0]);
+    }
+
+    public OrganismKey? ReproduceNativeRobotInfo(OrganismKey parent)
+    {
+        var result = ExecuteBatchForResult(new
+        {
+            version = 1,
+            commands = new[] { new { type = "reproduce_native_robot_info", slot = parent.Slot, generation = parent.Generation } },
+        }, "reproduce from native Robot Info").GetProperty("results")[0];
+        return result.ValueKind == JsonValueKind.Null ? null : ReadKey(result);
     }
 
     public void SwitchBackend(string backend)
@@ -750,6 +899,14 @@ public sealed partial class NativeEngineClient : IEngineClient
     public void RemoveFileTeleporter(uint id) => ExecuteBatch(
         new { version = 1, commands = new[] { new { type = "remove_file_teleporter", id } } }, "remove file teleporter");
 
+    public void RemoveTeleporters(IReadOnlyList<uint> teleporterIds, IReadOnlyList<uint> fileTeleporterIds) => ExecuteBatch(
+        new
+        {
+            version = 1,
+            commands = teleporterIds.Select(id => new { type = "remove_teleporter", id })
+                .Concat(fileTeleporterIds.Select(id => new { type = "remove_file_teleporter", id })).ToArray(),
+        }, "remove teleporters");
+
     private static object FileTeleporterPayload(FileTeleporterSnapshot teleporter) => new
     {
         id = teleporter.Id,
@@ -795,9 +952,19 @@ public sealed partial class NativeEngineClient : IEngineClient
         ExecuteBatch(new { version = 1, commands = new[] { new { type = "set_brownian_motion", value } } }, "set Brownian motion");
     }
 
-    public ushort ResolveMemoryAddress(string name)
+    public ushort ResolveMemoryAddress(string name) => ResolveMemoryAddress(name, focus: null);
+
+    public ushort ResolveMemoryAddress(string name, OrganismKey focus) =>
+        ResolveMemoryAddress(name, (OrganismKey?)focus);
+
+    private ushort ResolveMemoryAddress(string name, OrganismKey? focus)
     {
-        var result = ExecuteBatchForResult(new { version = 1, commands = new[] { new { type = "resolve_memory_address", name } } }, "resolve memory address");
+        var robot = focus is { } key ? new { slot = key.Slot, generation = key.Generation } : null;
+        var result = ExecuteBatchForResult(new
+        {
+            version = 1,
+            commands = new[] { new { type = "resolve_memory_address", name, focus = robot } },
+        }, "resolve memory address");
         return result.GetProperty("results")[0].GetProperty("address").GetUInt16();
     }
 
@@ -853,8 +1020,14 @@ public sealed partial class NativeEngineClient : IEngineClient
     } }, "update global main rules");
 
     public void UpdateCostSettings(GlobalSimulationCostSettings settings) =>
-        ExecuteBatch(new { version = 1, commands = new[] { NativeCommandSerializer.CostSettingsCommand(settings) } },
+        UpdateCostSettings(settings, null);
+
+    public void UpdateCostSettings(GlobalSimulationCostSettings? settings, Db2CostPreset? preset)
+    {
+        if (settings is null && preset is null) return;
+        ExecuteBatch(new { version = 1, commands = new[] { NativeCommandSerializer.CostSettingsCommand(settings, preset) } },
             "update simulation costs");
+    }
 
     public void UpdateMutationSettings(MutationSettingsUpdate update) =>
         ApplyMutationSettings(update, null, null);
@@ -912,6 +1085,13 @@ public sealed partial class NativeEngineClient : IEngineClient
         new { version = 1, commands = new[] { new { type = "fork_robot_and_descendants", slot, generation } } },
         "fork robot and descendants").GetProperty("results")[0].GetProperty("name").GetString()
         ?? throw new InvalidDataException("Native engine returned an empty founder name.");
+    public bool RenameRobotFounder(uint slot, uint generation, string name)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        return ExecuteBatchForResult(
+            new { version = 1, commands = new[] { new { type = "rename_robot_founder", slot, generation, name } } },
+            "rename saved robot").GetProperty("results")[0].GetBoolean();
+    }
 
     public void UpdateLegacyRestrictions(bool robotFixingAllowed, bool asexualReproductionAllowed) => ExecuteBatch(
         new { version = 1, commands = new[] { new { type = "update_legacy_restrictions", robot_fixing_allowed = robotFixingAllowed, asexual_reproduction_allowed = asexualReproductionAllowed } } },
@@ -1003,7 +1183,23 @@ public sealed partial class NativeEngineClient : IEngineClient
             commands = new[] { new { type = "set_organism_energy", slot, generation, energy } },
         }, "set organism energy");
 
-    public void UpdateRestrictionOptions(RestrictionOptions options) => ExecuteBatch(
+    public void SetNativeConsoleEnergy(OrganismKey focus, float energy) => ExecuteBatch(
+        new
+        {
+            version = 1,
+            commands = new[]
+            {
+                new { type = "set_native_console_energy", slot = focus.Slot, generation = focus.Generation, energy },
+            },
+        }, "set native console energy");
+
+    public void UpdateRestrictionOptions(RestrictionOptions options) =>
+        SendRestrictionOptions(options, "update_restriction_options", "update restriction options");
+
+    public void ApplyNativeRestrictionOverwrites(RestrictionOptions options) =>
+        SendRestrictionOptions(options, "apply_native_restriction_overwrites", "apply native restriction overwrites");
+
+    private void SendRestrictionOptions(RestrictionOptions options, string command, string operation) => ExecuteBatch(
         new
         {
             version = 1,
@@ -1011,7 +1207,7 @@ public sealed partial class NativeEngineClient : IEngineClient
             {
                 new
                 {
-                    type = "update_restriction_options",
+                    type = command,
                     options = new
                     {
                         non_repopulating = RestrictionColumnPayload(options.NonRepopulating),
@@ -1019,7 +1215,7 @@ public sealed partial class NativeEngineClient : IEngineClient
                     },
                 },
             },
-        }, "update restriction options");
+        }, operation);
 
     public void ConfigureLocalMode(LocalModeConfig config)
     {
@@ -1092,6 +1288,56 @@ public sealed partial class NativeEngineClient : IEngineClient
         new { version = 1, commands = new[] { new { type = "finish_ordinary_restart" } } },
         "restart ordinary simulation");
 
+    public NativeRestartSources ReadNativeRestartSources()
+    {
+        EnsureAlive();
+        var result = ExecuteBatchForResult(
+            new { version = 1, commands = new[] { new { type = "read_native_restart_sources" } } },
+            "read original restart sources").GetProperty("results")[0];
+        var sources = result.GetProperty("sources").EnumerateArray().Select(source => new NativeRestartSource(
+            source.GetProperty("lineage_id").GetUInt64(),
+            source.GetProperty("filename").GetString() ?? string.Empty,
+            source.GetProperty("directory").GetString() ?? string.Empty)).ToArray();
+        return new(result.GetProperty("requested").GetBoolean(), sources);
+    }
+
+    public bool HasUnresolvedNativeRepopulationSources()
+    {
+        EnsureAlive();
+        return ExecuteBatchForResult(new { version = 1, commands = new[] { new { type = "has_unresolved_native_repopulation_sources" } } },
+            "check original repopulation sources").GetProperty("results")[0].GetBoolean();
+    }
+
+    public int BindNativeRestartSources(IReadOnlyList<NativeRestartBinding> sources) =>
+        BindNativeRestartSources(sources, preserveExisting: false);
+
+    public int BindNativeRestartSources(IReadOnlyList<NativeRestartBinding> sources, bool preserveExisting)
+    {
+        EnsureAlive();
+        var result = ExecuteBatchForResult(new
+        {
+            version = 1,
+            commands = new[]
+            {
+                new
+                {
+                    type = "bind_native_restart_sources",
+                    preserve_existing = preserveExisting,
+                    sources,
+                },
+            },
+        }, "bind original restart sources");
+        return result.GetProperty("results")[0].GetInt32();
+    }
+
+    public void ResumeRestartMode() => ExecuteBatch(
+        new { version = 1, commands = new object[] { NativeRestartSeedCommand(), new { type = "resume_restart_mode" } } },
+        "resume restart mode");
+
+    public void ClearRestartModeHiding() => ExecuteBatch(
+        new { version = 1, commands = new[] { new { type = "clear_restart_mode_hiding" } } },
+        "clear restart mode hiding");
+
     public void AdjudicateLocalRound(uint? winner, string reason)
     {
         EnsureAlive();
@@ -1107,6 +1353,22 @@ public sealed partial class NativeEngineClient : IEngineClient
         new { version = 1, commands = new[] { new { type = "set_organism_aim", slot, generation, aim } } },
         "set organism aim");
 
+    public void ConfigureNativePostDnaMemoryWatch(ulong requestId, OrganismKey? focus, bool captureMemory) => ExecuteBatch(new
+    {
+        version = 1,
+        commands = new[] { new
+        {
+            type = "configure_native_post_dna_memory_watch", request_id = requestId,
+            focus = OrganismPayload(focus), capture_memory = captureMemory,
+        } },
+    }, "configure post-DNA memory");
+
+    public void ConfigureGeneActivationWatch(ulong watchId, bool enabled, OrganismKey? focus) => ExecuteBatch(new
+    {
+        version = 1,
+        commands = new[] { new { type = "configure_gene_activation_watch", watch_id = watchId, enabled, focus = OrganismPayload(focus) } },
+    }, "configure gene activations");
+
     public void ConfigureGraphSampling(GraphSamplingSettings settings) => ExecuteBatch(new
     {
         version = 1,
@@ -1118,19 +1380,100 @@ public sealed partial class NativeEngineClient : IEngineClient
         } } },
     }, "configure graph sampling");
 
+    public NativeGraphRecordingState ReadNativeGraphRecording()
+    {
+        EnsureAlive();
+        var result = ExecuteBatchForResult(
+            new { version = 1, commands = new[] { new { type = "read_native_graph_recording" } } },
+            "read original graph recording").GetProperty("results")[0];
+        var graphs = result.GetProperty("graphs").EnumerateArray().Select(row => new NativeGraphRecordingRow(
+            row.GetProperty("graph_index").GetInt32(),
+            row.GetProperty("enabled").GetBoolean(),
+            row.GetProperty("counter").GetInt32())).ToArray();
+        return new(result.GetProperty("run_stamp").GetString() ?? string.Empty, graphs);
+    }
+
+    public void UpdateNativeGraphRecording(string? runStamp, IReadOnlyList<NativeGraphRecordingRow> graphs)
+    {
+        EnsureAlive();
+        ArgumentNullException.ThrowIfNull(graphs);
+        ExecuteBatch(new
+        {
+            version = 1,
+            commands = new[] { new
+            {
+                type = "update_native_graph_recording",
+                run_stamp = runStamp,
+                graphs = graphs.Select(row => new
+                {
+                    graph_index = row.GraphIndex, enabled = row.Enabled, counter = row.Counter,
+                }).ToArray(),
+            } },
+        }, "update original graph recording");
+    }
+
+    public NativeGraphLayoutState ReadNativeGraphLayout()
+    {
+        EnsureAlive();
+        var result = ExecuteBatchForResult(
+            new { version = 1, commands = new[] { new { type = "read_native_graph_layout" } } },
+            "read original graph layout").GetProperty("results")[0];
+        return result.Deserialize<NativeGraphLayoutState>(NativeRecordingJson)
+            ?? throw new InvalidDataException("The original graph layout result is missing.");
+    }
+
+    public void UpdateNativeGraphLayout(IReadOnlyList<NativeGraphLayoutRow> graphs,
+        IReadOnlyList<NativeGraphCustomQuery>? customQueries = null)
+    {
+        EnsureAlive();
+        ArgumentNullException.ThrowIfNull(graphs);
+        ExecuteBatch(new
+        {
+            version = 1,
+            commands = new[] { new
+            {
+                type = "update_native_graph_layout",
+                graphs = graphs.Select(row => new
+                {
+                    graph_index = row.GraphIndex, visible = row.Visible, left = row.Left, top = row.Top,
+                }).ToArray(),
+                custom_queries = customQueries?.Select(query => new { slot = query.Slot, expression = query.Expression }).ToArray() ?? [],
+            } },
+        }, "update original graph layout");
+    }
+
     public void UpdateEnvironment(EnvironmentUpdate update)
     {
         ArgumentNullException.ThrowIfNull(update);
         ValidatePosition(update.Gravity);
         ExecuteBatch(NativeCommandSerializer.CreateEnvironmentBatch(update), "update environment");
+        if (update.FieldSize is not null) CacheWorldDimensions(Snapshot());
     }
 
-    public void UpdateLiveSettings(EnvironmentUpdate environment, MutationSettingsUpdate mutation, GlobalSimulationCostSettings? costs)
+    public void UpdateLiveSettings(EnvironmentUpdate environment, MutationSettingsUpdate mutation) =>
+        UpdateLiveSettings(environment, mutation, null, null);
+
+    public void UpdateLiveSettings(EnvironmentUpdate environment, MutationSettingsUpdate mutation, GlobalSimulationCostSettings? costs) =>
+        UpdateLiveSettings(environment, mutation, costs, null);
+
+    public void UpdateLiveSettings(EnvironmentUpdate environment, MutationSettingsUpdate mutation,
+        GlobalSimulationCostSettings? costs, Db2CostPreset? preset)
     {
         ArgumentNullException.ThrowIfNull(environment);
         ValidatePosition(environment.Gravity);
         ValidateMutationSettings(mutation);
-        ExecuteBatch(NativeCommandSerializer.CreateLiveSettingsBatch(environment, mutation, costs), "update live settings");
+        ExecuteBatch(NativeCommandSerializer.CreateLiveSettingsBatch(environment, mutation, costs, preset), "update live settings");
+        if (environment.FieldSize is not null) CacheWorldDimensions(Snapshot());
+    }
+
+    public void AcceptNativeAdvancedSettings(EnvironmentUpdate? environment, MutationSettingsUpdate? mutation,
+        GlobalSimulationCostSettings? costs, Db2CostPreset? preset)
+    {
+        if (environment is not null) ValidatePosition(environment.Gravity);
+        if (mutation is not null) ValidateMutationSettings(mutation);
+        ExecuteBatch(NativeCommandSerializer.CreateLiveSettingsBatch(environment, mutation, costs, preset, acceptNativeDaylight: true),
+            "apply native advanced settings");
+        if (environment?.FieldSize is not null) CacheWorldDimensions(Snapshot());
     }
 
     private static OrganismKey ReadKey(JsonElement value) => new(
@@ -1225,6 +1568,77 @@ public sealed partial class NativeEngineClient : IEngineClient
             ?? throw new InvalidDataException("Native engine returned no robot tag information.");
     }
 
+    public uint? ReadNativeSetupUniformState()
+    {
+        EnsureAlive();
+        var state = NativeMethods.EngineNativeSetupUniformState(_engine);
+        return state < 0 ? null : (uint)state;
+    }
+
+    public NativeSpeciesAppearance? StageNativeSpeciesAppearance(string filename, string dna, bool useOldColors)
+    {
+        EnsureAlive();
+        return ReadStagedAppearance(_engine, filename, dna, useOldColors, null, _clock);
+    }
+
+    public static NativeSpeciesAppearance? StageNativeSetupAppearance(string filename, string dna, bool useOldColors,
+        uint? uniformState = null, TimeProvider? timeProvider = null) =>
+        ReadStagedAppearance(IntPtr.Zero, filename, dna, useOldColors, uniformState, timeProvider ?? TimeProvider.System);
+
+    private static NativeSpeciesAppearance? ReadStagedAppearance(IntPtr engine, string filename, string dna, bool useOldColors,
+        uint? uniformState, TimeProvider clock)
+    {
+        if (filename.Replace(".txt", string.Empty, StringComparison.Ordinal).Length == 0) return null;
+        byte[] name;
+        try { name = LegacyDnaText.Encode(filename); }
+        catch (InvalidDataException) { return null; }
+
+        var request = JsonSerializer.SerializeToUtf8Bytes(new
+        {
+            filename = name.Select(value => (int)value).ToArray(),
+            dna,
+            use_old_colors = useOldColors,
+            cold_uniform_state = uniformState,
+        });
+        Exception? timerError = null;
+        NativeSetupTimer callback = () =>
+        {
+            try { return (float)clock.GetLocalNow().TimeOfDay.TotalSeconds; }
+            catch (Exception error)
+            {
+                timerError = error;
+                return float.NaN;
+            }
+        };
+        var buffer = new NativeBuffer();
+        try
+        {
+            var status = NativeMethods.EngineStageNativeSpeciesAppearance(engine, request, (nuint)request.Length,
+                Marshal.GetFunctionPointerForDelegate(callback), ref buffer);
+            if (timerError is not null) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(timerError).Throw();
+            ThrowIfFailed(status, "stage native species appearance");
+            var draft = JsonSerializer.Deserialize<NativeSpeciesAppearanceWire>(CopyBuffer(buffer), NativeAppearanceJson);
+            if (draft is null) return null;
+            if (draft.Skin is not { Length: 8 }) throw new InvalidDataException("Native species appearance has an invalid skin.");
+            var points = new SkinPointSnapshot[4];
+            for (var i = 0; i < points.Length; i++)
+                points[i] = new SkinPointSnapshot(draft.Skin[2 * i] / 60f, 314 - 2 * draft.Skin[2 * i + 1]);
+            return new NativeSpeciesAppearance(draft.Argb, points, draft.UniformState);
+        }
+        finally
+        {
+            GC.KeepAlive(callback);
+            NativeMethods.BufferFree(ref buffer);
+        }
+    }
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate float NativeSetupTimer();
+
+    private static readonly JsonSerializerOptions NativeAppearanceJson = new() { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
+
+    private sealed record NativeSpeciesAppearanceWire(uint Argb, short[] Skin, uint UniformState);
+
     public float? ReadNativeGaussianSpare()
     {
         EnsureAlive();
@@ -1270,6 +1684,15 @@ public sealed partial class NativeEngineClient : IEngineClient
         finally { NativeMethods.BufferFree(ref buffer); }
     }
 
+    public byte[] SaveWithoutRestartMode()
+    {
+        EnsureAlive();
+        var buffer = new NativeBuffer();
+        ThrowIfFailed(NativeMethods.EngineSaveWithoutRestartMode(_engine, ref buffer), "save simulation without restart mode");
+        try { return CopyBuffer(buffer); }
+        finally { NativeMethods.BufferFree(ref buffer); }
+    }
+
     public byte[] SaveLegacy()
     {
         EnsureAlive();
@@ -1297,16 +1720,38 @@ public sealed partial class NativeEngineClient : IEngineClient
         finally { NativeMethods.BufferFree(ref buffer); }
     }
 
-    public void Load(byte[] save)
+    public int CaptureNativeLoadSeed(bool generateSeed)
+    {
+        EnsureAlive();
+        return generateSeed ? (int)NativeTimerSeed() : unchecked((int)ReadConfiguration().Seed.GetValueOrDefault());
+    }
+
+    public void SetNativeSeedMetadata(int seed)
+    {
+        EnsureAlive();
+        ThrowIfFailed(NativeMethods.EngineSetNativeSeedMetadata(_engine, seed), "set native load seed");
+    }
+
+    public void Load(byte[] save) => LoadWithNativeSeed(save, 0);
+
+    public void LoadWithNativeSeed(byte[] save, int seed)
     {
         EnsureAlive();
         ArgumentNullException.ThrowIfNull(save);
         if (save.Length == 0) throw new InvalidDataException("Save data is empty.");
-        ThrowIfFailed(NativeMethods.EngineLoad(_engine, save, (nuint)save.Length), "load simulation");
+        var status = seed == 0
+            ? NativeMethods.EngineLoad(_engine, save, (nuint)save.Length)
+            : NativeMethods.EngineLoadWithNativeSeed(_engine, save, (nuint)save.Length, seed);
+        ThrowIfFailed(status, "load simulation");
         var loaded = Snapshot();
-        _worldWidth = loaded.WorldSize[0];
-        _worldHeight = loaded.WorldSize[1];
+        CacheWorldDimensions(loaded);
         UpdateRestartClockPolicy(loaded.LocalMode);
+    }
+
+    private void CacheWorldDimensions(EngineSnapshot snapshot)
+    {
+        _worldWidth = snapshot.WorldSize[0];
+        _worldHeight = snapshot.WorldSize[1];
     }
 
     public EngineSnapshot Snapshot()
@@ -1400,26 +1845,26 @@ public sealed partial class NativeEngineClient : IEngineClient
 
     private static void ThrowIfFailed(DbStatus status, string operation)
     {
-        if (status != DbStatus.Ok)
-        {
-            var detail = ReadLastError();
-            throw new InvalidOperationException($"Native engine could not {operation}; status {(int)status} ({status}). {detail}");
-        }
-    }
-
-    private static string ReadLastError()
-    {
+        if (status == DbStatus.Ok) return;
+        var detail = "No error detail was provided.";
         var buffer = new NativeBuffer();
-        if (NativeMethods.LastErrorJson(ref buffer) != DbStatus.Ok || buffer.Data == IntPtr.Zero) return "No error detail was provided.";
-        try
+        if (NativeMethods.LastErrorJson(ref buffer) == DbStatus.Ok && buffer.Data != IntPtr.Zero)
         {
-            using var document = JsonDocument.Parse(CopyBuffer(buffer));
-            return document.RootElement.GetProperty("message").GetString() ?? "No error detail was provided.";
+            try
+            {
+                using var document = JsonDocument.Parse(CopyBuffer(buffer));
+                var error = document.RootElement;
+                detail = error.GetProperty("message").GetString() ?? detail;
+                if (status == DbStatus.EngineError
+                    && error.TryGetProperty("code", out var code) && code.ValueEquals("missing_native_repopulation_source")
+                    && error.TryGetProperty("lineage_id", out var lineage) && lineage.TryGetUInt64(out var lineageId)
+                    && error.TryGetProperty("filename", out var filename) && filename.GetString() is { } name
+                    && error.TryGetProperty("directory", out var directory) && directory.GetString() is { } folder)
+                    throw new MissingNativeRepopulationSourceException(detail, new(lineageId, name, folder));
+            }
+            finally { NativeMethods.BufferFree(ref buffer); }
         }
-        finally
-        {
-            NativeMethods.BufferFree(ref buffer);
-        }
+        throw new InvalidOperationException($"Native engine could not {operation}; status {(int)status} ({status}). {detail}");
     }
 
     private enum DbStatus
@@ -1457,6 +1902,13 @@ public sealed partial class NativeEngineClient : IEngineClient
         [LibraryImport(LibraryName, EntryPoint = "db_engine_import_dna")]
         internal static partial DbStatus EngineImportDna(IntPtr engine, byte[] dna, nuint dnaLength);
 
+        [LibraryImport(LibraryName, EntryPoint = "db_engine_native_setup_uniform_state")]
+        internal static partial int EngineNativeSetupUniformState(IntPtr engine);
+
+        [LibraryImport(LibraryName, EntryPoint = "db_engine_stage_native_species_appearance")]
+        internal static partial DbStatus EngineStageNativeSpeciesAppearance(IntPtr engine, byte[] request, nuint requestLength,
+            IntPtr sampleTimer, ref NativeBuffer buffer);
+
         [LibraryImport(LibraryName, EntryPoint = "db_engine_command_batch")]
         internal static partial DbStatus EngineCommandBatch(IntPtr engine, byte[] commands, nuint commandLength, ref NativeBuffer buffer);
 
@@ -1472,6 +1924,9 @@ public sealed partial class NativeEngineClient : IEngineClient
         [LibraryImport(LibraryName, EntryPoint = "db_engine_save")]
         internal static partial DbStatus EngineSave(IntPtr engine, ref NativeBuffer buffer);
 
+        [LibraryImport(LibraryName, EntryPoint = "db_engine_save_without_restart_mode")]
+        internal static partial DbStatus EngineSaveWithoutRestartMode(IntPtr engine, ref NativeBuffer buffer);
+
         [LibraryImport(LibraryName, EntryPoint = "db_engine_save_legacy")]
         internal static partial DbStatus EngineSaveLegacy(IntPtr engine, ref NativeBuffer buffer);
 
@@ -1483,6 +1938,12 @@ public sealed partial class NativeEngineClient : IEngineClient
 
         [LibraryImport(LibraryName, EntryPoint = "db_engine_load")]
         internal static partial DbStatus EngineLoad(IntPtr engine, byte[] save, nuint saveLength);
+
+        [LibraryImport(LibraryName, EntryPoint = "db_engine_load_with_native_seed")]
+        internal static partial DbStatus EngineLoadWithNativeSeed(IntPtr engine, byte[] save, nuint saveLength, int seed);
+
+        [LibraryImport(LibraryName, EntryPoint = "db_engine_set_native_seed_metadata")]
+        internal static partial DbStatus EngineSetNativeSeedMetadata(IntPtr engine, int seed);
 
         [LibraryImport(LibraryName, EntryPoint = "db_engine_snapshot_json")]
         internal static partial DbStatus EngineSnapshotJson(IntPtr engine, ref NativeBuffer buffer);

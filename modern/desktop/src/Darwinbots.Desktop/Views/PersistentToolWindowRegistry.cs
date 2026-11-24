@@ -53,11 +53,35 @@ public sealed class PersistentToolWindowRegistry
         return window;
     }
 
-    public void PublishSnapshot(EngineSnapshot snapshot, bool updateGraphs = true)
+    public void PublishSnapshot(EngineSnapshot snapshot, bool updateGraphs = true, bool updateGraphPalette = true)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         foreach (var window in _windows.Values.OfType<IPersistentSnapshotToolWindow>().ToArray())
-            if (updateGraphs || window is not GraphSuiteWindow) window.SetSnapshot(snapshot);
+        {
+            if (updateGraphs || window is not GraphSuiteWindow graph) window.SetSnapshot(snapshot);
+            else if (updateGraphPalette) graph.SetScenePalette(snapshot);
+        }
+    }
+
+    public void Hide(string key)
+    {
+        if (_windows.TryGetValue(key, out var window) && window.IsVisible)
+            window.Hide();
+    }
+
+    internal bool WantsNativeGraphSamples => _windows.Values.OfType<GraphSuiteWindow>()
+        .Any(window => window.WantsNativeGraphSamples);
+
+    internal void PublishNativeGraphSamples(IReadOnlyList<NativeGraphRecordingSample> samples, int generation)
+    {
+        foreach (var window in _windows.Values.OfType<GraphSuiteWindow>().ToArray())
+            window.RecordNativeSamples(samples, generation);
+    }
+
+    internal void LoadGraphWorld(EngineSnapshot snapshot, NativeGraphLayoutState? layout)
+    {
+        foreach (var window in _windows.Values.OfType<GraphSuiteWindow>().ToArray())
+            window.LoadGraphWorld(snapshot, layout);
     }
 
     public bool Close(string key)
@@ -65,6 +89,11 @@ public sealed class PersistentToolWindowRegistry
         if (!_windows.TryGetValue(key, out var window)) return false;
         window.Close();
         return true;
+    }
+
+    internal void CloseAll<T>() where T : Window
+    {
+        foreach (var window in _windows.Values.OfType<T>().ToArray()) window.Close();
     }
 
     public void CloseAll()

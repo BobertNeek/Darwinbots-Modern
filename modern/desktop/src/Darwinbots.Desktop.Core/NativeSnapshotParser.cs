@@ -27,7 +27,8 @@ public static class NativeSnapshotParser
     {
         if (native is null)
             throw new InvalidDataException("The native engine returned an empty snapshot.");
-        var organisms = (native.Organisms ?? []).Select(organism => new OrganismSnapshot(
+        var preserveSkin = native.NativeCycle.HasValue;
+        OrganismSnapshot ProjectOrganism(NativeOrganism organism) => new(
             organism.Id.Slot,
             organism.Id.Generation,
             organism.Position,
@@ -48,9 +49,10 @@ public static class NativeSnapshotParser
             organism.Poisoned,
             organism.Parents?.Select(parent => parent is null ? (OrganismKey?)null : new OrganismKey(parent.Slot, parent.Generation)).ToArray())
         {
+            Exists = organism.Flags?.Exists ?? true,
             IsCorpse = organism.Flags?.Corpse ?? false,
             IsHidden = organism.Flags?.Hidden ?? false,
-            Phenotype = ParsePhenotype(organism.Phenotype),
+            Phenotype = ParsePhenotype(organism.Phenotype, preserveSkin),
             Vision = ParseVision(organism.Vision),
             CurrentGene = organism.CurrentGene,
             ConditionCount = organism.ConditionCount,
@@ -73,6 +75,7 @@ public static class NativeSnapshotParser
             UniqueId = organism.UniqueId,
             ParentAbsoluteId = organism.ParentAbsoluteId,
             LineageGeneration = organism.LineageGeneration,
+            FounderName = organism.FounderName,
             VirusTimer = organism.VirusTimer,
             Touch = organism.Touch,
             Taste = organism.Taste,
@@ -86,7 +89,8 @@ public static class NativeSnapshotParser
             MutationProfile = ParseMutationProfile(organism.MutationProfile),
             DnaLength = organism.DnaLength,
             GeneCount = organism.GeneCount,
-        }).ToArray();
+        };
+        var organisms = (native.Organisms ?? []).Select(ProjectOrganism).ToArray();
         var renderInstances = (native.RenderInstances ?? []).Select(instance => new RenderInstanceSnapshot(
             instance.Slot,
             instance.Position,
@@ -95,7 +99,7 @@ public static class NativeSnapshotParser
         {
             Generation = instance.Generation,
             Aim = instance.Aim,
-            Skin = ParseSkin(instance.Skin),
+            Skin = ParseSkin(instance.Skin, preserveSkin),
             LineageId = instance.LineageId,
             Vegetable = instance.Vegetable,
         }).ToArray();
@@ -244,6 +248,7 @@ public static class NativeSnapshotParser
             NativeCycle = native.NativeCycle,
             NativeSunOn = native.NativeSunOn,
             NativeF1Enabled = native.NativeF1Enabled,
+            NativeScenePalette = native.ScenePalette is { } palette ? new(palette.ChartArgb, palette.ArenaArgb) : null,
             RenderInstances = renderInstances,
             Species = species,
             MutationSettings = new MutationSettingsSnapshot(
@@ -257,6 +262,15 @@ public static class NativeSnapshotParser
             RobotFixingAllowed = native.RobotFixingAllowed ?? true,
             AsexualReproductionAllowed = native.AsexualReproductionAllowed ?? true,
             PlayerBot = playerBot,
+            NativePostDnaMemory = native.NativePostDnaMemory is { Focus: { } watched } sample
+                ? new(sample.RequestId, sample.Tick, new(watched.Slot, watched.Generation),
+                    sample.Memory?.Select(cell => new MemoryCellSnapshot(cell.Address, cell.Value)).ToArray(),
+                    sample.Facts is null ? null : ProjectOrganism(sample.Facts))
+                : null,
+            GeneActivationMeter = native.GeneActivationMeter is { } meter
+                ? new(meter.WatchId, meter.Focus is { } focus ? new(focus.Slot, focus.Generation) : null,
+                    meter.Current ?? [], meter.Weighted ?? [], meter.Executions)
+                : null,
             RestrictionOptions = restrictionOptions,
             Stats = stats,
             WorldSize = native.WorldSize is { Length: 2 } ? native.WorldSize : [16_000f, 12_000f],
@@ -492,13 +506,13 @@ public static class NativeSnapshotParser
         _ => LocalModeStatus.Idle,
     };
 
-    private static VisualPhenotypeSnapshot ParsePhenotype(NativeVisualPhenotype? phenotype) =>
+    private static VisualPhenotypeSnapshot ParsePhenotype(NativeVisualPhenotype? phenotype, bool preserveSkin) =>
         phenotype is null
             ? VisualPhenotypeSnapshot.Default
             : new VisualPhenotypeSnapshot(
                 phenotype.LineageId,
                 phenotype.Color,
-                ParseSkin(phenotype.Skin),
+                ParseSkin(phenotype.Skin, preserveSkin),
                 phenotype.AccumulatedMutations);
 
     private static VisionSnapshot ParseVision(NativeVision? vision)
@@ -521,7 +535,7 @@ public static class NativeSnapshotParser
         return new VisionSnapshot((byte)Math.Clamp(vision?.FocusEye ?? 4, 0, 8), defaults);
     }
 
-    private static SkinPointSnapshot[] ParseSkin(NativeSkinPoint[]? skin)
+    private static SkinPointSnapshot[] ParseSkin(NativeSkinPoint[]? skin, bool preserveSkin)
     {
         var defaults = VisualSnapshotDefaults.DefaultSkin();
         if (skin is null)
@@ -530,17 +544,23 @@ public static class NativeSnapshotParser
         }
         for (var index = 0; index < Math.Min(defaults.Length, skin.Length); index++)
         {
-            defaults[index] = new SkinPointSnapshot(
-                Math.Clamp(skin[index].Radius, 0.15f, 0.82f),
-                ((skin[index].Angle % 1257) + 1257) % 1257);
+            var point = skin[index];
+            defaults[index] = preserveSkin ? new(point.Radius, point.Angle) : new(
+                Math.Clamp(point.Radius, 0.15f, 0.82f),
+                ((point.Angle % 1257) + 1257) % 1257);
         }
         return defaults;
     }
+
+    private sealed record NativeScenePalette(
+        [property: JsonPropertyName("chart_argb")] uint ChartArgb,
+        [property: JsonPropertyName("arena_argb")] uint ArenaArgb);
 
     private sealed record NativeSnapshot(
         [property: JsonPropertyName("tick")] ulong Tick,
         [property: JsonPropertyName("native_cycle")] int? NativeCycle,
         [property: JsonPropertyName("native_sun_on")] bool? NativeSunOn,
+        [property: JsonPropertyName("native_scene_palette")] NativeScenePalette? ScenePalette,
         [property: JsonPropertyName("world_size")] float[]? WorldSize,
         [property: JsonPropertyName("organisms")] NativeOrganism[] Organisms,
         [property: JsonPropertyName("render_instances")] NativeRenderInstance[]? RenderInstances,
@@ -552,6 +572,8 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("robot_fixing_allowed")] bool? RobotFixingAllowed,
         [property: JsonPropertyName("asexual_reproduction_allowed")] bool? AsexualReproductionAllowed,
         [property: JsonPropertyName("player_bot")] NativePlayerBot? PlayerBot,
+        [property: JsonPropertyName("native_post_dna_memory")] NativePostDnaMemory? NativePostDnaMemory,
+        [property: JsonPropertyName("gene_activation_meter")] NativeGeneActivationMeter? GeneActivationMeter,
         [property: JsonPropertyName("restriction_options")] NativeRestrictionOptions? RestrictionOptions,
         [property: JsonPropertyName("stats")] NativeStats? Stats,
         [property: JsonPropertyName("obstacles")] NativeObstacle[]? Obstacles,
@@ -569,6 +591,20 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("ordinary_restart_count")] ulong OrdinaryRestartCount = 0,
         [property: JsonPropertyName("ordinary_restart_available")] bool OrdinaryRestartAvailable = false,
         [property: JsonPropertyName("native_f1_enabled")] bool NativeF1Enabled = false);
+
+    private sealed record NativePostDnaMemory(
+        [property: JsonPropertyName("request_id")] ulong RequestId,
+        [property: JsonPropertyName("tick")] ulong Tick,
+        [property: JsonPropertyName("focus")] NativeId? Focus,
+        [property: JsonPropertyName("memory")] NativeMemoryCell[]? Memory,
+        [property: JsonPropertyName("facts")] NativeOrganism? Facts);
+
+    private sealed record NativeGeneActivationMeter(
+        [property: JsonPropertyName("watch_id")] ulong WatchId,
+        [property: JsonPropertyName("focus")] NativeId? Focus,
+        [property: JsonPropertyName("current")] bool[]? Current,
+        [property: JsonPropertyName("weighted")] int[]? Weighted,
+        [property: JsonPropertyName("executions")] ulong Executions);
 
     private sealed record NativePlayerBot(
         [property: JsonPropertyName("enabled")] bool Enabled,
@@ -958,10 +994,12 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("mutation_profile")] NativeMutationProfile? MutationProfile,
         [property: JsonPropertyName("dna_length")] uint DnaLength,
         [property: JsonPropertyName("gene_count")] uint GeneCount,
-        [property: JsonPropertyName("flags")] NativeOrganismFlags? Flags);
+        [property: JsonPropertyName("flags")] NativeOrganismFlags? Flags,
+        [property: JsonPropertyName("founder_name")] string? FounderName);
 
     private sealed record NativeOrganismFlags([property: JsonPropertyName("corpse")] bool Corpse,
-        [property: JsonPropertyName("hidden")] bool Hidden);
+        [property: JsonPropertyName("hidden")] bool Hidden,
+        [property: JsonPropertyName("exists")] bool? Exists);
 
     private sealed record NativeMutationProfile(
         [property: JsonPropertyName("point")] NativeMutationRate? Point,

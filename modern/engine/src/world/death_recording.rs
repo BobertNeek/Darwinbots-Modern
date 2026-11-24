@@ -29,19 +29,38 @@ pub(super) struct DeathRecording {
 }
 
 impl Engine {
+    #[cfg(test)]
     pub(crate) fn tick_many_with_death_records(
         &mut self,
         count: u32,
         weight: u16,
     ) -> Result<Vec<DeathRecord>, EngineError> {
+        self.tick_many_recording_deaths(count, None, None, weight, NativeRedrawCadence::Off)
+    }
+
+    pub(crate) fn tick_many_recording_deaths(
+        &mut self,
+        count: u32,
+        cancelled_lineages: Option<&[u64]>,
+        samples: Option<&mut Vec<super::native_graphs::NativeGraphRecordingSample>>,
+        weight: u16,
+        native_redraw: NativeRedrawCadence,
+    ) -> Result<Vec<DeathRecord>, EngineError> {
         if !self.config.recording.dead_snapshot_enabled {
-            self.tick_many(count)?;
+            self.tick_many_with_native_options(count, cancelled_lineages, samples, native_redraw)?;
             return Ok(Vec::new());
         }
         self.with_death_recording(
             weight,
             self.config.recording.exclude_repopulating_robots,
-            |engine| engine.tick_many(count),
+            |engine| {
+                engine.tick_many_with_native_options(
+                    count,
+                    cancelled_lineages,
+                    samples,
+                    native_redraw,
+                )
+            },
         )
     }
 

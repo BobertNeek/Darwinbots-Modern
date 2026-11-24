@@ -5,6 +5,23 @@ namespace Darwinbots.Desktop.Core.Tests;
 
 public sealed class GlobalSettingsTests
 {
+    [Theory]
+    [InlineData("{}", null)]
+    [InlineData("""{"main":{}}""", null)]
+    [InlineData("""{"main":{"oldColors":false}}""", false)]
+    [InlineData("""{"main":{"oldColors":true}}""", true)]
+    public void OldColorsDefaultsToLegacyAndPreservesExplicitProfileChoices(string json, bool? preference)
+    {
+        var settings = GlobalSettings.FromJson(json);
+
+        Assert.Equal(preference, settings.Main.OldColors);
+        Assert.Equal(preference != false, settings.Main.EffectiveOldColors);
+
+        var saved = settings.ToJson();
+        Assert.Equal(preference.HasValue, saved.Contains("\"oldColors\"", StringComparison.Ordinal));
+        Assert.Equal(settings, GlobalSettings.FromJson(saved));
+    }
+
     [Fact]
     public void GlobalDisqualificationRuleRoundTripsAndRejectsUnknownRules()
     {

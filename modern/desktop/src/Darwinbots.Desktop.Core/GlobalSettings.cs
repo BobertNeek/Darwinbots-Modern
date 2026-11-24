@@ -28,16 +28,27 @@ public enum GlobalMutationOscillationMode
 public sealed record GlobalMainSettings
 {
     public bool FixedRatio { get; init; }
-    public bool OldColors { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? OldColors { get; init; }
+    [JsonIgnore]
+    public bool EffectiveOldColors => OldColors != false;
     public bool SuppressBuoyancy { get; init; }
     public bool VideoOff { get; init; }
     public int GraphUpdatesPerTick { get; init; } = 1;
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? KeepGraphsUpdatingOnClose { get; init; }
     public bool HideTray { get; init; }
     public int BodyCutoff { get; init; }
     public bool GreedyEnforcement { get; init; }
     public bool NewSeed { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? NewSeedOnLoad { get; init; }
+    [JsonIgnore]
+    public bool EffectiveNewSeedOnLoad => NewSeedOnLoad != false;
     public string MainDirectory { get; init; } = string.Empty;
     public bool SafeMode { get; init; } = true;
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? StartChloroplasts { get; init; }
     public bool FindBestEnergyWeighting { get; init; } = true;
     public int? FindBestWeight { get; init; }
     [JsonIgnore]
@@ -150,6 +161,10 @@ public sealed record GlobalSimulationCostSettings
     public double AgeBase { get; init; }
     public double AgeStart { get; init; }
     public double AgeLinear { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? AgeLinearEnabled { get; init; }
+    [JsonIgnore]
+    public bool EffectiveAgeLinearEnabled => AgeLinearEnabled ?? (AgeLinear != 0);
     public double AgeLogarithmic { get; init; }
     public double DynamicMultiplier { get; init; }
     public bool DynamicAllRobots { get; init; } = true;
@@ -157,6 +172,10 @@ public sealed record GlobalSimulationCostSettings
     public int DynamicPopulationRange { get; init; }
     public double? DynamicUpperRangePercent { get; init; }
     public double? DynamicLowerRangePercent { get; init; }
+    [JsonIgnore]
+    public double EffectiveDynamicUpperRangePercent => DynamicUpperRangePercent ?? DynamicPopulationRange;
+    [JsonIgnore]
+    public double EffectiveDynamicLowerRangePercent => DynamicLowerRangePercent ?? DynamicUpperZeroThreshold;
     public double DynamicSensitivity { get; init; } = 1.0;
     public bool DynamicAllowNegative { get; init; }
     public double DynamicLowerZeroThreshold { get; init; }
@@ -215,6 +234,8 @@ public sealed record GlobalSettings
         if (League.DisqualificationRule is < 0 or > 2) throw new InvalidDataException("Disqualification rule must be None, F2 or F3.");
         if (Main.EffectiveFindBestWeight is < 0 or > 200)
             throw new InvalidDataException("Find Best weighting must be between 0 and 200.");
+        if (Main.StartChloroplasts is < 0 or > 32_000)
+            throw new InvalidDataException("Starting chloroplasts must be between 0 and 32000.");
         if (AdvancedMutation.NormalizationEnabled && AdvancedMutation.NormalizationDnaLength <= 0)
             throw new InvalidDataException("Mutation normalization DNA length must be positive.");
         AdvancedMutation.NativeDelta2.Validate();

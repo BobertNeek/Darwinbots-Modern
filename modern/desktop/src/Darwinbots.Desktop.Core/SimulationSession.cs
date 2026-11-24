@@ -9,6 +9,7 @@ public sealed class SimulationSession : IAsyncDisposable
     private readonly BlockingCollection<SessionCommand> _commands = new();
     private readonly Thread _worker;
     private bool _disposed;
+    private volatile bool _deferSnapshotPublication;
     private readonly Stopwatch _performanceClock = Stopwatch.StartNew();
     private ulong? _lastPublishedTick;
     private float[]? _pendingPlayerBotPointer;
@@ -63,13 +64,136 @@ public sealed class SimulationSession : IAsyncDisposable
         _appliedPlayerBotPointer = position;
     }
 
+    public Task StepAsync(uint count, NativeRedrawCadence nativeRedraw, CancellationToken cancellationToken = default) =>
+        Enqueue(engine =>
+        {
+            ApplyPlayerBotPointer(engine);
+            engine.Tick(count, nativeRedraw);
+        }, cancellationToken, measureTicks: true,
+            viewportFrame: snapshot => DesktopControlRules.IsViewportFrameDue(nativeRedraw, snapshot));
+
+    // The caller holds its advance gate across the tick, checkpoint and redraw.
+    // Checkpoint logic can read LatestSnapshot before the rendered state is published.
+    public async Task<(ulong Tick, ulong Advanced)> AdvanceWithNativeRedrawAsync(
+        Func<Task<(ulong Tick, ulong Advanced)>> advance, Func<EngineSnapshot, bool>? frameIsDue = null,
+        bool afterContinuousCycle = false)
+    {
+        ArgumentNullException.ThrowIfNull(advance);
+        _deferSnapshotPublication = true;
+        var previousTick = LatestSnapshot.Tick;
+        try
+        {
+            var progress = await advance().ConfigureAwait(false);
+            var snapshot = LatestSnapshot;
+            var presentFrame = (!afterContinuousCycle || snapshot.Tick != previousTick)
+                && (frameIsDue?.Invoke(snapshot) ?? true);
+            var redrawNative = presentFrame && snapshot.NativeCycle.HasValue;
+            await Enqueue(engine =>
+            {
+                if (redrawNative)
+                    engine.RedrawNative(afterContinuousCycle);
+            }, CancellationToken.None, completesNativeStep: true, viewportFrame: _ => presentFrame).ConfigureAwait(false);
+            return progress;
+        }
+        finally { _deferSnapshotPublication = false; }
+    }
+
     public Task StepRecordingDeathsAsync(
         uint count, Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted, CancellationToken cancellationToken = default) =>
         StepRecordingDeathsAsync(count, 100, onCommitted, cancellationToken);
 
     public Task StepRecordingDeathsAsync(uint count, int weightPercent,
-        Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted, CancellationToken cancellationToken = default) =>
-        Enqueue(engine => engine.TickRecordingDeaths(count, weightPercent, onCommitted), cancellationToken, measureTicks: true);
+        Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted, CancellationToken cancellationToken = default,
+        NativeRedrawCadence? nativeRedraw = null) =>
+        Enqueue(engine =>
+        {
+            ApplyPlayerBotPointer(engine);
+            engine.TickRecordingDeaths(count, weightPercent, onCommitted, nativeRedraw);
+        }, cancellationToken, measureTicks: true,
+            viewportFrame: nativeRedraw is { } scheduled ? snapshot => DesktopControlRules.IsViewportFrameDue(scheduled, snapshot) : null);
+
+    public Task StepRequiringNativeRepopulationSourceAsync(IReadOnlyList<ulong> cancelledLineages, int weightPercent,
+        Action<IReadOnlyList<DeathRecordSnapshot>>? onCommitted, CancellationToken cancellationToken = default,
+        NativeRedrawCadence? nativeRedraw = null) =>
+        Enqueue(engine =>
+        {
+            ApplyPlayerBotPointer(engine);
+            if (onCommitted is null)
+                engine.Tick(1, requireNativeRepopulationSource: true, cancelledLineages, nativeRedraw);
+            else
+                engine.TickRecordingDeaths(1, weightPercent, cancelledLineages, onCommitted, nativeRedraw);
+        }, cancellationToken, measureTicks: true,
+            viewportFrame: nativeRedraw is { } scheduled ? snapshot => DesktopControlRules.IsViewportFrameDue(scheduled, snapshot) : null);
+
+    public Task StepRecordingGraphsAsync(uint count, Action<IReadOnlyList<NativeGraphRecordingSample>> onCommitted,
+        bool requireNativeRepopulationSource = false, IReadOnlyList<ulong>? cancelledLineages = null,
+        CancellationToken cancellationToken = default, int weightPercent = 100,
+        Action<IReadOnlyList<DeathRecordSnapshot>>? onDeathsCommitted = null,
+        NativeRedrawCadence? nativeRedraw = null)
+    {
+        ArgumentNullException.ThrowIfNull(onCommitted);
+        var cancellations = cancelledLineages?.ToArray() ?? [];
+        return Enqueue(engine =>
+        {
+            ApplyPlayerBotPointer(engine);
+            engine.TickRecordingGraphs(count, onCommitted, requireNativeRepopulationSource, cancellations, weightPercent, onDeathsCommitted, nativeRedraw);
+        }, cancellationToken, measureTicks: true,
+            viewportFrame: nativeRedraw is { } scheduled ? snapshot => DesktopControlRules.IsViewportFrameDue(scheduled, snapshot) : null);
+    }
+
+    public async Task<NativeGraphRecordingSample?> ReadNativeGraphSampleAsync(CancellationToken cancellationToken = default)
+    {
+        NativeGraphRecordingSample? sample = null;
+        await Enqueue(engine => sample = engine.ReadNativeGraphSample(), cancellationToken, publishSnapshot: false)
+            .ConfigureAwait(false);
+        return sample;
+    }
+
+    public async Task<NativeGraphRecordingSample?> ReadNativeGraphResetSampleAsync(CancellationToken cancellationToken = default)
+    {
+        NativeGraphRecordingSample? sample = null;
+        await Enqueue(engine => sample = engine.ReadNativeGraphResetSample(), cancellationToken, publishSnapshot: false)
+            .ConfigureAwait(false);
+        return sample;
+    }
+
+    public async Task<NativeGraphRecordingSample?> FeedNativeGraphSampleAsync(GraphSamplingSettings settings,
+        bool dueOnly = false, CancellationToken cancellationToken = default)
+    {
+        NativeGraphRecordingSample? sample = null;
+        await Enqueue(engine => sample = engine.FeedNativeGraphSample(settings, dueOnly), cancellationToken, publishSnapshot: false)
+            .ConfigureAwait(false);
+        return sample;
+    }
+
+    public Task StepRecordingDeathsAsync(uint count,
+        Action<IReadOnlyList<DeathRecordSnapshot>> onCommitted, NativeRedrawCadence nativeRedraw,
+        CancellationToken cancellationToken = default) =>
+        Enqueue(engine =>
+        {
+            ApplyPlayerBotPointer(engine);
+            engine.TickRecordingDeaths(count, onCommitted, nativeRedraw);
+        }, cancellationToken, measureTicks: true,
+            viewportFrame: snapshot => DesktopControlRules.IsViewportFrameDue(nativeRedraw, snapshot));
+
+    public async Task<IReadOnlyList<NativeConsoleActivationFrame>> StepWatchingNativeConsolesAsync(
+        IReadOnlyList<OrganismKey> focuses, bool requireNativeRepopulationSource, IReadOnlyList<ulong> cancelledLineages,
+        CancellationToken cancellationToken = default,
+        int weightPercent = 100, Action<IReadOnlyList<DeathRecordSnapshot>>? onDeathsCommitted = null,
+        Action<IReadOnlyList<NativeGraphRecordingSample>>? onGraphSamplesCommitted = null,
+        NativeRedrawCadence? nativeRedraw = null)
+    {
+        IReadOnlyList<NativeConsoleActivationFrame> reports = [];
+        await Enqueue(engine =>
+        {
+            ApplyPlayerBotPointer(engine);
+            reports = engine.TickWatchingNativeConsoles(focuses, requireNativeRepopulationSource, cancelledLineages,
+                weightPercent, onDeathsCommitted, onGraphSamplesCommitted, nativeRedraw);
+        }, cancellationToken, measureTicks: true,
+            viewportFrame: nativeRedraw is { } scheduled ? snapshot => DesktopControlRules.IsViewportFrameDue(scheduled, snapshot) : null)
+            .ConfigureAwait(false);
+        return reports;
+    }
 
     public async Task<OrganismKey?> FindBestRobotAsync(bool energyWeighting, CancellationToken cancellationToken = default)
         => await FindBestRobotAsync(energyWeighting ? 100 : 0, cancellationToken).ConfigureAwait(false);
@@ -110,6 +234,10 @@ public sealed class SimulationSession : IAsyncDisposable
                 ?? throw new InvalidOperationException("The simulation's current costs are unavailable.");
             engine.UpdateCostSettings(configuration.Costs with { GlobalMultiplier = multiplier });
         }, cancellationToken);
+
+    public Task UpdateCostSettingsAsync(GlobalSimulationCostSettings? settings, Db2CostPreset? preset,
+        CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.UpdateCostSettings(settings, preset), cancellationToken);
 
     public async Task<DnaImportReport> ImportDnaAsync(
         string dna,
@@ -316,6 +444,30 @@ public sealed class SimulationSession : IAsyncDisposable
         return count;
     }
 
+    public async Task<string> ReadRobotTagAsync(OrganismKey focus, CancellationToken cancellationToken = default)
+    {
+        string? description = null;
+        await Enqueue(engine => description = engine.ReadRobotTag(focus), cancellationToken,
+            publishSnapshot: false).ConfigureAwait(false);
+        return description ?? throw new InvalidDataException("Engine returned no robot description.");
+    }
+
+    public async Task<string> SetRobotTagAsync(OrganismKey focus, string tag, CancellationToken cancellationToken = default)
+    {
+        string? description = null;
+        await Enqueue(engine => description = engine.SetRobotTag(focus, tag), cancellationToken).ConfigureAwait(false);
+        return description ?? throw new InvalidDataException("Engine returned no robot description.");
+    }
+
+    public async Task<bool> RenameRobotFounderAsync(OrganismKey robot, string name,
+        CancellationToken cancellationToken = default)
+    {
+        var renamed = false;
+        await Enqueue(engine => renamed = engine.RenameRobotFounder(robot.Slot, robot.Generation, name), cancellationToken)
+            .ConfigureAwait(false);
+        return renamed;
+    }
+
     public async Task<string> ExportDnaAsync(uint slot, uint generation, CancellationToken cancellationToken = default)
     {
         string? result = null;
@@ -323,13 +475,30 @@ public sealed class SimulationSession : IAsyncDisposable
         return result ?? throw new InvalidDataException("Engine returned no DNA.");
     }
 
-    public async Task<Db2RobotFile> ExportRobotFileAsync(
-        uint slot, uint generation, CancellationToken cancellationToken = default)
+    public async Task<string> ReadRobotDnaAsync(OrganismKey focus, uint? markerPosition = null,
+        CancellationToken cancellationToken = default)
+    {
+        string? result = null;
+        await Enqueue(engine => result = engine.ReadRobotDna(focus.Slot, focus.Generation, markerPosition),
+            cancellationToken, publishSnapshot: false).ConfigureAwait(false);
+        return result ?? throw new InvalidDataException("Engine returned no Robot Info DNA.");
+    }
+
+    public Task<Db2RobotFile> ExportRobotFileAsync(uint slot, uint generation, CancellationToken cancellationToken = default) =>
+        ExportRobotFileAsync(slot, generation, originalFileFormat: false, cancellationToken);
+
+    public Task<Db2RobotFile> ExportOriginalRobotFileAsync(uint slot, uint generation, CancellationToken cancellationToken = default) =>
+        ExportRobotFileAsync(slot, generation, originalFileFormat: true, cancellationToken);
+
+    private async Task<Db2RobotFile> ExportRobotFileAsync(
+        uint slot, uint generation, bool originalFileFormat, CancellationToken cancellationToken)
     {
         Db2RobotFile? result = null;
         await Enqueue(engine =>
         {
-            var dna = engine.ExportDna(slot, generation);
+            var dna = originalFileFormat
+                ? engine.ExportOriginalDnaFile(slot, generation)
+                : engine.ExportDna(slot, generation);
             var robot = engine.Snapshot().Organisms.SingleOrDefault(value => value.Slot == slot && value.Generation == generation)
                 ?? throw new InvalidDataException("The selected robot is no longer available.");
             result = new Db2RobotFile(dna, robot.MutationProfile);
@@ -378,6 +547,15 @@ public sealed class SimulationSession : IAsyncDisposable
         OrganismKey? result = null;
         await Enqueue(engine => result = engine.Reproduce(request), cancellationToken).ConfigureAwait(false);
         return result ?? throw new InvalidDataException("Engine returned no child ID.");
+    }
+
+    public async Task<OrganismKey?> ReproduceNativeRobotInfoAsync(OrganismKey parent)
+    {
+        OrganismKey? child = null;
+        // The engine command applies the original same-cycle redraw.
+        await Enqueue(engine => child = engine.ReproduceNativeRobotInfo(parent), CancellationToken.None)
+            .ConfigureAwait(false);
+        return child;
     }
 
     public Task SwitchBackendAsync(string backend, CancellationToken cancellationToken = default)
@@ -480,6 +658,10 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task RemoveFileTeleporterAsync(uint id, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.RemoveFileTeleporter(id), cancellationToken);
 
+    public Task RemoveTeleportersAsync(IReadOnlyList<uint> teleporterIds, IReadOnlyList<uint> fileTeleporterIds,
+        CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.RemoveTeleporters(teleporterIds, fileTeleporterIds), cancellationToken);
+
     public Task SetBrownianMotionAsync(float value, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.SetBrownianMotion(value), cancellationToken);
 
@@ -549,6 +731,37 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task SetOrganismMemoryAsync(uint slot, uint generation, ushort address, int value, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.SetOrganismMemory(slot, generation, address, value), cancellationToken);
 
+    internal async Task<ushort> SetNamedOrganismMemoryAsync(
+        OrganismKey focus, string name, int value, CancellationToken cancellationToken, Action? validate = null)
+    {
+        ushort address = 0;
+        await Enqueue(engine =>
+        {
+            validate?.Invoke();
+            address = engine.ResolveMemoryAddress(name, focus);
+            validate?.Invoke();
+            engine.SetOrganismMemory(focus.Slot, focus.Generation, address, value);
+        }, cancellationToken).ConfigureAwait(false);
+        return address;
+    }
+
+    internal async Task<(ushort Address, int Value)> ReadNamedOrganismMemoryAsync(
+        OrganismKey focus, string name, CancellationToken cancellationToken, Action? validate = null)
+    {
+        (ushort Address, int Value) result = default;
+        await Enqueue(engine =>
+        {
+            validate?.Invoke();
+            var address = engine.ResolveMemoryAddress(name, focus);
+            var organism = engine.Snapshot().Organisms.FirstOrDefault(candidate =>
+                candidate.Slot == focus.Slot && candidate.Generation == focus.Generation)
+                ?? throw new InvalidOperationException("The focused robot is no longer live.");
+            var cell = organism.Memory.FirstOrDefault(candidate => candidate.Address == address);
+            result = (address, cell?.Value ?? 0);
+        }, cancellationToken).ConfigureAwait(false);
+        return result;
+    }
+
     public async Task<ushort> ResolveMemoryAddressAsync(string name, CancellationToken cancellationToken = default)
     {
         ushort address = 0;
@@ -556,15 +769,42 @@ public sealed class SimulationSession : IAsyncDisposable
         return address;
     }
 
-    public Task ExecuteRobotsAsync(CancellationToken cancellationToken = default) => Enqueue(engine => engine.ExecuteRobots(), cancellationToken);
+    public Task ExecuteRobotsAsync(CancellationToken cancellationToken = default) => ExecuteRobotsAsync(cancellationToken, null);
+
+    internal Task ExecuteRobotsAsync(CancellationToken cancellationToken, Action? validate) =>
+        Enqueue(engine =>
+        {
+            validate?.Invoke();
+            engine.ExecuteRobots();
+        }, cancellationToken);
 
     public Task SetOrganismEnergyAsync(uint slot, uint generation, int energy, CancellationToken cancellationToken = default) =>
-        Enqueue(engine => engine.SetOrganismEnergy(slot, generation, energy), cancellationToken);
+        SetOrganismEnergyAsync(slot, generation, energy, cancellationToken, null);
+
+    internal Task SetOrganismEnergyAsync(uint slot, uint generation, int energy, CancellationToken cancellationToken, Action? validate) =>
+        Enqueue(engine =>
+        {
+            validate?.Invoke();
+            engine.SetOrganismEnergy(slot, generation, energy);
+        }, cancellationToken);
+
+    internal Task SetNativeConsoleEnergyAsync(OrganismKey focus, float energy, CancellationToken cancellationToken, Action? validate) =>
+        Enqueue(engine =>
+        {
+            validate?.Invoke();
+            engine.SetNativeConsoleEnergy(focus, energy);
+        }, cancellationToken);
 
     public Task UpdateRestrictionOptionsAsync(RestrictionOptions options, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(options);
         return Enqueue(engine => engine.UpdateRestrictionOptions(options), cancellationToken);
+    }
+
+    public Task ApplyNativeRestrictionOverwritesAsync(RestrictionOptions options, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        return Enqueue(engine => engine.ApplyNativeRestrictionOverwrites(options), cancellationToken);
     }
 
     public Task ConfigureLocalModeAsync(LocalModeConfig config, CancellationToken cancellationToken = default)
@@ -585,6 +825,12 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task FinishOrdinaryRestartAsync(CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.FinishOrdinaryRestart(), cancellationToken);
 
+    public Task ResumeRestartModeAsync(CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.ResumeRestartMode(), cancellationToken);
+
+    public Task ClearRestartModeHidingAsync(CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.ClearRestartModeHiding(), cancellationToken);
+
     public Task AdjudicateLocalRoundAsync(uint? winner, string reason, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(reason);
@@ -597,12 +843,55 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task ConfigureGraphSamplingAsync(GraphSamplingSettings settings, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.ConfigureGraphSampling(settings), cancellationToken);
 
+    public Task ConfigureNativePostDnaMemoryWatchAsync(ulong requestId, OrganismKey? focus, bool captureMemory) =>
+        Enqueue(engine => engine.ConfigureNativePostDnaMemoryWatch(requestId, focus, captureMemory), CancellationToken.None);
+
+    public async Task<NativeGraphRecordingState?> ReadNativeGraphRecordingAsync(CancellationToken cancellationToken = default)
+    {
+        NativeGraphRecordingState? recording = null;
+        await Enqueue(engine => recording = engine.ReadNativeGraphRecording(), cancellationToken, publishSnapshot: false)
+            .ConfigureAwait(false);
+        return recording;
+    }
+
+    public Task UpdateNativeGraphRecordingAsync(string? runStamp, IReadOnlyList<NativeGraphRecordingRow> graphs,
+        CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.UpdateNativeGraphRecording(runStamp, graphs), cancellationToken, publishSnapshot: false);
+
+    public async Task<NativeGraphLayoutState?> ReadNativeGraphLayoutAsync(CancellationToken cancellationToken = default)
+    {
+        NativeGraphLayoutState? layout = null;
+        await Enqueue(engine => layout = engine.ReadNativeGraphLayout(), cancellationToken, publishSnapshot: false)
+            .ConfigureAwait(false);
+        return layout;
+    }
+
+    public Task UpdateNativeGraphLayoutAsync(IReadOnlyList<NativeGraphLayoutRow> graphs,
+        IReadOnlyList<NativeGraphCustomQuery>? customQueries = null, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(graphs);
+        var stableGraphs = graphs.ToArray();
+        var stableQueries = customQueries?.ToArray();
+        return Enqueue(engine => engine.UpdateNativeGraphLayout(stableGraphs, stableQueries), cancellationToken,
+            publishSnapshot: false);
+    }
+    public Task ConfigureGeneActivationWatchAsync(ulong watchId, bool enabled, OrganismKey? focus) =>
+        Enqueue(engine => engine.ConfigureGeneActivationWatch(watchId, enabled, focus), CancellationToken.None);
+
     public Task UpdateEnvironmentAsync(EnvironmentUpdate update, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.UpdateEnvironment(update), cancellationToken);
 
+    public Task AcceptNativeAdvancedSettingsAsync(EnvironmentUpdate? environment, MutationSettingsUpdate? mutation,
+        GlobalSimulationCostSettings? costs, Db2CostPreset? preset, CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.AcceptNativeAdvancedSettings(environment, mutation, costs, preset), cancellationToken);
+
     public Task UpdateLiveSettingsAsync(EnvironmentUpdate environment, MutationSettingsUpdate mutation,
-        GlobalSimulationCostSettings? costs, CancellationToken cancellationToken = default) =>
+        GlobalSimulationCostSettings? costs = null, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.UpdateLiveSettings(environment, mutation, costs), cancellationToken);
+
+    public Task UpdateLiveSettingsAsync(EnvironmentUpdate environment, MutationSettingsUpdate mutation,
+        GlobalSimulationCostSettings? costs, Db2CostPreset? preset, CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.UpdateLiveSettings(environment, mutation, costs, preset), cancellationToken);
 
     public async Task<WorldConfiguration?> ReadConfigurationAsync(CancellationToken cancellationToken = default)
     {
@@ -623,6 +912,47 @@ public sealed class SimulationSession : IAsyncDisposable
         string? report = null;
         await Enqueue(engine => report = engine.ReadRobotTagReport(), cancellationToken).ConfigureAwait(false);
         return report ?? throw new InvalidDataException("Engine returned no robot tag information.");
+    }
+
+    public async Task<uint?> ReadNativeSetupUniformStateAsync()
+    {
+        uint? state = null;
+        await Enqueue(engine => state = engine.ReadNativeSetupUniformState(), CancellationToken.None, publishSnapshot: false)
+            .ConfigureAwait(false);
+        return state;
+    }
+
+    public async Task<NativeSpeciesAppearance?> StageNativeSpeciesAppearanceAsync(string filename, string dna, bool useOldColors)
+    {
+        NativeSpeciesAppearance? appearance = null;
+        await Enqueue(engine => appearance = engine.StageNativeSpeciesAppearance(filename, dna, useOldColors),
+            CancellationToken.None, publishSnapshot: false).ConfigureAwait(false);
+        return appearance;
+    }
+
+    public async Task<byte[]> SaveWithoutRestartModeAsync(CancellationToken cancellationToken = default)
+    {
+        byte[]? save = null;
+        await Enqueue(engine => save = engine.SaveWithoutRestartMode(), cancellationToken).ConfigureAwait(false);
+        return save ?? throw new InvalidDataException("Engine returned no save data.");
+    }
+
+    public Task<(DesktopSettings Settings, byte[] Simulation)> CaptureLastExitAsync(
+        WorldSetupOptions startup, CancellationToken cancellationToken = default) =>
+        CaptureLastExitAsync(startup, false, cancellationToken);
+
+    public async Task<(DesktopSettings Settings, byte[] Simulation)> CaptureLastExitAsync(
+        WorldSetupOptions startup, bool stopRestartMode, CancellationToken cancellationToken = default)
+    {
+        (DesktopSettings, byte[])? captured = null;
+        await Enqueue(engine =>
+        {
+            var configuration = engine.ReadConfiguration()
+                ?? throw new InvalidOperationException("Live simulation settings are unavailable.");
+            var settings = DesktopSettings.FromLiveWorld(startup, configuration, engine.Snapshot());
+            captured = (settings, stopRestartMode ? engine.SaveWithoutRestartMode() : engine.Save());
+        }, cancellationToken).ConfigureAwait(false);
+        return captured ?? throw new InvalidDataException("Engine returned no last-exit data.");
     }
 
     public async Task<float?> ReadNativeGaussianSpareAsync(CancellationToken cancellationToken = default)
@@ -676,23 +1006,79 @@ public sealed class SimulationSession : IAsyncDisposable
         return save ?? throw new InvalidDataException("Engine returned no legacy save data.");
     }
 
-    public Task LoadAsync(byte[] save, CancellationToken cancellationToken = default)
+    public Task<int> CaptureNativeLoadSeedAsync(bool generateSeed, CancellationToken cancellationToken = default) =>
+        CaptureNativeLoadSeedAsync(generateSeed, recordMetadata: false, cancellationToken);
+
+    public Task<int> BeginNativeMenuLoadAsync(bool generateSeed, CancellationToken cancellationToken = default) =>
+        CaptureNativeLoadSeedAsync(generateSeed, recordMetadata: true, cancellationToken);
+
+    private async Task<int> CaptureNativeLoadSeedAsync(bool generateSeed, bool recordMetadata,
+        CancellationToken cancellationToken)
+    {
+        var seed = 0;
+        await Enqueue(engine =>
+        {
+            seed = engine.CaptureNativeLoadSeed(generateSeed);
+            if (generateSeed && recordMetadata) engine.SetNativeSeedMetadata(seed);
+        }, cancellationToken, publishSnapshot: false).ConfigureAwait(false);
+        return seed;
+    }
+
+    public Task LoadWithNativeSeedAsync(byte[] save, int seed, CancellationToken cancellationToken = default) =>
+        LoadWithNativeRestartSourcesAsync(save, null, cancellationToken, seed);
+
+    public Task LoadAsync(byte[] save, CancellationToken cancellationToken = default) =>
+        LoadWithNativeRestartSourcesAsync(save, null, cancellationToken);
+
+    public async Task<bool> HasUnresolvedNativeRepopulationSourcesAsync(CancellationToken cancellationToken = default)
+    {
+        var unresolved = false;
+        await Enqueue(engine => unresolved = engine.HasUnresolvedNativeRepopulationSources(),
+            cancellationToken, publishSnapshot: false).ConfigureAwait(false);
+        return unresolved;
+    }
+
+    public async Task<bool> BindNativeRepopulationSourceAsync(NativeRestartBinding source, CancellationToken cancellationToken = default)
+    {
+        var bound = 0;
+        await Enqueue(engine => bound = engine.BindNativeRestartSources([source], preserveExisting: true),
+            cancellationToken, publishSnapshot: false).ConfigureAwait(false);
+        return bound == 1;
+    }
+
+    public Task LoadWithNativeRestartSourcesAsync(byte[] save, Func<NativeRestartSource, string?>? resolveSource,
+        CancellationToken cancellationToken = default, int nativeSeed = 0)
     {
         ArgumentNullException.ThrowIfNull(save);
         return Enqueue(engine =>
         {
-            engine.Load(save);
+            if (nativeSeed != 0 && !save.AsSpan().StartsWith("DB3S"u8)) engine.LoadWithNativeSeed(save, nativeSeed);
+            else engine.Load(save);
             _appliedPlayerBotPointer = null;
             SetPlayerBotPointer(null);
+            // Modern checkpoints already contain their original source bindings.
+            if (resolveSource is not null && !save.AsSpan().StartsWith("DB3S"u8))
+            {
+                var restart = engine.ReadNativeRestartSources();
+                if (restart.Requested || restart.Sources.Count > 0)
+                {
+                    var bindings = new List<NativeRestartBinding>();
+                    foreach (var source in restart.Sources)
+                        if (resolveSource(source) is { } dna)
+                            bindings.Add(new(source.LineageId, dna));
+                    engine.BindNativeRestartSources(bindings);
+                }
+            }
         }, cancellationToken);
     }
 
-    private Task Enqueue(Action<IEngineClient> action, CancellationToken cancellationToken, bool measureTicks = false)
+    private Task Enqueue(Action<IEngineClient> action, CancellationToken cancellationToken, bool measureTicks = false,
+        bool publishSnapshot = true, bool completesNativeStep = false, Func<EngineSnapshot, bool>? viewportFrame = null)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         cancellationToken.ThrowIfCancellationRequested();
         var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var command = new SessionCommand(action, completion, cancellationToken, measureTicks);
+        var command = new SessionCommand(action, completion, cancellationToken, measureTicks, publishSnapshot, completesNativeStep, viewportFrame);
         _commands.Add(command, cancellationToken);
         return completion.Task;
     }
@@ -717,6 +1103,12 @@ public sealed class SimulationSession : IAsyncDisposable
             try
             {
                 command.Action(_engine);
+                if (!command.PublishSnapshot)
+                {
+                    command.Completion.TrySetResult();
+                    continue;
+                }
+
                 var snapshot = _engine.Snapshot();
                 var elapsed = _performanceClock.Elapsed.TotalSeconds;
                 var advanced = command.MeasureTicks && _lastPublishedTick is { } previous && snapshot.Tick >= previous
@@ -724,13 +1116,18 @@ public sealed class SimulationSession : IAsyncDisposable
                     : 0;
                 if (elapsed > 0)
                     snapshot = snapshot with {
-                        TicksPerSecond = advanced / elapsed,
+                        TicksPerSecond = _deferSnapshotPublication && !command.MeasureTicks
+                            ? LatestSnapshot.TicksPerSecond
+                            : advanced / elapsed,
                         SnapshotsPerSecond = 1.0 / elapsed,
                     };
                 _lastPublishedTick = snapshot.Tick;
                 _performanceClock.Restart();
+                if (command.ViewportFrame is { } viewportFrame)
+                    snapshot = snapshot with { ViewportFrame = viewportFrame(snapshot) };
                 LatestSnapshot = snapshot;
-                SnapshotPublished?.Invoke(snapshot);
+                if (command.CompletesNativeStep) _deferSnapshotPublication = false;
+                if (!_deferSnapshotPublication) SnapshotPublished?.Invoke(snapshot);
                 command.Completion.TrySetResult();
             }
             catch (Exception error)
@@ -759,5 +1156,6 @@ public sealed class SimulationSession : IAsyncDisposable
         Action<IEngineClient> Action,
         TaskCompletionSource Completion,
         CancellationToken CancellationToken,
-        bool MeasureTicks);
+        bool MeasureTicks,
+        bool PublishSnapshot, bool CompletesNativeStep, Func<EngineSnapshot, bool>? ViewportFrame);
 }

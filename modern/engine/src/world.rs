@@ -14,7 +14,7 @@ use crate::robot_state::{
 };
 use crate::robot_tools::{PlayerBotBinding, PlayerBotState, RestrictionColumn, RestrictionOptions};
 use crate::senses::{LegacyDirection, classify_legacy_direction, legacy_relative_angle};
-use crate::simulation_cycle::CycleRecorder;
+use crate::simulation_cycle::{CycleRecorder, NativeRedrawCadence};
 use crate::tie::{MAX_TIE_SURFACE_GAP, MAX_TIES_PER_ROBOT, TIE_ANGLE_SLACK, TIE_DEADBAND};
 use crate::{
     ActivationFrame, AdvancedMutationSettings, BackendCapabilities, BackendKind, BackendPreference,
@@ -48,6 +48,8 @@ pub(crate) enum NativePatternMaze {
     Checkerboard,
 }
 
+const GPU_SENSING_CELL_SIZE: f32 = 1_000.0;
+
 use crate::physics::{
     MovementInput, MovementState, apply_angular_damping, apply_resistance, apply_static_friction,
     apply_voluntary_impulse, brownian_rotation, derived_mass, environment_impulse,
@@ -62,6 +64,7 @@ mod native_reproduction;
 
 #[path = "world/ordinary_restart.rs"]
 mod ordinary_restart;
+pub(crate) use ordinary_restart::NativeRestartBinding;
 use ordinary_restart::OrdinaryRestart;
 
 #[path = "world/native_shots.rs"]
@@ -89,9 +92,17 @@ mod player_insertion;
 #[path = "world/file_teleporters.rs"]
 mod file_teleporters;
 use file_teleporters::FileTransferPhase;
+mod gene_activation_meter;
+#[path = "world/native_console_gene_reports.rs"]
+mod native_console_gene_reports;
+mod native_post_dna_memory;
 #[path = "world/native_teleporters.rs"]
 mod native_teleporters;
+use native_console_gene_reports::NativeConsoleGeneCapture;
 mod species_settings;
+pub use gene_activation_meter::GeneActivationMeterSnapshot;
+pub(crate) use native_post_dna_memory::NativePostDnaMemorySample;
+use native_post_dna_memory::NativePostDnaMemoryView;
 
 #[path = "world/file_transfer_transaction.rs"]
 mod file_transfer_transaction;
@@ -100,12 +111,18 @@ use file_transfer_transaction::FileTransferTransaction;
 #[path = "world/native_corpses.rs"]
 mod native_corpses;
 
+#[path = "world/native_graph_layout.rs"]
+pub(crate) mod native_graph_layout;
+
 #[path = "world/death_recording.rs"]
 mod death_recording;
 use death_recording::DeathRecording;
 
+#[path = "world/native_graph_recording.rs"]
+pub(crate) mod native_graph_recording;
+
 #[path = "world/native_graphs.rs"]
-mod native_graphs;
+pub(crate) mod native_graphs;
 
 #[path = "world/native_dynamic_costs.rs"]
 mod native_dynamic_costs;
@@ -163,6 +180,9 @@ mod staged_evolution;
 #[path = "world/native_random_world.rs"]
 mod native_random_world;
 use native_random_world::NativeStartBoundary;
+#[path = "world/native_scene_palette.rs"]
+mod native_scene_palette;
+pub use native_scene_palette::NativeScenePalette;
 #[path = "world/native_script_placement.rs"]
 mod native_script_placement;
 
@@ -490,6 +510,9 @@ pub struct OrganismSnapshot {
     #[serde(default)]
     pub memory: Vec<MemoryCellSnapshot>,
     pub species: SpeciesId,
+    /// Native per-robot FName, independently of its registered species name.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub founder_name: String,
     pub vegetable: bool,
     pub parents: [Option<OrganismId>; 2],
     #[serde(default)]
@@ -571,6 +594,11 @@ pub struct Snapshot {
     pub native_sun_on: Option<bool>,
     #[serde(default)]
     pub native_f1_enabled: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gene_activation_meter: Option<GeneActivationMeterSnapshot>,
+    /// Seeded chart and arena colors before the original global Old Colors override.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub native_scene_palette: Option<NativeScenePalette>,
     #[serde(default = "default_true")]
     pub death_poffs_enabled: bool,
     #[serde(default)]
@@ -632,6 +660,8 @@ impl Default for Snapshot {
             native_cycle: None,
             native_sun_on: None,
             native_f1_enabled: false,
+            gene_activation_meter: None,
+            native_scene_palette: None,
             death_poffs_enabled: true,
             ordinary_restart_available: false,
             ordinary_restart_on_extinction: false,
@@ -669,6 +699,8 @@ impl PartialEq for Snapshot {
             && self.native_cycle == other.native_cycle
             && self.native_sun_on == other.native_sun_on
             && self.native_f1_enabled == other.native_f1_enabled
+            && self.gene_activation_meter == other.gene_activation_meter
+            && self.native_scene_palette == other.native_scene_palette
             && self.death_poffs_enabled == other.death_poffs_enabled
             && self.ordinary_restart_available == other.ordinary_restart_available
             && self.ordinary_restart_on_extinction == other.ordinary_restart_on_extinction
@@ -1099,6 +1131,7 @@ impl From<Db3sV2EngineConfig> for EngineConfig {
             vegetable_population_cap: value.vegetable_population_cap,
             world_width: value.world_width,
             world_height: value.world_height,
+            native_field_size: None,
             toroidal_world: value.toroidal_world,
             fixed_bot_radii: false,
             axis_topology: None,
@@ -1119,6 +1152,7 @@ impl From<Db3sV2EngineConfig> for EngineConfig {
             vegetation: value.vegetation.into(),
             recording: RecordingSettings::default(),
             dna_costs: value.dna_costs.into(),
+            native_cost_preset: None,
             advanced_mutation: AdvancedMutationSettings::default(),
             auto_speciation: value.auto_speciation,
             speciation_genetic_distance_percent: value.speciation_genetic_distance_percent,
@@ -1684,6 +1718,7 @@ impl From<Db3sV2OrganismSnapshot> for OrganismSnapshot {
             occurrence_counts: vec![0; 21],
             memory: Vec::new(),
             species: value.species.into(),
+            founder_name: String::new(),
             vegetable: value.vegetable,
             parents: value.parents.map(|parent| parent.map(Into::into)),
             parent_absolute_id: 0,
@@ -2031,6 +2066,8 @@ impl From<Db3sV2Snapshot> for Snapshot {
             native_cycle: None,
             native_sun_on: None,
             native_f1_enabled: false,
+            gene_activation_meter: None,
+            native_scene_palette: None,
             death_poffs_enabled: true,
             ordinary_restart_available: false,
             ordinary_restart_on_extinction: false,
@@ -2348,6 +2385,11 @@ struct PendingBirth {
     sperm_source: Option<OrganismId>,
 }
 
+enum BirthCommitRoute {
+    Cycle,
+    NativeRobotInfo,
+}
+
 #[derive(Default)]
 struct LifecycleQueues {
     births: Vec<PendingBirth>,
@@ -2376,7 +2418,9 @@ struct EngineCycleCheckpoint {
     native_buckets: native_collisions::NativeBuckets,
     dynamic_cost_state: DynamicCostRuntimeState,
     native_sim_guid: Option<i32>,
+    native_scene_palette: Option<NativeScenePalette>,
     native_cycle: Option<i32>,
+    native_restarted_this_cycle: bool,
     native_population_census: Option<[usize; 2]>,
     native_senses_census: Option<NativeSensesCensus>,
     native_loaded_census_stage: Option<native_reproduction::NativeLoadedCensusStage>,
@@ -2384,6 +2428,7 @@ struct EngineCycleCheckpoint {
     native_skin_timer_seconds: Option<[f32; 2]>,
     death_poffs_enabled: bool,
     ordinary_restart: OrdinaryRestart,
+    post_dna_memory: NativePostDnaMemoryView,
 }
 
 #[derive(Clone, Default)]
@@ -2396,6 +2441,10 @@ pub(crate) struct PlayerBotInput {
 pub struct Engine {
     #[serde(skip)]
     pub(crate) player_bot_input: PlayerBotInput,
+    #[serde(skip)]
+    post_dna_memory: NativePostDnaMemoryView,
+    #[serde(skip)]
+    native_console_gene_capture: Option<NativeConsoleGeneCapture>,
     #[serde(default)]
     native_buckets: native_collisions::NativeBuckets,
     #[serde(skip, default)]
@@ -2408,6 +2457,11 @@ pub struct Engine {
     native_random: Option<crate::native_random::NativeRandom>,
     #[serde(default)]
     graph_sampling: crate::GraphSamplingSettings,
+    /// Authored graph-save values layered over untouched native archive metadata.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    native_graph_recording: Option<native_graph_recording::NativeGraphRecordingState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    native_graph_layout: Option<native_graph_layout::NativeGraphLayoutOverlay>,
     #[serde(default)]
     dynamic_cost_state: DynamicCostRuntimeState,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -2418,7 +2472,11 @@ pub struct Engine {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     native_sim_guid: Option<i32>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    native_scene_palette: Option<NativeScenePalette>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     native_cycle: Option<i32>,
+    #[serde(skip)]
+    pub(crate) native_restarted_this_cycle: bool,
     /// Original mode1 UpdateCounters census and its one-cycle delayed display.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     native_population_census: Option<[usize; 2]>,
@@ -2743,6 +2801,7 @@ impl Engine {
             asexual_reproduction_allowed: legacy.asexual_reproduction_allowed,
             player_bot: PlayerBotState::default(),
             player_bot_input: PlayerBotInput::default(),
+            post_dna_memory: NativePostDnaMemoryView::default(),
             restriction_options: RestrictionOptions::default(),
             local_mode: LocalModeState::default(),
             next_lineage_id: legacy.next_lineage_id,
@@ -2766,16 +2825,21 @@ impl Engine {
             pending_gpu_collision_pairs: None,
             snapshot_publication_count: 0,
             dynamic_cost_state: DynamicCostRuntimeState::default(),
+            native_console_gene_capture: None,
             native_buckets: native_collisions::NativeBuckets::default(),
             native_phase: None,
             pending_disqualifications: Vec::new(),
             native_tie_index: None,
             native_random: None,
             graph_sampling: crate::GraphSamplingSettings::default(),
+            native_graph_recording: None,
+            native_graph_layout: None,
             native_origin: None,
             native_f1: None,
             native_sim_guid: None,
+            native_scene_palette: None,
             native_cycle: None,
+            native_restarted_this_cycle: false,
             native_population_census: None,
             native_senses_census: None,
             native_loaded_census_stage: None,
@@ -2919,6 +2983,8 @@ impl Engine {
                 native_cycle: None,
                 native_sun_on: None,
                 native_f1_enabled: false,
+                gene_activation_meter: None,
+                native_scene_palette: None,
                 death_poffs_enabled: true,
                 ordinary_restart_available: true,
                 ordinary_restart_on_extinction: false,
@@ -2967,6 +3033,7 @@ impl Engine {
             asexual_reproduction_allowed: true,
             player_bot: PlayerBotState::default(),
             player_bot_input: PlayerBotInput::default(),
+            post_dna_memory: NativePostDnaMemoryView::default(),
             restriction_options: RestrictionOptions::default(),
             local_mode: LocalModeState::default(),
             next_lineage_id: 2,
@@ -2990,16 +3057,21 @@ impl Engine {
             pending_gpu_collision_pairs: None,
             snapshot_publication_count: 0,
             dynamic_cost_state: DynamicCostRuntimeState::default(),
+            native_console_gene_capture: None,
             native_buckets: native_collisions::NativeBuckets::default(),
             native_phase: None,
             pending_disqualifications: Vec::new(),
             native_tie_index: None,
             native_random: Some(native_random),
             graph_sampling: crate::GraphSamplingSettings::default(),
+            native_graph_recording: None,
+            native_graph_layout: None,
             native_origin: None,
             native_f1: None,
             native_sim_guid: None,
+            native_scene_palette: None,
             native_cycle: None,
+            native_restarted_this_cycle: false,
             native_population_census: None,
             native_senses_census: None,
             native_loaded_census_stage: None,
@@ -3193,6 +3265,16 @@ impl Engine {
                 });
                 let fields = value.as_object_mut().unwrap();
                 fields.insert("species_id".into(), serde_json::json!(index));
+                // The configuration editor can show a living genome as a fallback.
+                // Startup settings must distinguish it from the saved startup roster.
+                fields.insert(
+                    "startup_species".into(),
+                    serde_json::json!(template.is_some_and(|template| {
+                        self.native_origin.is_none()
+                            || definition.reseed
+                            || template.source_text.is_some()
+                    })),
+                );
                 fields.insert(
                     "comment".into(),
                     serde_json::json!(
@@ -3233,21 +3315,43 @@ impl Engine {
     }
 
     pub fn update_cost_settings(&mut self, costs: DnaCosts) -> Result<(), EngineError> {
-        if !costs.global_multiplier.is_finite()
-            || (costs.global_multiplier < 0.0 && !costs.dynamic_allow_negative)
-            || !costs.dynamic_cost_multiplier.is_finite()
-            || !costs.dynamic_sensitivity.is_finite()
-        {
+        self.update_cost_settings_with_preset(Some(costs), None)
+    }
+
+    pub(crate) fn update_cost_settings_with_preset(
+        &mut self,
+        costs: Option<DnaCosts>,
+        preset: Option<u8>,
+    ) -> Result<(), EngineError> {
+        if preset.is_some_and(|value| value > 2) || (costs.is_none() && preset.is_none()) {
             return Err(EngineError::Invariant(
-                "simulation cost settings must be finite and nonnegative where required".to_owned(),
+                "Choose a legacy cost preset from 0 to 2 or provide cost coefficients.".into(),
             ));
         }
-        if self.dynamic_cost_state.zeroed {
-            self.dynamic_cost_state.saved_multiplier = costs.global_multiplier;
-        } else {
-            self.dynamic_cost_state.active_multiplier = Some(costs.global_multiplier);
+        if let Some(costs) = costs {
+            // Native CostsForm accepts a signed manual CostX. Only the dynamic
+            // controller clamps an adjusted multiplier when negative costs are disabled.
+            if !costs.global_multiplier.is_finite()
+                || (self.native_random.is_none()
+                    && costs.global_multiplier < 0.0
+                    && !costs.dynamic_allow_negative)
+                || !costs.dynamic_cost_multiplier.is_finite()
+                || !costs.dynamic_sensitivity.is_finite()
+            {
+                return Err(EngineError::Invariant(
+                    "simulation cost settings must be finite and nonnegative where required".into(),
+                ));
+            }
+            if self.dynamic_cost_state.zeroed {
+                self.dynamic_cost_state.saved_multiplier = costs.global_multiplier;
+            } else {
+                self.dynamic_cost_state.active_multiplier = Some(costs.global_multiplier);
+            }
+            self.config.dna_costs = costs;
         }
-        self.config.dna_costs = costs;
+        if let Some(preset) = preset {
+            self.config.native_cost_preset = Some(preset);
+        }
         self.publish_snapshot();
         Ok(())
     }
@@ -3518,6 +3622,66 @@ impl Engine {
         Ok(())
     }
 
+    pub(crate) fn resume_restart_mode(&mut self) -> Result<(), EngineError> {
+        if !self.local_mode.has_active_restart_mode() {
+            return Err(EngineError::Invariant(
+                "no active restart mode to resume".into(),
+            ));
+        }
+        let mode = &mut self.local_mode;
+        let result_boundary = match mode.evolution.as_mut() {
+            Some(evolution) => {
+                // A passed zerobot test leaves the original mode-9 marker active.
+                if evolution.phase == crate::EvolutionPhase::Complete {
+                    evolution.phase = crate::EvolutionPhase::ZerobotTesting;
+                }
+                (evolution.phase == crate::EvolutionPhase::Testing)
+                    .then_some(evolution.test_result_cursor)
+            }
+            None => mode
+                .series
+                .active_match
+                .map(|_| mode.series.match_start_result),
+        };
+        // Restart the unfinished match or test and retain earlier completed outcomes.
+        if let Some(boundary) = result_boundary {
+            let discarded = mode.results.len().saturating_sub(boundary);
+            mode.results.truncate(boundary);
+            mode.current_round = mode.current_round.saturating_sub(discarded as u32).max(1);
+        }
+        let resumed_round = mode.current_round;
+        mode.disqualifications
+            .retain(|record| record.round < resumed_round);
+        mode.adjudication = None;
+        mode.contest_runtime = Default::default();
+        mode.cycle_in_round = 0;
+        mode.status = LocalModeStatus::Running;
+        if mode.evolution.is_some() {
+            self.restart_staged_world(true)?;
+        } else {
+            self.restart_mode_world(None, NativeStartBoundary::ExternalProcess)?;
+        }
+        self.publish_snapshot();
+        Ok(())
+    }
+
+    pub(crate) fn clear_restart_mode_hiding(&mut self) {
+        let Some(evolution) = self.local_mode.evolution.as_mut() else {
+            return;
+        };
+        evolution.hidden = false;
+        for robot in self
+            .slots
+            .iter_mut()
+            .filter_map(|slot| slot.organism.as_mut())
+        {
+            if evolution.baseline_species.contains(&robot.identity.species) {
+                robot.flags.hidden = false;
+            }
+        }
+        self.publish_snapshot();
+    }
+
     pub fn adjudicate_local_round(
         &mut self,
         winner: Option<SpeciesId>,
@@ -3556,6 +3720,9 @@ impl Engine {
         );
         self.config.world_width = if short { 16000.0 } else { 9237.0 };
         self.config.world_height = if short { 12000.0 } else { 6928.0 };
+        if self.config.native_field_size.is_some() {
+            self.config.native_field_size = Some(if short { 2 } else { 1 });
+        }
         self.config.toroidal_world = true;
         self.config.axis_topology = Some([true, true]);
         self.config.fixed_bot_radii = false;
@@ -3844,13 +4011,14 @@ impl Engine {
         let mut species = Vec::with_capacity(self.species.len());
         let mut species_templates = Vec::with_capacity(self.species_templates.len());
         let mut subspecies_counters = Vec::with_capacity(self.subspecies_counters.len());
-        let keep_startup_roster =
-            self.ordinary_restart.enabled && self.ordinary_restart_available();
+        let restart_enabled = self.ordinary_restart.enabled && self.ordinary_restart_available();
+        let imported_restart = restart_enabled && self.native_origin.is_some();
+        let keep_startup_roster = restart_enabled && !imported_restart;
         for (index, definition) in self.species.iter().enumerate() {
             let keep = index == 0
                 || populations[index] > 0
                 || definition.reseed
-                || definition.minimum_population > 0
+                || (!imported_restart && definition.minimum_population > 0)
                 || (keep_startup_roster
                     && self
                         .species_templates
@@ -4728,6 +4896,26 @@ impl Engine {
         Ok(())
     }
 
+    pub(crate) fn resolve_memory_address(
+        &self,
+        name: &str,
+        focus: Option<OrganismId>,
+    ) -> Result<u16, EngineError> {
+        let address = if let Some(id) = focus.filter(|_| self.native_random.is_some()) {
+            let robot = self.slots.get(id)?;
+            crate::dna::native_robot_memory_address(name, robot.program.dna.native_user_variables())
+        } else {
+            name.parse::<u16>()
+                .ok()
+                .map(i32::from)
+                .or_else(|| crate::sysvar_address(name.trim_start_matches('.')))
+        };
+        address
+            .filter(|address| (1..=1000).contains(address))
+            .map(|address| address as u16)
+            .ok_or_else(|| EngineError::Invariant(format!("unknown memory address {name}")))
+    }
+
     pub fn set_organism_memory(
         &mut self,
         id: OrganismId,
@@ -4769,6 +4957,24 @@ impl Engine {
         Ok(())
     }
 
+    pub(crate) fn set_native_console_energy(
+        &mut self,
+        id: OrganismId,
+        energy: f32,
+    ) -> Result<(), EngineError> {
+        if self.native_cycle.is_none() || !energy.is_finite() {
+            return Err(EngineError::Invariant(
+                "native console energy requires original simulation mode and a finite Single"
+                    .into(),
+            ));
+        }
+        // The VB console writes nrg alone. WriteSenses will publish mem(310)
+        // and compute pain and pleasure using the previous onrg.
+        self.slots.get_mut(id)?.materials.energy = energy;
+        self.publish_snapshot();
+        Ok(())
+    }
+
     pub fn update_restriction_options(
         &mut self,
         options: RestrictionOptions,
@@ -4798,6 +5004,46 @@ impl Engine {
             apply_restriction_column(organism, &column);
         }
         self.restriction_options = options;
+        self.publish_snapshot();
+        Ok(())
+    }
+
+    pub(crate) fn apply_native_restriction_overwrites(
+        &mut self,
+        options: RestrictionOptions,
+    ) -> Result<(), EngineError> {
+        if self.native_cycle.is_none() {
+            return self.update_restriction_options(options);
+        }
+
+        // frmRestriOps state 3 edits existing robots. The mutation switches
+        // follow x_restartmode, independently of the world's SimOpts.F1 flag.
+        let edit_mutations = !self.local_mode.has_active_restart_mode();
+        for slot in &mut self.slots {
+            let Some(robot) = slot.organism.as_mut().filter(|robot| robot.flags.exists) else {
+                continue;
+            };
+            let column = if robot.flags.vegetable {
+                &options.repopulating
+            } else {
+                robot.flags.no_chloroplasts = options.non_repopulating.disable_chloroplasts;
+                robot.flags.can_use_chloroplasts = !robot.flags.no_chloroplasts;
+                &options.non_repopulating
+            };
+            apply_common_restriction_flags(robot, column);
+            if robot.flags.vegetable || robot.counters.disqualification < 2 {
+                robot.counters.disqualification = u8::from(column.kill_disqualified);
+            }
+            robot.flags.virus_immune = column.virus_immune;
+            if edit_mutations {
+                robot.flags.can_mutate = !column.disable_mutations;
+            }
+            robot.kinematics.native_fixed_state = Some(robot.flags.fixed);
+            if robot.flags.fixed {
+                robot.program.memory.write(MEM_FIXED, 1);
+                robot.kinematics.velocity = [0.0; 2];
+            }
+        }
         self.publish_snapshot();
         Ok(())
     }
@@ -5174,6 +5420,7 @@ impl Engine {
             self.absolute_parent_id(organism),
             &self.config,
             self.native_cycle.is_some(),
+            true,
         ))
     }
 
@@ -5519,16 +5766,7 @@ impl Engine {
         if founder_name.is_empty() {
             return Err(EngineError::Invariant("A founder name is required.".into()));
         }
-        // VB6 replacechars replaces ANSI bytes 0–31 and 127–254. Preserve
-        // byte 255 (ÿ in Windows-1252) and map unsupported input to '?'.
-        let tag: String = tag
-            .chars()
-            .take(45)
-            .map(|ch| match ch {
-                ' '..='~' | 'ÿ' => ch,
-                _ => '?',
-            })
-            .collect();
+        let tag = normalize_robot_tag(tag);
         let mut count = 0;
         for robot in self
             .slots
@@ -5539,16 +5777,52 @@ impl Engine {
                 continue;
             }
             robot.identity.tag.clone_from(&tag);
-            // A blank runtime tag must also clear the DNA export's metadata fallback.
-            let dna = &mut robot.program.dna;
-            let (generation, mutations) = (dna.metadata().generation, dna.metadata().mutations);
-            dna.synchronize_runtime_metadata(generation, mutations, &tag);
+            synchronize_robot_dna_tag(robot, &tag);
             count += 1;
         }
         if count != 0 {
             self.publish_snapshot();
         }
         Ok(count)
+    }
+
+    pub fn read_robot_tag(&self, id: OrganismId) -> Result<String, EngineError> {
+        let robot = self.slots.get(id)?;
+        if !robot.flags.exists {
+            return Err(EngineError::StaleOrganismId);
+        }
+        // The original label excludes the last five bytes of the native tag.
+        let visible: String = effective_robot_tag(robot).chars().take(45).collect();
+        Ok(visible.trim_end_matches(['\0', ' ']).to_owned())
+    }
+
+    pub fn set_robot_tag(&mut self, id: OrganismId, tag: &str) -> Result<String, EngineError> {
+        let robot = self.slots.get_mut(id)?;
+        if !robot.flags.exists {
+            return Err(EngineError::StaleOrganismId);
+        }
+        let tag = normalize_robot_tag(tag);
+        // Assigning the original 50-character String overwrites any saved
+        // signature and leaves space padding, even when an InputBox clears it.
+        robot.identity.tag = format!("{tag:<50}");
+        synchronize_robot_dna_tag(robot, &tag);
+        self.publish_snapshot();
+        Ok(tag)
+    }
+
+    pub(crate) fn read_robot_dna(
+        &self,
+        id: OrganismId,
+        marker_position: Option<u32>,
+    ) -> Result<String, EngineError> {
+        if self.native_cycle.is_none() {
+            return self.export_dna(id);
+        }
+        let organism = self.slots.get(id)?;
+        Ok(organism
+            .program
+            .dna
+            .to_robot_display_source(marker_position))
     }
 
     pub fn export_dna(&self, id: OrganismId) -> Result<String, EngineError> {
@@ -5563,35 +5837,64 @@ impl Engine {
             .metadata()
             .mutations
             .saturating_add(organism.program.mutation_metadata.total_mutations);
-        let tag = effective_robot_tag(organism);
+        let tag = effective_robot_tag(organism).trim_end_matches(' ');
         let mut exported = dna.clone();
-        if self
+        if let Some(gene) = self.temporary_epigenetic_gene(organism) {
+            let temporary = LegacyDna::parse(&gene)?;
+            exported.blocks_mut().splice(
+                0..0,
+                temporary.blocks()[..temporary.blocks().len() - 1]
+                    .iter()
+                    .copied(),
+            );
+        }
+        Ok(exported.to_source_with_runtime_metadata(generation, mutations, Some(tag)))
+    }
+
+    fn temporary_epigenetic_gene(&self, robot: &RobotState) -> Option<String> {
+        if !self
             .config
             .advanced_mutation
             .epigenetic
             .save_as_temporary_gene
         {
-            let mut gene = String::from("start\n");
-            let mut any = false;
-            for address in 971..=990 {
-                let value = organism.program.memory.read(address);
-                if value != 0 {
-                    gene.push_str(&format!("{value} {address} store\n"));
-                    any = true;
-                }
-            }
-            if any {
-                gene.push_str("*.thisgene .delgene store\nstop\n");
-                let temporary = LegacyDna::parse(&gene)?;
-                exported.blocks_mut().splice(
-                    0..0,
-                    temporary.blocks()[..temporary.blocks().len() - 1]
-                        .iter()
-                        .copied(),
-                );
+            return None;
+        }
+        let mut stores = String::new();
+        for address in 971..=990 {
+            let value = robot.program.memory.read(address);
+            if value != 0 {
+                stores.push_str(&format!("{value} {address} store\r\n"));
             }
         }
-        Ok(exported.to_source_with_runtime_metadata(generation, mutations, Some(tag)))
+        if stores.is_empty() {
+            return None;
+        }
+        Some(format!(
+            "start\r\n{stores}*.thisgene .delgene store\r\nstop"
+        ))
+    }
+
+    pub(crate) fn rename_robot_founder(&mut self, id: OrganismId, name: String) -> bool {
+        if self.native_cycle.is_none()
+            || self.local_mode.has_active_restart_mode()
+            || name.trim().is_empty()
+            || matches!(name.as_str(), "." | "..")
+            || name.contains(['/', '\\'])
+            || name.chars().any(char::is_control)
+        {
+            return false;
+        }
+        let Ok(robot) = self.slots.get_mut(id) else {
+            return false;
+        };
+        if robot.identity.species_file == name {
+            return false;
+        }
+        // salvarob changes only the selected robot's original filename.
+        robot.identity.species_file = name;
+        self.publish_snapshot();
+        true
     }
 
     /// Export the retained startup genome even if no living candidate remains.
@@ -5830,18 +6133,78 @@ impl Engine {
         Ok(child)
     }
 
+    /// Apply the native display writeback without advancing the simulation.
+    pub(crate) fn native_redraw(&mut self) {
+        if self.native_cycle.is_some() && self.native_random.is_some() {
+            self.write_native_redraw_positions();
+            self.publish_snapshot();
+        }
+    }
+
+    fn write_native_redraw_positions(&mut self) {
+        for robot in self
+            .slots
+            .iter_mut()
+            .filter_map(|slot| slot.organism.as_mut())
+            .filter(|robot| robot.flags.exists && !robot.flags.hidden)
+        {
+            let kinematics = &mut robot.kinematics;
+            for (axis, position) in kinematics.position.iter_mut().enumerate() {
+                // main.frm Redraw stores the temporary display position in
+                // Single and then adds the same offset back in a second store.
+                let offset = f64::from(kinematics.velocity[axis])
+                    - f64::from(kinematics.actual_velocity[axis]);
+                let display = (f64::from(*position) - offset) as f32;
+                *position = (f64::from(display) + offset) as f32;
+            }
+        }
+    }
+
     pub fn tick(&mut self) -> Result<(), EngineError> {
-        self.tick_transactional(true, false).map(|_| ())
+        self.tick_transactional(true, false, None, NativeRedrawCadence::Off)
+            .map(|_| ())
     }
 
     pub fn tick_with_trace(&mut self) -> Result<crate::CycleTrace, EngineError> {
-        self.tick_transactional(true, true)?
+        self.tick_transactional(true, true, None, NativeRedrawCadence::Off)?
             .ok_or_else(|| EngineError::Invariant("cycle tracing was not enabled".to_owned()))
     }
 
     pub fn tick_many(&mut self, count: u32) -> Result<(), EngineError> {
+        self.tick_many_with_native_redraw(count, NativeRedrawCadence::Off)
+    }
+
+    pub fn tick_many_with_native_redraw(
+        &mut self,
+        count: u32,
+        native_redraw: NativeRedrawCadence,
+    ) -> Result<(), EngineError> {
+        self.tick_many_with_native_options(count, None, None, native_redraw)
+    }
+
+    pub(crate) fn tick_many_with_native_options(
+        &mut self,
+        count: u32,
+        cancelled_repopulation_lineages: Option<&[u64]>,
+        mut graph_samples: Option<&mut Vec<native_graphs::NativeGraphRecordingSample>>,
+        native_redraw: NativeRedrawCadence,
+    ) -> Result<(), EngineError> {
         for index in 0..count {
-            self.tick_transactional(index + 1 == count, false)?;
+            let previous_tick = self.tick;
+            self.tick_transactional(
+                index + 1 == count,
+                false,
+                cancelled_repopulation_lineages,
+                native_redraw,
+            )?;
+            // The native run loop feeds charts after UpdateSim and skips the
+            // cycle that requests a restart. Do not depend on publication cadence.
+            if let Some(samples) = graph_samples.as_deref_mut()
+                && self.tick != previous_tick
+                && let Some(sample) = self.feed_native_graph_sample(self.graph_sampling, true)
+            {
+                samples.push(sample);
+            }
         }
         Ok(())
     }
@@ -5850,6 +6213,8 @@ impl Engine {
         &mut self,
         publish: bool,
         trace_enabled: bool,
+        cancelled_repopulation_lineages: Option<&[u64]>,
+        native_redraw: NativeRedrawCadence,
     ) -> Result<Option<crate::CycleTrace>, EngineError> {
         // A headless or batched caller may continue without the desktop's
         // explicit post-recording restart command.
@@ -5873,13 +6238,21 @@ impl Engine {
             || self.has_file_transfers())
         .then(|| self.cycle_checkpoint());
         let next_native_cycle = self.next_native_cycle()?;
-        let mut transfers = FileTransferTransaction::default();
+        let mut transfers = FileTransferTransaction::new(cancelled_repopulation_lineages.is_some());
         self.update_native_mutation_oscillation();
         self.update_dynamic_cost_state();
         match self
-            .tick_internal(publish, trace_enabled, &mut transfers, next_native_cycle)
+            .tick_internal(
+                publish,
+                trace_enabled,
+                &mut transfers,
+                next_native_cycle,
+                cancelled_repopulation_lineages,
+                native_redraw,
+            )
             .and_then(|trace| {
                 transfers.commit()?;
+                self.finish_native_console_gene_cycle();
                 Ok(trace)
             }) {
             Ok(trace) => Ok(trace),
@@ -5949,7 +6322,9 @@ impl Engine {
             native_random: self.native_random.clone(),
             native_buckets: self.native_buckets.clone(),
             native_sim_guid: self.native_sim_guid,
+            native_scene_palette: self.native_scene_palette,
             native_cycle: self.native_cycle,
+            native_restarted_this_cycle: self.native_restarted_this_cycle,
             native_population_census: self.native_population_census,
             native_senses_census: self.native_senses_census.clone(),
             native_loaded_census_stage: self.native_loaded_census_stage,
@@ -5957,6 +6332,7 @@ impl Engine {
             native_skin_timer_seconds: self.native_skin_timer_seconds,
             death_poffs_enabled: self.death_poffs_enabled,
             ordinary_restart: self.ordinary_restart.clone(),
+            post_dna_memory: self.post_dna_memory.clone(),
         }
     }
 
@@ -5968,7 +6344,9 @@ impl Engine {
         self.native_random = checkpoint.native_random;
         self.native_buckets = checkpoint.native_buckets;
         self.native_sim_guid = checkpoint.native_sim_guid;
+        self.native_scene_palette = checkpoint.native_scene_palette;
         self.native_cycle = checkpoint.native_cycle;
+        self.native_restarted_this_cycle = checkpoint.native_restarted_this_cycle;
         self.native_population_census = checkpoint.native_population_census;
         self.native_senses_census = checkpoint.native_senses_census;
         self.native_loaded_census_stage = checkpoint.native_loaded_census_stage;
@@ -5976,6 +6354,7 @@ impl Engine {
         self.native_skin_timer_seconds = checkpoint.native_skin_timer_seconds;
         self.death_poffs_enabled = checkpoint.death_poffs_enabled;
         self.ordinary_restart = checkpoint.ordinary_restart;
+        self.post_dna_memory = checkpoint.post_dna_memory;
         let checkpoint = checkpoint.checkpoint;
         self.config = checkpoint.config;
         self.slots = checkpoint.slots;
@@ -6041,6 +6420,8 @@ impl Engine {
         trace_enabled: bool,
         transfers: &mut FileTransferTransaction,
         next_native_cycle: Option<i32>,
+        cancelled_repopulation_lineages: Option<&[u64]>,
+        native_redraw: NativeRedrawCadence,
     ) -> Result<Option<crate::CycleTrace>, EngineError> {
         let cycle_started = Instant::now();
         self.phase_timings = PhaseTimings::default();
@@ -6055,6 +6436,7 @@ impl Engine {
         trace.phase(CyclePhase::CycleIncrement);
         self.tick = next_tick;
         self.native_cycle = next_native_cycle;
+        self.native_restarted_this_cycle = false;
         trace.phase(CyclePhase::ModeLogic);
         let (staged_restart, staged_energy_before) = self.staged_evolution_before_cycle()?;
         if staged_restart {
@@ -6079,6 +6461,7 @@ impl Engine {
         self.execute_dna_phase(&mut trace)?;
         self.phase_timings.dna = elapsed_ms(started);
         trace.phase(CyclePhase::DebuggerView);
+        self.capture_native_post_dna_memory();
         trace.phase(CyclePhase::AfterDna);
         self.clear_after_dna_phase();
         trace.phase(CyclePhase::PlayerBot);
@@ -6244,7 +6627,7 @@ impl Engine {
         )?;
         trace.phase(CyclePhase::Repopulation);
         let started = Instant::now();
-        self.vegetation_repopulation_phase()?;
+        self.vegetation_repopulation_phase(cancelled_repopulation_lineages)?;
         self.phase_timings.vegetation = elapsed_ms(started);
         trace.phase(CyclePhase::Sunlight);
         let started = Instant::now();
@@ -6256,6 +6639,14 @@ impl Engine {
             self.advance_population_seeding()?;
         }
         self.refresh_occurrence_census_readbacks();
+        if !self.native_restarted_this_cycle
+            && self
+                .native_cycle
+                .is_some_and(|cycle| native_redraw.applies(cycle))
+            && self.native_random.is_some()
+        {
+            self.write_native_redraw_positions();
+        }
         self.sensing_gpu_publication_phase()?;
         self.native_tie_index = None;
         trace.phase(CyclePhase::Publication);
@@ -6306,6 +6697,7 @@ impl Engine {
         }
         self.validate_invariants()?;
         Ok(Some(Self {
+            native_console_gene_capture: None,
             native_buckets: self.native_buckets.clone(),
             native_phase: self.native_phase.as_ref().map(|phase| {
                 native_pipeline::NativeRobotPhase {
@@ -6319,11 +6711,15 @@ impl Engine {
             native_tie_index: self.native_tie_index.clone(),
             native_random: self.native_random.clone(),
             graph_sampling: self.graph_sampling.clone(),
+            native_graph_recording: self.native_graph_recording.clone(),
+            native_graph_layout: self.native_graph_layout.clone(),
             dynamic_cost_state: self.dynamic_cost_state.clone(),
             native_origin: self.native_origin.clone(),
             native_f1: self.native_f1,
             native_sim_guid: self.native_sim_guid,
+            native_scene_palette: self.native_scene_palette,
             native_cycle: self.native_cycle,
+            native_restarted_this_cycle: self.native_restarted_this_cycle,
             native_population_census: self.native_population_census,
             native_senses_census: self.native_senses_census.clone(),
             native_loaded_census_stage: self.native_loaded_census_stage,
@@ -6356,6 +6752,7 @@ impl Engine {
             asexual_reproduction_allowed: self.asexual_reproduction_allowed,
             player_bot: self.player_bot.clone(),
             player_bot_input: self.player_bot_input.clone(),
+            post_dna_memory: self.post_dna_memory.clone(),
             restriction_options: self.restriction_options.clone(),
             local_mode: self.local_mode.clone(),
             next_lineage_id: self.next_lineage_id,
@@ -6415,6 +6812,9 @@ impl Engine {
         };
         self.capabilities = capabilities;
         self.physics = physics;
+        if self.backend() != BackendKind::Cpu {
+            self.post_dna_memory = NativePostDnaMemoryView::default();
+        }
         self.pending_gpu_render_instances = None;
         self.pending_gpu_collision_pairs = None;
         self.publish_snapshot();
@@ -7211,6 +7611,51 @@ impl Engine {
         Ok(())
     }
 
+    pub fn set_live_field_size(&mut self, preset: u8) -> Result<(), EngineError> {
+        let extent = crate::config::native_field_dimensions(preset).ok_or_else(|| {
+            EngineError::Invariant("Field size must be a legacy preset from 1 to 25.".into())
+        })?;
+        if self.native_f1_enabled() {
+            return Err(EngineError::Invariant(
+                "Field size cannot change during an F1 contest.".into(),
+            ));
+        }
+        if extent != [self.config.world_width, self.config.world_height] {
+            if let RuntimePhysics::Gpu(backend) = &self.physics
+                && let Err(error) =
+                    backend.validate_sensing_grid_extent(extent, GPU_SENSING_CELL_SIZE)
+            {
+                if !self.config.allow_cpu_fallback {
+                    return Err(error);
+                }
+                self.activate_cpu_fallback(error);
+            }
+            if self.native_random.is_some() {
+                // OptionsForm OK changes SimOpts but leaves Quads.Init_Buckets
+                // for the next genuine startup or native reload.
+                self.synchronize_native_buckets();
+            }
+            [self.config.world_width, self.config.world_height] = extent;
+        }
+        self.config.native_field_size = Some(preset);
+        self.publish_snapshot();
+        Ok(())
+    }
+
+    pub(crate) fn accept_native_advanced_daylight(&mut self) -> Option<bool> {
+        self.native_cycle?;
+        let vegetation = &mut self.config.vegetation;
+        if !vegetation.day_night_enabled {
+            vegetation.daytime = true;
+        }
+        if !vegetation.sun_on_random && !vegetation.weather_enabled {
+            self.vegetation_runtime.normalize_native_sun_band();
+        }
+        let daytime = vegetation.daytime;
+        self.publish_snapshot();
+        Some(daytime)
+    }
+
     pub fn update_db2_settings(
         &mut self,
         physics: Option<crate::PhysicsSettings>,
@@ -7578,6 +8023,19 @@ impl Engine {
             organism.program.current_gene = u32::from(report.current_gene);
             organism.program.condition_count = report.conditions_evaluated;
             organism.program.activation_bitmap = report.activations.clone();
+            if let Some(meter) = self.snapshot.gene_activation_meter.as_mut()
+                && meter.focus == Some(OrganismId::new(slot_index as u32, generation))
+            {
+                meter.record(&report.activations);
+            }
+            if let Some(capture) = self.native_console_gene_capture.as_mut() {
+                capture.record(
+                    OrganismId::new(slot_index as u32, generation),
+                    organism.identity.absolute_id,
+                    self.tick,
+                    &report.activations,
+                );
+            }
             organism.program.activation_history.push(ActivationFrame {
                 tick: self.tick,
                 activations: report.activations,
@@ -8444,7 +8902,7 @@ impl Engine {
                         &radii,
                         &alive,
                         [self.config.world_width, self.config.world_height],
-                        1_000.0,
+                        GPU_SENSING_CELL_SIZE,
                         1_000.0,
                     )
                     .map(|(targets, instances)| (targets, Some(instances))),
@@ -8937,7 +9395,7 @@ impl Engine {
         let mut channels = Vec::new();
         for tie_index in self.phase_tie_indices() {
             let tie = &self.ties[tie_index];
-            for (source_slot, target_slot, source_port) in [
+            for (side, (source_slot, target_slot, source_port)) in [
                 (
                     tie.first.slot() as usize,
                     tie.second.slot() as usize,
@@ -8948,7 +9406,16 @@ impl Engine {
                     tie.first.slot() as usize,
                     tie.second_port,
                 ),
-            ] {
+            ]
+            .into_iter()
+            .enumerate()
+            {
+                if tie
+                    .directed_native_back
+                    .is_some_and(|back| back || side != 0)
+                {
+                    continue;
+                }
                 let Some(source) = self.slots[source_slot].organism.as_ref() else {
                     continue;
                 };
@@ -9048,7 +9515,7 @@ impl Engine {
         let mut chloroplast_delay_requests = Vec::new();
         for tie_index in self.phase_tie_indices() {
             let tie = &self.ties[tie_index];
-            if !native && !tie.hardened {
+            if (!native && !tie.hardened) || tie.directed_native_back == Some(true) {
                 continue;
             }
             for (source_slot, target_slot) in [
@@ -9871,11 +10338,18 @@ impl Engine {
             if tie_count >= MAX_TIES_PER_ROBOT {
                 break;
             }
-            let Some(reciprocal) = self
+            let end = tie.native_end_states()[usize::from(!forward)];
+            let reciprocal_index = if tie.directed_native_back.is_some() {
+                end.saved_reciprocal
+                    .and_then(|value| u8::try_from(value).ok())
+                    .unwrap_or(0)
+            } else if let Some(reciprocal) = self
                 .tie_indices_for(other)
                 .iter()
                 .position(|ordinal| *ordinal == index)
-            else {
+            {
+                (reciprocal + 1) as u8
+            } else {
                 continue;
             };
             let delta = std::array::from_fn::<_, 2, _>(|axis| {
@@ -9888,7 +10362,6 @@ impl Engine {
                 delta[1].atan2(delta[0])
             };
             let relative = normalize_tie_angle(angle - source.heading());
-            let end = tie.native_end_states()[usize::from(!forward)];
             let port = if forward {
                 tie.first_port
             } else {
@@ -9914,7 +10387,7 @@ impl Engine {
             };
             endpoints[tie_count] = Some(TieEndpointState {
                 other: Some(other),
-                reciprocal_index: (reciprocal + 1) as u8,
+                reciprocal_index,
                 port,
                 information: i32::from(tie.information),
                 current_angle: relative,
@@ -10303,7 +10776,7 @@ impl Engine {
             let tie_count = self
                 .ties
                 .iter()
-                .filter(|tie| tie.contains(attacker_id))
+                .filter(|tie| tie.has_endpoint(attacker_id))
                 .count();
             let Some(attacker) = self.slots[attacker_slot].organism.as_mut() else {
                 continue;
@@ -10548,7 +11021,7 @@ impl Engine {
                 .get(current)
                 .is_ok_and(|robot| robot.counters.multibot)
             {
-                for tie in self.ties.iter().filter(|tie| tie.contains(current)) {
+                for tie in self.ties.iter().filter(|tie| tie.has_endpoint(current)) {
                     let other = if tie.first == current {
                         tie.second
                     } else {
@@ -12549,7 +13022,10 @@ impl Engine {
         }
     }
 
-    fn vegetation_repopulation_phase(&mut self) -> Result<(), EngineError> {
+    fn vegetation_repopulation_phase(
+        &mut self,
+        cancelled_repopulation_lineages: Option<&[u64]>,
+    ) -> Result<(), EngineError> {
         let equivalents = self.refresh_native_chloroplast_population();
         if self.native_loaded_census_blocks_births() {
             return Ok(());
@@ -12565,7 +13041,12 @@ impl Engine {
             return Ok(());
         }
         let classic_table = self.classic_native_species_table();
-        let eligible: Vec<_> = self
+        let mut missing_sources = if cancelled_repopulation_lineages.is_some() {
+            self.missing_native_repopulation_sources()?
+        } else {
+            BTreeMap::new()
+        };
+        let mut eligible: Vec<_> = self
             .species
             .iter()
             .enumerate()
@@ -12574,11 +13055,8 @@ impl Engine {
                     && classic_table.as_ref().map_or(species.reseed, |table| {
                         table.contains(&SpeciesId(index as u32))
                     })
-                    && self
-                        .species_templates
-                        .get(index)
-                        .and_then(Option::as_ref)
-                        .is_some())
+                    && (self.repopulation_source(index).is_some()
+                        || missing_sources.contains_key(&index)))
                 .then_some(index)
             })
             .collect();
@@ -12607,17 +13085,16 @@ impl Engine {
                 .vegetable_population_cap
                 .saturating_sub(self.vegetable_population())
         };
-        let amount = self
-            .config
-            .vegetation
-            .repopulation_amount
-            .min(capacity)
-            .min(vegetable_capacity);
-        if amount == 0 {
+        let mut remaining_capacity = capacity.min(vegetable_capacity);
+        let amount = self.config.vegetation.repopulation_amount;
+        if amount == 0 || remaining_capacity == 0 {
             return Ok(());
         }
         let origin = self.native_script_origin_tail()?;
         for ordinal in 0..amount {
+            if remaining_capacity == 0 {
+                break;
+            }
             let random = advance_random(
                 self.config.seed ^ self.tick.rotate_left(23) ^ (ordinal as u64).rotate_left(41),
             );
@@ -12632,6 +13109,11 @@ impl Engine {
                     60,
                     (self.config.world_height - 60.0).round_ties_even() as i32,
                 );
+                // Cancelling the last eligible source still leaves the caller's
+                // two Random arguments on each remaining repopulation attempt.
+                if eligible.is_empty() {
+                    continue;
+                }
                 loop {
                     let count = classic_table.as_ref().map_or(self.species.len(), Vec::len);
                     let selected = source.integer(0, count as i32 - 1) as usize;
@@ -12645,30 +13127,54 @@ impl Engine {
             } else {
                 eligible[random as usize % eligible.len()]
             };
-            let template = self.species_templates[species_index]
-                .as_ref()
-                .unwrap()
-                .clone();
-            let position = self
-                .native_placement_position(SpeciesId(species_index as u32), advance_random(random));
-            let dna =
-                self.classic_native_start_dna(SpeciesId(species_index as u32), template.dna)?;
-            let id = self.spawn_native_script_robot(
-                dna,
-                SpeciesId(species_index as u32),
-                position,
-                origin.as_ref(),
-            )?;
-            self.apply_classic_start_actor(id, SpeciesId(species_index as u32))?;
+            let species = SpeciesId(species_index as u32);
+            if let Some(missing) = missing_sources.remove(&species_index) {
+                let lineage_id = self.species[species_index].lineage_id;
+                if !cancelled_repopulation_lineages
+                    .unwrap_or_default()
+                    .contains(&lineage_id)
+                {
+                    return Err(missing.missing_error());
+                }
+                let position = self.native_placement_position(species, advance_random(random));
+                self.cancel_native_script_robot(species, position)?;
+                self.species[species_index].reseed = false;
+                eligible.retain(|index| *index != species_index);
+                continue;
+            }
+            let (dna, initial_energy) = self.repopulation_source(species_index).unwrap();
+            let dna = dna.clone();
+            let position = self.native_placement_position(species, advance_random(random));
+            let dna = self.classic_native_start_dna(species, dna)?;
+            let id = self.spawn_native_script_robot(dna, species, position, origin.as_ref())?;
+            remaining_capacity -= 1;
+            self.apply_classic_start_actor(id, species)?;
             let robot = self.slots.get_mut(id)?;
-            robot.materials.energy = template.initial_energy as f32;
+            robot.materials.energy = initial_energy as f32;
             robot.materials.synchronize_energy();
             if self.native_random.is_none() {
-                robot.program.memory.write(MEM_NRG, template.initial_energy);
+                robot.program.memory.write(MEM_NRG, initial_energy);
             }
             self.stats.reseeds = self.stats.reseeds.saturating_add(1);
         }
         Ok(())
+    }
+
+    fn repopulation_source(&self, index: usize) -> Option<(&LegacyDna, i32)> {
+        let bound = self.bound_native_repopulation_source(self.species.get(index)?);
+        if let Some(template) = self.species_templates.get(index).and_then(Option::as_ref) {
+            // Original aggiungirob loads the species' file. Imported templates
+            // without source text were cloned from a live genome. A later
+            // explicit roster edit supplies its own authoritative source.
+            let dna = if template.source_text.is_some() {
+                &template.dna
+            } else {
+                bound.map_or(&template.dna, |(dna, _)| dna)
+            };
+            return Some((dna, template.initial_energy));
+        }
+        let (dna, start_energy) = bound?;
+        Some((dna, start_energy?))
     }
 
     fn decay_corpses_phase(&mut self) -> Result<(), EngineError> {
@@ -12858,8 +13364,6 @@ impl Engine {
         mut queues: LifecycleQueues,
         trace: &mut CycleRecorder,
     ) -> Result<(), EngineError> {
-        let birth_cycle = self.native_cycle_or_tick();
-        let runtime = SysvarRuntime::new();
         let deferred_deaths = if self.native_random.is_some() && !queues.births.is_empty() {
             std::mem::take(&mut queues.deaths)
         } else {
@@ -12926,9 +13430,99 @@ impl Engine {
             }
         }
         self.commit_native_deaths(native_deaths);
+        self.commit_pending_births(&queues.births, BirthCommitRoute::Cycle, trace)?;
+        if !deferred_deaths.is_empty() {
+            self.commit_lifecycle_queues(
+                LifecycleQueues {
+                    births: Vec::new(),
+                    deaths: deferred_deaths,
+                },
+                trace,
+            )?;
+        }
+        let mut counts = vec![0usize; self.species.len()];
+        for organism in self.slots.iter().filter_map(|slot| slot.organism.as_ref()) {
+            if organism.flags.corpse {
+                continue;
+            }
+            if let Some(count) = counts.get_mut(organism.identity.species.0 as usize) {
+                *count += 1;
+            }
+        }
+        let definitions = self.species.clone();
+        let templates = self.species_templates.clone();
+        let mut vegetable_population = self.vegetable_population();
+        for (species_index, definition) in definitions.iter().enumerate() {
+            if definition.vegetable
+                || !definition.reseed
+                || counts[species_index] >= definition.minimum_population
+            {
+                continue;
+            }
+            let Some(template) = templates.get(species_index).and_then(Option::as_ref) else {
+                continue;
+            };
+            let missing = definition.minimum_population - counts[species_index];
+            let available = self.available_robot_capacity();
+            let vegetable_available = if definition.vegetable {
+                self.config
+                    .vegetable_population_cap
+                    .saturating_sub(vegetable_population)
+            } else {
+                usize::MAX
+            };
+            for ordinal in 0..missing.min(available).min(vegetable_available) {
+                let serial = self
+                    .tick
+                    .wrapping_mul(1_103)
+                    .wrapping_add((species_index * 97 + ordinal) as u64);
+                let position = [
+                    (serial % 10_000) as f32 / 10_000.0 * self.config.world_width,
+                    (serial.wrapping_mul(7_919) % 10_000) as f32 / 10_000.0
+                        * self.config.world_height,
+                ];
+                let id = self.spawn_species_at_unpublished(
+                    template.dna.clone(),
+                    SpeciesId(species_index as u32),
+                    position,
+                )?;
+                let robot = self.slots.get_mut(id)?;
+                robot.materials.energy = template.initial_energy as f32;
+                robot.materials.synchronize_energy();
+                robot.program.memory.write(MEM_NRG, template.initial_energy);
+                self.stats.reseeds = self.stats.reseeds.saturating_add(1);
+                if definition.vegetable {
+                    vegetable_population += 1;
+                }
+            }
+        }
+        let slots = &self.slots;
+        self.ties
+            .retain(|tie| slot_id_valid(slots, tie.first) && slot_id_valid(slots, tie.second));
+        self.rebuild_native_tie_index();
+        if self.native_random.is_some() {
+            // ReproduceAndKill updates topology, not another UpdateTieAngles.
+            // Birth/fire commands after the source angle pass retain their VM
+            // geometry values until the next cycle.
+            self.refresh_tie_projections_impl(false, &HashMap::new(), false);
+        } else {
+            self.refresh_tie_projections();
+        }
+        Ok(())
+    }
+
+    fn commit_pending_births(
+        &mut self,
+        births: &[PendingBirth],
+        route: BirthCommitRoute,
+        trace: &mut CycleRecorder,
+    ) -> Result<Option<OrganismId>, EngineError> {
+        let birth_cycle = self.native_cycle_or_tick();
+        let runtime = SysvarRuntime::new();
         let mut available_births = self.available_robot_capacity();
         let mut vegetable_population = self.vegetable_population();
-        for mut birth in queues.births {
+        let mut last_child = None;
+        for mut birth in births.iter().copied() {
             if let Some(random) = self.native_random.as_mut()
                 && !birth.sexual
                 && birth.asexual_command > 0
@@ -12945,21 +13539,29 @@ impl Engine {
                 continue;
             };
             let species = parent_state.identity.species;
-            let vegetable_birth = self
-                .species
-                .get(species.0 as usize)
-                .is_some_and(|value| value.vegetable);
             let native = self.native_random.is_some();
+            let native_robot_info =
+                native && !birth.sexual && matches!(route, BirthCommitRoute::NativeRobotInfo);
+            let vegetable_birth = if native_robot_info {
+                // VB6 Reproduce uses the actor's Veg flag. Corpse conversion clears it.
+                parent_state.flags.vegetable
+            } else {
+                self.species
+                    .get(species.0 as usize)
+                    .is_some_and(|value| value.vegetable)
+            };
+            let energy_insufficient = parent_state.materials.energy <= 0.0;
             let body_too_small = if native || !birth.sexual {
                 parent_state.materials.body < 5.0
             } else {
                 parent_state.materials.body <= 2.0
             };
             if available_births == 0
-                || parent_state.flags.corpse
+                // Robot Info can call VB6 Reproduce on an existing corpse.
+                || (parent_state.flags.corpse && !native_robot_info)
                 || (!native && parent_state.flags.dead)
                 || !parent_state.flags.can_reproduce
-                || (!native && parent_state.materials.energy <= 0.0)
+                || (!native && energy_insufficient)
                 || body_too_small
                 || (!native
                     && vegetable_birth
@@ -12999,7 +13601,7 @@ impl Engine {
             }
             // Both VB6 reproduction routines test energy after the eager
             // population draw and before checking placement or creating a child.
-            if birth.percentage <= 0 || (native && parent_state.materials.energy <= 0.0) {
+            if birth.percentage <= 0 || (native && energy_insufficient) {
                 continue;
             }
 
@@ -13371,6 +13973,7 @@ impl Engine {
                 });
             }
             self.stats.births = self.stats.births.saturating_add(1);
+            last_child = Some(child);
             trace.queue_change(
                 CyclePhase::CommitBirthsDeaths,
                 child,
@@ -13380,84 +13983,7 @@ impl Engine {
                 self.stats.self_reproductions = self.stats.self_reproductions.saturating_add(1);
             }
         }
-        if !deferred_deaths.is_empty() {
-            self.commit_lifecycle_queues(
-                LifecycleQueues {
-                    births: Vec::new(),
-                    deaths: deferred_deaths,
-                },
-                trace,
-            )?;
-        }
-        let mut counts = vec![0usize; self.species.len()];
-        for organism in self.slots.iter().filter_map(|slot| slot.organism.as_ref()) {
-            if organism.flags.corpse {
-                continue;
-            }
-            if let Some(count) = counts.get_mut(organism.identity.species.0 as usize) {
-                *count += 1;
-            }
-        }
-        let definitions = self.species.clone();
-        let templates = self.species_templates.clone();
-        let mut vegetable_population = self.vegetable_population();
-        for (species_index, definition) in definitions.iter().enumerate() {
-            if definition.vegetable
-                || !definition.reseed
-                || counts[species_index] >= definition.minimum_population
-            {
-                continue;
-            }
-            let Some(template) = templates.get(species_index).and_then(Option::as_ref) else {
-                continue;
-            };
-            let missing = definition.minimum_population - counts[species_index];
-            let available = self.available_robot_capacity();
-            let vegetable_available = if definition.vegetable {
-                self.config
-                    .vegetable_population_cap
-                    .saturating_sub(vegetable_population)
-            } else {
-                usize::MAX
-            };
-            for ordinal in 0..missing.min(available).min(vegetable_available) {
-                let serial = self
-                    .tick
-                    .wrapping_mul(1_103)
-                    .wrapping_add((species_index * 97 + ordinal) as u64);
-                let position = [
-                    (serial % 10_000) as f32 / 10_000.0 * self.config.world_width,
-                    (serial.wrapping_mul(7_919) % 10_000) as f32 / 10_000.0
-                        * self.config.world_height,
-                ];
-                let id = self.spawn_species_at_unpublished(
-                    template.dna.clone(),
-                    SpeciesId(species_index as u32),
-                    position,
-                )?;
-                let robot = self.slots.get_mut(id)?;
-                robot.materials.energy = template.initial_energy as f32;
-                robot.materials.synchronize_energy();
-                robot.program.memory.write(MEM_NRG, template.initial_energy);
-                self.stats.reseeds = self.stats.reseeds.saturating_add(1);
-                if definition.vegetable {
-                    vegetable_population += 1;
-                }
-            }
-        }
-        let slots = &self.slots;
-        self.ties
-            .retain(|tie| slot_id_valid(slots, tie.first) && slot_id_valid(slots, tie.second));
-        self.rebuild_native_tie_index();
-        if self.native_random.is_some() {
-            // ReproduceAndKill updates topology, not another UpdateTieAngles.
-            // Birth/fire commands after the source angle pass retain their VM
-            // geometry values until the next cycle.
-            self.refresh_tie_projections_impl(false, &HashMap::new(), false);
-        } else {
-            self.refresh_tie_projections();
-        }
-        Ok(())
+        Ok(last_child)
     }
 
     fn mutation_phase(&mut self, context: MutationContext) {
@@ -14060,6 +14586,7 @@ impl Engine {
                         self.absolute_parent_id(organism),
                         &self.config,
                         self.native_cycle.is_some(),
+                        true,
                     )
                 })
             })
@@ -14120,6 +14647,8 @@ impl Engine {
             native_cycle: self.native_cycle,
             native_sun_on: self.native_sun_on(),
             native_f1_enabled: self.native_f1_enabled(),
+            gene_activation_meter: self.snapshot.gene_activation_meter.take(),
+            native_scene_palette: self.native_scene_palette,
             death_poffs_enabled: self.death_poffs_enabled,
             ordinary_restart_available: self.ordinary_restart_available(),
             ordinary_restart_on_extinction: self.ordinary_restart.enabled,
@@ -14175,6 +14704,12 @@ impl Engine {
                 "invalid trash compactor walls".into(),
             ));
         }
+        if let Some(recording) = &engine.native_graph_recording {
+            recording.validate()?;
+        }
+        if let Some(layout) = &engine.native_graph_layout {
+            layout.validate()?;
+        }
         // Reject process caches before migration or snapshot-derived ring indexing.
         engine.native_energy.validate().map_err(|error| {
             EngineError::InvalidSave(format!("invalid native energy cache: {error}"))
@@ -14191,6 +14726,7 @@ impl Engine {
                 "native cycle cannot precede -1".into(),
             ));
         }
+        engine.recover_older_native_scene_palette();
         if engine
             .native_population_census
             .is_some_and(|census| census.into_iter().any(|count| count > MAX_ROBOTS))
@@ -14200,7 +14736,9 @@ impl Engine {
             ));
         }
         // Older DB3S files retained native metadata before it was projected.
-        if (engine.native_f1.is_none() || engine.config.shape_drift.is_none())
+        if (engine.native_f1.is_none()
+            || engine.config.shape_drift.is_none()
+            || engine.config.native_cost_preset.is_none())
             && let Some(origin) = engine
                 .native_origin
                 .as_ref()
@@ -14212,6 +14750,9 @@ impl Engine {
             }
             if engine.config.shape_drift.is_none() {
                 engine.config.shape_drift = Some(native_io::shape_drift(&tail)?);
+            }
+            if engine.config.native_cost_preset.is_none() {
+                engine.config.native_cost_preset = Some(native_io::read_cost_preset(&tail)?);
             }
         }
         if !engine.native_obstacle_extents.is_empty() {
@@ -14320,6 +14861,24 @@ impl Engine {
     }
 }
 
+fn normalize_robot_tag(tag: &str) -> String {
+    // VB6 replacechars replaces ANSI bytes 0–31 and 127–254, retaining byte 255.
+    tag.chars()
+        .take(45)
+        .map(|ch| match ch {
+            ' '..='~' | 'ÿ' => ch,
+            _ => '?',
+        })
+        .collect()
+}
+
+fn synchronize_robot_dna_tag(robot: &mut RobotState, tag: &str) {
+    // Clearing the live description must also clear the DNA metadata fallback.
+    let dna = &mut robot.program.dna;
+    let (generation, mutations) = (dna.metadata().generation, dna.metadata().mutations);
+    dna.synchronize_runtime_metadata(generation, mutations, tag);
+}
+
 fn effective_robot_tag(robot: &RobotState) -> &str {
     if robot.identity.tag.is_empty() {
         &robot.program.dna.metadata().tag
@@ -14384,17 +14943,21 @@ fn native_cached_voluntary_movement(
     (impulse, crate::physics::native_full_magnitude(acceleration))
 }
 
-fn apply_restriction_column(robot: &mut RobotState, column: &RestrictionColumn) {
-    robot.kinematics.native_fixed_state = None;
+fn apply_common_restriction_flags(robot: &mut RobotState, column: &RestrictionColumn) {
     robot.flags.fixed = column.fixed_in_place;
     robot.counters.multibot_time = if column.kill_multibot { 210 } else { 0 };
-    robot.counters.disqualification = u8::from(column.kill_disqualified);
     robot.flags.can_see = !column.disable_vision;
     robot.flags.can_execute_dna = !column.disable_dna;
     robot.flags.can_reproduce = !column.disable_reproduction;
     robot.flags.can_receive_viruses = !column.virus_immune;
-    robot.flags.can_mutate = !column.disable_mutations;
     robot.flags.can_move = !column.disable_movement;
+}
+
+fn apply_restriction_column(robot: &mut RobotState, column: &RestrictionColumn) {
+    apply_common_restriction_flags(robot, column);
+    robot.kinematics.native_fixed_state = None;
+    robot.counters.disqualification = u8::from(column.kill_disqualified);
+    robot.flags.can_mutate = !column.disable_mutations;
     robot.flags.can_use_chloroplasts = !column.disable_chloroplasts;
     robot
         .program
@@ -14870,6 +15433,7 @@ fn snapshot_organism(
     parent_absolute_id: u64,
     config: &EngineConfig,
     native_flow: bool,
+    include_memory: bool,
 ) -> OrganismSnapshot {
     OrganismSnapshot {
         id,
@@ -14889,13 +15453,22 @@ fn snapshot_organism(
         private_variable_count: organism.program.private_variable_count,
         used_variables: organism.program.used_variables.clone(),
         occurrence_counts: organism.senses.occurrence_counts.clone(),
-        memory: organism
-            .program
-            .memory
-            .entries()
-            .map(|(address, value)| MemoryCellSnapshot { address, value })
-            .collect(),
+        memory: if include_memory {
+            organism
+                .program
+                .memory
+                .entries()
+                .map(|(address, value)| MemoryCellSnapshot { address, value })
+                .collect()
+        } else {
+            Vec::new()
+        },
         species: organism.identity.species,
+        founder_name: if native_flow {
+            organism.identity.species_file.clone()
+        } else {
+            String::new()
+        },
         vegetable: organism.flags.vegetable,
         parents: organism.identity.parents,
         parent_absolute_id,
@@ -16118,6 +16691,406 @@ mod tests {
     }
 
     #[test]
+    fn native_field_size_presets_follow_options_slider_breakpoints() {
+        for (preset, extent) in [
+            (1, [9237.0, 6928.0]),
+            (2, [16_000.0, 12_000.0]),
+            (12, [96_000.0, 72_000.0]),
+            (13, [192_000.0, 144_000.0]),
+            (25, [2_496_000.0, 1_872_000.0]),
+        ] {
+            assert_eq!(crate::config::native_field_dimensions(preset), Some(extent));
+        }
+        assert_eq!(crate::config::native_field_dimensions(0), None);
+        assert_eq!(crate::config::native_field_dimensions(26), None);
+    }
+
+    #[test]
+    fn live_field_size_preserves_geometry_until_the_normal_native_cycle() {
+        let mut world = Engine::new_native(EngineConfig {
+            world_width: 16_000.0,
+            world_height: 12_000.0,
+            fixed_bot_radii: true,
+            toroidal_world: false,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let robot = world
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [12_000.0, 9_000.0])
+            .unwrap();
+        world
+            .slots
+            .get_mut(robot)
+            .unwrap()
+            .program
+            .memory
+            .write(MEM_FIXED, 1);
+        world
+            .add_obstacle(Obstacle::new(1, [14_000.0, 8_000.0], [14_200.0, 8_200.0]))
+            .unwrap();
+        world
+            .add_teleporter(Teleporter::new(1, [800.0; 2], 60.0, [1_200.0; 2]))
+            .unwrap();
+        world.set_native_light_availability(0.125);
+        let old = world.snapshot().clone();
+        let old_rng = world.native_random.as_ref().unwrap().state();
+
+        world.set_live_field_size(5).unwrap();
+        assert_eq!(world.snapshot().world_size, [40_000.0, 30_000.0]);
+        assert_eq!(world.snapshot().tick, old.tick);
+        assert_eq!(world.snapshot().organisms, old.organisms);
+        assert_eq!(world.snapshot().obstacles, old.obstacles);
+        assert_eq!(world.snapshot().teleporters, old.teleporters);
+        assert_eq!(world.memory_at(robot, 219).unwrap(), 12_000);
+        assert_eq!(world.native_random.as_ref().unwrap().state(), old_rng);
+        assert_eq!(world.native_light_availability(), 0.125);
+        assert_eq!(
+            world.native_buckets.initialized_extent(),
+            Some([16_000.0, 12_000.0])
+        );
+
+        let mut world = crate::SaveFile::decode(&crate::SaveFile::encode(&world).unwrap()).unwrap();
+        assert_eq!(world.config.native_field_size, Some(5));
+        world.tick().unwrap();
+        assert_eq!(world.memory_at(robot, 219).unwrap(), 9600);
+        assert_eq!(world.memory_at(robot, 217).unwrap(), 9000);
+        let area = (60.0_f64.powi(2) * f64::from(std::f32::consts::PI)) as f32;
+        assert_eq!(
+            world.native_light_availability(),
+            f64::from(area) / (1_200_000_000.0 - 40_000.0)
+        );
+        assert_eq!(
+            world.native_buckets.initialized_extent(),
+            Some([16_000.0, 12_000.0])
+        );
+
+        let native = world.export_native_sim().unwrap();
+        let file = crate::native_binary::NativeRecordFile::decode(&native).unwrap();
+        let tail = crate::native_binary::NativeSimulationTail::decode(&file.tail).unwrap();
+        assert_eq!(tail.integer("field_size").unwrap(), 5);
+        assert_eq!(tail.integer("field_width").unwrap(), 40_000);
+        assert_eq!(tail.integer("field_height").unwrap(), 30_000);
+        let mut imported = Engine::from_native_sim(&native).unwrap();
+        assert_eq!(imported.config.native_field_size, Some(5));
+        imported.synchronize_native_buckets();
+        assert_eq!(
+            imported.native_buckets.initialized_extent(),
+            Some([40_000.0, 30_000.0])
+        );
+
+        world.set_live_field_size(1).unwrap();
+        assert_eq!(world.snapshot().world_size, [9237.0, 6928.0]);
+        assert_eq!(
+            world.robot_state(robot).unwrap().kinematics.position,
+            [12_000.0, 9_000.0]
+        );
+        assert_eq!(world.snapshot().obstacles[0].minimum, [14_000.0, 8_000.0]);
+        world.tick().unwrap();
+        assert_eq!(
+            world.robot_state(robot).unwrap().kinematics.position,
+            [9177.0, 6868.0]
+        );
+        let obstacle = &world.snapshot().obstacles[0];
+        assert_ne!(obstacle.minimum, [14_000.0, 8_000.0]);
+        assert_eq!(
+            [
+                obstacle.maximum[0] - obstacle.minimum[0],
+                obstacle.maximum[1] - obstacle.minimum[1]
+            ],
+            [200.0, 200.0]
+        );
+        assert_eq!(
+            world.native_buckets.initialized_extent(),
+            Some([16_000.0, 12_000.0])
+        );
+
+        world.native_f1 = Some(true);
+        assert!(world.set_live_field_size(2).is_err());
+        assert_eq!(world.config.native_field_size, Some(1));
+        assert_eq!(world.snapshot().world_size, [9237.0, 6928.0]);
+    }
+
+    #[test]
+    fn native_cost_preset_roundtrips_independently_of_the_saved_coefficients() {
+        use crate::native_binary::{NativeRecordFile, NativeSimulationTail, NativeValue};
+
+        fn tail(bytes: &[u8]) -> NativeSimulationTail {
+            let file = NativeRecordFile::decode(bytes).unwrap();
+            NativeSimulationTail::decode(&file.tail).unwrap()
+        }
+
+        let archive = include_bytes!("../tests/fixtures/db24832-original-user.sim");
+        let mut file = NativeRecordFile::decode(archive).unwrap();
+        let mut source = NativeSimulationTail::decode(&file.tail).unwrap();
+        source
+            .set_value("cost_radio", NativeValue::Word(0))
+            .unwrap();
+        let mut array = vec![0; 71 * 4];
+        let opaque = 69 * 4..70 * 4;
+        array[opaque.clone()].copy_from_slice(&0.125_f32.to_le_bytes());
+        source
+            .set_value("costs", NativeValue::Bytes(array))
+            .unwrap();
+        file.tail = source.encode().unwrap();
+
+        let mut world = Engine::from_native_sim(&file.encode().unwrap()).unwrap();
+        assert_eq!(world.configuration().native_cost_preset, Some(0));
+        let costs = world.cost_settings().clone();
+        world.dynamic_cost_state.active_multiplier = Some(0.625);
+        let before = tail(&world.export_native_sim().unwrap());
+        assert_eq!(before.integer("cost_radio").unwrap(), 0);
+        assert_eq!(
+            before.bytes("costs").unwrap()[opaque.clone()],
+            0.125_f32.to_le_bytes()
+        );
+
+        world
+            .update_cost_settings_with_preset(None, Some(2))
+            .unwrap();
+        assert_eq!(world.cost_settings(), &costs);
+        assert_eq!(world.dynamic_cost_state.active_multiplier, Some(0.625));
+        assert_eq!(
+            world.configuration_view().unwrap()["config"]["native_cost_preset"],
+            2
+        );
+        let after = tail(&world.export_native_sim().unwrap());
+        assert_eq!(after.integer("cost_radio").unwrap(), 2);
+        assert_eq!(
+            after.bytes("costs").unwrap(),
+            before.bytes("costs").unwrap()
+        );
+        let restored = crate::SaveFile::decode(&crate::SaveFile::encode(&world).unwrap()).unwrap();
+        assert_eq!(restored.configuration().native_cost_preset, Some(2));
+        assert_eq!(restored.cost_settings(), &costs);
+        assert_eq!(restored.dynamic_cost_state.active_multiplier, Some(0.625));
+
+        // An older Modern save retained the source selector but did not project it.
+        world.config.native_cost_preset = None;
+        let restored = crate::SaveFile::decode(&crate::SaveFile::encode(&world).unwrap()).unwrap();
+        assert_eq!(restored.configuration().native_cost_preset, Some(0));
+        assert_eq!(restored.cost_settings(), &costs);
+    }
+
+    #[test]
+    fn native_cost_preset_keeps_the_prior_modern_archive_default_and_legacy_invalid_default() {
+        use crate::native_binary::{NativeRecordFile, NativeSimulationTail, NativeValue};
+
+        let archive = include_bytes!("../tests/fixtures/db3s_v2_phase1.bin");
+        let world = crate::SaveFile::decode(archive).unwrap();
+        assert_eq!(world.configuration().native_cost_preset, None);
+        assert!(
+            world.configuration_view().unwrap()["config"]
+                .get("native_cost_preset")
+                .is_none()
+        );
+
+        let original = include_bytes!("../tests/fixtures/db24832-original-user.sim");
+        let archived = Engine::from_native_sim(original).unwrap();
+        assert_eq!(archived.configuration().native_cost_preset, Some(2));
+        assert_eq!(archived.cost_settings().movement, 0.0);
+        assert_eq!(archived.cost_settings().global_multiplier, 1.0);
+        assert_eq!(archived.cost_settings().dynamic_sensitivity, 50.0);
+        let mut file = NativeRecordFile::decode(original).unwrap();
+        let mut tail = NativeSimulationTail::decode(&file.tail).unwrap();
+        tail.set_value("cost_radio", NativeValue::Word(8)).unwrap();
+        file.tail = tail.encode().unwrap();
+        let world = Engine::from_native_sim(&file.encode().unwrap()).unwrap();
+        assert_eq!(world.configuration().native_cost_preset, Some(2));
+    }
+
+    #[test]
+    fn native_redraw_reproduces_original_wall_and_newborn_position_words() {
+        let mut world = Engine::new_native(EngineConfig {
+            world_width: 16_000.0,
+            world_height: 12_000.0,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        // Y position, velocity, actual velocity, and original saved Y from
+        // robot 321 at cycle 328 and newborn 374 at cycle 330.
+        let samples = [
+            (0x410b_aab8, 0xc252_44b9, 0x4090_e220, 0x410b_aabc),
+            (0x4412_3a39, 0x4225_ab20, 0x41b7_4190, 0x4412_3a3a),
+        ];
+        let ids: Vec<_> = samples
+            .iter()
+            .enumerate()
+            .map(|(index, &(position, velocity, actual, _))| {
+                let id = world
+                    .spawn_at(
+                        LegacyDna::parse("stop").unwrap(),
+                        [500.0 + index as f32 * 5_000.0, f32::from_bits(position)],
+                    )
+                    .unwrap();
+                let kinematics = &mut world.slots.get_mut(id).unwrap().kinematics;
+                kinematics.velocity[1] = f32::from_bits(velocity);
+                kinematics.actual_velocity[1] = f32::from_bits(actual);
+                id
+            })
+            .collect();
+
+        world.native_redraw();
+
+        for (id, &(_, velocity, actual, expected)) in ids.iter().zip(&samples) {
+            let kinematics = &world.slots.get(*id).unwrap().kinematics;
+            assert_eq!(kinematics.position[1].to_bits(), expected);
+            assert_eq!(kinematics.velocity[1].to_bits(), velocity);
+            assert_eq!(kinematics.actual_velocity[1].to_bits(), actual);
+        }
+        assert_eq!(world.snapshot.tick, 0);
+        assert_eq!(world.snapshot.native_cycle, Some(-1));
+        assert_eq!(
+            world.snapshot.organisms[0].position[1].to_bits(),
+            samples[0].3
+        );
+
+        // The same command on a world without the native clock is inert.
+        world.native_cycle = None;
+        let kinematics = &mut world.slots.get_mut(ids[0]).unwrap().kinematics;
+        kinematics.position[1] = f32::from_bits(samples[0].0);
+        world.native_redraw();
+        assert_eq!(
+            world.slots.get(ids[0]).unwrap().kinematics.position[1].to_bits(),
+            samples[0].0
+        );
+    }
+
+    #[test]
+    fn native_restriction_overwrites_edit_existing_robots_by_vegetable_flag() {
+        let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+        world.native_f1 = Some(true);
+        let animal_species = world.register_species(SpeciesDefinition {
+            name: "Reseeded animal".into(),
+            reseed: true,
+            restrictions: Some(RestrictionColumn {
+                fixed_in_place: true,
+                ..Default::default()
+            }),
+            ..Default::default()
+        });
+        let vegetable_species = world.register_species(SpeciesDefinition {
+            name: "Non-reseeded vegetable".into(),
+            vegetable: true,
+            ..Default::default()
+        });
+        let dna = LegacyDna::parse("start stop").unwrap();
+        let animal = world
+            .spawn_species_at(dna.clone(), animal_species, [500.0; 2])
+            .unwrap();
+        let vegetable = world
+            .spawn_species_at(dna.clone(), vegetable_species, [600.0; 2])
+            .unwrap();
+        let corpse = world.spawn_at(dna.clone(), [700.0; 2]).unwrap();
+        let robot = world.slots.get_mut(corpse).unwrap();
+        robot.flags.corpse = true;
+        robot.counters.disqualification = 1;
+
+        let robot = world.slots.get_mut(animal).unwrap();
+        robot.counters.disqualification = 3;
+        robot.kinematics.velocity = [3.0, 4.0];
+        let robot = world.slots.get_mut(vegetable).unwrap();
+        robot.counters.disqualification = 3;
+        robot.flags.no_chloroplasts = true;
+        robot.flags.can_use_chloroplasts = false;
+        robot.kinematics.velocity = [5.0, 6.0];
+        robot.kinematics.actual_velocity = [7.0, 8.0];
+        robot.kinematics.pending_velocity = [9.0, 10.0];
+        robot.kinematics.independent_impulse = [11.0, 12.0];
+        robot.kinematics.resistive_impulse = [13.0, 14.0];
+        let mut expected_kinematics = robot.kinematics.clone();
+        expected_kinematics.native_fixed_state = Some(true);
+        expected_kinematics.velocity = [0.0; 2];
+
+        let options = RestrictionOptions {
+            non_repopulating: RestrictionColumn {
+                disable_chloroplasts: true,
+                disable_dna: true,
+                disable_mutations: true,
+                virus_immune: true,
+                ..Default::default()
+            },
+            repopulating: RestrictionColumn {
+                fixed_in_place: true,
+                kill_disqualified: true,
+                kill_multibot: true,
+                ..Default::default()
+            },
+        };
+        world.apply_native_restriction_overwrites(options).unwrap();
+        assert_eq!(world.snapshot().tick, 0);
+        assert_eq!(
+            world.snapshot().restriction_options,
+            RestrictionOptions::default()
+        );
+
+        let robot = world.slots.get(animal).unwrap();
+        assert_eq!(robot.counters.disqualification, 3);
+        assert!(!robot_is_fixed(robot, true));
+        assert_eq!(robot.program.memory.read(MEM_FIXED), 1);
+        assert_eq!(robot.kinematics.velocity, [3.0, 4.0]);
+        assert!(robot.flags.no_chloroplasts);
+        assert!(!robot.flags.can_use_chloroplasts);
+        assert!(!robot.flags.can_execute_dna);
+        assert!(!robot.flags.can_mutate);
+        assert!(robot.flags.virus_immune);
+        assert!(!robot.flags.can_receive_viruses);
+
+        let robot = world.slots.get(vegetable).unwrap();
+        assert_eq!(robot.counters.disqualification, 1);
+        assert_eq!(robot.counters.multibot_time, 210);
+        assert_eq!(robot.program.memory.read(MEM_FIXED), 1);
+        assert_eq!(robot.kinematics, expected_kinematics);
+        assert!(robot.flags.no_chloroplasts);
+        assert!(!robot.flags.can_use_chloroplasts);
+        assert!(robot.flags.can_execute_dna);
+        assert!(robot.flags.can_mutate);
+        let robot = world.slots.get(corpse).unwrap();
+        assert_eq!(robot.counters.disqualification, 0);
+        assert!(robot.flags.no_chloroplasts);
+
+        let later = world
+            .spawn_species_at(dna, animal_species, [800.0; 2])
+            .unwrap();
+        let robot = world.slots.get(later).unwrap();
+        assert!(robot.flags.fixed);
+        assert!(robot.flags.can_execute_dna);
+        assert!(!robot.flags.no_chloroplasts);
+    }
+
+    #[test]
+    fn native_restriction_overwrites_preserve_mutation_switches_in_restart_modes() {
+        let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+        let id = world
+            .spawn_at(LegacyDna::parse("start stop").unwrap(), [500.0; 2])
+            .unwrap();
+        world.local_mode.status = LocalModeStatus::Running;
+        world.local_mode.evolution = Some(
+            crate::EvolutionState::new(
+                crate::EvolutionConfig::default(),
+                vec![crate::EvolutionGenome {
+                    dna: LegacyDna::parse("start 10 .up store stop").unwrap(),
+                    mutation_profile: StandardMutationProfile::default(),
+                }],
+            )
+            .unwrap(),
+        );
+        assert!(world.local_mode.has_active_restart_mode());
+        world
+            .apply_native_restriction_overwrites(RestrictionOptions {
+                non_repopulating: RestrictionColumn {
+                    disable_dna: true,
+                    disable_mutations: true,
+                    ..Default::default()
+                },
+                ..Default::default()
+            })
+            .unwrap();
+        let robot = world.slots.get(id).unwrap();
+        assert!(robot.flags.can_mutate);
+        assert!(!robot.flags.can_execute_dna);
+    }
+
+    #[test]
     fn render_readout_publication_preserves_native_edge_positions() {
         let original = include_bytes!("../tests/fixtures/db24832-original-user.sim");
         let mut world = Engine::from_native_sim(original).unwrap();
@@ -17035,6 +18008,27 @@ mod native_publication55_tests {
         world
             .spawn_at(LegacyDna::parse("stop").unwrap(), position)
             .unwrap()
+    }
+
+    #[test]
+    fn save_dna_rename_is_ignored_during_a_restart_mode() {
+        let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+        let id = inert(&mut world, [500.0; 2]);
+        let before = world.organism(id).unwrap();
+        world.local_mode.status = LocalModeStatus::Running;
+        world.local_mode.evolution = Some(
+            crate::EvolutionState::new(
+                crate::EvolutionConfig::default(),
+                vec![crate::EvolutionGenome {
+                    dna: LegacyDna::parse("start 10 .up store stop").unwrap(),
+                    mutation_profile: StandardMutationProfile::default(),
+                }],
+            )
+            .unwrap(),
+        );
+        assert!(world.local_mode.has_active_restart_mode());
+        assert!(!world.rename_robot_founder(id, "Oracle,movement.txt".to_owned()));
+        assert_eq!(world.organism(id).unwrap(), before);
     }
 
     #[test]

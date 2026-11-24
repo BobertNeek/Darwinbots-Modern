@@ -123,6 +123,37 @@ mod tests {
     }
 
     #[test]
+    fn signed_manual_cost_x_is_independent_of_the_native_dynamic_rule() {
+        let costs = DnaCosts {
+            global_multiplier: -0.625,
+            ..Default::default()
+        };
+        let mut portable = Engine::new(EngineConfig::testing()).unwrap();
+        portable.native_random = None;
+        assert!(portable.update_cost_settings(costs.clone()).is_err());
+        assert_eq!(portable.cost_settings().global_multiplier, 1.0);
+        portable
+            .update_cost_settings(DnaCosts {
+                dynamic_allow_negative: true,
+                ..costs.clone()
+            })
+            .unwrap();
+
+        let mut native = Engine::new_native(EngineConfig::testing()).unwrap();
+        native.update_cost_settings(costs).unwrap();
+        native.update_dynamic_cost_state();
+        assert_eq!(native.active_dna_costs().global_multiplier, -0.625);
+        assert!(!native.cost_settings().dynamic_allow_negative);
+
+        let modern = crate::SaveFile::encode(&native).unwrap();
+        let resumed = crate::SaveFile::decode(&modern).unwrap();
+        assert_eq!(resumed.cost_settings().global_multiplier, -0.625);
+        let original = Engine::from_native_sim(&native.export_native_sim().unwrap()).unwrap();
+        assert_eq!(original.cost_settings().global_multiplier, -0.625);
+        assert!(!original.cost_settings().dynamic_allow_negative);
+    }
+
+    #[test]
     fn history_shifts_each_tenth_cycle_and_low_water_saves_the_adjusted_cost() {
         let mut c = costs();
         c.dynamic_lower_zero_threshold = 200.0;

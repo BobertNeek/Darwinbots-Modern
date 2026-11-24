@@ -23,6 +23,7 @@ public sealed record WorldSetupOptions
     public StartingMode StartingMode { get; init; } = StartingMode.StarterBotsAndVegetables;
     public ZerobotSustenance ZerobotSustenance { get; init; } = ZerobotSustenance.DisabledMetabolism;
     public bool AutomaticZerobotProgression { get; init; } = true;
+    public bool OrdinaryRestartOnExtinction { get; init; }
     public string Backend { get; init; } = "Auto";
     public ulong Seed { get; init; } = 1;
     [System.Text.Json.Serialization.JsonIgnore]
@@ -37,6 +38,9 @@ public sealed record WorldSetupOptions
     public int VegetablePopulationCap { get; init; } = 500;
     public float WorldWidth { get; init; } = 16_000f;
     public float WorldHeight { get; init; } = 12_000f;
+    public int? NativeFieldSize { get; init; }
+    public Db2CostPreset? NativeCostPreset { get; init; }
+    public GlobalSimulationCostSettings? SimulationCosts { get; init; }
     public int MetabolismCost { get; init; }
     public int VegetableEnergyPerTick { get; init; }
     public int SunlightEnergy { get; init; } = 100;
@@ -65,8 +69,19 @@ public sealed record WorldSetupOptions
     public uint TicksPerUpdate { get; init; } = 1;
     public IReadOnlyList<SpeciesImport> Species { get; init; } = [];
     public GlobalSettings GlobalSettings { get; init; } = new();
+    [System.Text.Json.Serialization.JsonIgnore]
+    public GlobalSimulationCostSettings EffectiveSimulationCosts => SimulationCosts ?? GlobalSettings.Costs;
     public string? LoadSavePath { get; init; }
     public bool IsAutosaveRecovery { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool ResumeRestartMode { get; init; }
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool EnableOrdinaryRestartOnStart => OrdinaryRestartOnExtinction
+        && LoadSavePath is null
+        && StartingMode == StartingMode.StarterBotsAndVegetables
+        && Species.Count > 0
+        && !LegacySettingsAdapter.ReadRetainedFlag(LegacySettingsFields, LegacySettingsAdapter.ContestModeOffset);
 
     public int EffectiveMetabolismCost => StartingMode == StartingMode.StarterBotsAndVegetables
         ? MetabolismCost

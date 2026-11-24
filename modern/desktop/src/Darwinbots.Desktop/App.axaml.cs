@@ -38,26 +38,59 @@ public sealed partial class App : Application
     {
         if (CreateSafeModeBackupWindow(arguments, storage) is { } viewer) return viewer;
 
-        MainWindow OpenWorld(WorldSetupOptions options) => new(arguments, options, NativeEngineClientFactory.Instance, storage);
+        MainWindow OpenWorld(WorldSetupOptions options, bool? keepGraphsUpdatingOnClose = null, bool? newSeedOnLoad = null, bool? nativeOldColors = null) =>
+            new(arguments, options, NativeEngineClientFactory.Instance, storage, null, keepGraphsUpdatingOnClose, newSeedOnLoad, nativeOldColors);
+        if (arguments.Length == 0 && storage.FindRestartContinuation() is { } continuation)
+        {
+            var globals = SetupWindow.ReadProfileSettings(storage, out _);
+            var simulation = OpenWorld(new WorldSetupOptions
+            {
+                LoadSavePath = continuation,
+                ResumeRestartMode = true,
+                GlobalSettings = globals,
+            });
+            simulation.RestartContinuationFailed += message =>
+            {
+                var fallback = OpenSetup(message);
+                setMainWindow(fallback);
+                fallback.Show();
+                simulation.Close();
+            };
+            return simulation;
+        }
+
         var (requestedSave, error) = ReadStartupSaveArgument(arguments);
         if (requestedSave is not null)
         {
             var globals = SetupWindow.ReadProfileSettings(storage, out _);
             if (FindStartupSave(requestedSave, globals.Main.MainDirectory) is { } path)
-                return OpenWorld(new WorldSetupOptions { LoadSavePath = path, GlobalSettings = globals });
+                return OpenWorld(new WorldSetupOptions
+                {
+                    LoadSavePath = path, GlobalSettings = globals,
+                    Vegetation = Db2VegetationOptions.Default with
+                    {
+                        StartChloroplasts = globals.Main.StartChloroplasts ?? Db2VegetationOptions.Default.StartChloroplasts,
+                    },
+                });
             error = $"Simulation file not found: {requestedSave}";
         }
 
-        var setup = new SetupWindow(storage, allowLastExitResume: arguments.Length == 0);
-        if (error is not null) setup.ShowStartupLoadError(error);
-        setup.WorldCreated += options =>
+        return OpenSetup(error);
+
+        SetupWindow OpenSetup(string? startupError)
         {
-            var simulation = OpenWorld(options);
-            setMainWindow(simulation);
-            simulation.Show();
-            setup.Close();
-        };
-        return setup;
+            var setup = new SetupWindow(storage, allowLastExitResume: arguments.Length == 0,
+                loadLastExitSettings: arguments.Length == 0, stageNativeAppearance: SetupWindow.CreateNativeAppearanceProvider());
+            if (startupError is not null) setup.ShowStartupLoadError(startupError);
+            setup.WorldCreated += options =>
+            {
+                var simulation = OpenWorld(options, setup.InitialKeepGraphsUpdatingOnClose, setup.InitialNewSeedOnLoad, setup.InitialOldColors);
+                setMainWindow(simulation);
+                simulation.Show();
+                setup.Close();
+            };
+            return setup;
+        }
     }
 
     private static (string? RequestedPath, string? Error) ReadStartupSaveArgument(string[] arguments)

@@ -321,6 +321,8 @@ impl Engine {
 
                     // Keep the existing transaction path for configured file exchange.
                     let mut candidate = SaveFile::decode(&SaveFile::encode(self)?)?;
+                    candidate.inherit_gene_activation_watch(self);
+                    candidate.inherit_native_post_dna_memory_watch(self);
                     let imported = candidate.apply_file_teleporter_payload(&bytes, position, true);
                     if imported.is_ok_and(|count| count > 0)
                         && transfers.claim_input(&path, &bytes).is_ok()
@@ -329,6 +331,10 @@ impl Engine {
                         std::mem::swap(&mut candidate.physics, &mut self.physics);
                         std::mem::swap(&mut candidate.recorded_deaths, &mut self.recorded_deaths);
                         std::mem::swap(&mut candidate.player_bot_input, &mut self.player_bot_input);
+                        std::mem::swap(
+                            &mut candidate.native_console_gene_capture,
+                            &mut self.native_console_gene_capture,
+                        );
                         *self = candidate;
                         received = received.saturating_add(1);
                     }
@@ -845,8 +851,10 @@ mod tests {
         ))
         .unwrap();
         let tie = source.ties[0].clone();
+        // Start from an original numbered DBO so importing it does not
+        // produce a self-directed row through VB6's in-place remapping.
         let group = source
-            .export_native_organisms(&[tie.first, tie.second])
+            .export_original_organism_file(&[tie.first, tie.second])
             .unwrap();
         source = Engine::new_native(EngineConfig::testing()).unwrap();
         source

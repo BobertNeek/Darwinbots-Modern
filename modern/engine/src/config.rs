@@ -270,6 +270,8 @@ pub struct EngineConfig {
     pub vegetable_population_cap: usize,
     pub world_width: f32,
     pub world_height: f32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub native_field_size: Option<u8>,
     #[serde(default = "default_toroidal_world")]
     pub toroidal_world: bool,
     #[serde(default)]
@@ -310,6 +312,8 @@ pub struct EngineConfig {
     pub recording: RecordingSettings,
     #[serde(default)]
     pub dna_costs: DnaCosts,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub native_cost_preset: Option<u8>,
     #[serde(default)]
     pub advanced_mutation: AdvancedMutationSettings,
     #[serde(default)]
@@ -343,6 +347,7 @@ impl Default for EngineConfig {
             vegetable_population_cap: default_vegetable_population_cap(),
             world_width: 16_000.0,
             world_height: 12_000.0,
+            native_field_size: None,
             toroidal_world: default_toroidal_world(),
             fixed_bot_radii: false,
             shapes_visible: false,
@@ -364,6 +369,7 @@ impl Default for EngineConfig {
             vegetation: VegetationSettings::default(),
             recording: RecordingSettings::default(),
             dna_costs: DnaCosts::default(),
+            native_cost_preset: None,
             advanced_mutation: AdvancedMutationSettings::default(),
             auto_speciation: false,
             speciation_genetic_distance_percent: default_speciation_genetic_distance_percent(),
@@ -426,4 +432,14 @@ impl EngineConfig {
             ..Self::default()
         }
     }
+}
+
+pub(crate) fn native_field_dimensions(preset: u8) -> Option<[f32; 2]> {
+    let scale = match preset {
+        1 => return Some([9237.0, 6928.0]),
+        2..=12 => f32::from(preset),
+        13..=25 => f32::from(preset - 12) * 24.0,
+        _ => return None,
+    };
+    Some([8_000.0 * scale, 6_000.0 * scale])
 }

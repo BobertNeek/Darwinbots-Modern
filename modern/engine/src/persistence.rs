@@ -11,6 +11,23 @@ impl SaveFile {
         Ok(Self::frame_payload(payload))
     }
 
+    pub(crate) fn encode_without_restart_mode(engine: &Engine) -> Result<Vec<u8>, EngineError> {
+        let mut value = engine.db3s_v3_payload()?;
+        let object = value.as_object_mut().ok_or_else(|| {
+            EngineError::Invariant("serialized engine must be an object".to_owned())
+        })?;
+        // A normal last-exit save preserves SimOpts.F1 but carries no external restart marker.
+        object.insert(
+            "native_f1".into(),
+            serde_json::json!(engine.snapshot().native_f1_enabled),
+        );
+        object.insert(
+            "local_mode".into(),
+            serde_json::to_value(crate::modes::LocalModeState::default())?,
+        );
+        Ok(Self::frame_payload(serde_json::to_vec(&value)?))
+    }
+
     pub fn encode_without_mutations(engine: &Engine) -> Result<Vec<u8>, EngineError> {
         let mut value = engine.db3s_v3_payload()?;
         let object = value.as_object_mut().ok_or_else(|| {
@@ -74,12 +91,19 @@ impl SaveFile {
     }
 
     pub fn decode(bytes: &[u8]) -> Result<Engine, EngineError> {
+        Self::decode_with_native_seed(bytes, 0)
+    }
+
+    pub(crate) fn decode_with_native_seed(
+        bytes: &[u8],
+        native_seed: i32,
+    ) -> Result<Engine, EngineError> {
         if !bytes.starts_with(Self::MAGIC) && bytes.len() >= 2 {
             let count = i16::from_le_bytes([bytes[0], bytes[1]]);
             if (0..=crate::MAX_ROBOTS as i16).contains(&count)
                 && bytes.len() >= 2 + count as usize * 9_321
             {
-                return Engine::from_native_sim(bytes);
+                return Engine::from_native_sim_with_seed(bytes, native_seed);
             }
         }
         if bytes.len() < 10 || &bytes[..4] != Self::MAGIC {

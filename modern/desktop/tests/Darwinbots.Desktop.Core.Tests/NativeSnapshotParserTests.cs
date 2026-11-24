@@ -5,6 +5,32 @@ namespace Darwinbots.Desktop.Core.Tests;
 
 public sealed class NativeSnapshotParserTests
 {
+    [Theory]
+    [InlineData("", null)]
+    [InlineData(",\"founder_name\":null", null)]
+    [InlineData(",\"founder_name\":\"Oracle, Mixed Case.TXT\"", "Oracle, Mixed Case.TXT")]
+    public void FounderFilenameRemainsOptionalAndPreservesExactSpelling(string member, string? expected)
+    {
+        const string start = """
+            {"tick":1,"native_cycle":1,"organisms":[
+              {"id":{"slot":3,"generation":2},"position":[5,8],"velocity":[0,0]
+            """;
+        var result = NativeSnapshotParser.Parse(start + member + "}]}", "CPU");
+        var robot = Assert.Single(result.Organisms);
+        Assert.Equal(new OrganismKey(3, 2), new OrganismKey(robot.Slot, robot.Generation));
+        Assert.Equal(expected, robot.FounderName);
+    }
+
+    [Fact]
+    public void OriginalF1FlagIsReadAndOlderSnapshotsDefaultOff()
+    {
+        var contest = NativeSnapshotParser.Parse("""{"tick":0,"organisms":[],"native_f1_enabled":true}""", "CPU");
+        var older = NativeSnapshotParser.Parse("""{"tick":0,"organisms":[]}""", "CPU");
+
+        Assert.True(contest.NativeF1Enabled);
+        Assert.False(older.NativeF1Enabled);
+    }
+
     [Fact]
     public void OrdinaryRestartStateUsesNativeFieldsAndDefaultsToUnavailableForOlderSnapshots()
     {
@@ -374,6 +400,43 @@ public sealed class NativeSnapshotParserTests
         Assert.Equal(0, snapshot.RenderInstances[0].Aim);
         Assert.Equal(0UL, snapshot.RenderInstances[0].LineageId);
         Assert.Equal(4, snapshot.RenderInstances[0].Skin.Length);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void PreservesNativeSkinEndpointsAndSignedAnglesInBothSnapshotViews(bool native)
+    {
+        const string skin = """
+            [{ "radius": 0, "angle": 314 }, { "radius": 1, "angle": -942 },
+             { "radius": 0.1, "angle": -386 }, { "radius": 0.9, "angle": 0 }]
+            """;
+        var json = $$"""
+            {
+              "tick": 8,
+              "native_cycle": {{(native ? "8" : "null")}},
+              "organisms": [{
+                "id": { "slot": 3, "generation": 2 },
+                "position": [100,200], "velocity": [0,0], "energy": 900, "age": 4,
+                "phenotype": { "skin": {{skin}} }
+              }],
+              "render_instances": [{ "slot": 3, "generation": 2, "position": [100,200], "radius": 10, "skin": {{skin}} }]
+            }
+            """;
+        var snapshot = NativeSnapshotParser.Parse(json, "CPU");
+        SkinPointSnapshot[] expected = native
+            ? [new(0f, 314), new(1f, -942), new(0.1f, -386), new(0.9f, 0)]
+            : [new(0.15f, 314), new(0.82f, 315), new(0.15f, 871), new(0.82f, 0)];
+        Assert.Equal(expected, Assert.Single(snapshot.Organisms).Phenotype.Skin);
+        var rendered = Assert.Single(snapshot.RenderInstances);
+        Assert.Equal(expected, rendered.Skin);
+        if (native)
+        {
+            var points = OrganismVisualGeometry.SkinPoints(rendered.Skin, rendered.Radius, rendered.Aim);
+            Assert.Equal(default(VisualPoint), points[0]);
+            Assert.Equal(10 * MathF.Cos(6.28f), points[1].X, 4);
+            Assert.Equal(-10 * MathF.Sin(6.28f), points[1].Y, 4);
+        }
     }
 
     [Fact]

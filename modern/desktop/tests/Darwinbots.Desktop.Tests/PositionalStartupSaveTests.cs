@@ -11,10 +11,12 @@ namespace Darwinbots.Desktop.Tests;
 public sealed class PositionalStartupSaveTests
 {
     [Theory]
-    [InlineData(true, false)]
-    [InlineData(true, true)]
-    [InlineData(false, false)]
-    public async Task APositionalSaveStartsInTheLoadedSimulation(bool legacyFormat, bool useLegacySaveDirectory)
+    [InlineData(true, false, null)]
+    [InlineData(true, false, 7280)]
+    [InlineData(true, true, 7280)]
+    [InlineData(false, false, 7280)]
+    public async Task APositionalSaveStartsInTheLoadedSimulation(bool legacyFormat, bool useLegacySaveDirectory,
+        int? globalStartChloroplasts)
     {
         var profile = Directory.CreateTempSubdirectory("darwinbots-positional-save-");
         try
@@ -22,13 +24,17 @@ public sealed class PositionalStartupSaveTests
             var legacyDirectory = Path.Combine(profile.FullName, "Legacy Main Directory");
             var saves = Directory.CreateDirectory(Path.Combine(legacyDirectory, "Saves"));
             var storage = new AvaloniaDesktopStorageService(profile.FullName);
-            await storage.SaveGlobalSettingsAsync(new GlobalSettings { Main = new GlobalMainSettings { MainDirectory = legacyDirectory } });
+            await storage.SaveGlobalSettingsAsync(new GlobalSettings
+            {
+                Main = new GlobalMainSettings { MainDirectory = legacyDirectory, StartChloroplasts = globalStartChloroplasts },
+            });
             var name = $"Startup World {Guid.NewGuid():N}" + (legacyFormat ? ".SIM" : ".db3s");
             var path = Path.Combine(saves.FullName, name);
             using var engine = new NativeEngineClient(new WorldSetupOptions
             {
                 Backend = "Cpu", Seed = 42, PopulationCapacity = 16, VegetablePopulationCap = 0,
                 WorldWidth = 3000, WorldHeight = 2000, BrownianMotion = 0,
+                Vegetation = Db2VegetationOptions.Default with { StartChloroplasts = 1234 },
             });
             engine.ImportSpecies(new("Startup Bot", "start stop", false, 0xff123456, 1, 1234, 0, false, 0));
             engine.Tick(3);
@@ -51,12 +57,16 @@ public sealed class PositionalStartupSaveTests
                     await WaitFor(() => model.Status == "LOADED");
                     Assert.Equal(expected.NativeCycle, model.NativeCycle);
                     Assert.Equal(expected.Population, model.Population);
+                    var session = Assert.IsType<SimulationSession>(typeof(MainWindow)
+                        .GetField("_session", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(runtime));
+                    var configuration = Assert.IsType<WorldConfiguration>(await session.ReadConfigurationAsync());
+                    Assert.Equal(legacyFormat ? globalStartChloroplasts ?? 0 : 1234,
+                        configuration.Environment.Vegetation.StartChloroplasts);
                     Assert.Same(runtime, Assert.Single(opened));
                 }
                 finally
                 {
-                    runtime.Close();
-                    await WaitFor(() => !runtime.IsVisible);
+                    await LastExitResumeRenderedTests.CloseRuntimeAsync(runtime);
                 }
             }, CancellationToken.None);
         }

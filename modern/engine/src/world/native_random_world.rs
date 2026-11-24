@@ -1,4 +1,5 @@
 use super::*;
+use crate::native_random::NativeRandom;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum NativeStartBoundary {
@@ -8,6 +9,16 @@ pub(super) enum NativeStartBoundary {
 }
 
 impl Engine {
+    pub(crate) fn native_setup_uniform_state(&self) -> Option<u32> {
+        self.native_cycle?;
+        self.native_random.as_ref().map(NativeRandom::state)
+    }
+
+    pub(crate) fn native_setup_random(&mut self) -> Option<&mut NativeRandom> {
+        self.native_cycle?;
+        self.native_random.as_mut()
+    }
+
     /// Begin an original 2.48.32 new simulation, before placing any robots.
     /// `new` remains the bare seeded constructor used by legacy APIs.
     pub fn new_native(config: EngineConfig) -> Result<Self, EngineError> {
@@ -26,9 +37,28 @@ impl Engine {
         self.projectiles.reset_native_load_cursor();
         let random = self.native_random.get_or_insert_with(Default::default);
         random.reseed_native_start(self.config.seed);
-        // main.frm startloaded draws all three chart colors, even UseOldColor.
-        for _ in 0..3 {
-            random.unit();
+        // startloaded and StartSimul draw the three components even with Old Colors.
+        let palette = NativeScenePalette::draw(random);
+        self.native_scene_palette = self.native_cycle.map(|_| palette);
+        self.snapshot.native_scene_palette = self.native_scene_palette;
+    }
+
+    pub(super) fn recover_older_native_scene_palette(&mut self) {
+        if self.native_cycle.is_none() || self.native_random.is_none() {
+            self.native_scene_palette = None;
+        } else if self.native_scene_palette.is_none()
+            && (self.native_sim_guid.is_some() || self.native_origin.is_some())
+        {
+            // An older checkpoint has no active colors or record of an F2-only
+            // change to its seed. Use the saved seed without advancing its RNG.
+            self.native_scene_palette = Some(NativeScenePalette::from_seed(self.config.seed));
+        }
+    }
+
+    /// F2 changes SimOpts.UserSeedNumber before choosing a file, without Randomize.
+    pub(crate) fn set_native_seed_metadata(&mut self, seed: i32) {
+        if self.native_cycle.is_some() {
+            self.config.seed = u64::from(seed as u32);
         }
     }
 
@@ -122,6 +152,7 @@ impl Engine {
     }
 
     pub(super) fn prepare_native_restart(&mut self, boundary: NativeStartBoundary) {
+        self.native_restarted_this_cycle = true;
         self.native_loaded_census_stage = None;
         if self.native_cycle.is_some()
             && self
@@ -682,6 +713,138 @@ mod tests {
     }
 
     #[test]
+    fn native_scene_palette_uses_the_existing_seeded_start_and_sim_load_draws() {
+        let start = |seed| {
+            let mut config = EngineConfig::testing();
+            config.seed = seed;
+            config.vegetation.weather_enabled = false;
+            config.vegetation.sun_on_random = false;
+            Engine::new_native(config).unwrap()
+        };
+        // Independently calculated from the seeded 24-bit draws and the
+        // staged Long conversions in colors.bas, including both lightness values.
+        for (seed, chart_argb, arena_argb, load_cursor, start_cursor) in [
+            (0, 0xffdd_fcdc, 0xff06_3405, 0x0016_5533, 0x0089_2b2a),
+            (42, 0xffe6_fff4, 0xff01_4526, 0x0097_c633, 0x0008_d82a),
+            (
+                u64::from(u32::MAX),
+                0xfffd_e8fb,
+                0xff40_063c,
+                0x00a0_ae33,
+                0x008e_202a,
+            ),
+        ] {
+            let world = start(seed);
+            let expected = NativeScenePalette {
+                chart_argb,
+                arena_argb,
+            };
+            assert_eq!(world.snapshot().native_scene_palette, Some(expected));
+            assert_eq!(
+                world.native_random.as_ref().map(NativeRandom::state),
+                Some(start_cursor)
+            );
+            let wire = world.export_native_sim().unwrap();
+            let loaded = Engine::from_native_sim(&wire).unwrap();
+            assert_eq!(loaded.snapshot().native_scene_palette, Some(expected));
+            assert_eq!(
+                loaded.native_random.as_ref().map(NativeRandom::state),
+                Some(load_cursor)
+            );
+        }
+        let wire = start(42).export_native_sim().unwrap();
+        let overridden = Engine::from_native_sim_with_seed(&wire, 77).unwrap();
+        assert_eq!(
+            overridden.snapshot().native_scene_palette,
+            Some(NativeScenePalette {
+                chart_argb: 0xffef_fcdc,
+                arena_argb: 0xff22_3504,
+            })
+        );
+        assert_eq!(
+            overridden.native_random.as_ref().map(NativeRandom::state),
+            Some(0x006f_b033)
+        );
+    }
+
+    #[test]
+    fn native_scene_palette_survives_metadata_only_f2_checkpoint_and_cycle_rollback() {
+        let mut world = Engine::new_native(EngineConfig {
+            seed: 42,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let active = world.snapshot().native_scene_palette.unwrap();
+        let before = world.native_random.clone();
+        world.set_native_seed_metadata(77);
+        assert_eq!(world.config.seed, 77);
+        assert_eq!(world.snapshot().native_scene_palette, Some(active));
+        assert_eq!(world.native_random, before);
+
+        let fork = world.fork_cpu_command_candidate().unwrap().unwrap();
+        assert_eq!(fork.native_scene_palette, Some(active));
+        let restored = crate::SaveFile::decode(&crate::SaveFile::encode(&world).unwrap()).unwrap();
+        assert_eq!(restored.config.seed, 77);
+        assert_eq!(restored.snapshot().native_scene_palette, Some(active));
+        assert_eq!(restored.native_random, before);
+
+        let checkpoint = world.cycle_checkpoint();
+        world.prepare_native_restart(NativeStartBoundary::ConfiguredStart);
+        assert_eq!(
+            world.snapshot().native_scene_palette,
+            Some(NativeScenePalette {
+                chart_argb: 0xffef_fcdc,
+                arena_argb: 0xff22_3504,
+            })
+        );
+        assert_ne!(world.native_random, before);
+        world.restore_cycle_checkpoint(checkpoint);
+        assert_eq!(world.snapshot().native_scene_palette, Some(active));
+        assert_eq!(world.native_scene_palette, Some(active));
+        assert_eq!(world.native_random, before);
+        assert_eq!(world.config.seed, 77);
+    }
+
+    #[test]
+    fn native_scene_palette_recovers_only_initialized_older_native_checkpoints() {
+        let mut world = Engine::new_native(EngineConfig {
+            seed: 42,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        // An old checkpoint may only have the later F2 metadata value, so its
+        // fallback uses that seed while preserving the actual saved RNG state.
+        world.set_native_seed_metadata(77);
+        let before = world.native_random.clone();
+        let mut payload = world.db3s_v3_payload().unwrap();
+        payload
+            .as_object_mut()
+            .unwrap()
+            .remove("native_scene_palette");
+        let decode =
+            |payload| Engine::restore(Engine::from_db3s_v3_payload(payload).unwrap()).unwrap();
+        let recovered = decode(payload.clone());
+        assert_eq!(
+            recovered.snapshot().native_scene_palette,
+            Some(NativeScenePalette {
+                chart_argb: 0xffef_fcdc,
+                arena_argb: 0xff22_3504,
+            })
+        );
+        assert_eq!(recovered.native_random, before);
+
+        payload.as_object_mut().unwrap().remove("native_sim_guid");
+        let uninitialized = decode(payload);
+        assert!(uninitialized.snapshot().native_scene_palette.is_none());
+        assert_eq!(uninitialized.native_random, before);
+        let mut portable = Engine::new(EngineConfig::testing()).unwrap();
+        portable.native_random = None;
+        let restored =
+            crate::SaveFile::decode(&crate::SaveFile::encode(&portable).unwrap()).unwrap();
+        assert!(restored.snapshot().native_scene_palette.is_none());
+    }
+
+    #[test]
     fn native_cycle_fresh_zero_and_legacy_tick_are_distinct_without_shifting_dna_age() {
         for native in [false, true] {
             let mut world = if native {
@@ -927,6 +1090,44 @@ mod tests {
         world.advance_local_mode_after_cycle().unwrap();
         assert_eq!(world.local_mode.results.len(), 1);
         assert_eq!(world.local_mode.results[0].reason, "cycle limit");
+    }
+
+    #[test]
+    fn native_graph_recording_stream_skips_a_same_counter_f1_retry() {
+        let (mut world, _) =
+            native_contest_world(42, LocalModeKind::Contest, crate::LeagueWorkflow::Direct);
+        world.config.vegetation.minimum_chloroplast_equivalents = 0;
+        for species in &mut world.species {
+            species.reseed = true;
+        }
+        world.start_local_mode().unwrap();
+        world.tick_many(9).unwrap();
+        world.remove_many(&world.slots.ids_in_slot_order()).unwrap();
+        world.config.recording.sampling_interval = 1;
+
+        let mut samples = Vec::new();
+        world
+            .tick_many_with_native_options(
+                1,
+                None,
+                Some(&mut samples),
+                crate::NativeRedrawCadence::Off,
+            )
+            .unwrap();
+        assert_eq!(world.native_cycle, Some(9));
+        assert_eq!(world.local_mode.restart_count, 0);
+        assert!(samples.is_empty());
+
+        world
+            .tick_many_with_native_options(
+                1,
+                None,
+                Some(&mut samples),
+                crate::NativeRedrawCadence::Off,
+            )
+            .unwrap();
+        assert_eq!(world.native_cycle, Some(10));
+        assert_eq!(samples.len(), 1);
     }
 
     #[test]

@@ -81,6 +81,44 @@ fn score_all(world: &mut Engine, populations: &[usize]) {
 }
 
 #[test]
+fn resume_restart_mode_repeats_only_the_unfinished_classic_match() {
+    let (mut world, _, _) = classic(4, false);
+    score_all(&mut world, &[40, 30, 20, 10]);
+    let first = world.local_mode.series.active_match.unwrap()[0];
+    world
+        .adjudicate_local_round(Some(first), "completed match".into())
+        .unwrap();
+    assert_eq!(world.local_mode.series.matches.len(), 1);
+    let previous_results = world.local_mode.results.clone();
+    let previous_matches = world.local_mode.series.matches.clone();
+    let pending = world.local_mode.series.active_match.unwrap();
+    world.local_mode.config.as_mut().unwrap().maximum_rounds = 2;
+    world
+        .adjudicate_local_round(Some(pending[0]), "unfinished match".into())
+        .unwrap();
+    assert_eq!(world.local_mode.results.len(), previous_results.len() + 1);
+
+    let bytes = SaveFile::encode(&world).unwrap();
+    let ordinary =
+        SaveFile::decode(&SaveFile::encode_without_restart_mode(&world).unwrap()).unwrap();
+    assert_eq!(ordinary.local_mode.status, LocalModeStatus::Idle);
+    assert!(ordinary.native_f1_enabled());
+    assert_eq!(
+        ordinary.slots.ids_in_slot_order(),
+        world.slots.ids_in_slot_order()
+    );
+    assert_eq!(bytes, SaveFile::encode(&world).unwrap());
+
+    let mut resumed = SaveFile::decode(&bytes).unwrap();
+    resumed.resume_restart_mode().unwrap();
+    assert_eq!(resumed.local_mode.series.active_match, Some(pending));
+    assert_eq!(resumed.local_mode.series.matches, previous_matches);
+    assert_eq!(resumed.local_mode.results, previous_results);
+    assert_eq!(resumed.local_mode.cycle_in_round, 0);
+    assert_eq!(resumed.native_cycle, Some(-1));
+}
+
+#[test]
 fn classic_preserves_configured_vegetation_and_retained_sources_but_uses_original_transient_actors()
 {
     let (mut world, entrants, plant) = classic(2, false);
@@ -528,7 +566,7 @@ fn classic_active_native_vegetation_reseeds_without_inactive_registry_rng_draws(
         world.config.vegetation.minimum_chloroplast_equivalents = 1;
         world.config.vegetation.repopulation_amount = 1;
         world.config.vegetation.repopulation_cooldown = 1;
-        world.vegetation_repopulation_phase().unwrap();
+        world.vegetation_repopulation_phase(None).unwrap();
         assert_eq!(world.stats.reseeds, 1);
         assert!(!world.species[plant.0 as usize].reseed);
         let robot = world

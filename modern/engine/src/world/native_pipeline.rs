@@ -10,16 +10,21 @@ pub(super) struct NativeRobotPhase {
 }
 
 impl Engine {
+    pub(super) fn synchronize_native_buckets(&mut self) {
+        let extent = self
+            .native_buckets
+            .initialized_extent()
+            .unwrap_or([self.config.world_width, self.config.world_height]);
+        self.native_buckets.synchronize(extent, &self.slots);
+    }
+
     pub(super) fn native_pre_robot_pipeline(
         &mut self,
         trace: &mut CycleRecorder,
     ) -> Result<(), EngineError> {
         self.native_tie_index = Some(HashMap::new());
         self.rebuild_native_tie_index();
-        self.native_buckets.synchronize(
-            [self.config.world_width, self.config.world_height],
-            &self.slots,
-        );
+        self.synchronize_native_buckets();
         self.pending_gpu_collision_pairs = None;
         let mut contacts = native_collisions::NativeContacts::new(&self.slots);
         let population = self.cost_population();
@@ -82,7 +87,9 @@ impl Engine {
         let mut index: HashMap<OrganismId, Vec<usize>> = HashMap::new();
         for (ordinal, tie) in self.ties.iter().enumerate() {
             index.entry(tie.first).or_default().push(ordinal);
-            index.entry(tie.second).or_default().push(ordinal);
+            if tie.directed_native_back.is_none() {
+                index.entry(tie.second).or_default().push(ordinal);
+            }
         }
         for (&id, indices) in &mut index {
             self.order_native_tie_indices(id, indices);
@@ -126,7 +133,7 @@ impl Engine {
             .ties
             .iter()
             .enumerate()
-            .filter_map(|(index, tie)| tie.contains(id).then_some(index))
+            .filter_map(|(index, tie)| tie.has_endpoint(id).then_some(index))
             .collect::<Vec<_>>();
         self.order_native_tie_indices(id, &mut indices);
         indices
