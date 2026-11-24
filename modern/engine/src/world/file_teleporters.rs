@@ -236,15 +236,25 @@ impl Engine {
                     .flatten()
                     .filter_map(Result::ok)
                     .map(|entry| entry.path())
+                    .filter(|path| path.is_file())
                     .filter(|path| {
-                        path.is_file()
-                            && path
-                                .extension()
+                        if late {
+                            // TeleportInBots compares the final three characters with "dbo".
+                            path.file_name()
+                                .is_some_and(|name| name.as_encoded_bytes().ends_with(b"dbo"))
+                        } else {
+                            path.extension()
                                 .and_then(|extension| extension.to_str())
                                 .is_some_and(|extension| extension.eq_ignore_ascii_case("dbo"))
+                        }
                     })
                     .collect::<Vec<_>>();
-                paths.sort_by(|left, right| left.to_string_lossy().cmp(&right.to_string_lossy()));
+                // TeleportInBots polls in the order supplied by Dir.
+                if !late {
+                    paths.sort_by(|left, right| {
+                        left.to_string_lossy().cmp(&right.to_string_lossy())
+                    });
+                }
 
                 for path in paths {
                     if received >= settings.capacity as u64 {
@@ -598,6 +608,124 @@ mod tests {
         assert!(world.file_transfer_group(members[0]).is_err());
         world.remove_many(&members[..2]).unwrap();
         assert_eq!(world.file_transfer_group(members[2]).unwrap(), members[2..]);
+    }
+
+    fn single_inbound_payload() -> Vec<u8> {
+        let source = Engine::from_native_sim(include_bytes!(
+            "../../tests/fixtures/db24832-genuine-reproduction-cycle1-20261017.sim"
+        ))
+        .unwrap();
+        source
+            .export_native_organisms(&[source.snapshot().organisms[0].id])
+            .unwrap()
+    }
+
+    fn inbound_world(
+        native: bool,
+        legacy: bool,
+        directory: &std::path::Path,
+        capacity: usize,
+    ) -> Engine {
+        let config = EngineConfig::testing();
+        let mut world = if native {
+            Engine::new_native(config).unwrap()
+        } else {
+            Engine::new(config).unwrap()
+        };
+        if legacy {
+            let mut portal = Teleporter::new(1, [500.0; 2], 100.0, [500.0; 2]);
+            portal.local = false;
+            portal.inbound = true;
+            portal.path = directory.to_path_buf();
+            portal.capacity = capacity;
+            world.add_teleporter(portal).unwrap();
+        } else {
+            world
+                .add_file_teleporter(
+                    FileTeleporter::new(1, [500.0; 2], 100.0)
+                        .with_paths(directory, "")
+                        .with_polling(1, capacity),
+                )
+                .unwrap();
+        }
+        world
+    }
+
+    #[test]
+    fn native_inbound_filename_matches_the_original_case_sensitive_suffix() {
+        let payload = single_inbound_payload();
+
+        for (native, legacy, accepted, ignored) in [
+            (true, true, "incomingdbo", "incoming.DBO"),
+            (true, false, "incoming.DBO", "incomingdbo"),
+            (false, true, "incoming.DBO", "incomingdbo"),
+        ] {
+            let root = tempdir().unwrap();
+            let accepted = root.path().join(accepted);
+            let ignored = root.path().join(ignored);
+            let corrupt = root.path().join("broken.dbo");
+            let foreign = root.path().join("foreign.txt");
+            for path in [&accepted, &ignored, &foreign] {
+                fs::write(path, &payload).unwrap();
+            }
+            fs::write(&corrupt, b"not an organism").unwrap();
+
+            let mut world = inbound_world(native, legacy, root.path(), 3);
+            world.apply_file_teleporters().unwrap();
+            assert!(
+                !accepted.exists(),
+                "{} should be consumed",
+                accepted.display()
+            );
+            assert_eq!(fs::read(ignored).unwrap(), payload);
+            assert_eq!(fs::read(foreign).unwrap(), payload);
+            assert_eq!(fs::read(corrupt).unwrap(), b"not an organism");
+            assert_eq!(world.population(), 1);
+            let received = if legacy {
+                world.teleporters[0].received
+            } else {
+                world.file_teleporters[0].received
+            };
+            assert_eq!(received, 1);
+        }
+    }
+
+    #[test]
+    fn native_legacy_inbound_uses_directory_order_at_capacity_one() {
+        let payload = single_inbound_payload();
+        for (native, legacy) in [(true, true), (true, false), (false, true)] {
+            let root = tempdir().unwrap();
+            for tag in ('a'..='z').rev() {
+                fs::write(root.path().join(format!("{tag}-organism.dbo")), &payload).unwrap();
+            }
+            // The order is a property of this directory and filesystem.
+            let listed = fs::read_dir(root.path())
+                .unwrap()
+                .map(|entry| entry.unwrap().path())
+                .collect::<Vec<_>>();
+            let host_first = &listed[0];
+            let lexical_first = listed.iter().min().unwrap();
+            let expected = if native && legacy {
+                host_first
+            } else {
+                lexical_first
+            };
+
+            let mut world = inbound_world(native, legacy, root.path(), 1);
+            world.apply_file_teleporters().unwrap();
+            let consumed = listed
+                .iter()
+                .filter(|path| !path.exists())
+                .collect::<Vec<_>>();
+            assert_eq!(consumed, [expected]);
+            assert_eq!(world.population(), 1);
+            eprintln!(
+                "native={native} legacy={legacy}, host first {:?}, lexical first {:?}, consumed {:?}",
+                host_first.file_name().unwrap(),
+                lexical_first.file_name().unwrap(),
+                consumed[0].file_name().unwrap()
+            );
+        }
     }
 
     #[test]
