@@ -44,7 +44,41 @@ jobs:
         with:
           dotnet-version: "10.0.x"
       - name: Test Rust workspace
+        id: rust_workspace
+        env:
+          DARWINBOTS_GPU_FFI_TRACE: ${{ runner.os == 'Windows' && '1' || '0' }}
         run: cargo test --release --workspace --no-fail-fast
+      - name: Diagnose Windows GPU FFI test failures
+        if: ${{ failure() && runner.os == 'Windows' && steps.rust_workspace.outcome == 'failure' }}
+        timeout-minutes: 5
+        shell: pwsh
+        env:
+          DARWINBOTS_GPU_FFI_TRACE: "1"
+        run: |
+          $PSNativeCommandUseErrorActionPreference = $false
+          $build = cargo test --release -p darwinbots-engine --test gpu_ffi --no-run --message-format=json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $testBinary = $build | ForEach-Object { $_ | ConvertFrom-Json } |
+              Where-Object { $_.reason -eq "compiler-artifact" -and $_.target.name -eq "gpu_ffi" -and $_.executable } |
+              Select-Object -Last 1 -ExpandProperty executable
+          if (!$testBinary) { throw "Cargo did not report the GPU FFI test executable." }
+
+          $cases = @(& $testBinary --list --format terse | ForEach-Object {
+              if ($_ -match '^(.+): test$') { $Matches[1] }
+          })
+          if ($LASTEXITCODE -ne 0 -or $cases.Count -eq 0) { throw "Unable to list GPU FFI cases." }
+
+          $failedCases = @()
+          foreach ($case in $cases) {
+              Write-Host "::group::Isolated GPU FFI case $case"
+              & $testBinary --exact $case --test-threads=1 --nocapture
+              $exitCode = $LASTEXITCODE
+              Write-Host ("GPU FFI case {0} exited with 0x{1:X8}" -f $case, $exitCode)
+              Write-Host "::endgroup::"
+              if ($exitCode -ne 0) { $failedCases += $case }
+          }
+          if ($failedCases.Count -ne 0) { throw ("Isolated GPU FFI failures: " + ($failedCases -join ", ")) }
+          Write-Host "All isolated GPU FFI invocations succeeded. Review the parallel-run case trace."
       - name: Test desktop core
         run: dotnet test modern/desktop/tests/Darwinbots.Desktop.Core.Tests/Darwinbots.Desktop.Core.Tests.csproj -c Release
       - name: Test rendered desktop controls
