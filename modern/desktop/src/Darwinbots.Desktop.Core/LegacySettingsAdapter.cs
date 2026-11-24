@@ -132,7 +132,11 @@ internal static class LegacySettingsAdapter
             (57,cost.DynamicUpperRangePercent ?? cost.DynamicPopulationRange), (58,cost.DynamicLowerRangePercent ?? cost.DynamicUpperZeroThreshold),
             (59,cost.DynamicLowerReinstateThreshold), (60,cost.DynamicUpperReinstateThreshold) };
         foreach (var (index, value) in indexedCosts) Number(costs + index, value);
-        Flag(costs + 56, cost.DynamicMultiplier != 0); Flag(costs + 61, cost.DynamicAllRobots); Flag(costs + 62, cost.DynamicAllowNegative);
+        // SaveSett writes Single costs. CostsForm uses VB True (-1) for dynamic costs
+        // and the positive CheckBox.Value for Include Plants and Allow Negative CostX.
+        Number(costs + 56, cost.DynamicMultiplier != 0 ? -1 : 0);
+        Number(costs + 61, cost.DynamicAllRobots ? 1 : 0);
+        Number(costs + 62, cost.DynamicAllowNegative ? 1 : 0);
         Number(tail, physics.MaxVelocity);
         // OptionsForm.CustomWaste maps modern disabled zero to native -1.
         Number(tail + 1, settings.Waste.AlzheimerThreshold == 0 ? -1 : settings.Waste.AlzheimerThreshold);

@@ -152,6 +152,56 @@ public sealed class LegacySettingsImportTests
         Assert.Contains("signed 32-bit", error.Message);
     }
 
+    [Theory]
+    [InlineData(0d, false, false, "0", "0", "0")]
+    [InlineData(2d, true, true, "-1", "1", "1")]
+    public void NativeCostFlagsWriteOriginalSingleValues(double dynamicMultiplier, bool allRobots, bool allowNegative,
+        string expectedDynamic, string expectedAllRobots, string expectedAllowNegative)
+    {
+        var path = Path.Combine(RepositoryRoot(), "Installer", "sets", "Walls and Waste.set");
+        var original = File.ReadAllBytes(path);
+        var originalFields = LegacyDnaText.Decode(original).Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
+        // Both species contribute 40 roster fields, 8 options and 44 mutation distribution fields.
+        const int costsStart = 2 + 90 + 8 + 92 * 2;
+        Assert.Equal("1", originalFields[costsStart + 61]);
+        var settings = Db2SettingsCodec.Decode(original);
+        Assert.True(settings.GlobalSettings.Costs.DynamicAllRobots);
+        var costs = settings.GlobalSettings.Costs with
+        {
+            DynamicMultiplier = dynamicMultiplier,
+            DynamicAllRobots = allRobots,
+            DynamicAllowNegative = allowNegative,
+        };
+        byte[] encoded = Db2SettingsCodec.Encode(settings with { GlobalSettings = settings.GlobalSettings with { Costs = costs } });
+        var native = LegacyDnaText.Decode(encoded).Split("#DARWINBOTS_MODERN_SETTINGS_V1#")[0];
+        var fields = native.Split("\r\n");
+
+        Assert.Equal(expectedDynamic, fields[costsStart + 56]);
+        Assert.Equal(expectedAllRobots, fields[costsStart + 61]);
+        Assert.Equal(expectedAllowNegative, fields[costsStart + 62]);
+        var imported = Db2SettingsCodec.Decode(LegacyDnaText.Encode(native)).GlobalSettings.Costs;
+        Assert.Equal(dynamicMultiplier == 0 ? 0d : 1d, imported.DynamicMultiplier);
+        Assert.Equal(allRobots, imported.DynamicAllRobots);
+        Assert.Equal(allowNegative, imported.DynamicAllowNegative);
+        Assert.Equal(costs, Db2SettingsCodec.Decode(encoded).GlobalSettings.Costs);
+    }
+
+    [Fact]
+    public void LegacyCostFlagsStillAcceptModernBooleanTokens()
+    {
+        var path = Path.Combine(RepositoryRoot(), "Installer", "sets", "Simple Simulation.set");
+        var fields = File.ReadAllLines(path);
+        const int costsStart = 2 + 90 + 8 + 92 * 2;
+        fields[costsStart + 56] = "#TRUE#";
+        fields[costsStart + 61] = "#FALSE#";
+        fields[costsStart + 62] = "#TRUE#";
+        var imported = Db2SettingsCodec.Decode(LegacyDnaText.Encode(string.Join("\r\n", fields))).GlobalSettings.Costs;
+
+        Assert.Equal(1d, imported.DynamicMultiplier);
+        Assert.False(imported.DynamicAllRobots);
+        Assert.True(imported.DynamicAllowNegative);
+    }
+
     [Fact]
     public void NativeWallFooterMovesWhenImportedWallsAreEdited()
     {
