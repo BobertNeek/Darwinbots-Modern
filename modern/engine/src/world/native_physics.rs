@@ -43,12 +43,7 @@ impl Engine {
         for id in self.phase_robot_ids() {
             self.native_planet_forces(id);
             let robot = self.slots.get_mut(id).unwrap();
-            let mass = derived_mass(
-                robot.materials.body,
-                robot.materials.shell,
-                robot.materials.chloroplasts,
-            )
-            .clamp(1.0, 32_000.0);
+            let mass = native_mass(&robot.materials);
             robot.materials.mass = mass;
             if robot_is_fixed(robot, self.robot_fixing_allowed) {
                 robot.kinematics.pending_velocity = [0.0; 2];
@@ -233,6 +228,15 @@ impl Engine {
     }
 }
 
+pub(super) fn native_mass(materials: &BiologyState) -> f32 {
+    let body = f64::from(materials.body.max(0.0));
+    let shell = f64::from(materials.shell.max(0.0));
+    let chloroplasts = f64::from(materials.chloroplasts.clamp(0.0, 32_000.0));
+    // Physics.bas CalcMass stores the full expression in Single mass before clamping.
+    ((body / 1_000.0 + shell / 200.0 + chloroplasts / 32_000.0 * 31_680.0) as f32)
+        .clamp(1.0, 32_000.0)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -407,5 +411,37 @@ mod tests {
         );
         assert_eq!(world.slots.get(id).unwrap().kinematics.velocity, [0.0; 2]);
         assert_eq!(world.memory_at(id, MEM_VEL_SCALAR).unwrap(), 0);
+    }
+
+    #[test]
+    fn native_mass_and_uncapped_velocity_match_genuine_robot_85() {
+        let mut world = Engine::new_native(EngineConfig {
+            brownian_motion: 0.5,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let id = world
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [500.0; 2])
+            .unwrap();
+        // Original 2.48.32 absolute robot 85, cycle 281 to 282.
+        let robot = world.slots.get_mut(id).unwrap();
+        robot.materials.body = f32::from_bits(0x44b9_dff1);
+        robot.materials.shell = 0.0;
+        robot.materials.chloroplasts = f32::from_bits(0x46a8_14cb);
+        robot.kinematics.velocity = [0xb8c6_c734, 0x3933_c656].map(f32::from_bits);
+        world.native_random =
+            Some(serde_json::from_value(serde_json::json!({ "state": 0xc8608f_u32 })).unwrap());
+
+        world.native_intent_phase();
+        assert_eq!(
+            world.slots.get(id).unwrap().materials.mass.to_bits(),
+            0x46a6_697b
+        );
+        let mut batch = world.physics_batch();
+        world.native_integration_velocities(&mut batch);
+        assert_eq!(
+            batch.batch.velocities[0].map(f32::to_bits),
+            [0xb8d0_56c9, 0x3933_a6f1]
+        );
     }
 }
