@@ -2,6 +2,26 @@
 use super::*;
 use crate::physics::apply_uncapped_resistance;
 
+fn limit_native_speed(velocity: [f32; 2], limit: f32) -> [f32; 2] {
+    // UpdatePosition calls VectorMagnitudeSquare, which clamps its input in place.
+    let velocity = velocity.map(|component| component.clamp(-32_000.0, 32_000.0));
+    let [x, y] = velocity.map(f64::from);
+    let squared = (x * x + y * y) as f32;
+    if f64::from(squared) > f64::from(limit).powi(2) {
+        // Common.bas uses separate Single writes for magnitude, inverse, and unit vector.
+        let (maximum, minimum) = (x.abs().max(y.abs()), x.abs().min(y.abs()));
+        let inverse = if maximum < 0.00001 {
+            -1.0
+        } else {
+            let magnitude = (maximum * (1.0 + (minimum / maximum).powi(2)).sqrt()) as f32;
+            (1.0 / f64::from(magnitude)) as f32
+        };
+        let scale = limit.clamp(-32_000.0, 32_000.0);
+        return velocity.map(|component| (component * inverse) * scale);
+    }
+    velocity
+}
+
 impl Engine {
     pub(super) fn capture_native_added_mass(&mut self) {
         for slot in self.slots.iter_mut() {
@@ -185,13 +205,8 @@ impl Engine {
             for (axis, component) in velocity.iter_mut().enumerate() {
                 *component += robot.kinematics.independent_impulse[axis] * inverse;
             }
-            let speed = velocity[0].hypot(velocity[1]);
-            if speed > self.config.physics.max_velocity && speed > 0.0 {
-                for component in &mut velocity {
-                    *component = *component / speed * self.config.physics.max_velocity;
-                }
-            }
-            batch.batch.velocities[index] = velocity;
+            batch.batch.velocities[index] =
+                limit_native_speed(velocity, self.config.physics.max_velocity);
         }
     }
 
@@ -365,6 +380,26 @@ mod tests {
             &world.config.physics,
         );
         assert_eq!(portable_velocity, [0.0, -60.0]);
+    }
+
+    #[test]
+    fn native_velocity_limit_matches_genuine_cycle_282_vectors() {
+        let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+        let id = world
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [500.0; 2])
+            .unwrap();
+        for (before, expected) in [
+            // Reconstructed pre-cap vectors and the original checkpoint for robots 117 and 218.
+            ([0xc1a7_5380, 0xc261_1c27], [0xc1a7_3801, 0xc260_f729]),
+            ([0x4243_4835, 0xc20c_81e3], [0x4242_d043, 0xc20c_2b96]),
+            // The cap does not change a velocity below the limit.
+            ([0xb8d0_56ca, 0x3933_a6f1], [0xb8d0_56ca, 0x3933_a6f1]),
+        ] {
+            world.slots.get_mut(id).unwrap().kinematics.velocity = before.map(f32::from_bits);
+            let mut batch = world.physics_batch();
+            world.native_integration_velocities(&mut batch);
+            assert_eq!(batch.batch.velocities[0].map(f32::to_bits), expected);
+        }
     }
 
     #[test]
