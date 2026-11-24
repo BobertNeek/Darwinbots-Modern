@@ -263,6 +263,10 @@ enum EngineCommand {
         generation: u32,
         profile: crate::StandardMutationProfile,
     },
+    SetShotDecay {
+        energy: bool,
+        do_not_decay: bool,
+    },
     SetTiesEnabled {
         enabled: bool,
     },
@@ -1063,6 +1067,13 @@ fn db_engine_command_batch_impl(
             } => engine
                 .set_mutation_profile(OrganismId::new(slot, generation), profile)
                 .map(|_| serde_json::Value::Null),
+            EngineCommand::SetShotDecay {
+                energy,
+                do_not_decay,
+            } => {
+                engine.set_shot_decay(energy, do_not_decay);
+                Ok(serde_json::Value::Null)
+            }
             EngineCommand::SetTiesEnabled { enabled } => {
                 engine.set_ties_enabled(enabled);
                 Ok(serde_json::Value::Null)

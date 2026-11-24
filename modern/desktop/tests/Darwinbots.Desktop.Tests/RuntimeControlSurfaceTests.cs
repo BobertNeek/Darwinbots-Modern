@@ -378,11 +378,68 @@ public sealed class RuntimeControlSurfaceTests
             await WaitFor(() =>
                 engine.Calls.Contains("Remove:3:2")
                 && engine.Calls.Count(call => call.StartsWith("AddObstacle:", StringComparison.Ordinal)) >= 4
-                && engine.Calls.Count(call => call == "Environment") >= 2
+                && engine.Calls.Contains("ShotDecay:True:True")
+                && engine.Calls.Contains("ShotDecay:False:True")
                 && engine.Calls.Contains("Ties:False"),
                 () => string.Join(", ", engine.Calls));
             window.Close();
             return 0;
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task ShotDecayMenuTogglesOnlyItsOwnFlagDuringNight()
+    {
+        var setup = new WorldSetupOptions
+        {
+            Backend = "Cpu",
+            PopulationCapacity = 16,
+            WorldWidth = 8_000,
+            WorldHeight = 6_000,
+            BrownianMotion = 0,
+            Vegetation = Db2VegetationOptions.Default with { Daytime = true, DayNightEnabled = true, CycleLength = 1 },
+            Species = [new("Night Watch", "start stop", false, 0xff123456, 1, 1_000, 0, false, 0)],
+        };
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], setup, NativeEngineClientFactory.Instance, new AuditStorageService());
+            SimulationSession? session = null;
+            try
+            {
+                window.Show();
+                var model = Field<MainWindowViewModel>(window, "_viewModel");
+                await WaitFor(() => model.Status.StartsWith("WORLD READY", StringComparison.Ordinal), () => model.Status);
+                session = Field<SimulationSession>(window, "_session");
+                await session.StepAsync(2);
+                var before = Assert.IsType<WorldConfiguration>(await session.ReadConfigurationAsync());
+                Assert.False(before.Environment.Vegetation.Daytime);
+                var expected = before.Environment.Shots;
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                var energyItem = menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.ObjectsDontDecayNrgShots)!;
+                var wasteItem = menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.ObjectsDontDecayWasteShots)!;
+                foreach (var (energy, noDecay) in new[] { (true, true), (false, true), (true, false), (false, false) })
+                {
+                    var item = energy ? energyItem : wasteItem;
+                    Assert.Equal(!noDecay, item.IsChecked);
+                    item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    var status = $"{(energy ? "ENERGY" : "WASTE")} SHOT DECAY · {(noDecay ? "OFF" : "ON")}";
+                    await WaitFor(() => model.Status == status, () => model.Status);
+                    expected = energy ? expected with { EnergyShotsDoNotDecay = noDecay }
+                        : expected with { WasteShotsDoNotDecay = noDecay };
+                    var after = Assert.IsType<WorldConfiguration>(await session.ReadConfigurationAsync());
+                    Assert.Equal(expected, after.Environment.Shots);
+                    Assert.Equal(expected.EnergyShotsDoNotDecay, energyItem.IsChecked);
+                    Assert.Equal(expected.WasteShotsDoNotDecay, wasteItem.IsChecked);
+                    Assert.Equal(before.Environment.Vegetation, after.Environment.Vegetation);
+                    Assert.Equal(2ul, session.LatestSnapshot.Tick);
+                }
+            }
+            finally
+            {
+                SetField(window, "_session", null);
+                window.Close();
+                if (session is not null) await session.DisposeAsync();
+            }
         }, CancellationToken.None);
     }
 
@@ -2266,6 +2323,7 @@ internal sealed class RecordingEngineClient : IEngineClient
     public void SetBrownianMotion(float value) => Calls.Enqueue($"Brownian:{value}");
     public void UpdateEnvironment(EnvironmentUpdate update) { EnvironmentUpdates.Enqueue(update); Calls.Enqueue("Environment"); }
     public void UpdateMutationSettings(MutationSettingsUpdate update) { MutationUpdates.Enqueue(update); Calls.Enqueue("Mutations"); }
+    public void SetShotDecay(bool energy, bool doNotDecay) => Calls.Enqueue($"ShotDecay:{energy}:{doNotDecay}");
     public void SetTiesEnabled(bool enabled) => Calls.Enqueue($"Ties:{enabled}");
     public void SetSpeciesColor(uint species, uint color) => Calls.Enqueue($"Color:{species}:{color}");
     public void MakeNewSpecies(uint slot, uint generation, string name, uint color) => Calls.Enqueue($"NewSpecies:{slot}:{generation}:{name}");

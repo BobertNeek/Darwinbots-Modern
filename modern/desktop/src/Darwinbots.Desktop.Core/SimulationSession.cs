@@ -325,6 +325,9 @@ public sealed class SimulationSession : IAsyncDisposable
         CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.UpdateOrganismMutationProfile(slot, generation, profile), cancellationToken);
 
+    public Task SetShotDecayAsync(bool energy, bool doNotDecay, CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.SetShotDecay(energy, doNotDecay), cancellationToken);
+
     public Task SetTiesEnabledAsync(bool enabled, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.SetTiesEnabled(enabled), cancellationToken);
 
