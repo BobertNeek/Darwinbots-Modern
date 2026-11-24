@@ -51,9 +51,15 @@ public interface IEngineClient : IDisposable
         AddObstacle(left);
         AddObstacle(right);
     }
-    int? AddNativeRandomObstacles(int count) => null;
+    int? AddNativeRandomObstacles(int count, ShapeCreationDimensions? dimensions = null) => null;
+    int? AddNativeCenteredObstacle(ShapeCreationDimensions dimensions) => null;
     void UpdateObstacle(ObstacleSnapshot obstacle);
     void RemoveObstacle(uint id);
+    void RemoveObstacles(IReadOnlyList<uint> ids)
+    {
+        foreach (var id in ids) RemoveObstacle(id);
+    }
+    int? RemoveNativeRandomObstacles() => null;
     void AddTeleporter(TeleporterSnapshot teleporter);
     void AddNativeTeleporter(NativeTeleporterOptions options) =>
         throw new NotSupportedException("Original teleporter creation is unavailable in this engine client.");

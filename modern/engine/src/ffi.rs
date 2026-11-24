@@ -233,6 +233,11 @@ enum EngineCommand {
     },
     AddNativeRandomObstacles {
         count: usize,
+        #[serde(default)]
+        dimensions_permille: Option<[u16; 2]>,
+    },
+    AddNativeCenteredObstacle {
+        dimensions_permille: [u16; 2],
     },
     UpdateObstacle {
         obstacle: crate::Obstacle,
@@ -240,6 +245,7 @@ enum EngineCommand {
     RemoveObstacle {
         id: u32,
     },
+    RemoveNativeRandomObstacles,
     AddTeleporter {
         #[serde(flatten)]
         teleporter: crate::Teleporter,
@@ -1087,8 +1093,19 @@ fn db_engine_command_batch_impl(
             EngineCommand::AddTrashCompactor { left, right } => engine
                 .add_trash_compactor(left, right)
                 .map(|_| serde_json::Value::Null),
-            EngineCommand::AddNativeRandomObstacles { count } => engine
-                .add_native_random_obstacles(count)
+            EngineCommand::AddNativeRandomObstacles {
+                count,
+                dimensions_permille,
+            } => engine
+                .add_native_random_obstacles(
+                    count,
+                    dimensions_permille.unwrap_or(crate::world::DEFAULT_NATIVE_SHAPE_DIMENSIONS),
+                )
+                .map(|added| serde_json::json!(added)),
+            EngineCommand::AddNativeCenteredObstacle {
+                dimensions_permille,
+            } => engine
+                .add_native_centered_obstacle(dimensions_permille)
                 .map(|added| serde_json::json!(added)),
             EngineCommand::UpdateObstacle { obstacle } => engine
                 .update_obstacle(obstacle)
@@ -1096,6 +1113,9 @@ fn db_engine_command_batch_impl(
             EngineCommand::RemoveObstacle { id } => {
                 engine.remove_obstacle(id).map(|_| serde_json::Value::Null)
             }
+            EngineCommand::RemoveNativeRandomObstacles => engine
+                .remove_native_random_obstacles()
+                .map(|removed| serde_json::json!(removed)),
             EngineCommand::AddTeleporter { teleporter } => engine
                 .add_teleporter(teleporter)
                 .map(|_| serde_json::Value::Null),

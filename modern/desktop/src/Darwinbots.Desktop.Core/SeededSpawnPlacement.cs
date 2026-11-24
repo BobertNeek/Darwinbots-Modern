@@ -55,22 +55,36 @@ public sealed class SeededSpawnPlacement(ulong seed)
         }).ToArray();
     }
 
-    public (float[] Minimum, float[] Maximum)[] NextObstacles(int count, float worldWidth, float worldHeight)
+    public (float[] Minimum, float[] Maximum)[] NextObstacles(
+        int count, float worldWidth, float worldHeight, ShapeCreationDimensions? dimensions = null)
     {
         if (count < 0) throw new ArgumentOutOfRangeException(nameof(count));
         if (!float.IsFinite(worldWidth) || worldWidth <= 0) throw new ArgumentOutOfRangeException(nameof(worldWidth));
         if (!float.IsFinite(worldHeight) || worldHeight <= 0) throw new ArgumentOutOfRangeException(nameof(worldHeight));
 
+        var size = dimensions ?? ShapeCreationDimensions.Default;
+        var widthScale = size.WidthPermille / (float)ShapeCreationDimensions.Default.WidthPermille;
+        var heightScale = size.HeightPermille / (float)ShapeCreationDimensions.Default.HeightPermille;
         var shapes = new (float[] Minimum, float[] Maximum)[count];
         for (var index = 0; index < count; index++)
         {
-            var shapeWidth = worldWidth * (0.025f + NextUnit() * 0.09f);
-            var shapeHeight = worldHeight * (0.015f + NextUnit() * 0.07f);
+            var shapeWidth = worldWidth * (0.025f + NextUnit() * 0.09f) * widthScale;
+            var shapeHeight = worldHeight * (0.015f + NextUnit() * 0.07f) * heightScale;
             var x = NextUnit() * Math.Max(1, worldWidth - shapeWidth);
             var y = NextUnit() * Math.Max(1, worldHeight - shapeHeight);
             shapes[index] = ([x, y], [x + shapeWidth, y + shapeHeight]);
         }
         return shapes;
+    }
+
+    public (float[] Minimum, float[] Maximum) NextCenteredObstacle(
+        float worldWidth, float worldHeight, ShapeCreationDimensions dimensions)
+    {
+        var width = worldWidth * (dimensions.WidthPermille / 1000f);
+        var height = worldHeight * (dimensions.HeightPermille / 1000f);
+        var x = MathF.Floor(NextUnit() * (MathF.Round(worldWidth) + 1)) - width / 2;
+        var y = MathF.Floor(NextUnit() * (MathF.Round(worldHeight) + 1)) - height / 2;
+        return ([x, y], [x + width, y + height]);
     }
 
     private float NextUnit() => (NextRandom() >> 40) / 16_777_216f;

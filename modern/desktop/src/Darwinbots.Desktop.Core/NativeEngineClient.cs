@@ -447,14 +447,40 @@ public sealed partial class NativeEngineClient : IEngineClient
         }, "add trash compactor");
     }
 
-    public int? AddNativeRandomObstacles(int count)
+    public int? AddNativeRandomObstacles(int count, ShapeCreationDimensions? dimensions = null)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(count);
+        var size = dimensions ?? ShapeCreationDimensions.Default;
         var result = ExecuteBatchForResult(new
         {
             version = 1,
-            commands = new[] { new { type = "add_native_random_obstacles", count } },
+            commands = new[]
+            {
+                new
+                {
+                    type = "add_native_random_obstacles",
+                    count,
+                    dimensions_permille = new[] { size.WidthPermille, size.HeightPermille },
+                },
+            },
         }, "add native random obstacles").GetProperty("results")[0];
+        return result.ValueKind == JsonValueKind.Null ? null : result.GetInt32();
+    }
+
+    public int? AddNativeCenteredObstacle(ShapeCreationDimensions dimensions)
+    {
+        var result = ExecuteBatchForResult(new
+        {
+            version = 1,
+            commands = new[]
+            {
+                new
+                {
+                    type = "add_native_centered_obstacle",
+                    dimensions_permille = new[] { dimensions.WidthPermille, dimensions.HeightPermille },
+                },
+            },
+        }, "add native centered obstacle").GetProperty("results")[0];
         return result.ValueKind == JsonValueKind.Null ? null : result.GetInt32();
     }
 
@@ -493,6 +519,18 @@ public sealed partial class NativeEngineClient : IEngineClient
 
     public void RemoveObstacle(uint id) => ExecuteBatch(
         new { version = 1, commands = new[] { new { type = "remove_obstacle", id } } }, "remove obstacle");
+
+    public void RemoveObstacles(IReadOnlyList<uint> ids) => ExecuteBatch(
+        new { version = 1, commands = ids.Select(id => new { type = "remove_obstacle", id }).ToArray() },
+        "remove obstacles");
+
+    public int? RemoveNativeRandomObstacles()
+    {
+        var result = ExecuteBatchForResult(
+            new { version = 1, commands = new[] { new { type = "remove_native_random_obstacles" } } },
+            "remove native random obstacles").GetProperty("results")[0];
+        return result.ValueKind == JsonValueKind.Null ? null : result.GetInt32();
+    }
 
     public void AddTeleporter(TeleporterSnapshot teleporter)
     {

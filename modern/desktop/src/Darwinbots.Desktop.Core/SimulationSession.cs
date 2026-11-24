@@ -373,10 +373,22 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task AddTrashCompactorAsync(ObstacleSnapshot left, ObstacleSnapshot right, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.AddTrashCompactor(left, right), cancellationToken);
 
-    public async Task<int?> AddNativeRandomObstaclesAsync(int count, CancellationToken cancellationToken = default)
+    public async Task<int?> AddNativeRandomObstaclesAsync(
+        int count,
+        ShapeCreationDimensions dimensions,
+        CancellationToken cancellationToken = default)
     {
         int? added = null;
-        await Enqueue(engine => added = engine.AddNativeRandomObstacles(count), cancellationToken).ConfigureAwait(false);
+        await Enqueue(engine => added = engine.AddNativeRandomObstacles(count, dimensions), cancellationToken).ConfigureAwait(false);
+        return added;
+    }
+
+    public async Task<int?> AddNativeCenteredObstacleAsync(
+        ShapeCreationDimensions dimensions,
+        CancellationToken cancellationToken = default)
+    {
+        int? added = null;
+        await Enqueue(engine => added = engine.AddNativeCenteredObstacle(dimensions), cancellationToken).ConfigureAwait(false);
         return added;
     }
 
@@ -385,6 +397,16 @@ public sealed class SimulationSession : IAsyncDisposable
 
     public Task RemoveObstacleAsync(uint id, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.RemoveObstacle(id), cancellationToken);
+
+    public Task RemoveObstaclesAsync(IReadOnlyList<uint> ids, CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.RemoveObstacles(ids), cancellationToken);
+
+    public async Task<int?> RemoveNativeRandomObstaclesAsync(CancellationToken cancellationToken = default)
+    {
+        int? removed = null;
+        await Enqueue(engine => removed = engine.RemoveNativeRandomObstacles(), cancellationToken).ConfigureAwait(false);
+        return removed;
+    }
 
     public Task AddTeleporterAsync(TeleporterSnapshot teleporter, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.AddTeleporter(teleporter), cancellationToken);
