@@ -1,9 +1,11 @@
 using System.Reflection;
+using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.Media.Imaging;
+using Avalonia.Platform;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Darwinbots.Desktop.Controls;
@@ -16,6 +18,84 @@ namespace Darwinbots.Desktop.Tests;
 
 public sealed class World05ObstaclesMazeRenderedTests
 {
+    [Fact]
+    public async Task NativeShapeColorsAndSelectionAreDrawnInWorldCoordinates()
+    {
+        await DesktopTestApplication.Session.Dispatch(() =>
+        {
+            var snapshot = new EngineSnapshot(0, 1, "CPU",
+                [new OrganismSnapshot(1, 0, [1, 1], [0, 0], 100, 0)])
+            {
+                WorldSize = [150, 100],
+            };
+            var transparent = new ObstacleSnapshot(1, [30, 22], [58, 50]) { Color = 0xffff15a1, Opacity = 0 };
+            var solid = new ObstacleSnapshot(2, [73, 30], [101, 53]) { Color = 0xff17bdff };
+            var custom = new ObstacleSnapshot(3, [109, 22], [134, 50]) { Color = 0xff9f5015, Opacity = 0.5f };
+            var viewport = new WorldViewport();
+            viewport.SetSnapshot(snapshot);
+            var window = new Window { Width = 600, Height = 360, Content = viewport };
+            window.Show();
+            try
+            {
+                window.UpdateLayout();
+                viewport.ZoomIn();
+                Point ScreenPoint(double x, double y) => new(
+                    x * viewport.Bounds.Width / snapshot.WorldSize[0] * viewport.Zoom + viewport.Pan.X,
+                    y * viewport.Bounds.Height / snapshot.WorldSize[1] * viewport.Zoom + viewport.Pan.Y);
+
+                Func<double, double, uint> CapturePixels()
+                {
+                    AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                    using var frame = Assert.IsAssignableFrom<Bitmap>(window.CaptureRenderedFrame());
+                    using var rgba = new WriteableBitmap(frame.PixelSize, frame.Dpi, PixelFormat.Rgba8888, AlphaFormat.Unpremul);
+                    using var locked = rgba.Lock();
+                    frame.CopyPixels(locked);
+                    var stride = locked.RowBytes;
+                    var size = frame.PixelSize;
+                    var pixels = new byte[stride * size.Height];
+                    Marshal.Copy(locked.Address, pixels, 0, pixels.Length);
+                    return (x, y) =>
+                    {
+                        var point = viewport.TranslatePoint(ScreenPoint(x, y), window)!.Value;
+                        var column = (int)Math.Floor(point.X * size.Width / window.Bounds.Width);
+                        var row = (int)Math.Floor(point.Y * size.Height / window.Bounds.Height);
+                        var offset = row * stride + column * 4;
+                        return (uint)pixels[offset + 3] << 24 | (uint)pixels[offset] << 16
+                            | (uint)pixels[offset + 1] << 8 | pixels[offset + 2];
+                    };
+                }
+
+                var background = CapturePixels();
+                viewport.SetSnapshot(snapshot with { Obstacles = [transparent, solid, custom] });
+                var outlined = CapturePixels();
+                Assert.Equal(transparent.Color, outlined(30, 35));
+                Assert.Equal(background(44, 35), outlined(44, 35));
+                Assert.Equal(background(28, 35), outlined(28, 35));
+                Assert.Equal(solid.Color, outlined(87, 40));
+
+                ClickAt(window, viewport, ScreenPoint(44, 35));
+                var selected = CapturePixels();
+                Assert.Equal(0xffffffffu, selected(28, 35));
+                Assert.Equal(0xffffffffu, selected(44, 20));
+                Assert.Equal(transparent.Color, selected(30, 35));
+
+                ClickAt(window, viewport, ScreenPoint(87, 40));
+                var selectedSolid = CapturePixels();
+                Assert.Equal(0xffffffffu, selectedSolid(71, 40));
+                Assert.Equal(solid.Color, selectedSolid(87, 40));
+                Assert.Equal(background(28, 35), selectedSolid(28, 35));
+
+                ClickAt(window, viewport, ScreenPoint(120, 35));
+                var selectedCustom = CapturePixels();
+                Assert.Equal(0xff202725u, selectedCustom(109, 35));
+                Assert.Equal(background(107, 35), selectedCustom(107, 35));
+                Assert.NotEqual(custom.Color, selectedCustom(120, 35));
+                Assert.NotEqual(background(120, 35), selectedCustom(120, 35));
+            }
+            finally { window.Close(); }
+        }, CancellationToken.None);
+    }
+
     [Fact]
     public async Task RealObstaclePlacementEditorApplyAndMazeCommandProduceCanonicalSnapshotsAndReceipt()
     {
