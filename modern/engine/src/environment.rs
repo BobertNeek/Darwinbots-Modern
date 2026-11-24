@@ -50,6 +50,13 @@ impl Obstacle {
             shot_policy: ShapeShotPolicy::default(),
         }
     }
+
+    pub(crate) fn extents(&self) -> [f32; 2] {
+        [
+            self.maximum[0] - self.minimum[0],
+            self.maximum[1] - self.minimum[1],
+        ]
+    }
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
@@ -75,19 +82,20 @@ impl TrashCompactor {
         left: &mut Obstacle,
         right: &mut Obstacle,
         world_size: [f32; 2],
+        wall_extents: [[f32; 2]; 2],
     ) {
         // Obstacles.bas applies the coupled rules before the ordinary movement.
         if left.minimum[0] > right.minimum[0] + 400.0 {
             left.drift[0] = -left.drift[0];
             right.drift[0] = -right.drift[0];
         }
-        if left.minimum[0] <= -(left.maximum[0] - left.minimum[0]) {
+        if left.minimum[0] <= -wall_extents[0][0] {
             left.drift[0] = self.speed;
             right.drift[0] = -self.speed;
         }
-        for wall in [left, right] {
+        for (wall, extents) in [left, right].into_iter().zip(wall_extents) {
             for (axis, extent) in world_size.into_iter().enumerate() {
-                let span = wall.maximum[axis] - wall.minimum[axis];
+                let span = extents[axis];
                 let minimum = wall.minimum[axis] + wall.drift[axis];
                 if minimum < -span {
                     wall.drift[axis] = self.speed * 0.1;
