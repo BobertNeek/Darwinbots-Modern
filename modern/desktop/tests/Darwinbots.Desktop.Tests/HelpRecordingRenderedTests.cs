@@ -49,7 +49,9 @@ public sealed class HelpRecordingRenderedTests
                 prompt.GetVisualDescendants().OfType<Button>()
                     .Single(button => Equals(button.Content, includeHistory ? "YES" : "NO"))
                     .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                await WaitFor(() => storage.SavedLivingSnapshot is not null, "Snapshot was not saved.");
+                var model = Assert.IsType<MainWindowViewModel>(window.DataContext);
+                await WaitFor(() => model.Status == "LIVING SNAPSHOT SAVED", "Snapshot was not saved.");
+                Assert.NotNull(storage.SavedLivingSnapshot);
                 Assert.Equal(314UL, Assert.Single(Db2GenomeRecordFile.Decode(LegacyDnaText.Decode(storage.SavedLivingSnapshot!))).Id);
                 if (includeHistory)
                 {
