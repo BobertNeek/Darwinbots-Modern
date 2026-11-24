@@ -845,8 +845,10 @@ mod tests {
         ))
         .unwrap();
         let tie = source.ties[0].clone();
+        // Start from an original numbered DBO so importing it does not
+        // produce a self-directed row through VB6's in-place remapping.
         let group = source
-            .export_native_organisms(&[tie.first, tie.second])
+            .export_original_organism_file(&[tie.first, tie.second])
             .unwrap();
         source = Engine::new_native(EngineConfig::testing()).unwrap();
         source

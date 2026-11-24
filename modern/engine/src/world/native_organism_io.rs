@@ -652,9 +652,11 @@ mod tests {
             if let Some(expected_after_creation) = replaced {
                 world.slots.get_mut(ids[2]).unwrap().materials.slime = 0.0;
                 assert!(world.native_make_tie(ids[1], ids[2], 32_000, 50, 7));
-                assert_eq!(pointers(&world, &ids[1..]), expected_after_creation);
+                // The dormant row can activate against the incumbent.
+                // Include all three robots, as the original SIM capture did.
+                assert_eq!(pointers(&world, &ids)[1..], expected_after_creation);
                 let resumed = SaveFile::decode(&SaveFile::encode(&world).unwrap()).unwrap();
-                assert_eq!(pointers(&resumed, &ids[1..]), expected_after_creation);
+                assert_eq!(pointers(&resumed, &ids)[1..], expected_after_creation);
             }
         }
     }
