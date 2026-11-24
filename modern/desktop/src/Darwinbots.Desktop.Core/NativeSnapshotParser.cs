@@ -133,6 +133,7 @@ public static class NativeSnapshotParser
         }).ToArray();
         var teleporters = (native.Teleporters ?? []).Select(value => new TeleporterSnapshot(value.Id, value.Center, value.Radius, value.Destination)
         {
+            RandomDestination = value.RandomDestination,
             Mode = TeleporterMode(value),
             Color = value.Color ?? 0xffb9bdb6u,
             Velocity = value.Velocity is { Length: 2 } ? value.Velocity : [0f, 0f],
@@ -810,7 +811,8 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("poll_interval")] uint? PollInterval = null,
         [property: JsonPropertyName("capacity")] int? Capacity = null,
         [property: JsonPropertyName("poll_countdown")] uint? PollCountdown = null,
-        [property: JsonPropertyName("backflow_limit")] uint? BackflowLimit = null);
+        [property: JsonPropertyName("backflow_limit")] uint? BackflowLimit = null,
+        [property: JsonPropertyName("random_destination")] bool RandomDestination = false);
 
     private sealed record NativeFileTeleporter(
         [property: JsonPropertyName("id")] uint Id,

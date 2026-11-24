@@ -10766,6 +10766,7 @@ impl Engine {
 
     fn apply_teleporter_relocation(&mut self) {
         let world_size = [self.config.world_width, self.config.world_height];
+        let mut fallback_random = self.config.seed ^ self.tick.rotate_left(23);
         let mut positions: Vec<_> = self
             .slots
             .iter()
@@ -10836,10 +10837,12 @@ impl Engine {
                     continue;
                 }
 
-                let destination = [
-                    teleporter.destination[0].clamp(0.0, world_size[0]),
-                    teleporter.destination[1].clamp(0.0, world_size[1]),
-                ];
+                let destination = local_teleporter_destination(
+                    teleporter,
+                    world_size,
+                    &mut self.native_random,
+                    &mut fallback_random,
+                );
                 let delta = [
                     destination[0] - positions[seed][0],
                     destination[1] - positions[seed][1],
@@ -10895,10 +10898,12 @@ impl Engine {
                 {
                     continue;
                 }
-                corpse.position = [
-                    teleporter.destination[0].clamp(0.0, world_size[0]),
-                    teleporter.destination[1].clamp(0.0, world_size[1]),
-                ];
+                corpse.position = local_teleporter_destination(
+                    teleporter,
+                    world_size,
+                    &mut self.native_random,
+                    &mut fallback_random,
+                );
                 next = Some(TeleporterBackflow {
                     source: teleporter.center,
                     remaining: teleporter.backflow_limit,
@@ -13697,6 +13702,28 @@ fn distance_squared(left: [f32; 2], right: [f32; 2]) -> f32 {
     let x = right[0] - left[0];
     let y = right[1] - left[1];
     x * x + y * y
+}
+
+fn local_teleporter_destination(
+    teleporter: &Teleporter,
+    world_size: [f32; 2],
+    native: &mut Option<crate::native_random::NativeRandom>,
+    fallback: &mut u64,
+) -> [f32; 2] {
+    if teleporter.random_destination {
+        // VB6 multiplies each field extent by a Single random draw, then
+        // converts the result to Long before respawning the organism.
+        world_size.map(|extent| {
+            (extent * world_random_unit(native, fallback) as f32)
+                .round_ties_even()
+                .clamp(0.0, extent)
+        })
+    } else {
+        [
+            teleporter.destination[0].clamp(0.0, world_size[0]),
+            teleporter.destination[1].clamp(0.0, world_size[1]),
+        ]
+    }
 }
 
 fn world_random_unit(

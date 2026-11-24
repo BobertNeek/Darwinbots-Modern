@@ -726,6 +726,9 @@ impl Engine {
                 number(t, &(p.clone() + name), value)?;
             }
         }
+        // Teleporter destination coordinates and policy have no native .sim
+        // representation. DB2 always chooses a random destination for local
+        // transfers. Store the complete configuration in DB3S when needed.
         for (i, tele) in self.teleporters.iter().enumerate() {
             let p = format!("teleporter[{i}].");
             for (name, value) in [
@@ -771,6 +774,7 @@ impl Engine {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::SaveFile;
 
     #[test]
     fn live_native_sim_export_updates_resources_memory_world_and_shots() {
@@ -961,6 +965,43 @@ mod tests {
         assert_eq!(imported.teleporters[0].width, 120.0);
         assert_eq!(imported.config.vegetation, engine.config.vegetation);
         assert_eq!(imported.config.dna_costs, engine.config.dna_costs);
+    }
+
+    #[test]
+    fn native_local_gateway_relocates_after_import_and_modern_reload() {
+        let mut engine = Engine::new(EngineConfig {
+            brownian_motion: 0.0,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let center = [500.0; 2];
+        let fixed_destination = [800.0; 2];
+        engine
+            .spawn_at(LegacyDna::parse("stop").unwrap(), center)
+            .unwrap();
+        engine
+            .add_teleporter(Teleporter::new(0, center, 80.0, fixed_destination))
+            .unwrap();
+        let native = engine.export_native_sim().unwrap();
+        let modern = SaveFile::encode(&engine).unwrap();
+        let mut fixed = SaveFile::decode(&modern).unwrap();
+        fixed.tick().unwrap();
+        assert_eq!(fixed.snapshot().organisms[0].position, fixed_destination);
+        assert!(!fixed.snapshot().teleporters[0].random_destination);
+
+        let mut imported = Engine::from_native_sim(&native).unwrap();
+        assert_eq!(imported.snapshot().organisms[0].position, center);
+        assert!(imported.snapshot().teleporters[0].random_destination);
+        let modern = SaveFile::encode(&imported).unwrap();
+        let mut resumed = SaveFile::decode(&modern).unwrap();
+        imported.tick().unwrap();
+        resumed.tick().unwrap();
+        let moved = &resumed.snapshot().organisms[0];
+        assert_ne!(moved.position, center);
+        assert_ne!(moved.position, fixed_destination);
+        assert!(resumed.snapshot().teleporters[0].random_destination);
+        assert_eq!(resumed.snapshot().teleporters[0].sent, 1);
+        assert_eq!(moved.position, imported.snapshot().organisms[0].position);
     }
 
     #[test]
