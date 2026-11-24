@@ -16,6 +16,7 @@ using Darwinbots.Desktop.Services;
 using Darwinbots.Desktop.ViewModels;
 using Avalonia.VisualTree;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 
@@ -741,10 +742,10 @@ public sealed partial class MainWindow : Window
             EngineState,
             async _ => await OpenPlayerBotSettingsAsync());
         handlers[LegacyCommandId.EditEnablePlayerBot] = Handler(
-            () => EngineState() with { Checked = _playerBotEnabled },
+            () => F1ToolState(EngineState() with { Checked = _playerBotEnabled }),
             async _ => await TogglePlayerBotAsync());
         handlers[LegacyCommandId.EditEyeDesigner] = Handler(
-            SelectedRobotState,
+            () => F1ToolState(LegacyCommandState.Available),
             async _ => await OpenEyeDesignerAsync());
         handlers[LegacyCommandId.EditRestrictionOverwrites] = Handler(
             EngineState,
@@ -913,6 +914,11 @@ public sealed partial class MainWindow : Window
     private LegacyCommandState SelectedRobotState() => _viewModel.SelectedOrganism is null
         ? new LegacyCommandState(false, false, "Select a robot first.")
         : LegacyCommandState.Available;
+
+    private LegacyCommandState F1ToolState(LegacyCommandState state) =>
+        _session?.LatestSnapshot.NativeF1Enabled == true
+            ? state with { Enabled = false, DisabledReason = "Unavailable in F1 competition." }
+            : state;
 
     private LegacyCommandState FeatureState(WorldFeatureKind kind)
     {
@@ -1373,13 +1379,51 @@ public sealed partial class MainWindow : Window
 
     private Task<LegacyCommandResult> OpenEyeDesignerAsync()
     {
-        if (_session is null || SelectedRobotKey() is not { } focus)
-            return Task.FromResult(LegacyCommandResult.Failure("NO ROBOT SELECTED"));
-        var window = _toolWindows.ShowOrActivate(
-            $"eye-designer:{focus.Slot}:{focus.Generation}",
-            () => new EyeDesignerWindow(_session, focus));
-        window.SetSnapshot(_session.LatestSnapshot);
+        var window = _toolWindows.ShowOrActivate("eye-designer", () =>
+        {
+            var designer = new EyeDesignerWindow(_storage, WriteEyeMemoryAsync, DisableEyeBrownianMotionAsync, DisableEyeCostsAsync);
+            void OnSelectionChanged(object? sender, PropertyChangedEventArgs change)
+            {
+                if (change.PropertyName == nameof(MainWindowViewModel.SelectedId)) UpdateEyeDesignerFocus(designer);
+            }
+            _viewModel.PropertyChanged += OnSelectionChanged;
+            designer.Closed += (_, _) => _viewModel.PropertyChanged -= OnSelectionChanged;
+            return designer;
+        });
+        UpdateEyeDesignerFocus(window);
         return Task.FromResult(LegacyCommandResult.Success("EYE DESIGNER OPEN"));
+    }
+
+    private void UpdateEyeDesignerFocus(EyeDesignerWindow window) =>
+        window.SetFocus(_session?.LatestSnapshot ?? EngineSnapshot.Empty, SelectedRobotKey());
+
+    private Task WriteEyeMemoryAsync(OrganismKey focus, ushort address, int value) =>
+        RequireEyeDesignerSession().SetOrganismMemoryAsync(focus.Slot, focus.Generation, address, value);
+
+    private SimulationSession RequireEyeDesignerSession()
+    {
+        if (_session is not { } session || _loadingSimulation || _navigationInFlight)
+            throw new InvalidOperationException("The simulation is not ready.");
+        if (session.LatestSnapshot.NativeF1Enabled)
+            throw new InvalidOperationException("Unavailable in F1 competition.");
+        return session;
+    }
+
+    private async Task DisableEyeBrownianMotionAsync()
+    {
+        var session = RequireEyeDesignerSession();
+        await session.SetBrownianMotionAsync(0f);
+        if (IsVisible && ReferenceEquals(_session, session))
+            _liveEnvironment = _liveEnvironment with { BrownianMotion = 0f };
+    }
+
+    private async Task DisableEyeCostsAsync()
+    {
+        var session = RequireEyeDesignerSession();
+        await session.SetGlobalCostMultiplierAsync(0.0);
+        if (!IsVisible || !ReferenceEquals(_session, session)) return;
+        _activeCostMultiplier = 0.0;
+        await session.RefreshSnapshotAsync();
     }
 
     private async Task<LegacyCommandResult> ShowRestrictionOverridesAsync()

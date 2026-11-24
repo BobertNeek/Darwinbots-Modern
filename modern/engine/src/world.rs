@@ -567,6 +567,8 @@ pub struct Snapshot {
     /// Last effective state of the original Sun button.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub native_sun_on: Option<bool>,
+    #[serde(default)]
+    pub native_f1_enabled: bool,
     #[serde(default = "default_true")]
     pub death_poffs_enabled: bool,
     #[serde(default)]
@@ -627,6 +629,7 @@ impl Default for Snapshot {
             tick: 0,
             native_cycle: None,
             native_sun_on: None,
+            native_f1_enabled: false,
             death_poffs_enabled: true,
             ordinary_restart_available: false,
             ordinary_restart_on_extinction: false,
@@ -663,6 +666,7 @@ impl PartialEq for Snapshot {
         self.tick == other.tick
             && self.native_cycle == other.native_cycle
             && self.native_sun_on == other.native_sun_on
+            && self.native_f1_enabled == other.native_f1_enabled
             && self.death_poffs_enabled == other.death_poffs_enabled
             && self.ordinary_restart_available == other.ordinary_restart_available
             && self.ordinary_restart_on_extinction == other.ordinary_restart_on_extinction
@@ -2024,6 +2028,7 @@ impl From<Db3sV2Snapshot> for Snapshot {
             tick: value.tick,
             native_cycle: None,
             native_sun_on: None,
+            native_f1_enabled: false,
             death_poffs_enabled: true,
             ordinary_restart_available: false,
             ordinary_restart_on_extinction: false,
@@ -2911,6 +2916,7 @@ impl Engine {
                 tick: 0,
                 native_cycle: None,
                 native_sun_on: None,
+                native_f1_enabled: false,
                 death_poffs_enabled: true,
                 ordinary_restart_available: true,
                 ordinary_restart_on_extinction: false,
@@ -14011,6 +14017,7 @@ impl Engine {
             tick: self.tick,
             native_cycle: self.native_cycle,
             native_sun_on: self.native_sun_on(),
+            native_f1_enabled: self.native_f1_enabled(),
             death_poffs_enabled: self.death_poffs_enabled,
             ordinary_restart_available: self.ordinary_restart_available(),
             ordinary_restart_on_extinction: self.ordinary_restart.enabled,

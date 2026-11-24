@@ -103,6 +103,14 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task UpdateCostSettingsAsync(GlobalSimulationCostSettings settings, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.UpdateCostSettings(settings), cancellationToken);
 
+    public Task SetGlobalCostMultiplierAsync(double multiplier, CancellationToken cancellationToken = default) =>
+        Enqueue(engine =>
+        {
+            var configuration = engine.ReadConfiguration()
+                ?? throw new InvalidOperationException("The simulation's current costs are unavailable.");
+            engine.UpdateCostSettings(configuration.Costs with { GlobalMultiplier = multiplier });
+        }, cancellationToken);
+
     public async Task<DnaImportReport> ImportDnaAsync(
         string dna,
         float[]? position = null,

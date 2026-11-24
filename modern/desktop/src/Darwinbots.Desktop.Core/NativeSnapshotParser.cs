@@ -243,6 +243,7 @@ public static class NativeSnapshotParser
         {
             NativeCycle = native.NativeCycle,
             NativeSunOn = native.NativeSunOn,
+            NativeF1Enabled = native.NativeF1Enabled,
             RenderInstances = renderInstances,
             Species = species,
             MutationSettings = new MutationSettingsSnapshot(
@@ -566,7 +567,8 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("ordinary_restart_on_extinction")] bool OrdinaryRestartOnExtinction = false,
         [property: JsonPropertyName("ordinary_restart_pending")] bool OrdinaryRestartPending = false,
         [property: JsonPropertyName("ordinary_restart_count")] ulong OrdinaryRestartCount = 0,
-        [property: JsonPropertyName("ordinary_restart_available")] bool OrdinaryRestartAvailable = false);
+        [property: JsonPropertyName("ordinary_restart_available")] bool OrdinaryRestartAvailable = false,
+        [property: JsonPropertyName("native_f1_enabled")] bool NativeF1Enabled = false);
 
     private sealed record NativePlayerBot(
         [property: JsonPropertyName("enabled")] bool Enabled,
