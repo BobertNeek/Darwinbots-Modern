@@ -1,9 +1,11 @@
 use super::*;
+use crate::physics::organism_radius_for_profile;
 
 impl Engine {
     // Robots.bas: Shooting, ManageChlr, ManageBody, then ManageBouyancy.
     pub(super) fn body_commands_phase(&mut self) {
         let runtime = SysvarRuntime::new();
+        let native = self.native_random.is_some();
         for slot_index in self.phase_slot_range() {
             let slot = &mut self.slots[slot_index];
             let Some(robot) = slot.organism.as_mut() else {
@@ -31,21 +33,23 @@ impl Engine {
             }
             robot.materials.body = robot.materials.body.clamp(0.0, 32_000.0);
             if stored > 0 || fed > 0 {
-                robot.materials.radius = crate::physics::organism_radius(
+                robot.materials.radius = organism_radius_for_profile(
                     robot.materials.body,
                     robot.materials.chloroplasts,
                     self.config.fixed_bot_radii,
+                    native,
                 );
             }
             robot
                 .materials
-                .publish_for_profile(&mut robot.program.memory, self.native_random.is_some());
+                .publish_for_profile(&mut robot.program.memory, native);
         }
     }
 
     pub(super) fn chloroplast_phase(&mut self) {
         let runtime = SysvarRuntime::new();
-        let native_light = self.native_random.is_some().then(|| {
+        let native = self.native_random.is_some();
+        let native_light = native.then(|| {
             (32_000.0 - self.native_light_availability() * 32_000.0).round_ties_even() as i32
         });
         let costs = self.active_dna_costs();
@@ -89,14 +93,15 @@ impl Engine {
                 native_sensing::publish_integer(&mut robot.program.memory, MEM_LIGHT as u16, light);
             }
             robot.materials.decay_chloroplasts();
-            robot.materials.radius = crate::physics::organism_radius(
+            robot.materials.radius = organism_radius_for_profile(
                 robot.materials.body,
                 robot.materials.chloroplasts,
                 self.config.fixed_bot_radii,
+                native,
             );
             robot
                 .materials
-                .publish_for_profile(&mut robot.program.memory, self.native_random.is_some());
+                .publish_for_profile(&mut robot.program.memory, native);
         }
     }
 
@@ -163,6 +168,46 @@ mod tests {
             store.slots.get(store_id).unwrap().materials.energy,
             control.slots.get(id).unwrap().materials.energy - 100.0
         );
+    }
+
+    #[test]
+    fn chloroplast_and_body_phases_round_radius_for_the_active_profile() {
+        let body = f32::from_bits(0x4517_efef);
+        let chloroplasts = f32::from_bits(0x46e4_b4a6);
+        for (native, expected_radius) in [(false, 0x43c4_a3a0), (true, 0x43c4_a39f)] {
+            let config = EngineConfig::testing();
+            let mut engine = if native {
+                Engine::new_native(config)
+            } else {
+                Engine::new(config)
+            }
+            .unwrap();
+            if !native {
+                engine.native_random = None;
+            }
+            let id = engine
+                .spawn_at(LegacyDna::parse("stop").unwrap(), [500.0; 2])
+                .unwrap();
+            let robot = engine.slots.get_mut(id).unwrap();
+            robot.materials.body = body;
+            robot.materials.chloroplasts = chloroplasts;
+
+            engine.chloroplast_phase();
+            let robot = engine.slots.get_mut(id).unwrap();
+            assert_eq!(
+                robot.materials.chloroplasts.to_bits(),
+                chloroplasts.to_bits()
+            );
+            assert_eq!(robot.materials.radius.to_bits(), expected_radius);
+
+            robot.materials.body = body - 1.0;
+            robot.materials.radius = 1.0;
+            robot.program.memory.write(313, 10);
+            engine.body_commands_phase();
+            let robot = engine.slots.get(id).unwrap();
+            assert_eq!(robot.materials.body.to_bits(), body.to_bits());
+            assert_eq!(robot.materials.radius.to_bits(), expected_radius);
+        }
     }
 
     #[test]

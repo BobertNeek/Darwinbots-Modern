@@ -11619,10 +11619,11 @@ impl Engine {
                     .apply_plant_delta(feeding.delta * tide_factor, settings.feeding_to_body)
             };
             if organism.materials.chloroplasts > 0.0 {
-                organism.materials.radius = crate::physics::organism_radius(
+                organism.materials.radius = crate::physics::organism_radius_for_profile(
                     organism.materials.body,
                     organism.materials.chloroplasts,
                     self.config.fixed_bot_radii,
+                    native,
                 );
             }
             if feeding.light
@@ -12094,14 +12095,16 @@ impl Engine {
             // their Single sum to the Long sondist before computing absx/absy.
             let ratio = (f64::from(birth.percentage) / 100.0) as f32;
             let remaining = (f64::from(100 - birth.percentage) / 100.0) as f32;
-            let separation = (crate::physics::organism_radius(
+            let separation = (crate::physics::organism_radius_for_profile(
                 parent_state.materials.body * ratio,
                 parent_state.materials.chloroplasts * ratio,
                 self.config.fixed_bot_radii,
-            ) + crate::physics::organism_radius(
+                native,
+            ) + crate::physics::organism_radius_for_profile(
                 parent_state.materials.body * remaining,
                 parent_state.materials.chloroplasts * remaining,
                 self.config.fixed_bot_radii,
+                native,
             ))
             .round_ties_even();
             let parent_angle = f64::from(parent_state.heading());
@@ -12206,10 +12209,11 @@ impl Engine {
             };
             child_materials.mass =
                 child_materials.body.max(0.0) / 1_000.0 + child_materials.shell.max(0.0) / 200.0;
-            child_materials.radius = crate::physics::organism_radius(
+            child_materials.radius = crate::physics::organism_radius_for_profile(
                 child_materials.body,
                 child_materials.chloroplasts,
                 self.config.fixed_bot_radii,
+                native,
             );
             child_materials.synchronize_energy();
             let native_birth = native;
@@ -12315,10 +12319,11 @@ impl Engine {
             }
 
             if let Ok(parent_organism) = self.slots.get_mut(birth.parent) {
-                parent_materials.radius = crate::physics::organism_radius(
+                parent_materials.radius = crate::physics::organism_radius_for_profile(
                     parent_materials.body,
                     parent_state.materials.chloroplasts,
                     self.config.fixed_bot_radii,
+                    native,
                 );
                 parent_materials.synchronize_energy();
                 parent_organism.materials = parent_materials;

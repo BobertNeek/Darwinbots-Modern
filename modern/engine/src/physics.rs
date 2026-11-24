@@ -249,6 +249,19 @@ pub(crate) fn native_organism_radius(body: f32, chloroplasts: f32, fixed_bot_rad
     ((body_radius + (415.0 - body_radius) * f64::from(chloroplasts) / 32_000.0) as f32).max(1.0)
 }
 
+pub(crate) fn organism_radius_for_profile(
+    body: f32,
+    chloroplasts: f32,
+    fixed_bot_radii: bool,
+    native: bool,
+) -> f32 {
+    if native {
+        native_organism_radius(body, chloroplasts, fixed_bot_radii)
+    } else {
+        organism_radius(body, chloroplasts, fixed_bot_radii)
+    }
+}
+
 fn organism_body_radius(body: f32) -> f32 {
     // FindRadius: Log and exponentiation evaluate as Double, then assign Single.
     // PI is a Single constant in the original.
