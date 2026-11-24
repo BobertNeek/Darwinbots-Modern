@@ -1,6 +1,8 @@
 using Avalonia;
 using Darwinbots.Desktop.Core;
+using System.Security.Cryptography;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Darwinbots.Desktop;
 
@@ -9,14 +11,17 @@ internal static class Program
     [STAThread]
     public static int Main(string[] args)
     {
-        if (args.Contains("--smoke-test", StringComparer.Ordinal)) return SmokeTest();
+        if (args.Contains("--smoke-test", StringComparer.Ordinal)) return SmokeTest(args);
         return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
 
-    private static int SmokeTest()
+    private static int SmokeTest(string[] args)
     {
         try
         {
+            var fixtureIndex = Array.IndexOf(args, "--native-smoke-fixture");
+            if (fixtureIndex >= 0 && fixtureIndex + 1 == args.Length)
+                throw new ArgumentException("--native-smoke-fixture requires a simulation path.");
             var bots = Path.Combine(AppContext.BaseDirectory, "Bots");
             foreach (var name in new[] { "Alga_Minimalis_Chloroplastus.txt", "Animal_Minimalis.txt",
                 "Historical/Alga_Minimalis.txt", "Historical/league/21-Efficient Bot (F1)(Shen)-01.09.04.txt" })
@@ -69,13 +74,15 @@ internal static class Program
                 throw new InvalidDataException("Packaged resumed inspector history diverged from the continuous session's matching tail.");
             if (!engine.Save().AsSpan().SequenceEqual(resumed.Save()))
                 throw new InvalidDataException("Packaged save/resume produced different persistent world bytes.");
+            var nativeFiles = fixtureIndex < 0 ? null : SmokeNativeFiles(args[fixtureIndex + 1], options, clock);
             Console.WriteLine(JsonSerializer.Serialize(new
             {
                 status = "passed", backend = engine.Backend, ticks = engine.Snapshot().Tick,
                 population = engine.Snapshot().Population, movement = true, save_resume = true,
                 persistent_save_bytes_equal = true, inspection_history_boundary = true, species_settings = true,
                 bundled_bots = Directory.GetFiles(bots, "*.txt", SearchOption.AllDirectories).Length,
-            }));
+                native_files = nativeFiles,
+            }, new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull }));
             return 0;
         }
         catch (Exception error)
@@ -83,6 +90,57 @@ internal static class Program
             Console.Error.WriteLine(error.Message);
             return 1;
         }
+    }
+
+    private static object SmokeNativeFiles(string fixture, WorldSetupOptions options, TimeProvider clock)
+    {
+        var fixtureBytes = File.ReadAllBytes(fixture);
+        var workingDirectory = Directory.CreateTempSubdirectory("darwinbots-native-smoke-");
+        try
+        {
+            using var engine = new NativeEngineClient(options, clock);
+            engine.Load(fixtureBytes);
+            var input = engine.Snapshot();
+            if (input.NativeCycle != 1 || input.Population != 1)
+                throw new InvalidDataException("Expected the original one-robot movement fixture at cycle 1.");
+
+            engine.Tick(1);
+            var stepped = engine.Snapshot();
+            if (stepped.NativeCycle != 2 || stepped.Population != 1)
+                throw new InvalidDataException("The packaged engine did not advance the native fixture to cycle 2.");
+            var original = stepped.Organisms.Single();
+            var dna = engine.ExportDna(original.Slot, original.Generation);
+
+            var simulationPath = Path.Combine(workingDirectory.FullName, "roundtrip.sim");
+            File.WriteAllBytes(simulationPath, engine.SaveLegacy());
+            var simulationBytes = File.ReadAllBytes(simulationPath);
+            if (simulationBytes.AsSpan().StartsWith("DB3S"u8))
+                throw new InvalidDataException("The packaged native simulation writer returned a Modern checkpoint.");
+            using var reopened = new NativeEngineClient(options, clock);
+            reopened.Load(simulationBytes);
+            var simulation = reopened.Snapshot();
+            var restored = simulation.Organisms.Single();
+            if (simulation.NativeCycle != stepped.NativeCycle || simulation.Population != stepped.Population
+                || restored.UniqueId != original.UniqueId || reopened.ExportDna(restored.Slot, restored.Generation) != dna)
+                throw new InvalidDataException("The packaged native simulation round trip changed the cycle, population, identity or DNA.");
+
+            var organismPath = Path.Combine(workingDirectory.FullName, "roundtrip.dbo");
+            File.WriteAllBytes(organismPath, reopened.ExportOrganismGroup([new(restored.Slot, restored.Generation)]));
+            using var receiver = new NativeEngineClient(options, clock);
+            var count = receiver.ImportOrganism(File.ReadAllBytes(organismPath));
+            var imported = receiver.Snapshot().Organisms.Single();
+            if (count != 1 || receiver.ExportDna(imported.Slot, imported.Generation) != dna)
+                throw new InvalidDataException("The packaged organism round trip changed the robot count or DNA.");
+
+            return new
+            {
+                fixture_sha256 = Convert.ToHexStringLower(SHA256.HashData(fixtureBytes)),
+                sim_cycle = simulation.NativeCycle,
+                sim_population = simulation.Population,
+                dbo_count = count,
+            };
+        }
+        finally { workingDirectory.Delete(recursive: true); }
     }
 
     private sealed class SmokeClock : TimeProvider

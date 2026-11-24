@@ -51,6 +51,8 @@ The native CI package showed five offline tabs and corrected onboarding. Default
 
 The native walkthrough stopped after the window helper could not recover a minimized window and the user ended Computer Use. Remaining native checks are live species apply/cancel/reopen, live settings, world and organism save/load and robot tools, leagues/evolution/restart, graphs/export, recording/recovery, and tray hide/restore. Tests used an isolated profile. On November 20, all seven original profile files matched their backup hashes and there were no additional files.
 
+The [Windows acceptance walkthrough](windows-offline-acceptance.md) gives the isolated test profile, steps and observable pass conditions for the open scenarios.
+
 Earlier failures remain dated failures: `7a3db6b` stale desktop expectations; `f19c6ce` test-helper compile error; local `0f60376`/`4c646d4` cost-dialog timeouts; and two `518007a` organism-route timeouts. Repairs preserve the assertions and use bounded CPU owners for UI fixtures. Current native Auto creation passed separately. Full logs and private profiles remain local; hashes, package identity and observation limits are in the structured receipt.
 
 ### Scope and evidence limits

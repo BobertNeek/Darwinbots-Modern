@@ -70,6 +70,10 @@ jobs:
           $name = if ($env:RUNNER_OS -eq "Windows") { "Darwinbots.Desktop.exe" } else { "Darwinbots.Desktop" }
           $start = [Diagnostics.ProcessStartInfo]::new((Join-Path $package $name))
           $start.ArgumentList.Add("--smoke-test")
+          if ($env:RUNNER_OS -eq "Windows") {
+            $start.ArgumentList.Add("--native-smoke-fixture")
+            $start.ArgumentList.Add((Join-Path $PWD "modern/engine/tests/fixtures/db24832-genuine-movement-cycle1-20261016.sim"))
+          }
           $start.WorkingDirectory = $package
           $start.UseShellExecute = $false
           $start.CreateNoWindow = $true
@@ -98,6 +102,13 @@ jobs:
                 $result.inspection_history_boundary -ne $true -or
                 $result.species_settings -ne $true -or $result.bundled_bots -ne 48) {
               throw "Published package did not report every smoke contract."
+            }
+            if ($env:RUNNER_OS -eq "Windows") {
+              $files = $result.native_files
+              if ($files.fixture_sha256 -ne "766f386c392c59834a3390a2c726d3e2f8db695fe5b05a932a593d0dccd010e3" -or
+                  $files.sim_cycle -ne 2 -or $files.sim_population -ne 1 -or $files.dbo_count -ne 1) {
+                throw "Published Windows package did not round-trip the original SIM and DBO."
+              }
             }
           } finally {
             $process.Dispose()
