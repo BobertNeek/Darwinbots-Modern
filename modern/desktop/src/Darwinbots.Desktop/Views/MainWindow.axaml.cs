@@ -856,7 +856,7 @@ public sealed partial class MainWindow : Window
             () => new LegacyCommandState(true, false),
             async _ => await ImportBackgroundAsync());
         handlers[LegacyCommandId.ViewRemoveBackground] = Handler(
-            () => new LegacyCommandState(Viewport.HasBackgroundImage, false, Viewport.HasBackgroundImage ? null : "No background picture is loaded."),
+            () => LegacyCommandState.Available,
             _ => Task.FromResult(RemoveBackground()));
         handlers[LegacyCommandId.ObjectsNewTeleporter] = Handler(
             EngineState,
