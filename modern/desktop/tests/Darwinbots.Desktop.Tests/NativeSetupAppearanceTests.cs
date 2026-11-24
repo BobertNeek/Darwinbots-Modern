@@ -1,7 +1,7 @@
 using Darwinbots.Desktop.Core;
 using Xunit;
 
-namespace Darwinbots.Desktop.Core.Tests;
+namespace Darwinbots.Desktop.Tests;
 
 public sealed class NativeSetupAppearanceTests
 {
