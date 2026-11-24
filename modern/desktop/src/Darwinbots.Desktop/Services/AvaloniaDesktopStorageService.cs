@@ -107,13 +107,15 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
 
     public async Task<string?> PickSimulationPathAsync(TopLevel owner)
     {
-        var files = await owner.StorageProvider.OpenFilePickerAsync(SimulationOpenOptions("Open Darwinbots Modern save"));
+        var files = await owner.StorageProvider.OpenFilePickerAsync(SimulationOpenOptions(
+            "Open Darwinbots Modern save", SimulationFileType(), LegacySimulationFileType()));
         return files.FirstOrDefault() is { } file ? LocalPath(file) : null;
     }
 
     public async Task<byte[]?> OpenSimulationAsync(TopLevel owner)
     {
-        var files = await owner.StorageProvider.OpenFilePickerAsync(SimulationOpenOptions("Load Darwinbots simulation"));
+        var files = await owner.StorageProvider.OpenFilePickerAsync(SimulationOpenOptions(
+            "Load Darwinbots simulation", LegacySimulationFileType(), SimulationFileType()));
         if (files.FirstOrDefault() is not { } file) return null;
         await using var stream = await file.OpenReadAsync();
         using var memory = new MemoryStream();
@@ -452,11 +454,11 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         }
     }
 
-    private static FilePickerOpenOptions SimulationOpenOptions(string title) => new()
+    private static FilePickerOpenOptions SimulationOpenOptions(string title, params FilePickerFileType[] filters) => new()
     {
         Title = title,
         AllowMultiple = false,
-        FileTypeFilter = [SimulationFileType(), LegacySimulationFileType()],
+        FileTypeFilter = filters,
     };
 
     private static FilePickerFileType RobotFileType() =>
