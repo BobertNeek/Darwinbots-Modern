@@ -463,7 +463,7 @@ mod tests {
         world.apply_file_teleporters().unwrap();
         assert!(!path.exists());
         assert_eq!(world.teleporters[0].received, 1);
-        assert_eq!(world.snapshot().ties.len(), 1);
+        assert_eq!(world.ties.len(), 1);
         let ids = world.slots.ids_in_slot_order();
         for &id in &ids {
             assert_eq!(tie_readbacks(&world, id), SAVED_TIE_READBACKS);
@@ -471,6 +471,7 @@ mod tests {
         }
 
         world.tick().unwrap();
+        assert_eq!(world.snapshot().ties.len(), 1);
         for &id in &ids {
             assert_eq!(world.slots.get(id).unwrap().kinematics.velocity, [0.0; 2]);
         }
